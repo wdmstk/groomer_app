@@ -1,0 +1,35 @@
+{
+  "name": "groomer_app",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "powershell -Command \"if (Test-Path .next) { Remove-Item .next -Recurse -Force }\"",
+    "dev": "next dev",
+    "dev:clean": "npm run clean && next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "node --import ./tests/register-alias.mjs --test"
+  },
+  "dependencies": {
+    "@line/bot-sdk": "^10.6.0",
+    "@supabase/auth-helpers-nextjs": "^0.15.0",
+    "@supabase/supabase-js": "^2.94.1",
+    "date-fns": "^4.1.0",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "resend": "^6.9.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

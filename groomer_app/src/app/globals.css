@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: sans-serif;
+}
+
+@media (max-width: 767px) {
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: #ffffff;
+  }
+
+  .overflow-x-auto table {
+    min-width: 920px;
+  }
+
+  .overflow-x-auto th,
+  .overflow-x-auto td {
+    white-space: nowrap;
+    font-size: 12px;
+    line-height: 1.4;
+    padding: 0.5rem;
+  }
+
+  .overflow-x-auto thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f9fafb;
+  }
+}

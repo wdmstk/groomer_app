@@ -1,0 +1,698 @@
+import Link from 'next/link'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { createStoreScopedClient } from '@/lib/supabase/store'
+import { MedicalRecordCreateModal } from '@/components/medical-records/MedicalRecordCreateModal'
+import { MedicalRecordShareButton } from '@/components/medical-records/MedicalRecordShareButton'
+import {
+  createSignedPhotoUrlMap,
+  type MedicalRecordPhotoDraft,
+  type MedicalRecordPhotoType,
+} from '@/lib/medical-records/photos'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+type PetOption = {
+  id: string
+  name: string
+}
+
+type StaffOption = {
+  id: string
+  full_name: string
+}
+
+type AppointmentSummary = {
+  id: string
+  pet_id: string
+  staff_id: string
+  start_time: string
+  menu: string | null
+  duration: number | null
+  staffs?: { full_name: string } | { full_name: string }[] | null
+}
+
+type PendingAppointment = {
+  id: string
+  customer_id: string | null
+  pet_id: string | null
+  staff_id: string | null
+  start_time: string | null
+  menu: string | null
+  duration: number | null
+  customers?: { full_name: string } | { full_name: string }[] | null
+  pets?: { name: string } | { name: string }[] | null
+  staffs?: { full_name: string } | { full_name: string }[] | null
+}
+
+type PendingPayment = {
+  id: string
+  appointment_id: string | null
+  total_amount: number | null
+  paid_at: string | null
+  method: string | null
+  created_at: string
+}
+
+type EditRecord = {
+  id: string
+  pet_id: string | null
+  staff_id: string | null
+  appointment_id: string | null
+  payment_id: string | null
+  status: 'draft' | 'finalized' | null
+  finalized_at: string | null
+  record_date: string | null
+  menu: string | null
+  duration: number | null
+  shampoo_used: string | null
+  skin_condition: string | null
+  behavior_notes: string | null
+  photos: string[] | null
+  caution_notes: string | null
+}
+
+type RecordPhotoRow = {
+  id: string
+  medical_record_id: string
+  photo_type: MedicalRecordPhotoType
+  storage_path: string
+  comment: string | null
+  sort_order: number
+  taken_at: string | null
+}
+
+type GalleryPhotoRow = {
+  id: string
+  photo_type: MedicalRecordPhotoType
+  storage_path: string
+  comment: string | null
+  taken_at: string | null
+  medical_records?:
+    | { record_date: string | null; menu: string | null }
+    | { record_date: string | null; menu: string | null }[]
+    | null
+}
+
+type MedicalRecordsPageProps = {
+  searchParams?: Promise<{
+    tab?: string
+    modal?: string
+    edit?: string
+    appointment_id?: string
+    payment_id?: string
+  }>
+}
+
+function getRelatedValue<T extends Record<string, string | null>>(
+  relation: T | T[] | null | undefined,
+  key: keyof T
+) {
+  if (!relation) return '未登録'
+  if (Array.isArray(relation)) return relation[0]?.[key] ?? '未登録'
+  return relation[key] ?? '未登録'
+}
+
+function getRelationObject<T extends Record<string, string | null>>(
+  relation: T | T[] | null | undefined
+) {
+  if (!relation) return null
+  if (Array.isArray(relation)) return relation[0] ?? null
+  return relation
+}
+
+function formatDateTimeJst(value: string | null | undefined) {
+  if (!value) return '未設定'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '未設定'
+  return new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
+}
+
+export default async function MedicalRecordsPage({ searchParams }: MedicalRecordsPageProps) {
+  const resolvedSearchParams = await searchParams
+  const activeTab =
+    resolvedSearchParams?.tab === 'pending'
+      ? 'pending'
+      : 'list'
+  const isCreateModalOpen =
+    resolvedSearchParams?.modal === 'create' || resolvedSearchParams?.tab === 'new'
+  const editId = resolvedSearchParams?.edit
+  const prefillAppointmentId = resolvedSearchParams?.appointment_id ?? ''
+  const prefillPaymentId = resolvedSearchParams?.payment_id ?? ''
+  const { supabase, storeId } = await createStoreScopedClient()
+
+  const { data: medicalRecords } = await supabase
+    .from('medical_records')
+    .select(
+      'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes, pets(name), staffs(full_name)'
+    )
+    .eq('store_id', storeId)
+    .order('record_date', { ascending: false })
+
+  const { data: pets } = await supabase
+    .from('pets')
+    .select('id, name')
+    .eq('store_id', storeId)
+    .order('created_at', { ascending: false })
+
+  const { data: staffs } = await supabase
+    .from('staffs')
+    .select('id, full_name')
+    .eq('store_id', storeId)
+    .order('created_at', { ascending: false })
+
+  const { data: appointments } = await supabase
+    .from('appointments')
+    .select('id, customer_id, pet_id, staff_id, start_time, menu, duration, customers(full_name), pets(name), staffs(full_name)')
+    .eq('store_id', storeId)
+    .order('start_time', { ascending: false })
+
+  const { data: payments } = await supabase
+    .from('payments')
+    .select('id, appointment_id, total_amount, paid_at, method, created_at')
+    .eq('store_id', storeId)
+    .order('created_at', { ascending: false })
+
+  const { data: editRecord } = editId
+    ? await supabase
+        .from('medical_records')
+        .select(
+          'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes'
+        )
+        .eq('id', editId)
+        .eq('store_id', storeId)
+        .single()
+    : { data: null }
+
+  const { data: prefillPayment } =
+    !editId && prefillPaymentId
+      ? await supabase
+          .from('payments')
+          .select('id, appointment_id')
+          .eq('id', prefillPaymentId)
+          .eq('store_id', storeId)
+          .maybeSingle()
+      : { data: null }
+
+  const effectiveLinkedAppointmentId =
+    prefillAppointmentId || prefillPayment?.appointment_id || editRecord?.appointment_id || ''
+
+  const { data: prefillAppointment } =
+    effectiveLinkedAppointmentId
+      ? await supabase
+          .from('appointments')
+          .select('id, pet_id, staff_id, start_time, menu, duration, staffs(full_name)')
+          .eq('id', effectiveLinkedAppointmentId)
+          .eq('store_id', storeId)
+          .maybeSingle()
+      : { data: null }
+
+  const recordList = (medicalRecords ?? []) as Array<
+    EditRecord & {
+      pets?: { name: string } | { name: string }[] | null
+      staffs?: { full_name: string } | { full_name: string }[] | null
+    }
+  >
+  const appointmentList = (appointments ?? []) as PendingAppointment[]
+  const paymentList = (payments ?? []) as PendingPayment[]
+  const petOptions: PetOption[] = pets ?? []
+  const staffOptions: StaffOption[] = staffs ?? []
+  const linkedAppointmentId = editRecord?.appointment_id ?? prefillAppointment?.id ?? ''
+  const linkedPaymentId = editRecord?.payment_id ?? prefillPayment?.id ?? ''
+  const defaultRecordDate = editRecord?.record_date ?? prefillAppointment?.start_time ?? ''
+  const defaultMenu = editRecord?.menu ?? prefillAppointment?.menu ?? ''
+  const defaultDuration =
+    editRecord?.duration?.toString() ?? (prefillAppointment?.duration ? String(prefillAppointment.duration) : '')
+  const defaultStatus = editRecord?.status === 'finalized' ? 'finalized' : 'draft'
+  const defaultPetId = editRecord?.pet_id ?? prefillAppointment?.pet_id ?? ''
+  const defaultStaffId = editRecord?.staff_id ?? prefillAppointment?.staff_id ?? ''
+  const paymentOptions = paymentList
+    .filter((payment) => payment.appointment_id === linkedAppointmentId)
+    .map((payment) => ({
+      id: payment.id,
+      label: `${formatDateTimeJst(payment.paid_at)} / ${payment.method ?? '未設定'} / ${
+        payment.total_amount ? `${payment.total_amount.toLocaleString()}円` : '金額未設定'
+      }`,
+    }))
+
+  const linkedAppointmentSummary = prefillAppointment as AppointmentSummary | null
+  const linkedAppointmentStaffName = (() => {
+    if (!linkedAppointmentSummary?.staffs) return null
+    if (Array.isArray(linkedAppointmentSummary.staffs)) {
+      return linkedAppointmentSummary.staffs[0]?.full_name ?? null
+    }
+    return linkedAppointmentSummary.staffs.full_name ?? null
+  })()
+  const linkedAppointmentIds = new Set(
+    recordList
+      .map((record) => record.appointment_id)
+      .filter((id): id is string => Boolean(id))
+  )
+  const linkedPaymentIds = new Set(
+    recordList
+      .map((record) => record.payment_id)
+      .filter((id): id is string => Boolean(id))
+  )
+  const pendingAppointments = appointmentList.filter(
+    (appointment) => !linkedAppointmentIds.has(appointment.id)
+  )
+  const appointmentById = new Map(appointmentList.map((appointment) => [appointment.id, appointment]))
+  const pendingPayments = paymentList.filter((payment) => !linkedPaymentIds.has(payment.id))
+  const draftRecordByAppointmentId = new Map(
+    recordList
+      .filter((record) => record.status !== 'finalized' && record.appointment_id)
+      .map((record) => [record.appointment_id as string, record.id])
+  )
+  const modalCloseRedirect = `/medical-records?tab=${activeTab}`
+
+  const recordIds = recordList.map((record) => record.id)
+  const currentGalleryPetId = defaultPetId
+
+  const { data: recordPhotos } =
+    recordIds.length > 0
+      ? await supabase
+          .from('medical_record_photos')
+          .select('id, medical_record_id, photo_type, storage_path, comment, sort_order, taken_at')
+          .eq('store_id', storeId)
+          .in('medical_record_id', recordIds)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: true })
+      : { data: [] }
+
+  const { data: galleryPhotos } =
+    currentGalleryPetId
+      ? await supabase
+          .from('medical_record_photos')
+          .select('id, photo_type, storage_path, comment, taken_at, medical_records(record_date, menu)')
+          .eq('store_id', storeId)
+          .eq('pet_id', currentGalleryPetId)
+          .order('taken_at', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(24)
+      : { data: [] }
+
+  const signedUrlMap = await createSignedPhotoUrlMap(
+    supabase,
+    [
+      ...((recordPhotos ?? []) as RecordPhotoRow[]).map((photo) => photo.storage_path),
+      ...((galleryPhotos ?? []) as GalleryPhotoRow[]).map((photo) => photo.storage_path),
+    ],
+    60 * 60
+  )
+
+  const photoEntriesByRecordId = new Map<string, MedicalRecordPhotoDraft[]>()
+  ;((recordPhotos ?? []) as RecordPhotoRow[]).forEach((photo) => {
+    const current = photoEntriesByRecordId.get(photo.medical_record_id) ?? []
+    current.push({
+      id: photo.id,
+      photoType: photo.photo_type,
+      storagePath: photo.storage_path,
+      comment: photo.comment ?? '',
+      sortOrder: photo.sort_order,
+      takenAt: photo.taken_at,
+      signedUrl: signedUrlMap.get(photo.storage_path) ?? null,
+    })
+    photoEntriesByRecordId.set(photo.medical_record_id, current)
+  })
+
+  const galleryEntries = ((galleryPhotos ?? []) as GalleryPhotoRow[]).map((photo) => {
+    const record = getRelationObject(photo.medical_records)
+    return {
+      id: photo.id,
+      photoType: photo.photo_type,
+      signedUrl: signedUrlMap.get(photo.storage_path) ?? null,
+      comment: photo.comment ?? '',
+      takenAt: photo.taken_at,
+      recordDate: record?.record_date ?? null,
+      menu: record?.menu ?? null,
+    }
+  })
+
+  const editPhotoEntries = editRecord ? photoEntriesByRecordId.get(editRecord.id) ?? [] : []
+  const photoCountByRecordId = new Map<string, number>(
+    Array.from(photoEntriesByRecordId.entries()).map(([recordId, photosForRecord]) => [
+      recordId,
+      photosForRecord.length,
+    ])
+  )
+
+  return (
+    <section className="space-y-6">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-2xl font-semibold text-gray-900">ペットカルテ管理</h1>
+        <p className="text-gray-600">ペットカルテ情報の登録・更新・削除が行えます。</p>
+      </div>
+
+      <div className="flex items-center gap-4 border-b">
+        <Link
+          href="/medical-records?tab=list"
+          className={`pb-2 text-sm font-semibold ${
+            activeTab === 'list' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'
+          }`}
+        >
+          カルテ一覧
+        </Link>
+        <Link
+          href="/medical-records?tab=pending"
+          className={`pb-2 text-sm font-semibold ${
+            activeTab === 'pending' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'
+          }`}
+        >
+          未作成一覧
+        </Link>
+      </div>
+
+      {activeTab === 'list' ? (
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">カルテ一覧</h2>
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-gray-500">全 {recordList.length} 件</p>
+              <Link
+                href="/medical-records?tab=list&modal=create"
+                className="inline-flex items-center rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                新規登録
+              </Link>
+            </div>
+          </div>
+          {recordList.length === 0 ? (
+            <p className="text-sm text-gray-500">カルテがまだ登録されていません。</p>
+          ) : (
+            <>
+              <div className="space-y-3 md:hidden">
+                {recordList.map((record) => (
+                  <article key={record.id} className="rounded border p-3 text-sm text-gray-700">
+                    <p className="font-semibold text-gray-900">
+                      {getRelatedValue(record.pets, 'name')}
+                    </p>
+                    <p>担当: {getRelatedValue(record.staffs, 'full_name')}</p>
+                    <p>施術日時: {record.record_date}</p>
+                    <p>メニュー: {record.menu}</p>
+                    <p>予約ID: {record.appointment_id ?? 'なし'}</p>
+                    <p>会計ID: {record.payment_id ?? 'なし'}</p>
+                    <p>状態: {record.status === 'finalized' ? '確定' : '下書き'}</p>
+                    <p>写真: {photoCountByRecordId.get(record.id) ?? 0} 枚</p>
+                    <p>所要時間: {record.duration ? `${record.duration} 分` : '未登録'}</p>
+                    <p>シャンプー: {record.shampoo_used ?? '未登録'}</p>
+                    <p>皮膚状態: {record.skin_condition ?? '未登録'}</p>
+                    <p>問題行動: {record.behavior_notes ?? '未登録'}</p>
+                    <p>注意事項: {record.caution_notes ?? '未登録'}</p>
+                    <div className="mt-2 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/medical-records?tab=list&edit=${record.id}`}
+                          className="text-blue-600 text-sm"
+                        >
+                          編集
+                        </Link>
+                        <form action={`/api/medical-records/${record.id}`} method="post">
+                          <input type="hidden" name="_method" value="delete" />
+                          <Button type="submit" className="bg-red-500 hover:bg-red-600">
+                            削除
+                          </Button>
+                        </form>
+                      </div>
+                      {record.status === 'finalized' ? <MedicalRecordShareButton recordId={record.id} /> : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
+                <table className="min-w-full text-sm text-left">
+                  <thead className="text-gray-500 border-b">
+                    <tr>
+                      <th className="py-2 px-2">ペット</th>
+                      <th className="py-2 px-2">担当</th>
+                      <th className="py-2 px-2">施術日時</th>
+                      <th className="py-2 px-2">メニュー</th>
+                      <th className="py-2 px-2">予約ID</th>
+                      <th className="py-2 px-2">会計ID</th>
+                      <th className="py-2 px-2">状態</th>
+                      <th className="py-2 px-2">写真</th>
+                      <th className="py-2 px-2">所要時間</th>
+                      <th className="py-2 px-2">シャンプー</th>
+                      <th className="py-2 px-2">皮膚状態</th>
+                      <th className="py-2 px-2">問題行動</th>
+                      <th className="py-2 px-2">注意事項</th>
+                      <th className="py-2 px-2">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {recordList.map((record) => (
+                      <tr key={record.id} className="text-gray-700 align-top">
+                        <td className="py-3 px-2 font-medium text-gray-900">
+                          {getRelatedValue(record.pets, 'name')}
+                        </td>
+                        <td className="py-3 px-2">{getRelatedValue(record.staffs, 'full_name')}</td>
+                        <td className="py-3 px-2">{record.record_date}</td>
+                        <td className="py-3 px-2">{record.menu}</td>
+                        <td className="py-3 px-2">{record.appointment_id ?? 'なし'}</td>
+                        <td className="py-3 px-2">{record.payment_id ?? 'なし'}</td>
+                        <td className="py-3 px-2">{record.status === 'finalized' ? '確定' : '下書き'}</td>
+                        <td className="py-3 px-2">{photoCountByRecordId.get(record.id) ?? 0} 枚</td>
+                        <td className="py-3 px-2">
+                          {record.duration ? `${record.duration} 分` : '未登録'}
+                        </td>
+                        <td className="py-3 px-2">{record.shampoo_used ?? '未登録'}</td>
+                        <td className="py-3 px-2">{record.skin_condition ?? '未登録'}</td>
+                        <td className="py-3 px-2">{record.behavior_notes ?? '未登録'}</td>
+                        <td className="py-3 px-2">{record.caution_notes ?? '未登録'}</td>
+                        <td className="py-3 px-2">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Link
+                                href={`/medical-records?tab=list&edit=${record.id}`}
+                                className="text-blue-600 text-sm"
+                              >
+                                編集
+                              </Link>
+                              <form action={`/api/medical-records/${record.id}`} method="post">
+                                <input type="hidden" name="_method" value="delete" />
+                                <Button type="submit" className="bg-red-500 hover:bg-red-600">
+                                  削除
+                                </Button>
+                              </form>
+                            </div>
+                            {record.status === 'finalized' ? <MedicalRecordShareButton recordId={record.id} /> : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </Card>
+      ) : (
+        <Card>
+          <div className="space-y-6">
+            <section>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">カルテ未作成の予約</h2>
+                <p className="text-sm text-gray-500">全 {pendingAppointments.length} 件</p>
+              </div>
+              {pendingAppointments.length === 0 ? (
+                <p className="text-sm text-gray-500">未作成の予約はありません。</p>
+              ) : (
+                <div className="space-y-3 md:hidden">
+                  {pendingAppointments.map((appointment) => (
+                    <article key={appointment.id} className="rounded border p-3 text-sm text-gray-700">
+                      <p className="font-semibold text-gray-900">{getRelatedValue(appointment.pets, 'name')}</p>
+                      <p>顧客: {getRelatedValue(appointment.customers, 'full_name')}</p>
+                      <p>担当: {getRelatedValue(appointment.staffs, 'full_name')}</p>
+                      <p>施術日時: {formatDateTimeJst(appointment.start_time)}</p>
+                      <p>メニュー: {appointment.menu ?? '未設定'}</p>
+                      <p>所要時間: {appointment.duration ? `${appointment.duration} 分` : '未設定'}</p>
+                      <Link
+                        href={`/medical-records?tab=pending&appointment_id=${appointment.id}`}
+                        className="mt-2 inline-block text-blue-600"
+                      >
+                        カルテ登録
+                      </Link>
+                    </article>
+                  ))}
+                </div>
+              )}
+              {pendingAppointments.length > 0 ? (
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="min-w-full text-sm text-left">
+                    <thead className="border-b text-gray-500">
+                      <tr>
+                        <th className="px-2 py-2">顧客</th>
+                        <th className="px-2 py-2">ペット</th>
+                        <th className="px-2 py-2">担当</th>
+                        <th className="px-2 py-2">施術日時</th>
+                        <th className="px-2 py-2">メニュー</th>
+                        <th className="px-2 py-2">所要時間</th>
+                        <th className="px-2 py-2">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {pendingAppointments.map((appointment) => (
+                        <tr key={appointment.id} className="text-gray-700">
+                          <td className="px-2 py-3">{getRelatedValue(appointment.customers, 'full_name')}</td>
+                          <td className="px-2 py-3">{getRelatedValue(appointment.pets, 'name')}</td>
+                          <td className="px-2 py-3">{getRelatedValue(appointment.staffs, 'full_name')}</td>
+                          <td className="px-2 py-3">{formatDateTimeJst(appointment.start_time)}</td>
+                          <td className="px-2 py-3">{appointment.menu ?? '未設定'}</td>
+                          <td className="px-2 py-3">
+                            {appointment.duration ? `${appointment.duration} 分` : '未設定'}
+                          </td>
+                          <td className="px-2 py-3">
+                            <Link
+                              href={`/medical-records?tab=pending&appointment_id=${appointment.id}`}
+                              className="text-blue-600"
+                            >
+                              カルテ登録
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </section>
+
+            <section>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">カルテ未作成の会計</h2>
+                <p className="text-sm text-gray-500">全 {pendingPayments.length} 件</p>
+              </div>
+              {pendingPayments.length === 0 ? (
+                <p className="text-sm text-gray-500">未作成の会計はありません。</p>
+              ) : (
+                <div className="space-y-3 md:hidden">
+                  {pendingPayments.map((payment) => {
+                    const appointment = payment.appointment_id
+                      ? appointmentById.get(payment.appointment_id) ?? null
+                      : null
+                    return (
+                      <article key={payment.id} className="rounded border p-3 text-sm text-gray-700">
+                        <p className="font-semibold text-gray-900">会計ID: {payment.id}</p>
+                        <p>顧客: {appointment ? getRelatedValue(appointment.customers, 'full_name') : '未設定'}</p>
+                        <p>ペット: {appointment ? getRelatedValue(appointment.pets, 'name') : '未設定'}</p>
+                        <p>施術日時: {formatDateTimeJst(appointment?.start_time ?? null)}</p>
+                        <p>会計日時: {formatDateTimeJst(payment.paid_at)}</p>
+                        <p>支払方法: {payment.method ?? '未設定'}</p>
+                        <p>金額: {payment.total_amount ? `${payment.total_amount.toLocaleString()} 円` : '未設定'}</p>
+                        <Link
+                          href={
+                            appointment && draftRecordByAppointmentId.has(appointment.id)
+                              ? `/medical-records?tab=pending&edit=${draftRecordByAppointmentId.get(appointment.id)}&payment_id=${payment.id}`
+                              : `/medical-records?tab=pending&payment_id=${payment.id}`
+                          }
+                          className="mt-2 inline-block text-blue-600"
+                        >
+                          カルテ登録
+                        </Link>
+                      </article>
+                    )
+                  })}
+                </div>
+              )}
+              {pendingPayments.length > 0 ? (
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="min-w-full text-sm text-left">
+                    <thead className="border-b text-gray-500">
+                      <tr>
+                        <th className="px-2 py-2">会計ID</th>
+                        <th className="px-2 py-2">顧客</th>
+                        <th className="px-2 py-2">ペット</th>
+                        <th className="px-2 py-2">施術日時</th>
+                        <th className="px-2 py-2">会計日時</th>
+                        <th className="px-2 py-2">支払方法</th>
+                        <th className="px-2 py-2">金額</th>
+                        <th className="px-2 py-2">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {pendingPayments.map((payment) => {
+                        const appointment = payment.appointment_id
+                          ? appointmentById.get(payment.appointment_id) ?? null
+                          : null
+                        return (
+                          <tr key={payment.id} className="text-gray-700">
+                            <td className="px-2 py-3">{payment.id}</td>
+                            <td className="px-2 py-3">
+                              {appointment ? getRelatedValue(appointment.customers, 'full_name') : '未設定'}
+                            </td>
+                            <td className="px-2 py-3">
+                              {appointment ? getRelatedValue(appointment.pets, 'name') : '未設定'}
+                            </td>
+                            <td className="px-2 py-3">{formatDateTimeJst(appointment?.start_time ?? null)}</td>
+                            <td className="px-2 py-3">{formatDateTimeJst(payment.paid_at)}</td>
+                            <td className="px-2 py-3">{payment.method ?? '未設定'}</td>
+                            <td className="px-2 py-3">
+                              {payment.total_amount ? `${payment.total_amount.toLocaleString()} 円` : '未設定'}
+                            </td>
+                            <td className="px-2 py-3">
+                              <Link
+                                href={
+                                  appointment && draftRecordByAppointmentId.has(appointment.id)
+                                    ? `/medical-records?tab=pending&edit=${draftRecordByAppointmentId.get(appointment.id)}&payment_id=${payment.id}`
+                                    : `/medical-records?tab=pending&payment_id=${payment.id}`
+                                }
+                                className="text-blue-600"
+                              >
+                                カルテ登録
+                              </Link>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </section>
+          </div>
+        </Card>
+      )}
+
+      {isCreateModalOpen || editRecord || prefillAppointmentId || prefillPaymentId ? (
+        <MedicalRecordCreateModal
+          editRecord={editRecord}
+          petOptions={petOptions}
+          staffOptions={staffOptions}
+          formAction={editRecord ? `/api/medical-records/${editRecord.id}` : '/api/medical-records'}
+          linkedAppointmentId={linkedAppointmentId}
+          linkedPaymentId={linkedPaymentId}
+          linkedAppointmentSummary={
+            linkedAppointmentSummary
+              ? {
+                  id: linkedAppointmentSummary.id,
+                  start_time: linkedAppointmentSummary.start_time,
+                  menu: linkedAppointmentSummary.menu,
+                  duration: linkedAppointmentSummary.duration,
+                  staff_name: linkedAppointmentStaffName,
+                }
+              : null
+          }
+          defaultPetId={defaultPetId}
+          defaultStaffId={defaultStaffId}
+          defaultRecordDate={defaultRecordDate}
+          defaultMenu={defaultMenu}
+          defaultDuration={defaultDuration}
+          paymentOptions={paymentOptions}
+          defaultStatus={defaultStatus}
+          closeRedirectTo={modalCloseRedirect}
+          photoEntries={editPhotoEntries}
+          galleryEntries={galleryEntries}
+        />
+      ) : null}
+    </section>
+  )
+}

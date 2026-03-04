@@ -1,0 +1,45 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Dependencies
+/node_modules/
+**/node_modules/
+
+# Build outputs
+/.next/
+**/.next/
+/out/
+**/out/
+/build/
+**/build/
+/coverage/
+**/coverage/
+*.tsbuildinfo
+
+# Environment files
+.env*
+!.env.example
+!.env*.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Vercel
+.vercel/
+
+# Nested repo metadata to avoid committing the existing child git directory
+/groomer_app/.git/
+
+# Local backup / scratch files not needed in the main repo
+/backup_root_pkg/
+/code_templates/
+/メモ/
+
+# Root-level package files appear to be temporary bootstrap artifacts;
+# keep the actual app package files under /groomer_app instead.
+/package.json
+/package-lock.json
