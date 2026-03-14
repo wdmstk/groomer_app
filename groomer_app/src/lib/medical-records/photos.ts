@@ -1,3 +1,5 @@
+import { isObjectRecord } from '@/lib/object-utils'
+
 const STORAGE_BUCKET = process.env.SUPABASE_UPLOAD_BUCKET ?? 'pet-photos'
 
 export type MedicalRecordPhotoType = 'before' | 'after'
@@ -21,6 +23,11 @@ type StorageSigner = {
       ) => Promise<{ data: { signedUrl: string } | null; error: { message: string } | null }>
     }
   }
+}
+
+function asRecord(value: unknown): { [key: string]: unknown } | null {
+  if (!isObjectRecord(value)) return null
+  return value
 }
 
 function toJstDateParts(value: string | null | undefined) {
@@ -63,8 +70,8 @@ export function parseMedicalRecordPhotoDrafts(value: string | null | undefined) 
     const rows: MedicalRecordPhotoDraft[] = []
 
     parsed.forEach((item, index) => {
-      if (!item || typeof item !== 'object') return
-      const row = item as Record<string, unknown>
+      const row = asRecord(item)
+      if (!row) return
       const photoType = row.photoType === 'after' ? 'after' : row.photoType === 'before' ? 'before' : null
       const storagePath = typeof row.storagePath === 'string' ? row.storagePath.trim() : ''
       if (!photoType || !storagePath) return

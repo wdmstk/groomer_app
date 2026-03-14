@@ -77,7 +77,6 @@ export default async function InventoryReportsPage() {
     <section className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">在庫レポート</h1>
-        <p className="text-sm text-gray-600">直近30日の在庫推移とカテゴリ使用量を確認できます。</p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">

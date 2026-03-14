@@ -47,6 +47,7 @@ export async function validateAppointmentConflict({
     .select('id, start_time, end_time')
     .eq('store_id', storeId)
     .eq('staff_id', staffId)
+    .not('status', 'in', '("キャンセル","無断キャンセル")')
     .lt('start_time', endTimeIso)
     .gt('end_time', startTimeIso)
     .order('start_time', { ascending: true })

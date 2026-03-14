@@ -60,7 +60,6 @@ export default async function InventoryStocktakePage() {
     <section className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">棚卸</h1>
-        <p className="text-sm text-gray-600">実在庫との差異を記録し、在庫を調整します。</p>
       </div>
 
       <Card>

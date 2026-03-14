@@ -11,11 +11,6 @@ type CustomerMemberPortalControlsProps = {
   compact?: boolean
 }
 
-const expiryOptions = [
-  { value: 90, label: '90日' },
-  { value: 180, label: '180日' },
-]
-
 function formatDateTimeJst(value: string | null | undefined) {
   if (!value) return '未発行'
   const date = new Date(value)
@@ -36,13 +31,11 @@ export function CustomerMemberPortalControls({
   customerName,
   activeExpiresAt,
   lastUsedAt,
-  compact = false,
 }: CustomerMemberPortalControlsProps) {
   const [loading, setLoading] = useState(false)
   const [revoking, setRevoking] = useState(false)
   const [portalUrl, setPortalUrl] = useState('')
   const [expiresAt, setExpiresAt] = useState(activeExpiresAt ?? '')
-  const [expiresInDays, setExpiresInDays] = useState(90)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -53,10 +46,6 @@ export function CustomerMemberPortalControls({
     try {
       const response = await fetch(`/api/customers/${customerId}/member-portal-link`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ expiresInDays }),
       })
       const payload = (await response.json().catch(() => null)) as
         | { portalUrl?: string; expiresAt?: string; message?: string }
@@ -103,22 +92,7 @@ export function CustomerMemberPortalControls({
     <div className="space-y-2">
       <p className="text-xs text-gray-500">会員証: {formatDateTimeJst(expiresAt)}</p>
       <p className="text-xs text-gray-500">最終アクセス: {formatDateTimeJst(lastUsedAt)}</p>
-      <label className="block space-y-1 text-xs text-gray-500">
-        <span>有効期限</span>
-        <select
-          value={expiresInDays}
-          onChange={(event) => setExpiresInDays(Number(event.target.value))}
-          className={`rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 ${
-            compact ? 'w-20' : 'w-full max-w-[8rem]'
-          }`}
-        >
-          {expiryOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <p className="text-xs text-gray-500">有効期限: 発行から90日固定（アクセスで延長しない）</p>
       <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"

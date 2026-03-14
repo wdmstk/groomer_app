@@ -1,7 +1,14 @@
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { Card } from '@/components/ui/Card'
 import { getMemberPortalPayload, MemberPortalServiceError } from '@/lib/member-portal'
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+}
 
 type SharedMemberPortalPageProps = {
   params: Promise<{
@@ -24,14 +31,32 @@ function formatDateTimeJst(value: string | null | undefined) {
   }).format(date)
 }
 
+function formatYen(value: number | null | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '未登録'
+  return `${Math.round(value).toLocaleString()} 円`
+}
+
 export default async function SharedMemberPortalPage({
   params,
 }: SharedMemberPortalPageProps) {
   const { token } = await params
+  let payload: Awaited<ReturnType<typeof getMemberPortalPayload>> | null = null
+  let unavailableMessage = ''
 
   try {
-    const payload = await getMemberPortalPayload(token)
+    payload = await getMemberPortalPayload(token)
+  } catch (error) {
+    if (
+      error instanceof MemberPortalServiceError &&
+      [400, 404, 410].includes(error.status)
+    ) {
+      unavailableMessage = error.message
+    } else {
+      throw error
+    }
+  }
 
+  if (!payload) {
     return (
       <main className="min-h-screen bg-amber-50 px-4 py-10">
         <div className="mx-auto max-w-3xl space-y-6">
@@ -39,99 +64,187 @@ export default async function SharedMemberPortalPage({
             <p className="text-sm font-medium uppercase tracking-[0.24em] text-amber-700">
               Member Portal
             </p>
-            <h1 className="text-3xl font-semibold text-slate-900">{payload.memberCard.label}</h1>
-            <p className="text-sm text-slate-600">
-              有効期限: {formatDateTimeJst(payload.memberCard.expiresAt)}
-            </p>
+            <h1 className="text-3xl font-semibold text-slate-900">会員証ページ</h1>
           </header>
-
-          <Card className="space-y-3 border border-amber-100 bg-white">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
-              Customer
+          <Card className="space-y-3 border border-slate-200 bg-white">
+            <p className="text-base font-medium text-slate-900">
+              {unavailableMessage || '会員証URLが無効です。'}
             </p>
-            <div className="space-y-1">
-              <p className="text-2xl font-semibold text-slate-900">{payload.customer.full_name}</p>
-              <p className="text-sm text-slate-600">{payload.store.name}</p>
-            </div>
-          </Card>
-
-          <Card className="space-y-4 border border-slate-200">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Next Appointment
-                </p>
-                <h2 className="text-xl font-semibold text-slate-900">次回予約</h2>
-              </div>
-              {payload.nextAppointment ? (
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                  {payload.nextAppointment.status ?? '予約済'}
-                </span>
-              ) : null}
-            </div>
-
-            {payload.nextAppointment ? (
-              <dl className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <dt className="text-xs text-slate-500">日時</dt>
-                  <dd className="text-sm font-medium text-slate-900">
-                    {formatDateTimeJst(payload.nextAppointment.start_time)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-slate-500">メニュー</dt>
-                  <dd className="text-sm font-medium text-slate-900">
-                    {payload.nextAppointment.menu ?? '未設定'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-slate-500">担当スタッフ</dt>
-                  <dd className="text-sm font-medium text-slate-900">
-                    {payload.nextAppointment.staff_name ?? '未定'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-slate-500">ペット</dt>
-                  <dd className="text-sm font-medium text-slate-900">
-                    {payload.nextAppointment.pet_name ?? '未設定'}
-                  </dd>
-                </div>
-              </dl>
-            ) : (
-              <p className="text-sm text-slate-600">
-                現在、確認できる次回予約はありません。ご不明点があれば店舗へご連絡ください。
-              </p>
-            )}
-
-            <div className="pt-2">
-              <Link
-                href={`/reserve/${payload.store.id}?member_portal_token=${encodeURIComponent(token)}`}
-                className="inline-flex items-center rounded bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
-              >
-                この内容で予約する
+            <p className="text-sm text-slate-600">
+              お手数ですが、最新の会員証URLの再発行について店舗へお問い合わせください。
+            </p>
+            <p>
+              <Link href="/" className="text-sm text-amber-700 underline hover:text-amber-800">
+                トップへ戻る
               </Link>
-            </div>
-          </Card>
-
-          <Card className="space-y-3 border border-slate-200">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Announcements
-              </p>
-              <h2 className="text-xl font-semibold text-slate-900">お知らせ</h2>
-            </div>
-            <p className="text-sm text-slate-600">現在表示できるお知らせはありません。</p>
+            </p>
           </Card>
         </div>
       </main>
     )
-  } catch (error) {
-    if (
-      error instanceof MemberPortalServiceError &&
-      [400, 404, 410].includes(error.status)
-    ) {
-      notFound()
-    }
-    throw error
   }
+
+  return (
+    <main className="min-h-screen bg-amber-50 px-4 py-6 pb-24 sm:py-10">
+      <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
+        <header className="space-y-2">
+          <p className="text-sm font-medium uppercase tracking-[0.24em] text-amber-700">
+            Member Portal
+          </p>
+          <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
+            {payload.memberCard.label}
+          </h1>
+          <p className="text-sm text-slate-600">
+            有効期限: {formatDateTimeJst(payload.memberCard.expiresAt)}
+          </p>
+        </header>
+
+        <Card className="space-y-3 border border-amber-100 bg-white">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
+            Customer
+          </p>
+          <div className="space-y-1">
+            <p className="text-2xl font-semibold text-slate-900">{payload.customer.full_name}</p>
+            <p className="text-sm text-slate-600">{payload.store.name}</p>
+          </div>
+        </Card>
+
+        <Card className="space-y-4 border border-slate-200">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Next Appointment
+              </p>
+              <h2 className="text-xl font-semibold text-slate-900">次回予約</h2>
+            </div>
+            {payload.nextAppointment ? (
+              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                {payload.nextAppointment.status ?? '予約済'}
+              </span>
+            ) : null}
+          </div>
+
+          {payload.nextAppointment ? (
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs text-slate-500">日時</dt>
+                <dd className="text-sm font-medium text-slate-900">
+                  {formatDateTimeJst(payload.nextAppointment.start_time)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">メニュー</dt>
+                <dd className="text-sm font-medium text-slate-900">
+                  {payload.nextAppointment.menu ?? '未設定'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">担当スタッフ</dt>
+                <dd className="text-sm font-medium text-slate-900">
+                  {payload.nextAppointment.staff_name ?? '未定'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">ペット</dt>
+                <dd className="text-sm font-medium text-slate-900">
+                  {payload.nextAppointment.pet_name ?? '未設定'}
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-sm text-slate-600">
+              現在、確認できる次回予約はありません。ご不明点があれば店舗へご連絡ください。
+            </p>
+          )}
+
+          <div className="pt-2">
+            <Link
+              href={`/reserve/${payload.store.id}?member_portal_token=${encodeURIComponent(token)}`}
+              className="inline-flex items-center rounded bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+            >
+              この内容で予約する
+            </Link>
+          </div>
+        </Card>
+
+        <Card className="space-y-3 border border-slate-200">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Revisit Guide
+            </p>
+            <h2 className="text-xl font-semibold text-slate-900">次回来店案内</h2>
+          </div>
+          {payload.nextVisitSuggestion ? (
+            <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-slate-700">
+              <p className="font-semibold text-slate-900">
+                推奨日: {formatDateTimeJst(payload.nextVisitSuggestion.recommended_date)}
+              </p>
+              <p className="mt-1">{payload.nextVisitSuggestion.reason}</p>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-600">
+              次回予約があるため、個別の来店目安表示は省略しています。
+            </p>
+          )}
+        </Card>
+
+        <Card className="space-y-3 border border-slate-200">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Visit History
+            </p>
+            <h2 className="text-xl font-semibold text-slate-900">来店履歴</h2>
+          </div>
+          {payload.visitHistory.length === 0 ? (
+            <p className="text-sm text-slate-600">表示できる来店履歴はありません。</p>
+          ) : (
+            <div className="space-y-2">
+              {payload.visitHistory.map((visit) => (
+                <article key={visit.id} className="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
+                  <p className="font-semibold text-slate-900">{formatDateTimeJst(visit.visit_date)}</p>
+                  <p className="text-slate-700">メニュー: {visit.menu ?? '未登録'}</p>
+                  <p className="text-slate-700">担当: {visit.staff_name ?? '未登録'}</p>
+                  <p className="text-slate-700">会計: {formatYen(visit.total_amount)}</p>
+                </article>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card className="space-y-3 border border-slate-200">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Announcements
+            </p>
+            <h2 className="text-xl font-semibold text-slate-900">お知らせ</h2>
+          </div>
+          {payload.announcements.length === 0 ? (
+            <p className="text-sm text-slate-600">現在表示できるお知らせはありません。</p>
+          ) : (
+            <div className="space-y-2">
+              {payload.announcements.map((announcement) => (
+                <article key={announcement.id} className="rounded border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-sm font-semibold text-slate-900">{announcement.title}</p>
+                  <p className="mt-1 text-sm text-slate-700">{announcement.body}</p>
+                </article>
+              ))}
+              <p className="text-xs text-slate-500">
+                通知最適化: 重要度の高いお知らせのみ最大2件を表示しています。
+              </p>
+            </div>
+          )}
+        </Card>
+      </div>
+      <div className="fixed inset-x-0 bottom-0 border-t border-amber-200 bg-white/95 p-3 backdrop-blur md:hidden">
+        <div className="mx-auto max-w-3xl">
+          <Link
+            href={`/reserve/${payload.store.id}?member_portal_token=${encodeURIComponent(token)}`}
+            className="inline-flex w-full items-center justify-center rounded bg-amber-600 px-4 py-3 text-sm font-semibold text-white hover:bg-amber-700"
+          >
+            この内容で予約する
+          </Link>
+        </div>
+      </div>
+    </main>
+  )
 }

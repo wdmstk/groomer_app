@@ -4,6 +4,7 @@ import {
   buildMedicalRecordPhotoFolder,
   getMedicalRecordPhotoBucket,
 } from '@/lib/medical-records/photos'
+import { ensureStoreHasStorageCapacity, formatBytesToJa } from '@/lib/storage-quota'
 
 // Supabaseの型定義をインポート（別途生成）
 // import { Database } from '@/types/supabase';
@@ -56,6 +57,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'ファイルサイズは8MB以下にしてください。' }, { status: 400 });
   }
 
+  const capacityCheck = await ensureStoreHasStorageCapacity({
+    storeId,
+    bucket: STORAGE_BUCKET,
+    incomingBytes: file.size,
+  })
+  if (!capacityCheck.allowed) {
+    const remainBytes = Math.max(0, capacityCheck.quota.totalLimitBytes - capacityCheck.quota.usageBytes)
+    const policyLabel =
+      capacityCheck.quota.policy === 'cleanup_orphans' ? '孤立ファイル整理' : '追加登録停止'
+    return NextResponse.json(
+      {
+        error: `容量上限を超えるためアップロードできません。現在 ${formatBytesToJa(capacityCheck.quota.usageBytes)} / 上限 ${formatBytesToJa(capacityCheck.quota.totalLimitBytes)}（方針: ${policyLabel}）。残り ${formatBytesToJa(remainBytes)} です。`,
+      },
+      { status: 409 }
+    )
+  }
+
   const fileExtRaw = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
   const fileExt = fileExtRaw.replace(/[^a-z0-9]/g, '') || 'bin'
   const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExt}`
@@ -90,6 +108,10 @@ export async function POST(request: Request) {
     return NextResponse.json({
       storagePath: filePath,
       signedUrl: signedUrlData?.signedUrl ?? null,
+      storageCleanup: {
+        cleanedUpCount: capacityCheck.cleanedUpCount,
+        freedBytes: capacityCheck.freedBytes,
+      },
     })
   } catch (error: unknown) {
     console.error('File upload error:', error)

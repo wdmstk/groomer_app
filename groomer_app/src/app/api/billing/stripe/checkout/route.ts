@@ -1,14 +1,22 @@
 import { NextResponse } from 'next/server'
 import { createProviderCustomer, createStripeCheckoutSession } from '@/lib/billing/providers'
 import {
+  countActiveOwnerStores,
   createBillingCheckoutSessionLog,
   findBillingCustomer,
+  findLatestBillingSubscriptionByStoreAndProvider,
   findReusableCheckoutSession,
   upsertBillingCustomer,
   upsertBillingSubscription,
-  updateStoreSubscriptionStatus,
 } from '@/lib/billing/db'
 import { requireOwnerStoreMembership } from '@/lib/auth/store-owner'
+import {
+  amountForPlanWithStoreCountAndOptions,
+  parseBillingCycle,
+  parsePlanCode,
+} from '@/lib/billing/pricing'
+import { canPurchaseOptionsByPlan } from '@/lib/subscription-plan'
+import { asObject } from '@/lib/object-utils'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -37,8 +45,50 @@ export async function POST(request: Request) {
       })
     }
 
-    const body = await request.json().catch(() => ({} as Record<string, unknown>))
+    const bodyRaw: unknown = await request.json().catch(() => null)
+    const body = asObject(bodyRaw)
     const returnUrlRaw = typeof body.return_url === 'string' ? body.return_url : ''
+    const planCode = parsePlanCode(body.plan_code)
+    const billingCycle = parseBillingCycle(body.billing_cycle)
+    const { data: subscriptionRow, error: subscriptionError } = await guard.supabase
+      .from('store_subscriptions')
+      .select('hotel_option_enabled, notification_option_enabled')
+      .eq('store_id', storeId)
+      .maybeSingle()
+    if (subscriptionError) {
+      return NextResponse.json({ message: subscriptionError.message }, { status: 500 })
+    }
+    const optionContractAllowed = canPurchaseOptionsByPlan(planCode)
+    const options = {
+      hotelOptionEnabled:
+        optionContractAllowed && subscriptionRow?.hotel_option_enabled === true,
+      notificationOptionEnabled:
+        optionContractAllowed && subscriptionRow?.notification_option_enabled === true,
+    }
+    const ownerActiveStoreCount = await countActiveOwnerStores(user.id)
+    const useAdditionalStorePricing = ownerActiveStoreCount > 1
+    const amountJpy = amountForPlanWithStoreCountAndOptions(
+      planCode,
+      billingCycle,
+      ownerActiveStoreCount,
+      options
+    )
+    const latestSubscription = await findLatestBillingSubscriptionByStoreAndProvider({
+      storeId,
+      provider: 'stripe',
+    })
+    if (
+      latestSubscription?.provider_subscription_id &&
+      ['trialing', 'active', 'past_due'].includes(latestSubscription.status)
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            '既存のStripe契約が有効です。プラン変更時は先に「運用操作」から解約手続きを実行してください。',
+        },
+        { status: 409 }
+      )
+    }
     const origin = new URL(request.url).origin
     const successUrl =
       returnUrlRaw.trim() || `${origin}/billing/success?provider=stripe&session_id={CHECKOUT_SESSION_ID}`
@@ -69,6 +119,13 @@ export async function POST(request: Request) {
       customerId: providerCustomerId,
       successUrl,
       cancelUrl,
+      plan: planCode,
+      billingCycle,
+      storeId,
+      userId: user.id,
+      amountJpy,
+      useAdditionalStorePricing,
+      options,
     })
 
     await upsertBillingSubscription({
@@ -78,13 +135,6 @@ export async function POST(request: Request) {
       providerSubscriptionId: session.subscription ?? null,
       status: 'incomplete',
       trialEnd: null,
-    })
-    await updateStoreSubscriptionStatus({
-      storeId,
-      status: 'trialing',
-      provider: 'stripe',
-      source: 'checkout',
-      reason: 'start_stripe_checkout',
     })
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
     await createBillingCheckoutSessionLog({

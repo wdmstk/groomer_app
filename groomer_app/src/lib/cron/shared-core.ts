@@ -1,3 +1,5 @@
+import type { Json } from '@/lib/supabase/database.types'
+
 export class CronSharedCoreError extends Error {
   status: number
 
@@ -14,7 +16,7 @@ export async function startJobRunCore(params: {
   trigger: 'scheduled' | 'manual_rerun' | 'manual_direct'
   requestedByUserId?: string | null
   sourceJobRunId?: string | null
-  meta?: Record<string, unknown>
+  meta?: Json
   lockExpiresAtIso: string
   acquireLock(params: { jobName: string; jobRunId: string; lockExpiresAtIso: string }): Promise<boolean>
   insertJobRun(params: {
@@ -23,7 +25,7 @@ export async function startJobRunCore(params: {
     trigger: 'scheduled' | 'manual_rerun' | 'manual_direct'
     requestedByUserId?: string | null
     sourceJobRunId?: string | null
-    meta?: Record<string, unknown>
+    meta?: Json
   }): Promise<boolean>
   releaseLock(params: { jobRunId: string }): Promise<void>
 }) {
@@ -56,12 +58,12 @@ export async function startJobRunCore(params: {
 export async function finishJobRunCore(params: {
   jobRunId: string | null
   status: 'succeeded' | 'failed'
-  meta?: Record<string, unknown>
+  meta?: Json
   lastError?: string | null
   updateJobRun(params: {
     jobRunId: string
     status: 'succeeded' | 'failed'
-    meta?: Record<string, unknown>
+    meta?: Json
     lastError?: string | null
   }): Promise<void>
   releaseLock(params: { jobRunId: string }): Promise<void>

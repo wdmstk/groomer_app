@@ -112,10 +112,9 @@ export async function POST(request: Request) {
         slot_reoffer_id: reofferId,
         appointment_id: reoffer?.appointment_id ?? created.id,
         actor_user_id: user.id,
-        event_type: 'accepted',
+        event_type: 'appointment_created',
         payload: {
           created_appointment_id: created.id,
-          event_name: 'appointment_created',
         },
       })
     }

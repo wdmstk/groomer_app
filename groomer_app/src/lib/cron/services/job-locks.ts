@@ -1,4 +1,5 @@
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import type { Json } from '@/lib/supabase/database.types'
 import { CronServiceError } from '@/lib/cron/shared'
 import {
   appendManualLockReleaseAudit,
@@ -16,7 +17,7 @@ type JobLockRow = {
 
 type JobRunMetaRow = {
   id: string
-  meta: Record<string, unknown> | null
+  meta: Json | null
 }
 
 export async function listJobLocks() {

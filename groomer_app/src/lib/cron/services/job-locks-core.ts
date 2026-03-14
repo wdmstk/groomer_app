@@ -1,3 +1,7 @@
+import type { Json } from '@/lib/supabase/database.types'
+import { isObjectRecord } from '@/lib/object-utils'
+import type { JsonObject } from '@/lib/object-utils'
+
 export class JobLocksServiceError extends Error {
   status: number
 
@@ -16,25 +20,43 @@ type ManualLockReleaseAuditEntry = {
   lockJobRunId: string
 }
 
+type ManualLockReleaseAuditMeta = JsonObject & {
+  audit: JsonObject & {
+    manualLockReleases: ManualLockReleaseAuditEntry[]
+  }
+}
+
 function normalizeAuditObject(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {}
+    return {} as JsonObject
   }
-  return { ...(value as Record<string, unknown>) }
+  return { ...value } as JsonObject
+}
+
+function isManualLockReleaseAuditEntry(value: unknown): value is ManualLockReleaseAuditEntry {
+  if (!isObjectRecord(value)) return false
+  const row = value
+  return (
+    typeof row.releasedAt === 'string' &&
+    typeof row.requestedByUserId === 'string' &&
+    (typeof row.requestedByEmail === 'string' || row.requestedByEmail === null) &&
+    typeof row.lockJobName === 'string' &&
+    typeof row.lockJobRunId === 'string'
+  )
 }
 
 export function appendManualLockReleaseAudit(params: {
-  currentMeta: Record<string, unknown> | null | undefined
+  currentMeta: Json | null | undefined
   releasedAt: string
   requestedByUserId: string
   requestedByEmail?: string | null
   lockJobName: string
   lockJobRunId: string
-}) {
+}): ManualLockReleaseAuditMeta {
   const currentMeta = normalizeAuditObject(params.currentMeta)
   const currentAudit = normalizeAuditObject(currentMeta.audit)
   const currentEntries = Array.isArray(currentAudit.manualLockReleases)
-    ? currentAudit.manualLockReleases.filter((entry) => entry && typeof entry === 'object')
+    ? currentAudit.manualLockReleases.filter(isManualLockReleaseAuditEntry)
     : []
 
   const nextEntry: ManualLockReleaseAuditEntry = {
@@ -51,7 +73,7 @@ export function appendManualLockReleaseAudit(params: {
       ...currentAudit,
       manualLockReleases: [...currentEntries, nextEntry].slice(-20),
     },
-  }
+  } as ManualLockReleaseAuditMeta
 }
 
 export function validateReleaseJobLockInput(params: {

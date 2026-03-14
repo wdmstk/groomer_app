@@ -20,6 +20,13 @@ type TemplateKey =
   | 'reminder_line'
   | 'reminder_email'
 
+const TEMPLATE_KEYS: TemplateKey[] = [
+  'slot_reoffer_line',
+  'followup_line',
+  'reminder_line',
+  'reminder_email',
+]
+
 const TEMPLATE_LABELS: Record<TemplateKey, string> = {
   slot_reoffer_line: '再販LINEテンプレ',
   followup_line: '再来店フォローLINEテンプレ',
@@ -49,7 +56,7 @@ export function NotificationTemplateEditor() {
     setLoading(true)
     setError('')
     try {
-      const response = await fetch('/api/notification-templates', { cache: 'no-store' })
+      const response = await fetch('/api/notification-templates?scope=notifications', { cache: 'no-store' })
       const payload = (await response.json().catch(() => null)) as
         | {
             templates?: Record<TemplateKey, TemplateRow>
@@ -60,7 +67,14 @@ export function NotificationTemplateEditor() {
         setError(payload?.message ?? 'テンプレ取得に失敗しました。')
         return
       }
-      if (payload?.templates) setTemplates(payload.templates)
+      if (payload?.templates) {
+        setTemplates((current) => ({
+          slot_reoffer_line: payload.templates?.slot_reoffer_line ?? current.slot_reoffer_line,
+          followup_line: payload.templates?.followup_line ?? current.followup_line,
+          reminder_line: payload.templates?.reminder_line ?? current.reminder_line,
+          reminder_email: payload.templates?.reminder_email ?? current.reminder_email,
+        }))
+      }
     } catch {
       setError('テンプレ取得中に通信エラーが発生しました。')
     } finally {
@@ -204,7 +218,7 @@ export function NotificationTemplateEditor() {
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
       {loading ? <p className="text-sm text-gray-500">読み込み中...</p> : null}
       {!loading
-        ? (Object.keys(templates) as TemplateKey[]).map((templateKey) => (
+        ? TEMPLATE_KEYS.map((templateKey) => (
             <div key={templateKey} className="rounded border bg-white p-4">
               <div className="mb-3 flex items-center justify-between">
                 <div>

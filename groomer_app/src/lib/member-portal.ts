@@ -1,7 +1,9 @@
 import crypto from 'crypto'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import type { Json } from '@/lib/supabase/database.types'
 
 export const MEMBER_PORTAL_LINK_DAYS = 90
+const REVISIT_RECOMMEND_DAYS = 45
 
 export class MemberPortalServiceError extends Error {
   status: number
@@ -22,13 +24,18 @@ type MemberPortalLinkRow = {
   last_used_at: string | null
 }
 
+type MemberPortalAccessContext = {
+  ipHash?: string | null
+  uaHash?: string | null
+}
+
 async function insertMemberPortalAuditLogBestEffort(params: {
   storeId: string
   entityId: string
   action: string
   before?: unknown
   after?: unknown
-  payload?: Record<string, unknown>
+  payload?: Json
 }) {
   try {
     const adminSupabase = createAdminSupabaseClient()
@@ -38,8 +45,8 @@ async function insertMemberPortalAuditLogBestEffort(params: {
       entity_type: 'member_portal_link',
       entity_id: params.entityId,
       action: params.action,
-      before: params.before ?? null,
-      after: params.after ?? null,
+      before: (params.before ?? null) as Json,
+      after: (params.after ?? null) as Json,
       payload: params.payload ?? {},
     })
   } catch (error) {
@@ -53,6 +60,14 @@ type AppointmentRelationRow = {
   status: string | null
   menu: string | null
   pets: { name: string | null } | Array<{ name: string | null }> | null
+  staffs: { full_name: string | null } | Array<{ full_name: string | null }> | null
+}
+
+type VisitRelationRow = {
+  id: string
+  visit_date: string
+  menu: string | null
+  total_amount: number | null
   staffs: { full_name: string | null } | Array<{ full_name: string | null }> | null
 }
 
@@ -91,6 +106,10 @@ export function hashMemberPortalToken(token: string) {
   return crypto.createHash('sha256').update(token).digest('hex')
 }
 
+export function isValidMemberPortalTokenFormat(token: string) {
+  return /^[A-Za-z0-9_-]{20,128}$/.test(token)
+}
+
 export function getMemberPortalExpiresAt(days = MEMBER_PORTAL_LINK_DAYS) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
 }
@@ -99,9 +118,13 @@ export async function getMemberPortalPayload(
   token: string,
   options: {
     touchLastUsedAt?: boolean
+    accessContext?: MemberPortalAccessContext
   } = {}
 ) {
   if (!token) {
+    throw new MemberPortalServiceError('会員証URLが不正です。', 400)
+  }
+  if (!isValidMemberPortalTokenFormat(token)) {
     throw new MemberPortalServiceError('会員証URLが不正です。', 400)
   }
 
@@ -125,22 +148,47 @@ export async function getMemberPortalPayload(
 
   const portalLink = link as MemberPortalLinkRow
 
+  const accessPayload = {
+    ip_hash: options.accessContext?.ipHash ?? null,
+    ua_hash: options.accessContext?.uaHash ?? null,
+    token_id: portalLink.id,
+    customer_id: portalLink.customer_id,
+  }
+
   if (portalLink.revoked_at) {
+    await insertMemberPortalAuditLogBestEffort({
+      storeId: portalLink.store_id,
+      entityId: portalLink.id,
+      action: 'access_revoked',
+      payload: {
+        ...accessPayload,
+        result: 'revoked',
+        expires_at: portalLink.expires_at,
+      },
+    })
     throw new MemberPortalServiceError('この会員証URLは無効化されています。', 410)
   }
 
   const nowIso = new Date().toISOString()
   if (portalLink.expires_at <= nowIso) {
+    await insertMemberPortalAuditLogBestEffort({
+      storeId: portalLink.store_id,
+      entityId: portalLink.id,
+      action: 'access_expired',
+      payload: {
+        ...accessPayload,
+        result: 'expired',
+        expires_at: portalLink.expires_at,
+      },
+    })
     throw new MemberPortalServiceError('この会員証URLは有効期限切れです。', 410)
   }
 
   if (options.touchLastUsedAt ?? true) {
     const touchAt = new Date().toISOString()
-    const extendedExpiresAt = getMemberPortalExpiresAt()
     await adminSupabase
       .from('member_portal_links')
       .update({
-        expires_at: extendedExpiresAt,
         last_used_at: touchAt,
         updated_at: touchAt,
       })
@@ -151,24 +199,22 @@ export async function getMemberPortalPayload(
       entityId: portalLink.id,
       action: 'accessed',
       before: {
-        expires_at: portalLink.expires_at,
         last_used_at: portalLink.last_used_at,
       },
       after: {
-        expires_at: extendedExpiresAt,
         last_used_at: touchAt,
       },
       payload: {
-        customer_id: portalLink.customer_id,
-        expires_at: extendedExpiresAt,
+        ...accessPayload,
+        result: 'success',
+        expires_at: portalLink.expires_at,
       },
     })
 
-    portalLink.expires_at = extendedExpiresAt
     portalLink.last_used_at = touchAt
   }
 
-  const [customerResult, storeResult, appointmentResult] = await Promise.all([
+  const [customerResult, storeResult, appointmentResult, visitResult] = await Promise.all([
     adminSupabase
       .from('customers')
       .select('id, full_name')
@@ -191,6 +237,13 @@ export async function getMemberPortalPayload(
       .order('start_time', { ascending: true })
       .limit(1)
       .maybeSingle(),
+    adminSupabase
+      .from('visits')
+      .select('id, visit_date, menu, total_amount, staffs(full_name)')
+      .eq('store_id', portalLink.store_id)
+      .eq('customer_id', portalLink.customer_id)
+      .order('visit_date', { ascending: false })
+      .limit(5),
   ])
 
   if (customerResult.error) {
@@ -204,6 +257,9 @@ export async function getMemberPortalPayload(
   if (appointmentResult.error) {
     throw new MemberPortalServiceError(appointmentResult.error.message, 500)
   }
+  if (visitResult.error) {
+    throw new MemberPortalServiceError(visitResult.error.message, 500)
+  }
 
   if (!customerResult.data || !storeResult.data) {
     throw new MemberPortalServiceError('会員証データが見つかりません。', 404)
@@ -212,6 +268,52 @@ export async function getMemberPortalPayload(
   const customer = customerResult.data as CustomerRow
   const store = storeResult.data as StoreRow
   const appointment = appointmentResult.data as AppointmentRelationRow | null
+  const visits = (visitResult.data ?? []) as VisitRelationRow[]
+  const latestVisit = visits[0] ?? null
+  const nextVisitSuggestion =
+    !appointment && latestVisit
+      ? {
+          recommended_date: new Date(
+            new Date(latestVisit.visit_date).getTime() + REVISIT_RECOMMEND_DAYS * 24 * 60 * 60 * 1000
+          ).toISOString(),
+          reason: `前回ご来店から ${REVISIT_RECOMMEND_DAYS} 日を目安にご案内しています。`,
+        }
+      : null
+  const announcements: Array<{
+    id: string
+    title: string
+    body: string
+    published_at: string
+  }> = []
+  if (appointment) {
+    announcements.push({
+      id: 'next-appointment-reminder',
+      title: '次回予約のご案内',
+      body: '前日までに体調やご要望の変更があれば、店舗へご連絡ください。',
+      published_at: nowIso,
+    })
+  } else {
+    announcements.push({
+      id: 'no-next-appointment',
+      title: '次回予約のご案内',
+      body: '次回予約が未登録です。ご希望日時が決まり次第、予約フォームから申請できます。',
+      published_at: nowIso,
+    })
+  }
+  if (nextVisitSuggestion) {
+    announcements.push({
+      id: 'revisit-suggestion',
+      title: '次回来店目安',
+      body: `${new Intl.DateTimeFormat('ja-JP', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date(nextVisitSuggestion.recommended_date))} 頃のご来店をご検討ください。`,
+      published_at: nowIso,
+    })
+  }
+  const optimizedAnnouncements = announcements.slice(0, 2)
 
   return {
     customer: {
@@ -236,12 +338,15 @@ export async function getMemberPortalPayload(
           pet_name: pickFirstRelationValue(appointment.pets, 'name'),
         }
       : null,
-    announcements: [] as Array<{
-      id: string
-      title: string
-      body: string
-      published_at: string
-    }>,
+    nextVisitSuggestion,
+    visitHistory: visits.map((visit) => ({
+      id: visit.id,
+      visit_date: visit.visit_date,
+      menu: visit.menu,
+      total_amount: visit.total_amount,
+      staff_name: pickFirstRelationValue(visit.staffs, 'full_name'),
+    })),
+    announcements: optimizedAnnouncements,
   }
 }
 
@@ -249,6 +354,7 @@ export async function getMemberPortalReservationPrefill(
   token: string,
   options: {
     touchLastUsedAt?: boolean
+    accessContext?: MemberPortalAccessContext
   } = {}
 ) {
   const payload = await getMemberPortalPayload(token, options)

@@ -1,3 +1,5 @@
+import { asObject } from '@/lib/object-utils'
+
 export class PublicReservationServiceError extends Error {
   status: number
 
@@ -15,6 +17,7 @@ export type PublicReservationMenuSnapshot = {
   duration: number
   tax_rate: number | null
   tax_included: boolean | null
+  is_instant_bookable?: boolean | null
 }
 
 export type PublicReservationInput = {
@@ -29,6 +32,7 @@ export type PublicReservationInput = {
   qrPayloadText: string
   menuIds: string[]
   memberPortalToken?: string
+  preferredStaffId?: string
 }
 
 export function toUtcIsoFromJstInput(value: string) {
@@ -54,7 +58,7 @@ export function normalizeName(value: string) {
 }
 
 export function normalizePublicReservationInput(body: unknown): PublicReservationInput {
-  const source = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
+  const source = asObject(body)
   return {
     customerName: typeof source.customerName === 'string' ? source.customerName.trim() : '',
     phoneNumber: typeof source.phoneNumber === 'string' ? source.phoneNumber.trim() : '',
@@ -68,11 +72,13 @@ export function normalizePublicReservationInput(body: unknown): PublicReservatio
     menuIds: Array.isArray(source.menuIds) ? source.menuIds.map((id) => String(id)).filter(Boolean) : [],
     memberPortalToken:
       typeof source.memberPortalToken === 'string' ? source.memberPortalToken.trim() : '',
+    preferredStaffId:
+      typeof source.preferredStaffId === 'string' ? source.preferredStaffId.trim() : '',
   }
 }
 
 export function normalizeQrLookupInput(body: unknown) {
-  const source = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
+  const source = asObject(body)
   return {
     qrPayloadText: typeof source.qrPayload === 'string' ? source.qrPayload.trim() : '',
   }

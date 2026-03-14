@@ -10,6 +10,8 @@ import {
   resolveCustomerForPayment,
   validatePaymentWriteInput,
 } from '@/lib/payments/services/shared'
+import type { Database } from '@/lib/supabase/database.types'
+import { isObjectRecord } from '@/lib/object-utils'
 
 function toOptionalStringFromUnknown(value: unknown) {
   if (typeof value !== 'string') return null
@@ -37,13 +39,14 @@ function toNonNegativeNumberFromForm(value: FormDataEntryValue | null) {
   return Number.isFinite(normalized) ? Math.max(0, normalized) : 0
 }
 
-export function normalizeUpdatePaymentJsonInput(body: Record<string, unknown> | null): PaymentWriteInput {
+export function normalizeUpdatePaymentJsonInput(body: unknown): PaymentWriteInput {
+  const normalized = isObjectRecord(body) ? body : null
   return {
-    appointmentId: toOptionalStringFromUnknown(body?.appointment_id),
-    customerId: toOptionalStringFromUnknown(body?.customer_id),
-    method: toOptionalStringFromUnknown(body?.method) ?? '現金',
-    discountAmount: toNonNegativeNumberFromUnknown(body?.discount_amount),
-    notes: toOptionalStringFromUnknown(body?.notes),
+    appointmentId: toOptionalStringFromUnknown(normalized?.appointment_id),
+    customerId: toOptionalStringFromUnknown(normalized?.customer_id),
+    method: toOptionalStringFromUnknown(normalized?.method) ?? '現金',
+    discountAmount: toNonNegativeNumberFromUnknown(normalized?.discount_amount),
+    notes: toOptionalStringFromUnknown(normalized?.notes),
   }
 }
 
@@ -78,9 +81,9 @@ export async function updatePayment(params: {
   const totals = calculatePaymentTotals(menus)
   const totalAmount = Math.max(0, totals.total - input.discountAmount)
 
-  const payload = {
+  const payload: Database['public']['Tables']['payments']['Update'] = {
     store_id: storeId,
-    appointment_id: input.appointmentId,
+    appointment_id: input.appointmentId!,
     customer_id: resolvedCustomerId,
     status: '支払済',
     method: input.method ?? '現金',
@@ -115,7 +118,7 @@ export async function updatePayment(params: {
       storeId,
       input.appointmentId!,
       paymentId,
-      payload.total_amount,
+      Math.round(totalAmount),
       actorUserId
     )
   }

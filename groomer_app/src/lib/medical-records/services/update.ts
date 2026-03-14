@@ -1,4 +1,3 @@
-import { createStoreScopedClient } from '@/lib/supabase/store'
 import {
   parseMedicalRecordPhotoDrafts,
 } from '@/lib/medical-records/photos'
@@ -14,6 +13,8 @@ import {
   syncMedicalRecordPhotos,
   validateMedicalRecordWriteInput,
 } from '@/lib/medical-records/services/shared'
+import type { Database } from '@/lib/supabase/database.types'
+import { isObjectRecord } from '@/lib/object-utils'
 
 export type UpdateMedicalRecordInput = MedicalRecordWriteInput
 
@@ -34,21 +35,29 @@ function toOptionalNumber(value: unknown) {
   return null
 }
 
-export function normalizeUpdateMedicalRecordJsonInput(body: Record<string, unknown> | null): UpdateMedicalRecordInput {
+function asRecordOrNull(value: unknown): { [key: string]: unknown } | null {
+  if (!isObjectRecord(value)) {
+    return null
+  }
+  return value
+}
+
+export function normalizeUpdateMedicalRecordJsonInput(body: unknown): UpdateMedicalRecordInput {
+  const normalized = asRecordOrNull(body)
   return {
-    petId: toOptionalString(body?.pet_id),
-    staffId: toOptionalString(body?.staff_id),
-    appointmentId: toOptionalString(body?.appointment_id),
-    requestedPaymentId: toOptionalString(body?.payment_id),
-    status: normalizeStatus(toOptionalString(body?.status)),
-    recordDate: toOptionalString(body?.record_date),
-    menu: toOptionalString(body?.menu),
-    duration: toOptionalNumber(body?.duration),
-    shampooUsed: toOptionalString(body?.shampoo_used),
-    skinCondition: toOptionalString(body?.skin_condition),
-    behaviorNotes: toOptionalString(body?.behavior_notes),
-    cautionNotes: toOptionalString(body?.caution_notes),
-    photoDrafts: parseMedicalRecordPhotoDrafts(toOptionalString(body?.photo_payload)),
+    petId: toOptionalString(normalized?.pet_id),
+    staffId: toOptionalString(normalized?.staff_id),
+    appointmentId: toOptionalString(normalized?.appointment_id),
+    requestedPaymentId: toOptionalString(normalized?.payment_id),
+    status: normalizeStatus(toOptionalString(normalized?.status)),
+    recordDate: toOptionalString(normalized?.record_date),
+    menu: toOptionalString(normalized?.menu),
+    duration: toOptionalNumber(normalized?.duration),
+    shampooUsed: toOptionalString(normalized?.shampoo_used),
+    skinCondition: toOptionalString(normalized?.skin_condition),
+    behaviorNotes: toOptionalString(normalized?.behavior_notes),
+    cautionNotes: toOptionalString(normalized?.caution_notes),
+    photoDrafts: parseMedicalRecordPhotoDrafts(toOptionalString(normalized?.photo_payload)),
   }
 }
 
@@ -138,25 +147,27 @@ export async function updateMedicalRecord(params: {
     resolvedPayment.paymentCheck
   )
 
+  const payload: Database['public']['Tables']['medical_records']['Update'] = {
+    pet_id: input.petId!,
+    staff_id: input.staffId!,
+    appointment_id: input.appointmentId!,
+    payment_id: resolvedPayment.paymentId,
+    status: input.status,
+    finalized_at: input.status === 'finalized' ? new Date().toISOString() : null,
+    record_date: input.recordDate!,
+    menu: input.menu!,
+    duration: input.duration,
+    shampoo_used: input.shampooUsed,
+    skin_condition: input.skinCondition,
+    behavior_notes: input.behaviorNotes,
+    photos: input.photoDrafts.map((photo) => photo.storagePath),
+    caution_notes: input.cautionNotes,
+    store_id: storeId,
+  }
+
   const { data, error } = await supabase
     .from('medical_records')
-    .update({
-      pet_id: input.petId,
-      staff_id: input.staffId,
-      appointment_id: input.appointmentId,
-      payment_id: resolvedPayment.paymentId,
-      status: input.status,
-      finalized_at: input.status === 'finalized' ? new Date().toISOString() : null,
-      record_date: input.recordDate,
-      menu: input.menu,
-      duration: input.duration,
-      shampoo_used: input.shampooUsed,
-      skin_condition: input.skinCondition,
-      behavior_notes: input.behaviorNotes,
-      photos: input.photoDrafts.map((photo) => photo.storagePath),
-      caution_notes: input.cautionNotes,
-      store_id: storeId,
-    })
+    .update(payload)
     .eq('id', recordId)
     .eq('store_id', storeId)
     .select(

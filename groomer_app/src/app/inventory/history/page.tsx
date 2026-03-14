@@ -40,7 +40,6 @@ export default async function InventoryHistoryPage() {
     <section className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">在庫履歴</h1>
-        <p className="text-sm text-gray-600">在庫の増減履歴を時系列で確認できます。</p>
       </div>
 
       <Card>

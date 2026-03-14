@@ -16,6 +16,11 @@ type Item = {
   supplier_name: string | null
   jan_code: string | null
   optimal_stock: number
+  reorder_point: number
+  lead_time_days: number
+  preferred_supplier_name: string | null
+  minimum_order_quantity: number
+  order_lot_size: number
   is_active: boolean
   notes: string | null
 }
@@ -39,14 +44,18 @@ export default async function InventoryProductsPage({ searchParams }: ProductsPa
 
   const { data: items } = await supabase
     .from('inventory_items')
-    .select('id, name, category, unit, supplier_name, jan_code, optimal_stock, is_active, notes')
+    .select(
+      'id, name, category, unit, supplier_name, jan_code, optimal_stock, reorder_point, lead_time_days, preferred_supplier_name, minimum_order_quantity, order_lot_size, is_active, notes'
+    )
     .eq('store_id', storeId)
     .order('created_at', { ascending: false })
 
   const { data: editItem } = editId
     ? await supabase
         .from('inventory_items')
-        .select('id, name, category, unit, supplier_name, jan_code, optimal_stock, is_active, notes')
+        .select(
+          'id, name, category, unit, supplier_name, jan_code, optimal_stock, reorder_point, lead_time_days, preferred_supplier_name, minimum_order_quantity, order_lot_size, is_active, notes'
+        )
         .eq('id', editId)
         .eq('store_id', storeId)
         .single()
@@ -59,7 +68,6 @@ export default async function InventoryProductsPage({ searchParams }: ProductsPa
     <section className="space-y-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-gray-900">商品マスタ管理</h1>
-        <p className="text-gray-600">在庫管理の基準となる商品情報を登録します。</p>
       </div>
 
       <div className="flex items-center gap-4 border-b">
@@ -97,6 +105,7 @@ export default async function InventoryProductsPage({ searchParams }: ProductsPa
                   <th className="px-2 py-2">カテゴリ</th>
                   <th className="px-2 py-2">単位</th>
                   <th className="px-2 py-2">仕入先</th>
+                  <th className="px-2 py-2">発注点</th>
                   <th className="px-2 py-2">適正在庫</th>
                   <th className="px-2 py-2">状態</th>
                   <th className="px-2 py-2">操作</th>
@@ -108,7 +117,8 @@ export default async function InventoryProductsPage({ searchParams }: ProductsPa
                     <td className="px-2 py-3 font-medium text-gray-900">{item.name}</td>
                     <td className="px-2 py-3">{item.category ?? '未設定'}</td>
                     <td className="px-2 py-3">{item.unit}</td>
-                    <td className="px-2 py-3">{item.supplier_name ?? '未設定'}</td>
+                    <td className="px-2 py-3">{item.preferred_supplier_name ?? item.supplier_name ?? '未設定'}</td>
+                    <td className="px-2 py-3">{item.reorder_point}</td>
                     <td className="px-2 py-3">{item.optimal_stock}</td>
                     <td className="px-2 py-3">{item.is_active ? '有効' : '無効'}</td>
                     <td className="px-2 py-3">
@@ -163,6 +173,13 @@ export default async function InventoryProductsPage({ searchParams }: ProductsPa
                 <Input name="supplier_name" defaultValue={currentEdit?.supplier_name ?? ''} />
               </label>
               <label className="space-y-2 text-sm text-gray-700">
+                推奨仕入先
+                <Input
+                  name="preferred_supplier_name"
+                  defaultValue={currentEdit?.preferred_supplier_name ?? ''}
+                />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
                 JANコード
                 <Input name="jan_code" defaultValue={currentEdit?.jan_code ?? ''} />
               </label>
@@ -173,6 +190,45 @@ export default async function InventoryProductsPage({ searchParams }: ProductsPa
                   step="0.01"
                   name="optimal_stock"
                   defaultValue={String(currentEdit?.optimal_stock ?? 0)}
+                />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                発注点
+                <Input
+                  type="number"
+                  step="0.01"
+                  name="reorder_point"
+                  defaultValue={String(currentEdit?.reorder_point ?? 0)}
+                />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                リードタイム日数
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  name="lead_time_days"
+                  defaultValue={String(currentEdit?.lead_time_days ?? 0)}
+                />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                最小発注数
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  name="minimum_order_quantity"
+                  defaultValue={String(currentEdit?.minimum_order_quantity ?? 0)}
+                />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                発注ロット
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  name="order_lot_size"
+                  defaultValue={String(currentEdit?.order_lot_size ?? 0)}
                 />
               </label>
               <label className="space-y-2 text-sm text-gray-700">

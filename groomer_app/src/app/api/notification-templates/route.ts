@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createStoreScopedClient } from '@/lib/supabase/store'
+import { asObjectOrNull } from '@/lib/object-utils'
 import {
   getDefaultFollowupLineTemplate,
+  getDefaultHotelStayReportLineTemplate,
   getDefaultReminderEmailSubjectTemplate,
   getDefaultReminderEmailTemplate,
   getDefaultReminderLineTemplate,
@@ -25,15 +27,38 @@ const DEFAULT_TEMPLATES = {
     subject: getDefaultReminderEmailSubjectTemplate(),
     body: getDefaultReminderEmailTemplate(),
   },
+  hotel_stay_report_line: {
+    subject: '宿泊レポート',
+    body: getDefaultHotelStayReportLineTemplate(),
+  },
 } as const
 
-export async function GET() {
+const NOTIFICATION_SCOPE_TEMPLATE_KEYS = [
+  'slot_reoffer_line',
+  'followup_line',
+  'reminder_line',
+  'reminder_email',
+] as const
+
+const ALL_TEMPLATE_KEYS = [
+  ...NOTIFICATION_SCOPE_TEMPLATE_KEYS,
+  'hotel_stay_report_line',
+] as const
+
+export async function GET(request: Request) {
   const { supabase, storeId } = await createStoreScopedClient()
+  const url = new URL(request.url)
+  const scope = url.searchParams.get('scope')
+  const targetTemplateKeys =
+    scope === 'notifications'
+      ? [...NOTIFICATION_SCOPE_TEMPLATE_KEYS]
+      : [...ALL_TEMPLATE_KEYS]
+
   const { data, error } = await supabase
     .from('notification_templates')
     .select('template_key, channel, subject, body, is_active')
     .eq('store_id', storeId)
-    .in('template_key', ['slot_reoffer_line', 'followup_line', 'reminder_line', 'reminder_email'])
+    .in('template_key', targetTemplateKeys)
 
   if (error && !error.message.includes('notification_templates')) {
     return NextResponse.json({ message: error.message }, { status: 500 })
@@ -57,45 +82,30 @@ export async function GET() {
     {}
   )
 
-  return NextResponse.json({
-    templates: {
-      slot_reoffer_line: rows.slot_reoffer_line ?? {
-        ...DEFAULT_TEMPLATES.slot_reoffer_line,
-        is_active: true,
-      },
-      followup_line: rows.followup_line ?? {
-        ...DEFAULT_TEMPLATES.followup_line,
-        is_active: true,
-      },
-      reminder_line: rows.reminder_line ?? {
-        ...DEFAULT_TEMPLATES.reminder_line,
-        is_active: true,
-      },
-      reminder_email: rows.reminder_email ?? {
-        ...DEFAULT_TEMPLATES.reminder_email,
-        is_active: true,
-      },
-    },
-  })
+  const templates = targetTemplateKeys.reduce<
+    Record<string, { subject: string | null; body: string; is_active: boolean }>
+  >((acc, key) => {
+    acc[key] = rows[key] ?? {
+      ...DEFAULT_TEMPLATES[key],
+      is_active: true,
+    }
+    return acc
+  }, {})
+
+  return NextResponse.json({ templates })
 }
 
 export async function PATCH(request: Request) {
   const { supabase, storeId } = await createStoreScopedClient()
-  const body = (await request.json().catch(() => null)) as
-    | {
-        template_key?: string
-        channel?: string
-        subject?: string | null
-        body?: string
-        is_active?: boolean
-      }
-    | null
+  const bodyRaw: unknown = await request.json().catch(() => null)
+  const body = asObjectOrNull(bodyRaw)
 
   const templateKey =
     body?.template_key === 'slot_reoffer_line' ||
     body?.template_key === 'followup_line' ||
     body?.template_key === 'reminder_line' ||
-    body?.template_key === 'reminder_email'
+    body?.template_key === 'reminder_email' ||
+    body?.template_key === 'hotel_stay_report_line'
       ? body.template_key
       : null
   const channel =

@@ -47,7 +47,6 @@ export default async function InventoryOutboundsPage() {
     <section className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">出庫登録</h1>
-        <p className="text-sm text-gray-600">施術利用・店販・廃棄の出庫を記録します。</p>
       </div>
 
       <Card>

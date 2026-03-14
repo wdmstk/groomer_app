@@ -32,6 +32,7 @@ type PaymentsPageProps = {
     tab?: string
     modal?: string
     edit?: string
+    appointment_id?: string
   }>
 }
 
@@ -67,6 +68,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
   const isCreateModalOpen =
     resolvedSearchParams?.modal === 'create' || resolvedSearchParams?.tab === 'new'
   const editId = resolvedSearchParams?.edit
+  const prefillAppointmentId = resolvedSearchParams?.appointment_id ?? ''
   const { supabase, storeId } = await createStoreScopedClient()
 
   const { data: payments } = await supabase
@@ -160,7 +162,6 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
     <section className="space-y-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-gray-900">会計管理</h1>
-        <p className="text-gray-600">会計情報の登録・更新・削除が行えます。</p>
       </div>
 
       <div className="flex items-center gap-4 border-b">
@@ -300,7 +301,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
         <PaymentCreateModal
           action={editPayment ? `/api/payments/${editPayment.id}` : '/api/payments'}
           isEdit={Boolean(editPayment)}
-          initialAppointmentId={editPayment?.appointment_id ?? ''}
+          initialAppointmentId={editPayment?.appointment_id ?? prefillAppointmentId}
           initialMethod={editPayment?.method ?? '現金'}
           initialDiscountAmount={editPayment?.discount_amount ?? 0}
           initialNotes={editPayment?.notes ?? ''}

@@ -1,0 +1,17 @@
+model = "gpt-5.3-codex"
+
+sandbox = "workspace-write"
+
+hide_agent_reasoning = true
+
+model_context_window = 200000
+
+notify = ["echo Codex task finished"]
+
+[mcp_servers.web]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-web-search"]
+
+[mcp_servers.github]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-github"]

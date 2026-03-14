@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useCallback, useEffect, useState, useTransition } from 'react'
 import { Card } from '@/components/ui/Card'
+import type { Json } from '@/lib/supabase/database.types'
+import { asJsonObjectOrNull } from '@/lib/object-utils'
 
 type JobRunStatus = 'running' | 'succeeded' | 'failed'
 type JobRunTrigger = 'scheduled' | 'manual_rerun' | 'manual_direct'
@@ -17,7 +19,7 @@ type JobRunItem = {
   trigger: string
   requestedByUserId: string | null
   sourceJobRunId: string | null
-  meta: Record<string, unknown>
+  meta: { [key: string]: Json | undefined }
 }
 
 type JobRunsResponse = {
@@ -93,15 +95,10 @@ function buildRangeIso(value: string, endOfDay = false) {
   return `${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}Z`
 }
 
-function getSkippedBreakdown(meta: Record<string, unknown>) {
-  const counters =
-    typeof meta.counters === 'object' && meta.counters ? (meta.counters as Record<string, unknown>) : null
+function getSkippedBreakdown(meta: { [key: string]: Json | undefined }) {
+  const counters = asJsonObjectOrNull(meta.counters)
   const breakdown =
-    counters && typeof counters.skippedBreakdown === 'object' && counters.skippedBreakdown
-      ? (counters.skippedBreakdown as Record<string, unknown>)
-      : typeof meta.skippedBreakdown === 'object' && meta.skippedBreakdown
-        ? (meta.skippedBreakdown as Record<string, unknown>)
-        : null
+    asJsonObjectOrNull(counters?.skippedBreakdown) ?? asJsonObjectOrNull(meta.skippedBreakdown)
 
   if (!breakdown) return null
   return {
@@ -145,7 +142,7 @@ export function CronJobsManager() {
   const [isPending, startTransition] = useTransition()
   const expiredLocks = locks.filter((lock) => isExpired(lock.expiresAt))
 
-  async function loadItems(params?: { nextPage?: number }) {
+  const loadItems = useCallback(async (params?: { nextPage?: number }) => {
     const nextPage = params?.nextPage ?? page
     setIsLoading(true)
     setError('')
@@ -195,7 +192,7 @@ export function CronJobsManager() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [jobName, limit, page, requestedByUserId, selectedJobRunId, startedFrom, startedTo, status, trigger])
 
   async function loadJobRunDetail(jobRunId: string) {
     setDetailError('')
@@ -280,7 +277,7 @@ export function CronJobsManager() {
 
   useEffect(() => {
     void loadItems({ nextPage: 1 })
-  }, [status, jobName, trigger, requestedByUserId, startedFrom, startedTo])
+  }, [loadItems])
 
   useEffect(() => {
     void loadJobLocks()

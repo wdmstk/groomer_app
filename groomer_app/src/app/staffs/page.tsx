@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/Input'
 import { FormModal } from '@/components/ui/FormModal'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { InviteManager } from '@/components/staffs/InviteManager'
+import { asStorePlanOptionsClient, fetchStorePlanOptionState } from '@/lib/store-plan-options'
+import { isPlanAtLeast } from '@/lib/subscription-plan'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -37,6 +39,12 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
   const editId = resolvedSearchParams?.edit
   const modalCloseRedirect = `/staffs?tab=${activeTab}`
   const { supabase, storeId } = await createStoreScopedClient()
+  const planState = await fetchStorePlanOptionState({
+    supabase: asStorePlanOptionsClient(supabase),
+    storeId,
+  })
+  const isStandardOrHigher = isPlanAtLeast(planState.planCode, 'standard')
+  const isLightPlan = !isStandardOrHigher
   const {
     data: { user: currentUser },
   } = await supabase.auth.getUser()
@@ -46,6 +54,7 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
     .eq('store_id', storeId)
     .order('created_at', { ascending: false })
   const staffs = data ?? []
+  const canCreateStaff = !isLightPlan || staffs.length < 3
   const { data: selfMembership } = currentUser
     ? await supabase
         .from('store_memberships')
@@ -56,7 +65,7 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
         .maybeSingle()
     : { data: null }
   const currentMembership = selfMembership
-  const canManageRoles = currentMembership?.role === 'owner'
+  const canManageRoles = currentMembership?.role === 'owner' && isStandardOrHigher
   const admin = canManageRoles ? createAdminClient() : null
   const { data: memberships } =
     canManageRoles && admin
@@ -68,17 +77,7 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
       : {
           data: currentMembership ? [currentMembership] : ([] as { id: string; user_id: string; role: 'owner' | 'admin' | 'staff' }[]),
         }
-  const { data: chatParticipants } =
-    canManageRoles && admin
-      ? await admin
-          .from('store_chat_participants')
-          .select('user_id, can_participate')
-          .eq('store_id', storeId)
-      : { data: [] as { user_id: string; can_participate: boolean }[] }
   const membershipByUserId = new Map((memberships ?? []).map((m) => [m.user_id, m]))
-  const chatPermissionByUserId = new Map(
-    (chatParticipants ?? []).map((row) => [row.user_id, row.can_participate])
-  )
 
   function getMembershipLabel(userId: string | null) {
     if (!userId) return '未連携'
@@ -87,13 +86,6 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
     return canManageRoles ? '未所属' : '非表示'
   }
 
-  function getChatPermissionLabel(userId: string | null) {
-    if (!userId) return '未連携'
-    const membership = membershipByUserId.get(userId)
-    if (membership?.role === 'owner') return '常に許可'
-    if (!canManageRoles) return '非表示'
-    return chatPermissionByUserId.get(userId) ? '許可' : '未許可'
-  }
   const { data: editStaff } = editId
     ? await supabase
         .from('staffs')
@@ -107,9 +99,11 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
     <section className="space-y-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-gray-900">スタッフ管理</h1>
-        <p className="text-gray-600">
-          スタッフ情報の登録・更新・削除が行えます。
-        </p>
+        {isLightPlan ? (
+          <p className="text-sm text-amber-700">
+            ライトプランではスタッフは3人まで登録可能です。権限変更はスタンダード以上で利用できます。
+          </p>
+        ) : null}
       </div>
 
       <InviteManager />
@@ -130,12 +124,21 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
           <h2 className="text-lg font-semibold text-gray-900">スタッフ一覧</h2>
           <div className="flex items-center gap-3">
             <p className="text-sm text-gray-500">全 {staffs.length} 件</p>
-            <Link
-              href="/staffs?tab=list&modal=create"
-              className="inline-flex items-center rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-            >
-              新規登録
-            </Link>
+            {canCreateStaff ? (
+              <Link
+                href="/staffs?tab=list&modal=create"
+                className="inline-flex items-center rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                新規登録
+              </Link>
+            ) : (
+              <span
+                aria-disabled
+                className="inline-flex cursor-not-allowed items-center rounded bg-gray-300 px-3 py-2 text-sm font-semibold text-gray-600"
+              >
+                上限（3人）
+              </span>
+            )}
           </div>
         </div>
         {staffs.length === 0 ? (
@@ -151,10 +154,6 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
                   <p>メール: {staff.email ?? '未登録'}</p>
                   <p>User ID: {staff.user_id ?? '未登録'}</p>
                   <p>権限: {getMembershipLabel(staff.user_id ?? null)}</p>
-                  <p>
-                    チャット参加:{' '}
-                    {getChatPermissionLabel(staff.user_id ?? null)}
-                  </p>
                   {canManageRoles && membership ? (
                     <form action={`/api/store-memberships/${membership.id}/role`} method="post" className="mt-2 flex items-center gap-2">
                       <select
@@ -168,22 +167,6 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
                       </select>
                       <Button type="submit" className="bg-gray-700 hover:bg-gray-800">
                         権限変更
-                      </Button>
-                    </form>
-                  ) : null}
-                  {canManageRoles && staff.user_id && membership?.role !== 'owner' ? (
-                    <form
-                      action={`/api/staffs/${staff.id}/chat-access`}
-                      method="post"
-                      className="mt-2 flex items-center gap-2"
-                    >
-                      <input
-                        type="hidden"
-                        name="can_participate"
-                        value={chatPermissionByUserId.get(staff.user_id) ? 'false' : 'true'}
-                      />
-                      <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                        {chatPermissionByUserId.get(staff.user_id) ? '参加を停止' : '参加を許可'}
                       </Button>
                     </form>
                   ) : null}
@@ -211,7 +194,6 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
                     <th className="py-2 px-2">メールアドレス</th>
                     <th className="py-2 px-2">User ID</th>
                     <th className="py-2 px-2">権限</th>
-                    <th className="py-2 px-2">チャット参加</th>
                     <th className="py-2 px-2">操作</th>
                   </tr>
                 </thead>
@@ -224,7 +206,6 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
                       <td className="py-3 px-2">{staff.email ?? '未登録'}</td>
                       <td className="py-3 px-2">{staff.user_id ?? '未登録'}</td>
                       <td className="py-3 px-2">{getMembershipLabel(staff.user_id ?? null)}</td>
-                      <td className="py-3 px-2">{getChatPermissionLabel(staff.user_id ?? null)}</td>
                       <td className="py-3 px-2">
                         <div className="flex items-center gap-2">
                           {canManageRoles && membership ? (
@@ -240,18 +221,6 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
                               </select>
                               <Button type="submit" className="bg-gray-700 hover:bg-gray-800">
                                 権限変更
-                              </Button>
-                            </form>
-                          ) : null}
-                          {canManageRoles && staff.user_id && membership?.role !== 'owner' ? (
-                            <form action={`/api/staffs/${staff.id}/chat-access`} method="post">
-                              <input
-                                type="hidden"
-                                name="can_participate"
-                                value={chatPermissionByUserId.get(staff.user_id) ? 'false' : 'true'}
-                              />
-                              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                                {chatPermissionByUserId.get(staff.user_id) ? '参加停止' : '参加許可'}
                               </Button>
                             </form>
                           ) : null}

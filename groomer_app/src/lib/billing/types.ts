@@ -23,6 +23,8 @@ export type BillingSubscriptionRow = {
   provider: BillingProvider
   billing_customer_id: string | null
   provider_subscription_id: string | null
+  subscription_scope: 'core' | 'storage_addon'
+  storage_addon_units: number
   status: BillingStatus
   trial_end: string | null
   current_period_end: string | null

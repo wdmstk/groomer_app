@@ -1,6 +1,13 @@
 import { createReservationCancelToken } from '@/lib/reservation-cancel-token'
 import { verifySignedPetQrPayload } from '@/lib/qr/pet-profile-signature'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { estimateDurationMinutes } from '@/lib/appointments/duration'
+import { validateAppointmentConflict } from '@/lib/appointments/conflict'
+import {
+  buildSlotCandidates,
+  getPublicReserveSlotConfig,
+  mergePublicReserveSlotConfig,
+} from '@/lib/public-reservations/services/slot-candidates'
 import {
   type PublicReservationInput,
   type PublicReservationMenuSnapshot,
@@ -22,7 +29,23 @@ async function fetchActiveStore(admin: ReturnType<typeof createAdminSupabaseClie
   return store
 }
 
-async function fetchDefaultStaffId(admin: ReturnType<typeof createAdminSupabaseClient>, storeId: string) {
+async function fetchDefaultStaffId(
+  admin: ReturnType<typeof createAdminSupabaseClient>,
+  storeId: string,
+  preferredStaffId?: string
+) {
+  if (preferredStaffId) {
+    const { data: preferredStaff } = await admin
+      .from('staffs')
+      .select('id')
+      .eq('store_id', storeId)
+      .eq('id', preferredStaffId)
+      .maybeSingle()
+    if (preferredStaff?.id) {
+      return preferredStaff.id
+    }
+  }
+
   const { data: staff } = await admin
     .from('staffs')
     .select('id')
@@ -38,6 +61,31 @@ async function fetchDefaultStaffId(admin: ReturnType<typeof createAdminSupabaseC
   return staff.id
 }
 
+async function fetchStorePublicReserveSlotConfig(
+  admin: ReturnType<typeof createAdminSupabaseClient>,
+  storeId: string
+) {
+  const baseConfig = getPublicReserveSlotConfig()
+  const { data: storeRule } = await admin
+    .from('stores')
+    .select(
+      'public_reserve_slot_days, public_reserve_slot_interval_minutes, public_reserve_slot_buffer_minutes, public_reserve_business_start_hour_jst, public_reserve_business_end_hour_jst, public_reserve_min_lead_minutes'
+    )
+    .eq('id', storeId)
+    .maybeSingle()
+
+  return mergePublicReserveSlotConfig(baseConfig, {
+    days: Number(storeRule?.public_reserve_slot_days ?? baseConfig.days),
+    intervalMinutes: Number(storeRule?.public_reserve_slot_interval_minutes ?? baseConfig.intervalMinutes),
+    bufferMinutes: Number(storeRule?.public_reserve_slot_buffer_minutes ?? baseConfig.bufferMinutes),
+    businessStartHour: Number(
+      storeRule?.public_reserve_business_start_hour_jst ?? baseConfig.businessStartHour
+    ),
+    businessEndHour: Number(storeRule?.public_reserve_business_end_hour_jst ?? baseConfig.businessEndHour),
+    minLeadMinutes: Number(storeRule?.public_reserve_min_lead_minutes ?? baseConfig.minLeadMinutes),
+  })
+}
+
 async function fetchSelectedMenus(
   admin: ReturnType<typeof createAdminSupabaseClient>,
   storeId: string,
@@ -45,7 +93,7 @@ async function fetchSelectedMenus(
 ) {
   const { data: menuRows, error: menuError } = await admin
     .from('service_menus')
-    .select('id, name, price, duration, tax_rate, tax_included')
+    .select('id, name, price, duration, tax_rate, tax_included, is_instant_bookable')
     .in('id', menuIds)
     .eq('store_id', storeId)
     .eq('is_active', true)
@@ -67,7 +115,7 @@ export async function fetchPublicReservationBootstrap(params: { storeId: string 
 
   const { data: menus, error: menuError } = await admin
     .from('service_menus')
-    .select('id, name, price, duration, tax_rate, tax_included, is_active')
+    .select('id, name, price, duration, tax_rate, tax_included, is_active, is_instant_bookable')
     .eq('store_id', params.storeId)
     .eq('is_active', true)
     .order('display_order', { ascending: true })
@@ -77,9 +125,14 @@ export async function fetchPublicReservationBootstrap(params: { storeId: string 
     throw new PublicReservationServiceError(menuError.message, 500)
   }
 
+  const instantMenuIds = (menus ?? [])
+    .filter((menu) => Boolean(menu.is_instant_bookable))
+    .map((menu) => menu.id)
+
   return {
     store: { id: store.id, name: store.name },
     menus: menus ?? [],
+    instant_menu_ids: instantMenuIds,
   }
 }
 
@@ -102,11 +155,66 @@ export async function createPublicReservation(params: {
       async fetchActiveStore(storeId) {
         await fetchActiveStore(admin, storeId)
       },
-      async fetchDefaultStaffId(storeId) {
-        return fetchDefaultStaffId(admin, storeId)
+      async fetchDefaultStaffId(storeId, preferredStaffId) {
+        return fetchDefaultStaffId(admin, storeId, preferredStaffId)
       },
       async fetchSelectedMenus(storeId, menuIds) {
         return fetchSelectedMenus(admin, storeId, menuIds)
+      },
+      async estimateDuration({ storeId, petId, staffId, menus }) {
+        return estimateDurationMinutes({
+          supabase: admin,
+          storeId,
+          petId,
+          staffId,
+          menus,
+        })
+      },
+      async fetchInstantSlotCandidates({ storeId, staffId, serviceDurationMinutes, now }) {
+        const config = await fetchStorePublicReserveSlotConfig(admin, storeId)
+        const rangeStartIso = new Date(now.getTime() - 60 * 60 * 1000).toISOString()
+        const rangeEndIso = new Date(now.getTime() + config.days * 24 * 60 * 60 * 1000).toISOString()
+        const blockedDateRangeStart = now.toISOString().slice(0, 10)
+        const blockedDateRangeEnd = rangeEndIso.slice(0, 10)
+        const { data: occupiedRows, error } = await admin
+          .from('appointments')
+          .select('start_time, end_time')
+          .eq('store_id', storeId)
+          .eq('staff_id', staffId)
+          .not('status', 'in', '("キャンセル","無断キャンセル")')
+          .lt('start_time', rangeEndIso)
+          .gt('end_time', rangeStartIso)
+
+        if (error) {
+          throw new PublicReservationServiceError(error.message, 500)
+        }
+        const { data: blockedDateRows, error: blockedDateError } = await admin
+          .from('store_public_reserve_blocked_dates')
+          .select('date_key')
+          .eq('store_id', storeId)
+          .eq('is_active', true)
+          .gte('date_key', blockedDateRangeStart)
+          .lte('date_key', blockedDateRangeEnd)
+        if (blockedDateError) {
+          throw new PublicReservationServiceError(blockedDateError.message, 500)
+        }
+        const blockedDateKeysJst = (blockedDateRows ?? [])
+          .map((row) => row.date_key)
+          .filter((value): value is string => typeof value === 'string' && value.length > 0)
+
+        return buildSlotCandidates({
+          now,
+          occupiedAppointments: (occupiedRows ?? []) as Array<{
+            start_time: string | null
+            end_time: string | null
+          }>,
+          serviceDurationMinutes,
+          config,
+          blockedDateKeysJst,
+        }).map((slot) => ({
+          ...slot,
+          staff_id: staffId,
+        }))
       },
       verifyQrPayload,
       async fetchPetByQr({ storeId, customerId, petId }) {
@@ -208,6 +316,7 @@ export async function createPublicReservation(params: {
         endTimeIso,
         menuSummaryNames,
         duration,
+        status,
         notes,
       }) {
         const { data, error } = await admin
@@ -221,7 +330,7 @@ export async function createPublicReservation(params: {
             end_time: endTimeIso,
             menu: menuSummaryNames,
             duration,
-            status: '予約申請',
+            status,
             notes,
           })
           .select('id')
@@ -230,6 +339,15 @@ export async function createPublicReservation(params: {
           throw new PublicReservationServiceError(error?.message ?? '予約作成に失敗しました。', 500)
         }
         return data.id
+      },
+      async validateAppointmentConflict({ storeId, staffId, startTimeIso, endTimeIso }) {
+        return validateAppointmentConflict({
+          supabase: admin,
+          storeId,
+          staffId,
+          startTimeIso,
+          endTimeIso,
+        })
       },
       async insertAppointmentMenus({ storeId, appointmentId, menus }) {
         const payload = menus.map((menu) => ({

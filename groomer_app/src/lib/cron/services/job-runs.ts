@@ -1,4 +1,5 @@
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import type { Json } from '@/lib/supabase/database.types'
 import { CronServiceError } from '@/lib/cron/shared'
 import { isCronJobName } from '@/lib/cron/jobs'
 import { listJobLockReleaseAuditsByJobRunId } from '@/lib/cron/services/job-lock-release-audits'
@@ -70,7 +71,7 @@ async function fetchJobRuns(params: {
       trigger: string
       requested_by_user_id: string | null
       source_job_run_id: string | null
-      meta: Record<string, unknown> | null
+      meta: Json | null
     }>,
     totalCount: count ?? 0,
   }

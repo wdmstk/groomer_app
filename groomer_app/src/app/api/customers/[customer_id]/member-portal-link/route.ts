@@ -50,13 +50,6 @@ async function getCurrentMembership() {
   }
 }
 
-function normalizeExpiresInDays(value: unknown) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return MEMBER_PORTAL_LINK_DAYS
-  }
-  return Math.min(180, Math.max(30, Math.trunc(value)))
-}
-
 export async function POST(request: Request, { params }: RouteParams) {
   const allowed = await getCurrentMembership()
   if ('error' in allowed) return allowed.error
@@ -65,9 +58,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { supabase, storeId, userId } = allowed
   const adminSupabase = createAdminSupabaseClient()
 
-  const body = await request.json().catch(() => null)
-  const expiresInDays = normalizeExpiresInDays(body?.expiresInDays)
-  const expiresAt = getMemberPortalExpiresAt(expiresInDays)
+  const expiresAt = getMemberPortalExpiresAt(MEMBER_PORTAL_LINK_DAYS)
   const nowIso = new Date().toISOString()
 
   const { data: customer, error: customerError } = await supabase
@@ -92,7 +83,6 @@ export async function POST(request: Request, { params }: RouteParams) {
     .eq('customer_id', customer_id)
     .eq('purpose', 'member_portal')
     .is('revoked_at', null)
-    .gt('expires_at', nowIso)
 
   if (activeLinksError) {
     return NextResponse.json({ message: activeLinksError.message }, { status: 500 })

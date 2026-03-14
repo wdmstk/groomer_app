@@ -4,21 +4,25 @@ import { sendLineMessage } from '@/lib/line'
 import { sendEmail } from '@/lib/resend'
 import {
   getDefaultFollowupLineTemplate,
+  getDefaultHotelStayReportLineTemplate,
   getDefaultReminderEmailSubjectTemplate,
   getDefaultReminderEmailTemplate,
   getDefaultReminderLineTemplate,
   getDefaultSlotReofferLineTemplate,
   renderFollowupLineTemplate,
+  renderHotelStayReportLineTemplate,
   renderReminderTemplate,
   renderSlotReofferLineTemplate,
 } from '@/lib/notification-templates'
 import { createStoreScopedClient } from '@/lib/supabase/store'
+import { asObjectOrNull } from '@/lib/object-utils'
 
 type TemplateKey =
   | 'slot_reoffer_line'
   | 'followup_line'
   | 'reminder_line'
   | 'reminder_email'
+  | 'hotel_stay_report_line'
 
 export async function POST(request: Request) {
   const { supabase, storeId } = await createStoreScopedClient()
@@ -26,21 +30,15 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const body = (await request.json().catch(() => null)) as
-    | {
-        template_key?: string
-        channel?: string
-        target?: string
-        subject?: string | null
-        body?: string
-      }
-    | null
+  const bodyRaw: unknown = await request.json().catch(() => null)
+  const body = asObjectOrNull(bodyRaw)
 
   const templateKey =
     body?.template_key === 'slot_reoffer_line' ||
     body?.template_key === 'followup_line' ||
     body?.template_key === 'reminder_line' ||
-    body?.template_key === 'reminder_email'
+    body?.template_key === 'reminder_email' ||
+    body?.template_key === 'hotel_stay_report_line'
       ? (body.template_key as TemplateKey)
       : null
   const channel =
@@ -58,7 +56,9 @@ export async function POST(request: Request) {
         ? getDefaultFollowupLineTemplate()
         : templateKey === 'reminder_line'
           ? getDefaultReminderLineTemplate()
-          : getDefaultReminderEmailTemplate()
+          : templateKey === 'hotel_stay_report_line'
+            ? getDefaultHotelStayReportLineTemplate()
+            : getDefaultReminderEmailTemplate()
   const fallbackSubject =
     templateKey === 'reminder_email'
       ? getDefaultReminderEmailSubjectTemplate()
@@ -66,6 +66,8 @@ export async function POST(request: Request) {
         ? '再来店フォロー'
         : templateKey === 'slot_reoffer_line'
           ? 'キャンセル枠のご案内'
+          : templateKey === 'hotel_stay_report_line'
+            ? '宿泊レポート'
           : '前日リマインド'
 
   const templateBody = typeof body?.body === 'string' && body.body.trim() ? body.body.trim() : fallbackBody
@@ -99,6 +101,19 @@ export async function POST(request: Request) {
               templateBody,
             }),
           }
+        : templateKey === 'hotel_stay_report_line'
+          ? {
+              subject: templateSubject,
+              body: renderHotelStayReportLineTemplate({
+                customerName: 'テスト顧客',
+                petName: 'テスト犬',
+                stayStatus: 'checked_in',
+                plannedCheckInAt: '2026-03-02T10:00:00+09:00',
+                plannedCheckOutAt: '2026-03-03T10:00:00+09:00',
+                reportBody: '本日は食欲・体調ともに安定しています。お散歩も問題なく完了しました。',
+                templateBody,
+              }),
+            }
         : renderReminderTemplate({
             customerName: 'テスト顧客',
             storeName,

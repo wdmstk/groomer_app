@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { insertAuditLogBestEffort } from '@/lib/audit-logs'
 import { createStoreScopedClient } from '@/lib/supabase/store'
+import { asObjectOrNull } from '@/lib/object-utils'
 
 export async function PATCH(
   request: Request,
@@ -12,12 +13,8 @@ export async function PATCH(
     data: { user },
   } = await supabase.auth.getUser()
 
-  const body = (await request.json().catch(() => null)) as
-    | {
-        status?: string
-        notes?: string
-      }
-    | null
+  const bodyRaw: unknown = await request.json().catch(() => null)
+  const body = asObjectOrNull(bodyRaw)
 
   const status = typeof body?.status === 'string' ? body.status : ''
   const notes = typeof body?.notes === 'string' && body.notes.trim() ? body.notes.trim() : null

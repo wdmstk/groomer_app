@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { renderFollowupLineTemplate } from '@/lib/notification-templates'
+import type { JsonObject } from '@/lib/object-utils'
 
 type RelationValue = {
   full_name?: string | null
@@ -46,7 +47,7 @@ type FollowupTaskRow = {
     actor_user_id: string | null
     actor_name?: string | null
     event_type: string
-    payload: Record<string, unknown>
+    payload: JsonObject
     created_at: string
   }>
   customers?: RelationValue | RelationValue[] | null
@@ -99,7 +100,7 @@ function getRelationValue(relation: RelationValue | RelationValue[] | null | und
 function formatEventLabel(event: {
   event_type: string
   actor_name?: string | null
-  payload: Record<string, unknown>
+  payload: JsonObject
 }) {
   const actor = event.actor_name ? ` / ${event.actor_name}` : ''
   const note =
@@ -156,7 +157,7 @@ export function RevisitAlertList() {
   const [actionReason, setActionReason] = useState('')
   const [expandedTaskIds, setExpandedTaskIds] = useState<string[]>([])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -210,11 +211,11 @@ export function RevisitAlertList() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [assigneeFilter, dueFilter, statusFilter, windowFilter])
 
   useEffect(() => {
     void loadData()
-  }, [statusFilter, assigneeFilter, dueFilter, windowFilter])
+  }, [loadData])
 
   const selectedRows = useMemo(
     () => candidates.filter((row) => selectedIds.includes(row.customerId)),
@@ -356,7 +357,7 @@ export function RevisitAlertList() {
     }
   }
 
-  const updateTaskAssignee = async (taskId: string, assignedUserId: string, currentStatus: string) => {
+  const updateTaskAssignee = async (taskId: string, assignedUserId: string) => {
     setSavingId(taskId)
     setError('')
     try {
@@ -364,9 +365,7 @@ export function RevisitAlertList() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: currentStatus,
           assigned_user_id: assignedUserId || null,
-          resolution_note: '担当者を更新',
         }),
       })
       const payload = (await response.json().catch(() => null)) as { message?: string } | null
@@ -689,7 +688,9 @@ export function RevisitAlertList() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {taskRows.map((task) => (
+                    {taskRows.map((task) => {
+                      const isResolved = task.status.startsWith('resolved_')
+                      return (
                       <tr key={task.id} className="text-gray-700">
                         <td className="px-2 py-3 font-medium text-gray-900">
                           {task.customerName}
@@ -744,10 +745,10 @@ export function RevisitAlertList() {
                             <select
                               value={task.assignedUserId}
                               onChange={(event) => {
-                                void updateTaskAssignee(task.id, event.target.value, task.status)
+                                void updateTaskAssignee(task.id, event.target.value)
                               }}
                               className="rounded border p-1 text-xs"
-                              disabled={savingId === task.id || task.status.startsWith('resolved_')}
+                              disabled={savingId === task.id || isResolved}
                             >
                               <option value="">担当未設定</option>
                               {availableAssignees.map((assignee) => (
@@ -760,7 +761,7 @@ export function RevisitAlertList() {
                               type="button"
                               className="bg-indigo-600 hover:bg-indigo-700"
                               onClick={() => void updateTaskStatus(task.id, 'in_progress')}
-                              disabled={savingId === task.id || task.status === 'in_progress'}
+                              disabled={savingId === task.id || task.status === 'in_progress' || isResolved}
                             >
                               対応中
                             </Button>
@@ -768,7 +769,7 @@ export function RevisitAlertList() {
                               type="button"
                               className="bg-gray-700 hover:bg-gray-800"
                               onClick={() => openActionModal(task.id, '保留理由', 'snoozed')}
-                              disabled={savingId === task.id}
+                              disabled={savingId === task.id || isResolved}
                             >
                               1週間保留
                             </Button>
@@ -778,7 +779,7 @@ export function RevisitAlertList() {
                               onClick={() =>
                                 openActionModal(task.id, '不要理由', 'resolved_no_need', 'no_need')
                               }
-                              disabled={savingId === task.id}
+                              disabled={savingId === task.id || isResolved}
                             >
                               不要
                             </Button>
@@ -788,11 +789,11 @@ export function RevisitAlertList() {
                               onClick={() =>
                                 openActionModal(task.id, '失注理由', 'resolved_lost', 'declined')
                               }
-                              disabled={savingId === task.id}
+                              disabled={savingId === task.id || isResolved}
                             >
                               失注
                             </Button>
-                            {task.phoneNumber ? (
+                            {!isResolved && task.phoneNumber ? (
                               <a
                                 href={`tel:${task.phoneNumber}`}
                                 onClick={() => {
@@ -803,7 +804,7 @@ export function RevisitAlertList() {
                                 電話
                               </a>
                             ) : null}
-                            {task.lineId ? (
+                            {!isResolved && task.lineId ? (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -824,6 +825,9 @@ export function RevisitAlertList() {
                                 LINE送信
                               </button>
                             ) : null}
+                            {task.status.startsWith('resolved_') ? (
+                              <span className="text-xs font-semibold text-gray-500">解決済み</span>
+                            ) : null}
                             <Link
                               href={`/appointments?tab=list&modal=create${task.sourceAppointmentId ? `&followup_from=${task.sourceAppointmentId}` : ''}&followup_task_id=${task.id}&followup_customer_id=${task.customerId}${task.petId ? `&followup_pet_id=${task.petId}` : ''}`}
                               className="rounded bg-blue-600 px-2 py-1 text-xs font-semibold text-white"
@@ -833,7 +837,8 @@ export function RevisitAlertList() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

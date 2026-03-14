@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 type Thread = {
   store_id: string
@@ -51,22 +51,20 @@ export function DeveloperSupportChat() {
     [threads, selectedStoreId]
   )
 
-  async function loadThreads() {
+  const loadThreads = useCallback(async () => {
     const response = await fetch('/api/dev/support-chat/threads', { cache: 'no-store' })
     const payload = (await response.json()) as { message?: string; threads?: Thread[] }
     if (!response.ok) throw new Error(payload.message ?? '店舗一覧の取得に失敗しました。')
 
     const nextThreads = payload.threads ?? []
     setThreads(nextThreads)
-    if (!selectedStoreId && nextThreads.length > 0) {
-      setSelectedStoreId(nextThreads[0].store_id)
-    }
-  }
+    setSelectedStoreId((current) => (current || nextThreads[0]?.store_id || ''))
+  }, [])
 
-  async function loadMessages(storeId: string, options?: { background?: boolean }) {
+  const loadMessages = useCallback(async (storeId: string, options?: { background?: boolean }) => {
     if (!storeId) return
     const background = options?.background === true
-    if (!background && !hasLoadedMessages) {
+    if (!background) {
       setIsLoadingMessages(true)
     }
     try {
@@ -78,9 +76,11 @@ export function DeveloperSupportChat() {
       setMessages(payload.messages ?? [])
       setHasLoadedMessages(true)
     } finally {
-      setIsLoadingMessages(false)
+      if (!background) {
+        setIsLoadingMessages(false)
+      }
     }
-  }
+  }, [])
 
   useEffect(() => {
     let isMounted = true
@@ -99,7 +99,7 @@ export function DeveloperSupportChat() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [loadThreads])
 
   useEffect(() => {
     if (!selectedStoreId) return
@@ -108,7 +108,7 @@ export function DeveloperSupportChat() {
     void loadMessages(selectedStoreId).catch((e) =>
       setError(e instanceof Error ? e.message : 'メッセージ取得に失敗しました。')
     )
-  }, [selectedStoreId])
+  }, [loadMessages, selectedStoreId])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -121,7 +121,7 @@ export function DeveloperSupportChat() {
     return () => {
       clearInterval(timer)
     }
-  }, [selectedStoreId])
+  }, [loadMessages, loadThreads, selectedStoreId])
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -249,7 +249,7 @@ export function DeveloperSupportChat() {
                 <button
                   type="submit"
                   disabled={!canSend}
-                  className="self-end rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-blue-300"
+                  className="self-end shrink-0 whitespace-nowrap rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-blue-300"
                 >
                   送信
                 </button>

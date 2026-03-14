@@ -1,18 +1,179 @@
 @import "tailwindcss";
 
+:root,
+html[data-theme="clean-medical"] {
+  --app-bg: #f9fafb;
+  --surface-bg: #ffffff;
+  --surface-muted: #f9fafb;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --border-color: #e5e7eb;
+  --accent-soft-bg: #dbeafe;
+  --accent-soft-text: #1d4ed8;
+  --button-primary-bg: #2563eb;
+  --button-primary-hover-bg: #1d4ed8;
+  --button-primary-text: #ffffff;
+}
+
+html[data-theme="cute-pop"] {
+  --app-bg: #fff7fb;
+  --surface-bg: #ffffff;
+  --surface-muted: #fff1f8;
+  --text-primary: #4a2240;
+  --text-secondary: #7a4f71;
+  --border-color: #f6cde5;
+  --accent-soft-bg: #ffd9ef;
+  --accent-soft-text: #b83280;
+  --button-primary-bg: #ec4899;
+  --button-primary-hover-bg: #db2777;
+  --button-primary-text: #ffffff;
+}
+
+html[data-theme="kawaii-minimal"] {
+  --app-bg: #fdf9f7;
+  --surface-bg: #ffffff;
+  --surface-muted: #f8f1ed;
+  --text-primary: #3f2f2a;
+  --text-secondary: #6d5b55;
+  --border-color: #e8ddd8;
+  --accent-soft-bg: #f7e4de;
+  --accent-soft-text: #9a5a4b;
+  --button-primary-bg: #c97b63;
+  --button-primary-hover-bg: #b56a53;
+  --button-primary-text: #ffffff;
+}
+
+html[data-theme="black-luxe"] {
+  --app-bg: #0f1115;
+  --surface-bg: #161a20;
+  --surface-muted: #1d232c;
+  --text-primary: #f3efe6;
+  --text-secondary: #c9bea8;
+  --border-color: #2f353f;
+  --accent-soft-bg: #3a2e1b;
+  --accent-soft-text: #e2be7f;
+  --button-primary-bg: #b8924e;
+  --button-primary-hover-bg: #a17f41;
+  --button-primary-text: #101216;
+}
+
+html[data-theme="dark-neon"] {
+  --app-bg: #090d1d;
+  --surface-bg: #10162b;
+  --surface-muted: #131c37;
+  --text-primary: #e6eeff;
+  --text-secondary: #b5c4ef;
+  --border-color: #233156;
+  --accent-soft-bg: #1d2d5b;
+  --accent-soft-text: #78c6ff;
+  --button-primary-bg: #0ea5e9;
+  --button-primary-hover-bg: #0284c7;
+  --button-primary-text: #e9f8ff;
+}
+
+html[data-theme="natural-organic"] {
+  --app-bg: #f5f6ef;
+  --surface-bg: #ffffff;
+  --surface-muted: #ecf0e2;
+  --text-primary: #273325;
+  --text-secondary: #556451;
+  --border-color: #d6dfc8;
+  --accent-soft-bg: #dcebc7;
+  --accent-soft-text: #2f6a3f;
+  --button-primary-bg: #3f8f53;
+  --button-primary-hover-bg: #337543;
+  --button-primary-text: #ffffff;
+}
+
+html[data-theme="luxury-salon"] {
+  --app-bg: #faf4eb;
+  --surface-bg: #fffdf9;
+  --surface-muted: #f5ece0;
+  --text-primary: #3b2d22;
+  --text-secondary: #6c5a49;
+  --border-color: #e8dcca;
+  --accent-soft-bg: #ead8bc;
+  --accent-soft-text: #7b5a34;
+  --button-primary-bg: #b9894f;
+  --button-primary-hover-bg: #a4763f;
+  --button-primary-text: #fffaf3;
+}
+
+html[data-theme="playful-pet"] {
+  --app-bg: #f5fbff;
+  --surface-bg: #ffffff;
+  --surface-muted: #eaf6ff;
+  --text-primary: #1f2f42;
+  --text-secondary: #4c6078;
+  --border-color: #cddff0;
+  --accent-soft-bg: #d8ebff;
+  --accent-soft-text: #0d63b3;
+  --button-primary-bg: #f08a24;
+  --button-primary-hover-bg: #d97706;
+  --button-primary-text: #ffffff;
+}
+
 html,
 body {
   padding: 0;
   margin: 0;
   font-family: sans-serif;
+  background: var(--app-bg);
+  color: var(--text-primary);
+}
+
+html[data-theme] .bg-white {
+  background-color: var(--surface-bg) !important;
+}
+
+html[data-theme] .bg-white\/95 {
+  background-color: var(--surface-bg) !important;
+}
+
+html[data-theme] .bg-gray-50 {
+  background-color: var(--surface-muted) !important;
+}
+
+html[data-theme] .text-gray-900 {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme] .text-gray-700,
+html[data-theme] .text-gray-600,
+html[data-theme] .text-gray-500 {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme] .border,
+html[data-theme] .border-b,
+html[data-theme] .border-r,
+html[data-theme] .border-l,
+html[data-theme] .border-t {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme] .bg-blue-100 {
+  background-color: var(--accent-soft-bg) !important;
+}
+
+html[data-theme] .text-blue-700 {
+  color: var(--accent-soft-text) !important;
+}
+
+html[data-theme] .bg-blue-600 {
+  background-color: var(--button-primary-bg) !important;
+}
+
+html[data-theme] .hover\:bg-blue-700:hover {
+  background-color: var(--button-primary-hover-bg) !important;
 }
 
 @media (max-width: 767px) {
   .overflow-x-auto {
     -webkit-overflow-scrolling: touch;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-color);
     border-radius: 0.5rem;
-    background: #ffffff;
+    background: var(--surface-bg);
   }
 
   .overflow-x-auto table {
@@ -31,6 +192,6 @@ body {
     position: sticky;
     top: 0;
     z-index: 1;
-    background: #f9fafb;
+    background: var(--surface-muted);
   }
 }

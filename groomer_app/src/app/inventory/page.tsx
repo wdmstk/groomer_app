@@ -80,9 +80,11 @@ export default async function InventoryDashboardPage() {
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">在庫ダッシュボード</h1>
-          <p className="text-sm text-gray-600">不足・期限・当日の入出庫状況を確認できます。</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/inventory/reorder-suggestions" className="rounded border px-3 py-2 text-sm font-semibold text-gray-700">
+            発注提案
+          </Link>
           <Link href="/inventory/inbounds" className="rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white">
             入庫登録
           </Link>
@@ -114,9 +116,14 @@ export default async function InventoryDashboardPage() {
       <Card>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">不足アラート</h2>
-          <Link href="/inventory/stocks?low=1" className="text-sm text-blue-600">
-            在庫一覧へ
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/inventory/reorder-suggestions" className="text-sm text-blue-600">
+              発注提案一覧へ
+            </Link>
+            <Link href="/inventory/stocks?low=1" className="text-sm text-blue-600">
+              在庫一覧へ
+            </Link>
+          </div>
         </div>
         {lowStockRows.length === 0 ? (
           <p className="text-sm text-gray-500">不足商品はありません。</p>

@@ -49,7 +49,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     .eq('id', record_id)
     .eq('store_id', storeId)
     .maybeSingle()
-  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
+  const body: unknown = await request.json().catch(() => null)
   const input = normalizeUpdateMedicalRecordJsonInput(body)
 
   try {

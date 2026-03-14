@@ -1,4 +1,5 @@
 import type { createStoreScopedClient } from '@/lib/supabase/store'
+import type { Database } from '@/lib/supabase/database.types'
 
 export class AppointmentServiceError extends Error {
   status: number
@@ -52,12 +53,22 @@ export function validateAppointmentWriteInput(input: AppointmentWriteInput) {
   if (!input.customerId) throw new AppointmentServiceError('顧客の選択は必須です。')
   if (!input.petId) throw new AppointmentServiceError('ペットの選択は必須です。')
   if (!input.staffId) throw new AppointmentServiceError('担当スタッフの選択は必須です。')
-  if (!input.startTimeIso || !input.endTimeIso) {
-    throw new AppointmentServiceError('予約日時は必須です。')
+  if (!input.startTimeIso) {
+    throw new AppointmentServiceError('予約開始日時は必須です。')
   }
   if (input.menuIds.length === 0) {
     throw new AppointmentServiceError('予約メニューの選択は必須です。')
   }
+}
+
+export function addMinutesToIso(startTimeIso: string, durationMinutes: number) {
+  const startAtMs = new Date(startTimeIso).getTime()
+  if (!Number.isFinite(startAtMs)) {
+    throw new AppointmentServiceError('予約開始日時の形式が不正です。')
+  }
+
+  const safeDuration = Math.max(1, Math.round(durationMinutes))
+  return new Date(startAtMs + safeDuration * 60 * 1000).toISOString()
 }
 
 export async function assertAppointmentStoreConsistency(
@@ -115,7 +126,7 @@ export async function syncAppointmentMenus(
     throw new AppointmentServiceError(deleteError.message, 500)
   }
 
-  const menuPayload = selectedMenus.map((menu) => ({
+  const menuPayload: Database['public']['Tables']['appointment_menus']['Insert'][] = selectedMenus.map((menu) => ({
     store_id: storeId,
     appointment_id: appointmentId,
     menu_id: menu.id,

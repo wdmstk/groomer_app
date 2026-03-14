@@ -2,6 +2,7 @@ import type { createStoreScopedClient } from '@/lib/supabase/store'
 import type { MedicalRecordPhotoDraft } from '@/lib/medical-records/photos'
 import { getMedicalRecordPhotoBucket } from '@/lib/medical-records/photos'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import type { Database } from '@/lib/supabase/database.types'
 
 export class MedicalRecordServiceError extends Error {
   status: number
@@ -149,8 +150,8 @@ export async function syncMedicalRecordPhotos(
 
   if (photos.length === 0) return
 
-  const { error: insertError } = await supabase.from('medical_record_photos').insert(
-    photos.map((photo, index) => ({
+  const photoRows: Database['public']['Tables']['medical_record_photos']['Insert'][] = photos.map(
+    (photo, index) => ({
       store_id: storeId,
       medical_record_id: recordId,
       pet_id: petId,
@@ -160,8 +161,10 @@ export async function syncMedicalRecordPhotos(
       comment: photo.comment || null,
       sort_order: index,
       taken_at: photo.takenAt ?? recordDate,
-    }))
+    })
   )
+
+  const { error: insertError } = await supabase.from('medical_record_photos').insert(photoRows)
 
   if (insertError) {
     throw new MedicalRecordServiceError(insertError.message, 500)

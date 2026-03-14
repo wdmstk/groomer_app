@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createStoreScopedClient } from '@/lib/supabase/store'
+import { asStorePlanOptionsClient, fetchStorePlanOptionState } from '@/lib/store-plan-options'
+import { isPlanAtLeast } from '@/lib/subscription-plan'
 
 type RouteParams = {
   params: Promise<{
@@ -27,12 +29,17 @@ export async function GET(_request: Request, { params }: RouteParams) {
 export async function PUT(request: Request, { params }: RouteParams) {
   const { staff_id } = await params
   const { supabase, storeId } = await createStoreScopedClient()
+  const planState = await fetchStorePlanOptionState({
+    supabase: asStorePlanOptionsClient(supabase),
+    storeId,
+  })
+  const isStandardOrHigher = isPlanAtLeast(planState.planCode, 'standard')
   const body = await request.json()
   const payload = {
     full_name: body.full_name ?? null,
     email: body.email ?? null,
     user_id: body.user_id ?? null,
-    role: body.role ?? null,
+    role: isStandardOrHigher ? body.role ?? null : 'staff',
   }
 
   if (!payload.full_name) {
@@ -95,11 +102,16 @@ export async function POST(request: Request, context: RouteParams) {
 
   if (method === 'put' || method === 'patch') {
     const { supabase, storeId } = await createStoreScopedClient()
+    const planState = await fetchStorePlanOptionState({
+      supabase: asStorePlanOptionsClient(supabase),
+      storeId,
+    })
+    const isStandardOrHigher = isPlanAtLeast(planState.planCode, 'standard')
     const payload = {
       full_name: formData.get('full_name')?.toString() || null,
       email: formData.get('email')?.toString() || null,
       user_id: formData.get('user_id')?.toString() || null,
-      role: formData.get('role')?.toString() || 'staff',
+      role: isStandardOrHigher ? formData.get('role')?.toString() || 'staff' : 'staff',
     }
 
     if (!payload.full_name) {

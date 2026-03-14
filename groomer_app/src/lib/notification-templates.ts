@@ -61,6 +61,17 @@ const DEFAULT_REMINDER_EMAIL_TEMPLATE = `{{customer_name}}様
 
 ご来店を心よりお待ちしております。`
 
+const DEFAULT_HOTEL_STAY_REPORT_LINE_TEMPLATE = `{{customer_name}}様
+{{pet_name}}ちゃんの宿泊レポートをお送りします。
+
+現在ステータス: {{stay_status}}
+チェックイン予定: {{planned_check_in_at}}
+チェックアウト予定: {{planned_check_out_at}}
+
+{{report_body}}
+
+ご不明点があれば店舗までご連絡ください。`
+
 export function getDefaultSlotReofferLineTemplate() {
   return DEFAULT_SLOT_REOFFER_LINE_TEMPLATE
 }
@@ -79,6 +90,19 @@ export function getDefaultReminderEmailSubjectTemplate() {
 
 export function getDefaultReminderEmailTemplate() {
   return DEFAULT_REMINDER_EMAIL_TEMPLATE
+}
+
+export function getDefaultHotelStayReportLineTemplate() {
+  return DEFAULT_HOTEL_STAY_REPORT_LINE_TEMPLATE
+}
+
+export function getHotelStayStatusLabel(status: string) {
+  if (status === 'reserved') return '予約'
+  if (status === 'checked_in') return 'チェックイン中'
+  if (status === 'checked_out') return 'チェックアウト済み'
+  if (status === 'canceled') return 'キャンセル'
+  if (status === 'no_show') return '無断キャンセル'
+  return status
 }
 
 export function renderSlotReofferLineTemplate(params: {
@@ -135,4 +159,23 @@ export function renderReminderTemplate(params: {
     subject: fillTemplate(params.subjectTemplate ?? DEFAULT_REMINDER_EMAIL_SUBJECT, values),
     body: fillTemplate(params.bodyTemplate ?? DEFAULT_REMINDER_LINE_TEMPLATE, values),
   }
+}
+
+export function renderHotelStayReportLineTemplate(params: {
+  customerName: string
+  petName: string
+  stayStatus: string
+  plannedCheckInAt: string
+  plannedCheckOutAt: string
+  reportBody: string
+  templateBody?: string | null
+}) {
+  return fillTemplate(params.templateBody ?? DEFAULT_HOTEL_STAY_REPORT_LINE_TEMPLATE, {
+    customer_name: params.customerName,
+    pet_name: params.petName,
+    stay_status: getHotelStayStatusLabel(params.stayStatus),
+    planned_check_in_at: formatLineDateTime(params.plannedCheckInAt),
+    planned_check_out_at: formatLineDateTime(params.plannedCheckOutAt),
+    report_body: params.reportBody,
+  })
 }

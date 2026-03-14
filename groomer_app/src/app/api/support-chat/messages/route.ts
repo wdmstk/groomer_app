@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireStoreSupportChatAccess } from '@/lib/auth/store-support-chat'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { asObjectOrNull } from '@/lib/object-utils'
 
 function normalizeMessage(value: unknown) {
   const text = typeof value === 'string' ? value.trim() : ''
@@ -62,7 +63,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: auth.message }, { status: auth.status })
   }
 
-  const payload = (await request.json().catch(() => null)) as { message?: string } | null
+  const payloadRaw: unknown = await request.json().catch(() => null)
+  const payload = asObjectOrNull(payloadRaw)
   const normalized = normalizeMessage(payload?.message)
   if (!normalized.ok) {
     return NextResponse.json({ message: normalized.message }, { status: 400 })

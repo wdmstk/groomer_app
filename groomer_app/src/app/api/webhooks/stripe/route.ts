@@ -3,31 +3,12 @@ import {
   findBillingSubscriptionByProviderSubscriptionId,
   insertBillingWebhookEvent,
   markBillingWebhookEventResult,
-  updateStoreSubscriptionStatus,
-  updateSubscriptionStatusByProviderSubscriptionId,
 } from '@/lib/billing/db'
 import { verifyStripeSignature } from '@/lib/billing/webhooks'
+import { processStripeBillingEvent, type StripeWebhookEvent } from '@/lib/billing/webhook-event-processors'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
-type StripeEvent = {
-  id?: string
-  type: string
-  data?: {
-    object?: {
-      customer?: string
-      subscription?: string
-      status?: string
-      current_period_end?: number
-    }
-  }
-}
-
-function toIsoFromUnixSeconds(value: number | undefined) {
-  if (!value || !Number.isFinite(value)) return null
-  return new Date(value * 1000).toISOString()
-}
 
 export async function POST(request: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
@@ -46,7 +27,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'Invalid signature' }, { status: 400 })
   }
 
-  const event = JSON.parse(payload) as StripeEvent
+  const event = JSON.parse(payload) as StripeWebhookEvent
   const subscriptionId = event.data?.object?.subscription
   const resolvedSubscription = subscriptionId
     ? await findBillingSubscriptionByProviderSubscriptionId({
@@ -62,66 +43,8 @@ export async function POST(request: Request) {
     signature,
     payload: event,
   })
-  if (!subscriptionId) {
-    await markBillingWebhookEventResult({ id: logId, status: 'processed' })
-    return NextResponse.json({ received: true })
-  }
-
   try {
-    if (event.type === 'invoice.payment_succeeded') {
-      const row = await updateSubscriptionStatusByProviderSubscriptionId({
-        provider: 'stripe',
-        providerSubscriptionId: subscriptionId,
-        status: 'active',
-        currentPeriodEnd: toIsoFromUnixSeconds(event.data?.object?.current_period_end),
-      })
-      if (row) {
-        await updateStoreSubscriptionStatus({
-          storeId: row.store_id,
-          status: 'active',
-          provider: 'stripe',
-          currentPeriodEnd: toIsoFromUnixSeconds(event.data?.object?.current_period_end),
-          source: 'webhook',
-          reason: event.type,
-        })
-      }
-    }
-
-    if (event.type === 'invoice.payment_failed') {
-      const row = await updateSubscriptionStatusByProviderSubscriptionId({
-        provider: 'stripe',
-        providerSubscriptionId: subscriptionId,
-        status: 'past_due',
-        currentPeriodEnd: toIsoFromUnixSeconds(event.data?.object?.current_period_end),
-      })
-      if (row) {
-        await updateStoreSubscriptionStatus({
-          storeId: row.store_id,
-          status: 'past_due',
-          provider: 'stripe',
-          source: 'webhook',
-          reason: event.type,
-        })
-      }
-    }
-
-    if (event.type === 'customer.subscription.deleted') {
-      const row = await updateSubscriptionStatusByProviderSubscriptionId({
-        provider: 'stripe',
-        providerSubscriptionId: subscriptionId,
-        status: 'canceled',
-        currentPeriodEnd: toIsoFromUnixSeconds(event.data?.object?.current_period_end),
-      })
-      if (row) {
-        await updateStoreSubscriptionStatus({
-          storeId: row.store_id,
-          status: 'canceled',
-          provider: 'stripe',
-          source: 'webhook',
-          reason: event.type,
-        })
-      }
-    }
+    await processStripeBillingEvent(event)
     await markBillingWebhookEventResult({ id: logId, status: 'processed' })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Webhook process failed.'

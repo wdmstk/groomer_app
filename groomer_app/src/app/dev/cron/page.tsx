@@ -13,7 +13,7 @@ export default async function DevCronPage() {
       <section className="space-y-4">
         <h1 className="text-2xl font-semibold text-gray-900">Cron 監視</h1>
         <Card>
-          <p className="text-sm text-red-700">このページは開発者管理者のみアクセスできます。</p>
+          <p className="text-sm text-red-700">このページはサポート管理者のみアクセスできます。</p>
         </Card>
       </section>
     )
@@ -24,9 +24,6 @@ export default async function DevCronPage() {
       <div className="flex items-center justify-between">
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold text-gray-900">Cron 監視</h1>
-          <p className="text-sm text-gray-600">
-            失敗した Cron を確認し、その場で手動再実行できます。
-          </p>
         </div>
         <Link
           href="/dev"

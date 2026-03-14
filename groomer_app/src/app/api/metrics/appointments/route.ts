@@ -20,7 +20,11 @@ export async function POST(request: Request) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  const body = (await request.json().catch(() => null)) as AppointmentMetricRequestBody | null
+  const bodyRaw: unknown = await request.json().catch(() => null)
+  const body =
+    bodyRaw && typeof bodyRaw === 'object' && !Array.isArray(bodyRaw)
+      ? (bodyRaw as Partial<AppointmentMetricRequestBody>)
+      : null
   const eventType = typeof body?.event_type === 'string' ? body.event_type.trim() : ''
 
   if (!isAppointmentMetricEventType(eventType)) {

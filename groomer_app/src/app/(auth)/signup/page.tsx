@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 
 function SignupForm() {
@@ -75,6 +76,23 @@ function SignupForm() {
             登録する
           </button>
         </form>
+
+        <div className="mt-4 text-center text-sm">
+          <Link href="/lp" className="text-blue-700 hover:underline">
+            料金・プランを見る
+          </Link>
+        </div>
+        <div className="mt-3 flex flex-wrap justify-center gap-3 text-xs text-slate-500">
+          <Link href="/legal/privacy" className="hover:underline">
+            プライバシーポリシー
+          </Link>
+          <Link href="/legal/terms" className="hover:underline">
+            利用規約
+          </Link>
+          <Link href="/legal/security" className="hover:underline">
+            セキュリティポリシー
+          </Link>
+        </div>
       </div>
     </div>
   )

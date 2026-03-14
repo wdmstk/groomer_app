@@ -1,12 +1,15 @@
 import { fetchKomojuSubscription, fetchStripeSubscription } from '@/lib/billing/providers'
 import { updateStoreSubscriptionStatus, updateSubscriptionStatusByProviderSubscriptionId } from '@/lib/billing/db'
+import { setStoreExtraCapacityGb } from '@/lib/storage-quota'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
 type SubscriptionRow = {
   store_id: string
   provider: 'stripe' | 'komoju'
   provider_subscription_id: string | null
+  storage_addon_units: number
   status: string
+  subscription_scope: 'core' | 'storage_addon'
 }
 
 function mapStripeStatus(status: string): 'trialing' | 'active' | 'past_due' | 'canceled' | 'incomplete' | 'unpaid' {
@@ -30,7 +33,7 @@ export async function runBillingStatusSyncJob() {
   const admin = createAdminSupabaseClient()
   const { data, error } = await admin
     .from('billing_subscriptions')
-    .select('store_id, provider, provider_subscription_id, status')
+    .select('store_id, provider, provider_subscription_id, storage_addon_units, status, subscription_scope')
     .not('provider_subscription_id', 'is', null)
 
   if (error) {
@@ -56,6 +59,7 @@ export async function runBillingStatusSyncJob() {
           provider: 'stripe',
           providerSubscriptionId: row.provider_subscription_id,
           status: mapped,
+          storageAddonUnits: row.storage_addon_units,
           currentPeriodEnd:
             remote.current_period_end && Number.isFinite(remote.current_period_end)
               ? new Date(remote.current_period_end * 1000).toISOString()
@@ -63,20 +67,27 @@ export async function runBillingStatusSyncJob() {
           source: 'cron',
           reason: 'billing_status_sync',
         })
-        await updateStoreSubscriptionStatus({
-          storeId: row.store_id,
-          status:
-            mapped === 'active'
-              ? 'active'
-              : mapped === 'past_due'
-                ? 'past_due'
-                : mapped === 'canceled'
-                  ? 'canceled'
-                  : 'trialing',
-          provider: 'stripe',
-          source: 'cron',
-          reason: 'billing_status_sync',
-        })
+        if (row.subscription_scope === 'storage_addon') {
+          await setStoreExtraCapacityGb({
+            storeId: row.store_id,
+            extraCapacityGb: mapped === 'canceled' ? 0 : row.storage_addon_units * 10,
+          })
+        } else {
+          await updateStoreSubscriptionStatus({
+            storeId: row.store_id,
+            status:
+              mapped === 'active'
+                ? 'active'
+                : mapped === 'past_due'
+                  ? 'past_due'
+                  : mapped === 'canceled'
+                    ? 'canceled'
+                    : 'trialing',
+            provider: 'stripe',
+            source: 'cron',
+            reason: 'billing_status_sync',
+          })
+        }
       } else {
         komojuCount += 1
         const remote = await fetchKomojuSubscription(row.provider_subscription_id)
@@ -85,24 +96,32 @@ export async function runBillingStatusSyncJob() {
           provider: 'komoju',
           providerSubscriptionId: row.provider_subscription_id,
           status: mapped,
+          storageAddonUnits: row.storage_addon_units,
           currentPeriodEnd: remote.current_period_end ?? null,
           source: 'cron',
           reason: 'billing_status_sync',
         })
-        await updateStoreSubscriptionStatus({
-          storeId: row.store_id,
-          status:
-            mapped === 'active'
-              ? 'active'
-              : mapped === 'past_due'
-                ? 'past_due'
-                : mapped === 'canceled'
-                  ? 'canceled'
-                  : 'trialing',
-          provider: 'komoju',
-          source: 'cron',
-          reason: 'billing_status_sync',
-        })
+        if (row.subscription_scope === 'storage_addon') {
+          await setStoreExtraCapacityGb({
+            storeId: row.store_id,
+            extraCapacityGb: mapped === 'canceled' ? 0 : row.storage_addon_units * 10,
+          })
+        } else {
+          await updateStoreSubscriptionStatus({
+            storeId: row.store_id,
+            status:
+              mapped === 'active'
+                ? 'active'
+                : mapped === 'past_due'
+                  ? 'past_due'
+                  : mapped === 'canceled'
+                    ? 'canceled'
+                    : 'trialing',
+            provider: 'komoju',
+            source: 'cron',
+            reason: 'billing_status_sync',
+          })
+        }
       }
       synced += 1
       affectedStoreIds.add(row.store_id)

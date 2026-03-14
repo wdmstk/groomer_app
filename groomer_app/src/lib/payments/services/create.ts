@@ -12,6 +12,7 @@ import {
   resolveCustomerForPayment,
   validatePaymentWriteInput,
 } from '@/lib/payments/services/shared'
+import type { Database } from '@/lib/supabase/database.types'
 
 function toOptionalString(value: FormDataEntryValue | null) {
   const normalized = value?.toString().trim() ?? ''
@@ -118,9 +119,9 @@ export async function createPayment(params: {
   const totals = calculatePaymentTotals(menus)
   const totalAmount = Math.max(0, totals.total - input.discountAmount)
 
-  const payload = {
+  const payload: Database['public']['Tables']['payments']['Insert'] = {
     store_id: storeId,
-    appointment_id: input.appointmentId,
+    appointment_id: input.appointmentId!,
     customer_id: resolvedCustomerId,
     status: '支払済',
     method: input.method ?? '現金',

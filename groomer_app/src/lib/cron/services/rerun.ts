@@ -1,4 +1,5 @@
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import type { Json } from '@/lib/supabase/database.types'
 import { CronServiceError, finishJobRun, startJobRun } from '@/lib/cron/shared'
 import { isCronJobName, runCronJobByName, type CronJobName } from '@/lib/cron/jobs'
 import { CronRerunServiceError, rerunCronJobCore } from '@/lib/cron/services/rerun-core'
@@ -18,7 +19,7 @@ export async function rerunCronJob(params: {
   const admin = createAdminSupabaseClient()
   const runningSince = new Date(Date.now() - RUNNING_WINDOW_MINUTES * 60 * 1000).toISOString()
   try {
-    return await rerunCronJobCore<CronJobName, Record<string, unknown>>({
+    return await rerunCronJobCore<CronJobName, Json>({
       ...params,
       deps: {
         isAllowedJobName: isCronJobName,

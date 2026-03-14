@@ -1,63 +1,137 @@
-# 全体アーキテクチャ
+# ARCHITECTURE.md
 
-## 概要
+System Architecture Documentation
 
-本システムは、Next.jsをフロントエンドおよびAPI Routes、Supabaseをバックエンド（データベース、認証、ストレージ）、Resendをメール通知、LINE Messaging APIを予約リマインドに利用し、Vercelでホスティングする無料スタックで構築されます。
+This document describes the architecture and structure of this project.
+AI agents should follow this structure when modifying or adding code.
 
-## 各コンポーネントの役割
+---
 
-### 1. Next.js (Frontend & API Routes)
+# 1. Project Structure
 
-*   **Frontend**: ユーザーインターフェース（UI）を提供し、顧客管理、予約管理、ペットカルテ管理の各画面をレンダリングします。App Routerを使用し、サーバーコンポーネントとクライアントコンポーネントを適切に使い分けます。
-*   **API Routes**: Supabaseとの連携、ResendやLINE Messaging APIの呼び出し、複雑なビジネスロジックの実行など、サーバーサイドの処理を担当します。認証ミドルウェアを介してセキュリティを確保します。
+Recommended directory layout:
 
-### 2. Supabase
+project-root/
 
-*   **PostgreSQL Database**: 顧客情報、ペット情報、予約、来店履歴、カルテなどのすべてのデータを格納します。RLS（Row Level Security）を適用し、データのセキュリティを確保します。
-*   **Auth**: ユーザー認証（メールアドレス/パスワード、OAuthなど）を提供します。Next.jsアプリケーションと連携し、セッション管理を行います。
-*   **Storage**: ペットの写真や施術前後の写真などの画像ファイルを保存します。認証されたユーザーのみがアクセスできるように設定します。
+src/
+Core application logic
 
-### 3. Resend
+app/
+CLI entry points or application runners
 
-*   **メール通知**: 予約完了通知、予約前日リマインド、キャンセル通知など、ユーザーへのメール送信を行います。Next.jsのAPI RoutesからResend APIを呼び出します。
+tests/
+Unit and integration tests
 
-### 4. LINE Messaging API
+data/
+Sample data or test datasets
 
-*   **予約リマインド**: 予約日の前日にLINEメッセージでリマインドを送信します。SupabaseのWebhookやNext.jsのAPI RoutesからLINE Messaging APIを呼び出します。
+scripts/
+Utility scripts
 
-### 5. Vercel
+docs/
+Documentation
 
-*   **ホスティング**: Next.jsアプリケーションをデプロイし、公開します。サーバーレスファンクション（API Routes）もVercel上で実行されます。
+---
 
-## データフロー概要
+# 2. Architectural Principles
 
-1.  **ユーザーアクセス**: ユーザー（トリミングサロンのスタッフ）がVercelにデプロイされたNext.jsアプリケーションにアクセスします。
-2.  **認証**: Supabase Authを介してログインし、認証トークンを取得します。
-3.  **データ操作**: Next.jsのフロントエンドからAPI Routesを呼び出し、API RoutesがSupabaseのデータベース、Auth、Storageと連携してデータを操作します。
-4.  **通知**: 予約登録や変更時、Next.jsのAPI RoutesがResendやLINE Messaging APIを呼び出し、メールやLINEメッセージを送信します。
-5.  **スケジュールされたタスク**: 予約前日リマインドなど、定期的な処理はSupabaseのFunctions（Edge Functions）やNext.jsのAPI RoutesとVercel Cron Jobsなどを組み合わせて実現します。
+The project follows these principles:
 
-```mermaid
-graph TD
-    A[ユーザー (Webブラウザ)] -->|アクセス| B(Vercel)
-    B -->|Next.js App| C(Next.js Frontend)
-    C -->|API Call| D(Next.js API Routes)
-    D -->|DB/Auth/Storage| E(Supabase)
-    D -->|Send Email| F(Resend)
-    D -->|Send LINE Message| G(LINE Messaging API)
-    E -->|Database| H(PostgreSQL)
-    E -->|Authentication| I(Supabase Auth)
-    E -->|File Storage| J(Supabase Storage)
-```
+* Separation of concerns
+* Modular design
+* Testable components
+* Minimal external dependencies
 
-## セキュリティ考慮事項
+Core logic should be placed inside `/src`.
 
-*   **Supabase RLS**: データベースへのアクセスはRLSによって厳密に制御されます。
-*   **API Routes認証**: API RoutesはNext.js Authなどのミドルウェアによって保護され、認証されたユーザーのみがアクセスできるようにします。
-*   **環境変数**: APIキーやシークレットは環境変数として安全に管理します（Vercelの環境変数など）。
+---
 
-## スケーラビリティ
+# 3. Module Responsibilities
 
-*   **Next.js (Vercel)**: サーバーレス構成のため、必要に応じて自動的にスケールします。
-*   **Supabase**: PostgreSQLは高いスケーラビリティを持ち、AuthやStorageも多くの負荷に対応できます。
-*   **Resend/LINE Messaging API**: 各サービスのAPIは高い信頼性とスケーラビリティを提供します。
+src/
+
+data_processing/
+Data loading and parsing
+
+analysis/
+Data analysis and calculations
+
+export/
+Export functionality (CSV, Excel, etc.)
+
+utils/
+Shared helper functions
+
+---
+
+# 4. Data Flow
+
+Typical processing flow:
+
+Input data
+↓
+Parsing
+↓
+Validation
+↓
+Analysis
+↓
+Output generation
+
+Agents should maintain this flow when adding new features.
+
+---
+
+# 5. Coding Boundaries
+
+Agents should follow these rules:
+
+* Do not place business logic in CLI files
+* Avoid circular dependencies
+* Keep modules focused and small
+
+---
+
+# 6. Testing Strategy
+
+Testing structure mirrors the source structure.
+
+Example:
+
+src/analysis/calculation.py
+tests/analysis/test_calculation.py
+
+Every feature should have tests.
+
+---
+
+# 7. Extension Strategy
+
+When adding new features:
+
+1. Identify the correct module
+2. Extend existing modules when possible
+3. Avoid creating redundant utilities
+4. Maintain the project structure
+
+---
+
+# 8. Performance Considerations
+
+Prefer:
+
+* clear algorithms
+* maintainable code
+* readable structure
+
+Performance optimization should only occur when necessary.
+
+---
+
+# 9. Documentation Policy
+
+Important modules should include:
+
+* docstrings
+* usage examples
+* comments for complex logic

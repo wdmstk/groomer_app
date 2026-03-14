@@ -9,8 +9,11 @@
     "dev:clean": "npm run clean && next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "test": "node --import ./tests/register-alias.mjs --test"
+    "lint": "eslint --cache --cache-location .eslintcache src",
+    "lint:changed": "node ./scripts/lint-changed.mjs",
+    "lint:files": "eslint --cache --cache-location .eslintcache --quiet",
+    "test": "node --import ./tests/register-alias.mjs --test",
+    "types:generate:supabase": "node ./scripts/generate-supabase-types.mjs"
   },
   "dependencies": {
     "@line/bot-sdk": "^10.6.0",

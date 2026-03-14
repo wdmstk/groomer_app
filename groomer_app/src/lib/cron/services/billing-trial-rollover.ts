@@ -1,5 +1,7 @@
 import { createKomojuSubscription, createStripeSubscription } from '@/lib/billing/providers'
 import { upsertBillingSubscription, updateStoreSubscriptionStatus } from '@/lib/billing/db'
+import { amountForSubscription, parseBillingCycle, parsePlanCode } from '@/lib/billing/pricing'
+import { canPurchaseOptionsByPlan } from '@/lib/subscription-plan'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
 type ExpiredTrialRow = {
@@ -7,6 +9,11 @@ type ExpiredTrialRow = {
   trial_started_at: string | null
   trial_days: number | null
   preferred_provider: 'stripe' | 'komoju' | null
+  plan_code: string | null
+  billing_cycle: string | null
+  amount_jpy: number | null
+  hotel_option_enabled: boolean | null
+  notification_option_enabled: boolean | null
 }
 
 type BillingCustomerRow = {
@@ -29,7 +36,9 @@ export async function runBillingTrialRolloverJob() {
   const admin = createAdminSupabaseClient()
   const { data, error } = await admin
     .from('store_subscriptions')
-    .select('store_id, trial_started_at, trial_days, preferred_provider')
+    .select(
+      'store_id, trial_started_at, trial_days, preferred_provider, plan_code, billing_cycle, amount_jpy, hotel_option_enabled, notification_option_enabled'
+    )
     .eq('billing_status', 'trialing')
 
   if (error) {
@@ -68,9 +77,24 @@ export async function runBillingTrialRolloverJob() {
       }
 
       const billingCustomer = customer as BillingCustomerRow
+      const plan = parsePlanCode(row.plan_code)
+      const billingCycle = parseBillingCycle(row.billing_cycle)
+      const options = {
+        hotelOptionEnabled:
+          canPurchaseOptionsByPlan(plan) && (row.hotel_option_enabled ?? false) === true,
+        notificationOptionEnabled:
+          canPurchaseOptionsByPlan(plan) && (row.notification_option_enabled ?? false) === true,
+      }
+      const baseAmountJpy = amountForSubscription(plan, billingCycle, options)
+      const useAdditionalStorePricing =
+        typeof row.amount_jpy === 'number' && row.amount_jpy > 0 && row.amount_jpy < baseAmountJpy
       if (row.preferred_provider === 'stripe') {
         const stripeSub = await createStripeSubscription({
           customerId: billingCustomer.provider_customer_id,
+          plan,
+          billingCycle,
+          useAdditionalStorePricing,
+          options,
         })
         const periodEnd =
           stripeSub.current_period_end && Number.isFinite(stripeSub.current_period_end)
@@ -95,6 +119,10 @@ export async function runBillingTrialRolloverJob() {
       } else {
         const komojuSub = await createKomojuSubscription({
           customerId: billingCustomer.provider_customer_id,
+          plan,
+          billingCycle,
+          useAdditionalStorePricing,
+          options,
         })
         await upsertBillingSubscription({
           storeId: row.store_id,

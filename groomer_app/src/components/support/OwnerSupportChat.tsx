@@ -159,7 +159,7 @@ export function OwnerSupportChat() {
           <button
             type="submit"
             disabled={!canSend}
-            className="self-end rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-blue-300"
+            className="self-end shrink-0 whitespace-nowrap rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-blue-300"
           >
             送信
           </button>

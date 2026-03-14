@@ -349,7 +349,6 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
     <section className="space-y-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-gray-900">ペットカルテ管理</h1>
-        <p className="text-gray-600">ペットカルテ情報の登録・更新・削除が行えます。</p>
       </div>
 
       <div className="flex items-center gap-4 border-b">

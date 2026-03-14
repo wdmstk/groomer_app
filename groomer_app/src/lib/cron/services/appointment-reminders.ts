@@ -1,8 +1,21 @@
-import { format, addDays } from 'date-fns'
 import { sendLineMessage } from '@/lib/line'
 import { sendEmail } from '@/lib/resend'
 import { renderReminderTemplate } from '@/lib/notification-templates'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  addDaysToJstDate,
+  buildJstDayWindowIso,
+  getJstDate,
+  getJstNowParts,
+  makeReminderDedupeKey,
+  shouldSendReminderNow,
+  toStoreNotificationSettings,
+  type ReminderChannel,
+  type ReminderTiming,
+  type StoreNotificationSettings,
+  type StoreNotificationSettingsRow,
+} from './appointment-reminders-core'
 
 type AppointmentRow = {
   id: string
@@ -32,7 +45,10 @@ type TemplateRow = {
   is_active: boolean
 }
 
-type ReminderChannel = 'line' | 'email'
+type ReminderCandidate = AppointmentRow & {
+  timing: ReminderTiming
+  appointmentDateJst: string
+}
 
 function isDuplicateKeyError(error: { code?: string | null; message?: string | null } | null | undefined) {
   if (!error) return false
@@ -45,13 +61,14 @@ async function reserveReminderNotificationLog(params: {
   storeId: string
   customerId: string
   appointmentId: string
+  timing: ReminderTiming
   channel: ReminderChannel
   target: string
   dedupeKey: string
   templateKey: string
   menu: string
 }) {
-  const { admin, storeId, customerId, appointmentId, channel, target, dedupeKey, templateKey, menu } = params
+  const { admin, storeId, customerId, appointmentId, timing, channel, target, dedupeKey, templateKey, menu } = params
   const queuedAt = new Date().toISOString()
   const { data, error } = await admin
     .from('customer_notification_logs')
@@ -66,6 +83,7 @@ async function reserveReminderNotificationLog(params: {
       dedupe_key: dedupeKey,
       payload: {
         template_key: templateKey,
+        timing,
         menu,
         target,
         reservation_status: 'queued',
@@ -88,6 +106,7 @@ async function reserveReminderNotificationLog(params: {
 async function finalizeReminderNotificationLog(params: {
   admin: ReturnType<typeof createAdminSupabaseClient>
   logId: string
+  timing: ReminderTiming
   subject: string
   body: string
   status: 'sent' | 'failed'
@@ -96,7 +115,7 @@ async function finalizeReminderNotificationLog(params: {
   target: string
   reason?: string
 }) {
-  const { admin, logId, subject, body, status, templateKey, menu, target, reason } = params
+  const { admin, logId, timing, subject, body, status, templateKey, menu, target, reason } = params
   const { error } = await admin
     .from('customer_notification_logs')
     .update({
@@ -105,6 +124,7 @@ async function finalizeReminderNotificationLog(params: {
       body,
       payload: {
         template_key: templateKey,
+        timing,
         menu,
         target,
         notification_status: status,
@@ -121,15 +141,18 @@ async function finalizeReminderNotificationLog(params: {
 
 export async function runAppointmentRemindersJob() {
   const admin = createAdminSupabaseClient()
-  const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd')
-  const startOfDay = `${tomorrow}T00:00:00.000Z`
-  const endOfDay = `${tomorrow}T23:59:59.999Z`
+  const { todayJst, currentHourJst } = getJstNowParts()
+  const tomorrowJst = addDaysToJstDate(todayJst, 1)
+  const todayWindow = buildJstDayWindowIso(todayJst)
+  const tomorrowWindow = buildJstDayWindowIso(tomorrowJst)
+  const startOfWindow = todayWindow.start < tomorrowWindow.start ? todayWindow.start : tomorrowWindow.start
+  const endOfWindow = todayWindow.end > tomorrowWindow.end ? todayWindow.end : tomorrowWindow.end
 
   const { data: upcomingAppointments, error: appointmentsError } = await admin
     .from('appointments')
     .select('id, start_time, menu, customer_id, store_id')
-    .gte('start_time', startOfDay)
-    .lte('start_time', endOfDay)
+    .gte('start_time', startOfWindow)
+    .lte('start_time', endOfWindow)
     .eq('status', '予約済')
     .not('store_id', 'is', null)
 
@@ -139,8 +162,44 @@ export async function runAppointmentRemindersJob() {
 
   const appointments = (upcomingAppointments ?? []) as AppointmentRow[]
   const uniqueStoreIds = Array.from(new Set(appointments.map((appointment) => appointment.store_id)))
-  const appointmentIds = appointments.map((appointment) => appointment.id)
   const storeNameMap = new Map<string, string>()
+  const settingsByStoreId = new Map<string, StoreNotificationSettings>()
+
+  if (uniqueStoreIds.length > 0) {
+    const { data: settingsRows } = await admin
+      .from('store_notification_settings')
+      .select(
+        'store_id, reminder_line_enabled, reminder_email_enabled, reminder_day_before_enabled, reminder_same_day_enabled, reminder_day_before_send_hour_jst, reminder_same_day_send_hour_jst'
+      )
+      .in('store_id', uniqueStoreIds)
+    for (const row of (settingsRows ?? []) as StoreNotificationSettingsRow[]) {
+      settingsByStoreId.set(row.store_id, toStoreNotificationSettings(row))
+    }
+  }
+
+  const reminderCandidates: ReminderCandidate[] = []
+  for (const appointment of appointments) {
+    const appointmentDateJst = getJstDate(appointment.start_time)
+    if (!appointmentDateJst) continue
+
+    let timing: ReminderTiming | null = null
+    if (appointmentDateJst === todayJst) timing = 'same_day'
+    if (appointmentDateJst === tomorrowJst) timing = 'day_before'
+    if (!timing) continue
+
+    const settings = settingsByStoreId.get(appointment.store_id) ?? DEFAULT_NOTIFICATION_SETTINGS
+    if (!shouldSendReminderNow({ settings, timing, currentHourJst })) {
+      continue
+    }
+
+    reminderCandidates.push({
+      ...appointment,
+      timing,
+      appointmentDateJst,
+    })
+  }
+
+  const candidateAppointmentIds = reminderCandidates.map((appointment) => appointment.id)
 
   if (uniqueStoreIds.length > 0) {
     const { data: stores } = await admin.from('stores').select('id, name').in('id', uniqueStoreIds)
@@ -149,10 +208,20 @@ export async function runAppointmentRemindersJob() {
     }
   }
   const existingDedupeKeys = new Set<string>()
-  if (appointmentIds.length > 0) {
-    const dedupeKeys = appointments.flatMap((appointment) => [
-      `reminder:line:${appointment.id}:${tomorrow}`,
-      `reminder:email:${appointment.id}:${tomorrow}`,
+  if (candidateAppointmentIds.length > 0) {
+    const dedupeKeys = reminderCandidates.flatMap((appointment) => [
+      makeReminderDedupeKey({
+        timing: appointment.timing,
+        channel: 'line',
+        appointmentId: appointment.id,
+        appointmentDateJst: appointment.appointmentDateJst,
+      }),
+      makeReminderDedupeKey({
+        timing: appointment.timing,
+        channel: 'email',
+        appointmentId: appointment.id,
+        appointmentDateJst: appointment.appointmentDateJst,
+      }),
     ])
     const { data: existingLogs } = await admin
       .from('customer_notification_logs')
@@ -184,14 +253,18 @@ export async function runAppointmentRemindersJob() {
   const skippedBreakdown = {
     dedupe: 0,
     failed: 0,
+    disabled_channel: 0,
     missing_customer: 0,
     missing_line_target: 0,
     missing_email_target: 0,
   }
+  const scannedByTiming = { day_before: 0, same_day: 0 }
+  const sentByTiming = { day_before: 0, same_day: 0 }
   const notifiedStoreIds = new Set<string>()
   const notifiedAppointmentIds: string[] = []
 
-  for (const appointment of appointments) {
+  for (const appointment of reminderCandidates) {
+    scannedByTiming[appointment.timing] += 1
     if (!appointment.customer_id) {
       skipped += 1
       skippedBreakdown.missing_customer += 1
@@ -215,9 +288,18 @@ export async function runAppointmentRemindersJob() {
     const storeName = storeNameMap.get(appointment.store_id) ?? '店舗名未設定'
     const reminderLineTemplate = templateMap.get(`${appointment.store_id}:reminder_line:line`)
     const reminderEmailTemplate = templateMap.get(`${appointment.store_id}:reminder_email:email`)
+    const settings = settingsByStoreId.get(appointment.store_id) ?? DEFAULT_NOTIFICATION_SETTINGS
 
-    if (customerData.line_id) {
-      const lineDedupeKey = `reminder:line:${appointment.id}:${tomorrow}`
+    if (!settings.reminderLineEnabled) {
+      skipped += 1
+      skippedBreakdown.disabled_channel += 1
+    } else if (customerData.line_id) {
+      const lineDedupeKey = makeReminderDedupeKey({
+        timing: appointment.timing,
+        channel: 'line',
+        appointmentId: appointment.id,
+        appointmentDateJst: appointment.appointmentDateJst,
+      })
       if (existingDedupeKeys.has(lineDedupeKey)) {
         skipped += 1
         skippedBreakdown.dedupe += 1
@@ -227,6 +309,7 @@ export async function runAppointmentRemindersJob() {
           storeId: appointment.store_id,
           customerId: appointment.customer_id,
           appointmentId: appointment.id,
+          timing: appointment.timing,
           channel: 'line',
           target: customerData.line_id,
           dedupeKey: lineDedupeKey,
@@ -258,6 +341,7 @@ export async function runAppointmentRemindersJob() {
             await finalizeReminderNotificationLog({
               admin,
               logId: reservation.logId,
+              timing: appointment.timing,
               status: 'sent',
               subject: rendered.subject,
               body: rendered.body,
@@ -267,12 +351,14 @@ export async function runAppointmentRemindersJob() {
             })
             existingDedupeKeys.add(lineDedupeKey)
             sent += 1
+            sentByTiming[appointment.timing] += 1
             notifiedStoreIds.add(appointment.store_id)
             notifiedAppointmentIds.push(appointment.id)
           } catch (error) {
             await finalizeReminderNotificationLog({
               admin,
               logId: reservation.logId,
+              timing: appointment.timing,
               status: 'failed',
               subject: rendered.subject,
               body: rendered.body,
@@ -291,8 +377,16 @@ export async function runAppointmentRemindersJob() {
       skippedBreakdown.missing_line_target += 1
     }
 
-    if (customerData.email) {
-      const emailDedupeKey = `reminder:email:${appointment.id}:${tomorrow}`
+    if (!settings.reminderEmailEnabled) {
+      skipped += 1
+      skippedBreakdown.disabled_channel += 1
+    } else if (customerData.email) {
+      const emailDedupeKey = makeReminderDedupeKey({
+        timing: appointment.timing,
+        channel: 'email',
+        appointmentId: appointment.id,
+        appointmentDateJst: appointment.appointmentDateJst,
+      })
       if (existingDedupeKeys.has(emailDedupeKey)) {
         skipped += 1
         skippedBreakdown.dedupe += 1
@@ -302,6 +396,7 @@ export async function runAppointmentRemindersJob() {
           storeId: appointment.store_id,
           customerId: appointment.customer_id,
           appointmentId: appointment.id,
+          timing: appointment.timing,
           channel: 'email',
           target: customerData.email,
           dedupeKey: emailDedupeKey,
@@ -335,6 +430,7 @@ export async function runAppointmentRemindersJob() {
             await finalizeReminderNotificationLog({
               admin,
               logId: reservation.logId,
+              timing: appointment.timing,
               status: 'sent',
               subject: rendered.subject,
               body: rendered.body,
@@ -344,12 +440,14 @@ export async function runAppointmentRemindersJob() {
             })
             existingDedupeKeys.add(emailDedupeKey)
             sent += 1
+            sentByTiming[appointment.timing] += 1
             notifiedStoreIds.add(appointment.store_id)
             notifiedAppointmentIds.push(appointment.id)
           } catch (error) {
             await finalizeReminderNotificationLog({
               admin,
               logId: reservation.logId,
+              timing: appointment.timing,
               status: 'failed',
               subject: rendered.subject,
               body: rendered.body,
@@ -370,14 +468,16 @@ export async function runAppointmentRemindersJob() {
   }
 
   return {
-    scanned: appointments.length,
+    scanned: reminderCandidates.length,
     sent,
     skipped,
     counters: {
-      scanned: appointments.length,
+      scanned: reminderCandidates.length,
       sent,
       skipped,
       storesNotified: notifiedStoreIds.size,
+      scannedByTiming,
+      sentByTiming,
       skippedBreakdown,
     },
     skippedBreakdown,

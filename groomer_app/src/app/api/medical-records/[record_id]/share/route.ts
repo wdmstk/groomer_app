@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { insertAuditLogBestEffort } from '@/lib/audit-logs'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import type { Database } from '@/lib/supabase/database.types'
 import {
   generateMedicalRecordShareToken,
   getMedicalRecordShareExpiresAt,
@@ -39,16 +40,17 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   const shareToken = generateMedicalRecordShareToken()
   const expiresAt = getMedicalRecordShareExpiresAt()
+  const shareLinkInsert: Database['public']['Tables']['medical_record_share_links']['Insert'] = {
+    store_id: storeId,
+    medical_record_id: record_id,
+    token_hash: hashMedicalRecordShareToken(shareToken),
+    expires_at: expiresAt,
+    created_by_user_id: user?.id ?? null,
+  }
 
   const { data: shareLink, error } = await adminSupabase
     .from('medical_record_share_links')
-    .insert({
-      store_id: storeId,
-      medical_record_id: record_id,
-      token_hash: hashMedicalRecordShareToken(shareToken),
-      expires_at: expiresAt,
-      created_by_user_id: user?.id ?? null,
-    })
+    .insert(shareLinkInsert)
     .select('id, medical_record_id, expires_at, created_by_user_id')
     .single()
 

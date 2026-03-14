@@ -1,3 +1,5 @@
+import type { Json } from '@/lib/supabase/database.types'
+
 export class CronRerunServiceError extends Error {
   status: number
 
@@ -17,15 +19,20 @@ export type RerunCronJobDeps<TJobName extends string, TResult> = {
     trigger: 'manual_rerun' | 'manual_direct'
     requestedByUserId: string
     sourceJobRunId: string | null
-    meta: Record<string, unknown>
+    meta: Json
   }): Promise<string | null>
   runJob(jobName: TJobName): Promise<TResult>
   finishJobRun(params: {
     jobRunId: string | null
     status: 'succeeded' | 'failed'
-    meta?: Record<string, unknown>
+    meta?: Json
     lastError?: string | null
   }): Promise<void>
+}
+
+function toJsonMeta(value: unknown): Json {
+  if (value === undefined) return {}
+  return value as Json
 }
 
 export async function rerunCronJobCore<TJobName extends string, TResult>(params: {
@@ -68,7 +75,7 @@ export async function rerunCronJobCore<TJobName extends string, TResult>(params:
       meta,
     })
     const result = await deps.runJob(jobName)
-    await deps.finishJobRun({ jobRunId, status: 'succeeded', meta: result as Record<string, unknown> })
+    await deps.finishJobRun({ jobRunId, status: 'succeeded', meta: toJsonMeta(result) })
     return {
       jobRunId,
       jobName,

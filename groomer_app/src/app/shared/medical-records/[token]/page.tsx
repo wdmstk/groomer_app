@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import Image from 'next/image'
 import { Card } from '@/components/ui/Card'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createSignedPhotoUrlMap } from '@/lib/medical-records/photos'
@@ -86,22 +87,21 @@ export default async function SharedMedicalRecordPage({ params }: SharedRecordPa
               <p className="text-sm text-slate-500">写真はありません。</p>
             ) : (
               <div className="space-y-4">
-                {beforePhotos.map((photo) => (
-                  <article key={photo.id} className="overflow-hidden rounded border">
-                    <div className="aspect-[4/3] bg-slate-50">
-                      {signedUrlMap.get(photo.storage_path) ? (
-                        <img
-                          src={signedUrlMap.get(photo.storage_path)}
-                          alt="施術前写真"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : null}
-                    </div>
-                    <div className="space-y-1 p-3 text-sm text-slate-700">
-                      <p>撮影日時: {formatDateTimeJst(photo.taken_at)}</p>
-                    </div>
-                  </article>
-                ))}
+                {beforePhotos.map((photo) => {
+                  const signedUrl = signedUrlMap.get(photo.storage_path)
+                  return (
+                    <article key={photo.id} className="overflow-hidden rounded border">
+                      <div className="relative aspect-[4/3] bg-slate-50">
+                        {signedUrl ? (
+                          <Image src={signedUrl} alt="施術前写真" fill className="object-cover" />
+                        ) : null}
+                      </div>
+                      <div className="space-y-1 p-3 text-sm text-slate-700">
+                        <p>撮影日時: {formatDateTimeJst(photo.taken_at)}</p>
+                      </div>
+                    </article>
+                  )
+                })}
               </div>
             )}
           </Card>
@@ -115,22 +115,21 @@ export default async function SharedMedicalRecordPage({ params }: SharedRecordPa
               <p className="text-sm text-slate-500">写真はありません。</p>
             ) : (
               <div className="space-y-4">
-                {afterPhotos.map((photo) => (
-                  <article key={photo.id} className="overflow-hidden rounded border">
-                    <div className="aspect-[4/3] bg-slate-50">
-                      {signedUrlMap.get(photo.storage_path) ? (
-                        <img
-                          src={signedUrlMap.get(photo.storage_path)}
-                          alt="施術後写真"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : null}
-                    </div>
-                    <div className="space-y-1 p-3 text-sm text-slate-700">
-                      <p>撮影日時: {formatDateTimeJst(photo.taken_at)}</p>
-                    </div>
-                  </article>
-                ))}
+                {afterPhotos.map((photo) => {
+                  const signedUrl = signedUrlMap.get(photo.storage_path)
+                  return (
+                    <article key={photo.id} className="overflow-hidden rounded border">
+                      <div className="relative aspect-[4/3] bg-slate-50">
+                        {signedUrl ? (
+                          <Image src={signedUrl} alt="施術後写真" fill className="object-cover" />
+                        ) : null}
+                      </div>
+                      <div className="space-y-1 p-3 text-sm text-slate-700">
+                        <p>撮影日時: {formatDateTimeJst(photo.taken_at)}</p>
+                      </div>
+                    </article>
+                  )
+                })}
               </div>
             )}
           </Card>

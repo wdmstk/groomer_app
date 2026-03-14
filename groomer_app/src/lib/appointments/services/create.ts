@@ -1,6 +1,7 @@
 import { estimateDurationMinutes } from '@/lib/appointments/duration'
 import { validateAppointmentConflict } from '@/lib/appointments/conflict'
 import {
+  addMinutesToIso,
   AppointmentServiceError,
   type AppointmentSupabaseClient,
   type AppointmentWriteInput,
@@ -48,13 +49,14 @@ export async function createAppointment(params: {
     staffId: input.staffId!,
     menus: selectedMenus.map((menu) => ({ id: menu.id, duration: menu.duration })),
   })
+  const normalizedEndTimeIso = addMinutesToIso(input.startTimeIso!, estimatedDuration)
 
   const conflictCheck = await validateAppointmentConflict({
     supabase,
     storeId,
     staffId: input.staffId!,
     startTimeIso: input.startTimeIso!,
-    endTimeIso: input.endTimeIso!,
+    endTimeIso: normalizedEndTimeIso,
   })
   if (!conflictCheck.ok) {
     throw new AppointmentServiceError(
@@ -70,7 +72,7 @@ export async function createAppointment(params: {
     pet_id: input.petId,
     staff_id: input.staffId,
     start_time: input.startTimeIso,
-    end_time: input.endTimeIso,
+    end_time: normalizedEndTimeIso,
     menu: summary.names,
     duration: estimatedDuration,
     status: input.status ?? '予約済',

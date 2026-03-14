@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { normalizePlanCode, planLabel } from '@/lib/subscription-plan'
 
 type StoreRow = {
   id: string
@@ -14,6 +15,8 @@ type StoreRow = {
 type SubscriptionRow = {
   store_id: string
   plan_code: string
+  hotel_option_enabled: boolean | null
+  notification_option_enabled: boolean | null
   billing_status: 'inactive' | 'trialing' | 'active' | 'past_due' | 'paused' | 'canceled'
   billing_cycle: 'monthly' | 'yearly' | 'custom'
   preferred_provider: 'stripe' | 'komoju' | null
@@ -32,6 +35,31 @@ type SubscriptionsManagerProps = {
   stores: StoreRow[]
   subscriptions: SubscriptionRow[]
   message?: string
+}
+
+const STORE_STATUS_LABEL: Record<'active' | 'inactive', string> = {
+  active: '稼働中',
+  inactive: '停止中',
+}
+
+const BILLING_STATUS_LABEL: Record<SubscriptionRow['billing_status'], string> = {
+  inactive: '未契約',
+  trialing: '無料期間',
+  active: '契約中',
+  past_due: '支払い遅延',
+  paused: '一時停止',
+  canceled: '解約済み',
+}
+
+const BILLING_CYCLE_LABEL: Record<SubscriptionRow['billing_cycle'], string> = {
+  monthly: '月次',
+  yearly: '年次',
+  custom: 'カスタム',
+}
+
+const PROVIDER_LABEL: Record<'stripe' | 'komoju', string> = {
+  stripe: 'Stripe',
+  komoju: 'KOMOJU',
 }
 
 function toDateInput(value: string | null) {
@@ -71,13 +99,13 @@ function StoreSubscriptionForm({
       <div className="mb-4 flex flex-col gap-1">
         <h2 className="text-lg font-semibold text-gray-900">{store.name}</h2>
         <p className="text-xs text-gray-500">
-          store_id: {store.id} / 店舗ステータス: {store.is_active ? 'active' : 'inactive'}
+          店舗ID: {store.id} / 店舗ステータス: {store.is_active ? STORE_STATUS_LABEL.active : STORE_STATUS_LABEL.inactive}
         </p>
         <p className="text-xs text-gray-500">
           試用期間: 開始 {trialStart} / 日数 {trialDays} 日 / 終了予定 {trialEnd}
         </p>
         <p className="text-xs text-gray-500">
-          past_due 猶予: {graceDays} 日 / past_due開始: {toDateInput(subscription?.past_due_since ?? null) || '-'}
+          支払い遅延の猶予: {graceDays} 日 / 支払い遅延開始: {toDateInput(subscription?.past_due_since ?? null) || '-'}
         </p>
       </div>
 
@@ -87,17 +115,20 @@ function StoreSubscriptionForm({
         className="grid grid-cols-1 gap-3 md:grid-cols-2"
       >
         <label className="space-y-1 text-sm text-gray-700">
-          plan_code
-          <Input
+          プラン
+          <select
             name="plan_code"
-            required
-            defaultValue={subscription?.plan_code ?? 'free'}
-            placeholder="free / basic / pro"
-          />
+            defaultValue={normalizePlanCode(subscription?.plan_code ?? 'light')}
+            className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            <option value="light">{planLabel('light')}</option>
+            <option value="standard">{planLabel('standard')}</option>
+            <option value="pro">{planLabel('pro')}</option>
+          </select>
         </label>
 
         <label className="space-y-1 text-sm text-gray-700">
-          amount_jpy
+          月額料金（円）
           <Input
             name="amount_jpy"
             type="number"
@@ -108,49 +139,71 @@ function StoreSubscriptionForm({
         </label>
 
         <label className="space-y-1 text-sm text-gray-700">
-          billing_status
+          課金ステータス
           <select
             name="billing_status"
             defaultValue={subscription?.billing_status ?? 'inactive'}
             className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-400"
           >
-            <option value="inactive">inactive</option>
-            <option value="trialing">trialing</option>
-            <option value="active">active</option>
-            <option value="past_due">past_due</option>
-            <option value="paused">paused</option>
-            <option value="canceled">canceled</option>
+            <option value="inactive">{BILLING_STATUS_LABEL.inactive}</option>
+            <option value="trialing">{BILLING_STATUS_LABEL.trialing}</option>
+            <option value="active">{BILLING_STATUS_LABEL.active}</option>
+            <option value="past_due">{BILLING_STATUS_LABEL.past_due}</option>
+            <option value="paused">{BILLING_STATUS_LABEL.paused}</option>
+            <option value="canceled">{BILLING_STATUS_LABEL.canceled}</option>
           </select>
         </label>
 
         <label className="space-y-1 text-sm text-gray-700">
-          billing_cycle
+          請求サイクル
           <select
             name="billing_cycle"
             defaultValue={subscription?.billing_cycle ?? 'monthly'}
             className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-400"
           >
-            <option value="monthly">monthly</option>
-            <option value="yearly">yearly</option>
-            <option value="custom">custom</option>
+            <option value="monthly">{BILLING_CYCLE_LABEL.monthly}</option>
+            <option value="yearly">{BILLING_CYCLE_LABEL.yearly}</option>
+            <option value="custom">{BILLING_CYCLE_LABEL.custom}</option>
           </select>
         </label>
 
         <label className="space-y-1 text-sm text-gray-700">
-          preferred_provider
+          決済プロバイダ
           <select
             name="preferred_provider"
             defaultValue={subscription?.preferred_provider ?? ''}
             className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-400"
           >
             <option value="">(未選択)</option>
-            <option value="stripe">stripe</option>
-            <option value="komoju">komoju</option>
+            <option value="stripe">{PROVIDER_LABEL.stripe}</option>
+            <option value="komoju">{PROVIDER_LABEL.komoju}</option>
           </select>
         </label>
 
+        <label className="inline-flex items-center gap-2 rounded border p-3 text-sm text-gray-700">
+          <input type="hidden" name="hotel_option_enabled" value="false" />
+          <input
+            type="checkbox"
+            name="hotel_option_enabled"
+            value="true"
+            defaultChecked={subscription?.hotel_option_enabled === true}
+          />
+          ホテルオプションを有効にする
+        </label>
+
+        <label className="inline-flex items-center gap-2 rounded border p-3 text-sm text-gray-700">
+          <input type="hidden" name="notification_option_enabled" value="false" />
+          <input
+            type="checkbox"
+            name="notification_option_enabled"
+            value="true"
+            defaultChecked={subscription?.notification_option_enabled === true}
+          />
+          通知強化オプションを有効にする
+        </label>
+
         <label className="space-y-1 text-sm text-gray-700">
-          trial_days
+          無料期間（日数）
           <Input
             name="trial_days"
             type="number"
@@ -162,7 +215,7 @@ function StoreSubscriptionForm({
         </label>
 
         <label className="space-y-1 text-sm text-gray-700">
-          grace_days
+          猶予日数
           <Input
             name="grace_days"
             type="number"
@@ -174,7 +227,7 @@ function StoreSubscriptionForm({
         </label>
 
         <label className="space-y-1 text-sm text-gray-700">
-          trial_started_at
+          無料期間の開始日
           <Input
             name="trial_started_at"
             type="date"
@@ -183,7 +236,7 @@ function StoreSubscriptionForm({
         </label>
 
         <label className="space-y-1 text-sm text-gray-700">
-          current_period_start
+          現在の契約期間（開始日）
           <Input
             name="current_period_start"
             type="date"
@@ -192,7 +245,7 @@ function StoreSubscriptionForm({
         </label>
 
         <label className="space-y-1 text-sm text-gray-700">
-          current_period_end
+          現在の契約期間（終了日）
           <Input
             name="current_period_end"
             type="date"
@@ -201,7 +254,7 @@ function StoreSubscriptionForm({
         </label>
 
         <label className="space-y-1 text-sm text-gray-700 md:col-span-2">
-          next_billing_date
+          次回請求日
           <Input
             name="next_billing_date"
             type="date"
@@ -210,7 +263,7 @@ function StoreSubscriptionForm({
         </label>
 
         <label className="space-y-1 text-sm text-gray-700 md:col-span-2">
-          notes
+          メモ
           <textarea
             name="notes"
             defaultValue={subscription?.notes ?? ''}
@@ -269,6 +322,8 @@ export function SubscriptionsManager({
                   <th className="px-2 py-2">決済手段</th>
                   <th className="px-2 py-2">プラン</th>
                   <th className="px-2 py-2">月額(円)</th>
+                  <th className="px-2 py-2">ホテルOP</th>
+                  <th className="px-2 py-2">通知OP</th>
                   <th className="px-2 py-2">試用終了予定</th>
                 </tr>
               </thead>
@@ -291,11 +346,21 @@ export function SubscriptionsManager({
                           {store.name}
                         </button>
                       </td>
-                      <td className="px-2 py-3">{store.is_active ? 'active' : 'inactive'}</td>
-                      <td className="px-2 py-3">{subscription?.billing_status ?? 'inactive'}</td>
-                      <td className="px-2 py-3">{subscription?.preferred_provider ?? '-'}</td>
-                      <td className="px-2 py-3">{subscription?.plan_code ?? 'free'}</td>
+                      <td className="px-2 py-3">
+                        {store.is_active ? STORE_STATUS_LABEL.active : STORE_STATUS_LABEL.inactive}
+                      </td>
+                      <td className="px-2 py-3">
+                        {BILLING_STATUS_LABEL[subscription?.billing_status ?? 'inactive']}
+                      </td>
+                      <td className="px-2 py-3">
+                        {subscription?.preferred_provider ? PROVIDER_LABEL[subscription.preferred_provider] : '-'}
+                      </td>
+                      <td className="px-2 py-3">
+                        {planLabel(normalizePlanCode(subscription?.plan_code ?? 'light'))}
+                      </td>
                       <td className="px-2 py-3">{(subscription?.amount_jpy ?? 0).toLocaleString()}</td>
+                      <td className="px-2 py-3">{subscription?.hotel_option_enabled ? '有効' : '無効'}</td>
+                      <td className="px-2 py-3">{subscription?.notification_option_enabled ? '有効' : '無効'}</td>
                       <td className="px-2 py-3">{trialEnd}</td>
                     </tr>
                   )

@@ -1,11 +1,24 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { resolveCurrentStoreId } from '@/lib/supabase/store'
+import { normalizePlanCode } from '@/lib/subscription-plan'
+import { asStorePlanOptionsClient, fetchStorePlanOptionState } from '@/lib/store-plan-options'
+import { DEFAULT_UI_THEME, isUiTheme } from '@/lib/ui/themes'
 
 type StoreMembershipRow = {
   store_id: string
   role: 'owner' | 'admin' | 'staff'
   stores?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
+}
+
+type StoreSubscriptionRow = {
+  store_id: string
+  plan_code: string | null
+}
+
+type StaffThemeRow = {
+  store_id: string
+  ui_theme: string | null
 }
 
 function pickStoreName(
@@ -45,10 +58,57 @@ export async function GET() {
     name: pickStoreName(row.stores) ?? '店舗名未設定',
     role: row.role,
   }))
+  const storeIds = stores.map((store) => store.id)
+
+  let planCodeByStoreId = new Map<string, string>()
+  let uiThemeByStoreId = new Map<string, string>()
+  if (storeIds.length > 0) {
+    const { data: subscriptionRows } = await supabase
+      .from('store_subscriptions')
+      .select('store_id, plan_code')
+      .in('store_id', storeIds)
+
+    planCodeByStoreId = new Map(
+      ((subscriptionRows ?? []) as StoreSubscriptionRow[]).map((row) => [
+        row.store_id,
+        normalizePlanCode(row.plan_code),
+      ])
+    )
+
+    const { data: staffThemeRows } = await supabase
+      .from('staffs')
+      .select('store_id, ui_theme')
+      .eq('user_id', user.id)
+      .in('store_id', storeIds)
+
+    uiThemeByStoreId = new Map(
+      ((staffThemeRows ?? []) as StaffThemeRow[]).map((row) => [
+        row.store_id,
+        isUiTheme(row.ui_theme) ? row.ui_theme : DEFAULT_UI_THEME,
+      ])
+    )
+  }
+
+  const storesWithPlan = await Promise.all(
+    stores.map(async (store) => {
+      const planCode = planCodeByStoreId.get(store.id) ?? 'light'
+      const optionState = await fetchStorePlanOptionState({
+        supabase: asStorePlanOptionsClient(supabase),
+        storeId: store.id,
+      })
+      return {
+        ...store,
+        planCode,
+        uiTheme: uiThemeByStoreId.get(store.id) ?? DEFAULT_UI_THEME,
+        hotelOptionEnabled: optionState.hotelOptionEnabled,
+        notificationOptionEnabled: optionState.notificationOptionEnabled,
+      }
+    })
+  )
 
   return NextResponse.json({
     activeStoreId,
-    stores,
+    stores: storesWithPlan,
     user: {
       email: user.email ?? '',
     },

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireDeveloperAdmin } from '@/lib/auth/developer-admin'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { asObjectOrNull } from '@/lib/object-utils'
 
 function normalizeStoreId(value: string | null) {
   const storeId = value?.trim()
@@ -87,8 +88,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: auth.message }, { status: auth.status })
   }
 
-  const payload = (await request.json().catch(() => null)) as { store_id?: string; message?: string } | null
-  const storeId = normalizeStoreId(payload?.store_id ?? null)
+  const payloadRaw: unknown = await request.json().catch(() => null)
+  const payload = asObjectOrNull(payloadRaw)
+  const storeId = normalizeStoreId(typeof payload?.store_id === 'string' ? payload.store_id : null)
   if (!storeId) {
     return NextResponse.json({ message: 'store_id は必須です。' }, { status: 400 })
   }

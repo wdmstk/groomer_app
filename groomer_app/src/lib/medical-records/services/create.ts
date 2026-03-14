@@ -1,4 +1,3 @@
-import { createStoreScopedClient } from '@/lib/supabase/store'
 import {
   parseMedicalRecordPhotoDrafts,
 } from '@/lib/medical-records/photos'
@@ -12,6 +11,7 @@ import {
   syncMedicalRecordPhotos,
   validateMedicalRecordWriteInput,
 } from '@/lib/medical-records/services/shared'
+import type { Database } from '@/lib/supabase/database.types'
 
 export type CreateMedicalRecordInput = MedicalRecordWriteInput
 
@@ -97,16 +97,16 @@ export async function createMedicalRecord(params: {
     resolvedPayment.paymentCheck
   )
 
-  const payload = {
+  const payload: Database['public']['Tables']['medical_records']['Insert'] = {
     store_id: storeId,
-    pet_id: input.petId,
-    staff_id: input.staffId,
-    appointment_id: input.appointmentId,
+    pet_id: input.petId!,
+    staff_id: input.staffId!,
+    appointment_id: input.appointmentId!,
     payment_id: resolvedPayment.paymentId,
     status: input.status,
     finalized_at: input.status === 'finalized' ? new Date().toISOString() : null,
-    record_date: input.recordDate,
-    menu: input.menu,
+    record_date: input.recordDate!,
+    menu: input.menu!,
     duration: input.duration,
     shampoo_used: input.shampooUsed,
     skin_condition: input.skinCondition,

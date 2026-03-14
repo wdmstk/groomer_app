@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { resolveCurrentStoreId } from '@/lib/supabase/store'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { requireStoreFeatureAccess } from '@/lib/feature-access'
+import type { Json } from '@/lib/supabase/database.types'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -22,9 +24,9 @@ type AuditLogRow = {
   entity_type: string
   entity_id: string
   action: string
-  before: Record<string, unknown> | null
-  after: Record<string, unknown> | null
-  payload: Record<string, unknown> | null
+  before: { [key: string]: Json | undefined } | null
+  after: { [key: string]: Json | undefined } | null
+  payload: { [key: string]: Json | undefined } | null
 }
 
 function getString(value: unknown) {
@@ -71,7 +73,7 @@ function summarizeMemberPortalLog(row: AuditLogRow) {
   return ''
 }
 
-function summarizeValue(value: Record<string, unknown> | null) {
+function summarizeValue(value: { [key: string]: Json | undefined } | null) {
   if (!value) return '-'
   const entries = Object.entries(value)
   if (entries.length === 0) return '{}'
@@ -95,7 +97,7 @@ function formatDateTime(value: string) {
   }).format(date)
 }
 
-function formatJson(value: Record<string, unknown> | null) {
+function formatJson(value: { [key: string]: Json | undefined } | null) {
   if (!value) return '-'
   return JSON.stringify(value, null, 2)
 }
@@ -123,6 +125,24 @@ export default async function AuditLogsPage({ searchParams }: AuditLogsPageProps
           <h1 className="text-2xl font-semibold text-gray-900">監査ログ</h1>
           <p className="text-gray-600">有効な店舗が設定されていません。</p>
         </div>
+      </section>
+    )
+  }
+
+  const access = await requireStoreFeatureAccess({
+    supabase,
+    storeId,
+    minimumPlan: 'pro',
+  })
+  if (!access.ok) {
+    return (
+      <section className="space-y-4">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-semibold text-gray-900">監査ログ</h1>
+        </div>
+        <Card>
+          <p className="text-sm text-amber-700">{access.message}</p>
+        </Card>
       </section>
     )
   }
@@ -190,7 +210,6 @@ export default async function AuditLogsPage({ searchParams }: AuditLogsPageProps
     <section className="space-y-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-gray-900">監査ログ</h1>
-        <p className="text-gray-600">会計、来店、予約、在庫、followup、reoffer の変更履歴を確認します。</p>
       </div>
 
       <Card>

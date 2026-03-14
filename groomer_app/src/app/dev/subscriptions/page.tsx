@@ -21,6 +21,8 @@ type StoreRow = {
 type SubscriptionRow = {
   store_id: string
   plan_code: string
+  hotel_option_enabled: boolean | null
+  notification_option_enabled: boolean | null
   billing_status: 'inactive' | 'trialing' | 'active' | 'past_due' | 'paused' | 'canceled'
   billing_cycle: 'monthly' | 'yearly' | 'custom'
   preferred_provider: 'stripe' | 'komoju' | null
@@ -54,7 +56,7 @@ export default async function DevSubscriptionsPage({ searchParams }: PageProps) 
         <h1 className="text-2xl font-semibold text-gray-900">サブスク課金管理</h1>
         <Card>
           <p className="text-sm text-red-700">
-            このページは開発者管理者のみアクセスできます。
+            このページはサポート管理者のみアクセスできます。
           </p>
         </Card>
       </section>
@@ -82,7 +84,7 @@ export default async function DevSubscriptionsPage({ searchParams }: PageProps) 
     await Promise.all([
       admin.from('stores').select('id, name, is_active').order('created_at', { ascending: true }),
       admin.from('store_subscriptions').select(
-        'store_id, plan_code, billing_status, billing_cycle, preferred_provider, amount_jpy, current_period_start, current_period_end, next_billing_date, trial_days, trial_started_at, grace_days, past_due_since, notes'
+        'store_id, plan_code, hotel_option_enabled, notification_option_enabled, billing_status, billing_cycle, preferred_provider, amount_jpy, current_period_start, current_period_end, next_billing_date, trial_days, trial_started_at, grace_days, past_due_since, notes'
       ),
     ])
 
@@ -114,9 +116,6 @@ export default async function DevSubscriptionsPage({ searchParams }: PageProps) 
     <section className="space-y-6 p-4 sm:p-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold text-gray-900">サブスク課金管理（開発者専用）</h1>
-        <p className="text-sm text-gray-600">
-          店舗ごとの課金状態を管理します。このページはサイドバーには表示されません。
-        </p>
       </div>
       <SubscriptionsManager
         stores={(stores ?? []) as StoreRow[]}

@@ -2,9 +2,21 @@ import { createServerClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const publicPaths = ['/login', '/signup', '/reserve', '/invite', '/shared']
+const publicPaths = ['/', '/lp', '/login', '/signup', '/reserve', '/invite', '/shared', '/legal']
 const billingExemptPaths = ['/billing-required', '/billing', '/logout', '/dev']
 const ACTIVE_STORE_COOKIE = 'active_store_id'
+const MEMBER_PORTAL_API_PREFIX = '/api/public/member-portal/'
+const RATE_LIMIT_WINDOW_MS = 60_000
+const MEMBER_PORTAL_RATE_LIMIT_IP = 60
+const MEMBER_PORTAL_RATE_LIMIT_IP_TOKEN = 10
+
+type RateLimitBucket = {
+  startedAt: number
+  count: number
+}
+
+const rateLimitByIp = new Map<string, RateLimitBucket>()
+const rateLimitByIpToken = new Map<string, RateLimitBucket>()
 
 type MembershipRow = {
   store_id: string
@@ -39,6 +51,102 @@ function toDateOnly(value: string | null | undefined) {
 
 function isBillingExemptPath(pathname: string) {
   return billingExemptPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+}
+
+function resolveClientIp(req: NextRequest) {
+  const forwardedFor = req.headers.get('x-forwarded-for')
+  if (forwardedFor) {
+    return forwardedFor.split(',')[0]?.trim() || 'unknown'
+  }
+  return req.headers.get('x-real-ip') ?? 'unknown'
+}
+
+function parseMemberPortalToken(pathname: string) {
+  if (!pathname.startsWith(MEMBER_PORTAL_API_PREFIX)) return null
+  const suffix = pathname.slice(MEMBER_PORTAL_API_PREFIX.length)
+  const segments = suffix.split('/').filter(Boolean)
+  const token = segments[0] ?? ''
+  return token || null
+}
+
+function touchRateLimitBucket(
+  key: string,
+  limit: number,
+  nowMs: number,
+  map: Map<string, RateLimitBucket>
+) {
+  const existing = map.get(key)
+  if (!existing || nowMs - existing.startedAt >= RATE_LIMIT_WINDOW_MS) {
+    map.set(key, { startedAt: nowMs, count: 1 })
+    return { allowed: true, remaining: Math.max(0, limit - 1) }
+  }
+
+  if (existing.count >= limit) {
+    return { allowed: false, remaining: 0 }
+  }
+
+  existing.count += 1
+  map.set(key, existing)
+  return { allowed: true, remaining: Math.max(0, limit - existing.count) }
+}
+
+function pruneRateLimitMap(map: Map<string, RateLimitBucket>, nowMs: number) {
+  for (const [key, value] of map.entries()) {
+    if (nowMs - value.startedAt >= RATE_LIMIT_WINDOW_MS * 2) {
+      map.delete(key)
+    }
+  }
+}
+
+function handleMemberPortalRateLimit(req: NextRequest) {
+  const pathname = req.nextUrl.pathname
+  const token = parseMemberPortalToken(pathname)
+  if (!token) return null
+
+  const nowMs = Date.now()
+  pruneRateLimitMap(rateLimitByIp, nowMs)
+  pruneRateLimitMap(rateLimitByIpToken, nowMs)
+
+  const ip = resolveClientIp(req)
+  const ipWindow = touchRateLimitBucket(ip, MEMBER_PORTAL_RATE_LIMIT_IP, nowMs, rateLimitByIp)
+  if (!ipWindow.allowed) {
+    return NextResponse.json(
+      { message: 'Too Many Requests' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': '60',
+          'X-RateLimit-Limit': String(MEMBER_PORTAL_RATE_LIMIT_IP),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Window-Seconds': '60',
+        },
+      }
+    )
+  }
+
+  const ipTokenKey = `${ip}:${token}`
+  const ipTokenWindow = touchRateLimitBucket(
+    ipTokenKey,
+    MEMBER_PORTAL_RATE_LIMIT_IP_TOKEN,
+    nowMs,
+    rateLimitByIpToken
+  )
+  if (!ipTokenWindow.allowed) {
+    return NextResponse.json(
+      { message: 'Too Many Requests' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': '60',
+          'X-RateLimit-Limit': String(MEMBER_PORTAL_RATE_LIMIT_IP_TOKEN),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Window-Seconds': '60',
+        },
+      }
+    )
+  }
+
+  return null
 }
 
 async function fetchPostgrest<T>(path: string) {
@@ -119,6 +227,11 @@ async function shouldBlockBySubscription(req: NextRequest, userId: string) {
 }
 
 export async function proxy(req: NextRequest) {
+  const memberPortalRateLimitResponse = handleMemberPortalRateLimit(req)
+  if (memberPortalRateLimitResponse) {
+    return memberPortalRateLimitResponse
+  }
+
   let res = NextResponse.next({
     request: {
       headers: req.headers,
@@ -149,13 +262,18 @@ export async function proxy(req: NextRequest) {
   )
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  const user = session?.user ?? null
+    data: { user },
+  } = await supabase.auth.getUser()
 
   const { pathname } = req.nextUrl
+  const isMemberPortalApi = pathname.startsWith(MEMBER_PORTAL_API_PREFIX)
+  if (isMemberPortalApi) {
+    return res
+  }
+
   const isPublicPath = publicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))
   const isInvitePath = pathname === '/invite' || pathname.startsWith('/invite/')
+  const isLegalPath = pathname === '/legal' || pathname.startsWith('/legal/')
   const isBillingExempt = isBillingExemptPath(pathname)
 
   if (!user && !isPublicPath) {
@@ -177,7 +295,7 @@ export async function proxy(req: NextRequest) {
     }
   }
 
-  if (user && isPublicPath && !isInvitePath) {
+  if (user && isPublicPath && !isInvitePath && !isLegalPath) {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
@@ -185,5 +303,8 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/api/public/member-portal/:path*',
+  ],
 }

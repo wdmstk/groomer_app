@@ -28,8 +28,20 @@ type VerifiedQrPayload =
 
 export type CreatePublicReservationDeps = {
   fetchActiveStore(storeId: string): Promise<void>
-  fetchDefaultStaffId(storeId: string): Promise<string>
+  fetchDefaultStaffId(storeId: string, preferredStaffId?: string): Promise<string>
   fetchSelectedMenus(storeId: string, menuIds: string[]): Promise<PublicReservationMenuSnapshot[]>
+  estimateDuration(params: {
+    storeId: string
+    petId: string
+    staffId: string
+    menus: Array<{ id: string; duration: number }>
+  }): Promise<number>
+  fetchInstantSlotCandidates(params: {
+    storeId: string
+    staffId: string
+    serviceDurationMinutes: number
+    now: Date
+  }): Promise<Array<{ start_time: string; end_time: string; staff_id?: string | null }>>
   verifyQrPayload(qrPayloadText: string): VerifiedQrPayload
   fetchPetByQr(params: { storeId: string; customerId: string; petId: string }): Promise<boolean>
   fetchCustomerByEmail(params: { storeId: string; email: string }): Promise<CustomerRecord | null>
@@ -53,8 +65,15 @@ export type CreatePublicReservationDeps = {
     endTimeIso: string
     menuSummaryNames: string
     duration: number
+    status: '予約申請' | '予約済'
     notes: string
   }): Promise<string>
+  validateAppointmentConflict(params: {
+    storeId: string
+    staffId: string
+    startTimeIso: string
+    endTimeIso: string
+  }): Promise<{ ok: true } | { ok: false; message: string }>
   insertAppointmentMenus(params: {
     storeId: string
     appointmentId: string
@@ -162,7 +181,7 @@ export async function createPublicReservationCore(params: {
   validatePublicReservationInput(input)
 
   await deps.fetchActiveStore(storeId)
-  const staffId = await deps.fetchDefaultStaffId(storeId)
+  const staffId = await deps.fetchDefaultStaffId(storeId, input.preferredStaffId)
   const selectedMenus = await deps.fetchSelectedMenus(storeId, input.menuIds)
   const { customerId, petId } = await resolveCustomerAndPetCore({
     deps,
@@ -176,7 +195,47 @@ export async function createPublicReservationCore(params: {
   }
 
   const summary = calculateMenuSummary(selectedMenus)
-  const endTimeIso = addMinutes(startTimeIso, summary.duration)
+  const estimatedDuration = await deps.estimateDuration({
+    storeId,
+    petId,
+    staffId,
+    menus: selectedMenus.map((menu) => ({ id: menu.id, duration: menu.duration })),
+  })
+  const endTimeIso = addMinutes(startTimeIso, estimatedDuration)
+  const isInstantReservation = selectedMenus.every((menu) => Boolean(menu.is_instant_bookable))
+  const appointmentStatus: '予約申請' | '予約済' = isInstantReservation ? '予約済' : '予約申請'
+  if (isInstantReservation) {
+    const slotCandidates = await deps.fetchInstantSlotCandidates({
+      storeId,
+      staffId,
+      serviceDurationMinutes: estimatedDuration,
+      now: new Date(),
+    })
+    const hasMatchingSlot = slotCandidates.some(
+      (slot) =>
+        slot.start_time === startTimeIso &&
+        (!slot.staff_id || slot.staff_id === staffId)
+    )
+    if (!hasMatchingSlot) {
+      throw new PublicReservationServiceError(
+        '選択された時間は公開枠ルール外か、すでに利用できません。別の候補枠を選択してください。',
+        409
+      )
+    }
+
+    const conflictCheck = await deps.validateAppointmentConflict({
+      storeId,
+      staffId,
+      startTimeIso,
+      endTimeIso,
+    })
+    if (!conflictCheck.ok) {
+      throw new PublicReservationServiceError(
+        conflictCheck.message || '直前に枠が埋まりました。別の時間帯を選択してください。',
+        409
+      )
+    }
+  }
   const requestNotePrefix = input.memberPortalToken ? '会員証経由Web申請' : '顧客Web申請'
   const mergedNotes = input.notes ? `${requestNotePrefix}: ${input.notes}` : requestNotePrefix
 
@@ -188,7 +247,8 @@ export async function createPublicReservationCore(params: {
     startTimeIso,
     endTimeIso,
     menuSummaryNames: summary.names,
-    duration: summary.duration,
+    duration: estimatedDuration,
+    status: appointmentStatus,
     notes: mergedNotes,
   })
 
@@ -204,9 +264,12 @@ export async function createPublicReservationCore(params: {
   })
 
   return {
-    message: '予約申請を受け付けました。店舗確認後に確定となります。',
+    message: isInstantReservation
+      ? '予約を確定しました。ご来店をお待ちしています。'
+      : '予約申請を受け付けました。店舗確認後に確定となります。',
     appointmentId,
-    status: '予約申請',
+    status: appointmentStatus,
+    assignedStaffId: staffId,
     cancelUrl: `${requestOrigin}/reserve/cancel?token=${encodeURIComponent(cancelToken)}`,
   }
 }

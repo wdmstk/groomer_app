@@ -14,8 +14,7 @@ const navLinks = [
   { href: '/dev', label: '管理者ページ一覧' },
   { href: '/dev/subscriptions', label: 'サブスク課金管理' },
   { href: '/dev/cron', label: 'Cron 監視' },
-  { href: '/dev/support-chat', label: '店舗チャット' },
-  { href: '/dev/appointments-kpi', label: '予約作成KPI' },
+  { href: '/dev/support-tickets', label: 'サポートチケット' },
   { href: '/dev/billing-alerts', label: '課金アラート' },
   { href: '/dev/manual', label: '管理者マニュアル' },
 ]
@@ -47,7 +46,9 @@ export function DevSidebar() {
   const renderNavLinks = (onNavigate?: () => void) => (
     <nav className="space-y-2">
       {navLinks.map((link) => {
-        const isActive = pathname === link.href
+        const isActive = link.href === '/dev'
+          ? pathname === link.href
+          : pathname === link.href || pathname.startsWith(`${link.href}/`)
         return (
           <Link
             key={link.href}
@@ -80,41 +81,53 @@ export function DevSidebar() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-white px-4 py-3 lg:hidden">
-        <button
-          type="button"
-          aria-label="開発メニューを開く"
-          onClick={() => setIsOpen(true)}
-          className="rounded border px-3 py-2 text-sm font-medium text-gray-700"
-        >
-          メニュー
-        </button>
-        <h2 className="text-base font-bold text-gray-900">開発者管理</h2>
-        <span className="rounded-full border px-3 py-1 text-xs font-semibold text-gray-700">
-          root
-        </span>
+      <header className="fixed inset-x-0 top-0 z-50 border-b bg-white/95 backdrop-blur">
+        <div className="flex min-h-16 items-center justify-between gap-3 px-4 py-2 lg:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              aria-label="開発メニューを開く"
+              onClick={() => setIsOpen(true)}
+              className="rounded border px-3 py-2 text-sm font-medium text-gray-700 lg:hidden"
+            >
+              メニュー
+            </button>
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-bold text-gray-900 lg:text-lg">開発者管理</h2>
+              <p className="truncate text-[11px] font-semibold text-gray-500">
+                Developer Console / {roleLabel}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="hidden max-w-64 truncate text-sm font-medium text-gray-600 lg:block">{email}</span>
+            <span className="rounded-full border px-3 py-1 text-xs font-semibold text-gray-700">
+              {roleLabel}
+            </span>
+            <Link
+              href="/logout"
+              className="hidden rounded border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50 lg:inline-flex"
+            >
+              ログアウト
+            </Link>
+          </div>
+        </div>
       </header>
 
-      <aside className="hidden h-screen w-64 shrink-0 border-r bg-white p-4 lg:block">
-        <h2 className="mb-4 text-lg font-bold text-gray-900">開発者管理</h2>
-        <div className="mb-4 rounded border bg-gray-50 p-3">
-          <p className="text-xs font-semibold tracking-wide text-gray-500">アカウント</p>
-          <p className="mt-1 break-all text-sm font-medium text-gray-900">{email}</p>
-          <p className="mt-2 text-xs font-semibold tracking-wide text-gray-500">ロール</p>
-          <p className="mt-1 text-sm font-medium text-gray-900">{roleLabel}</p>
-        </div>
+      <aside className="hidden h-screen w-64 shrink-0 border-r bg-white p-4 pt-20 lg:sticky lg:top-0 lg:block lg:overflow-y-auto">
         {renderNavLinks()}
       </aside>
 
       {isOpen ? (
-        <div className="fixed inset-0 z-40 lg:hidden">
+        <div className="fixed inset-0 z-[60] lg:hidden">
           <button
             type="button"
             aria-label="開発メニューを閉じる"
             onClick={() => setIsOpen(false)}
             className="absolute inset-0 bg-black/40"
           />
-          <aside className="absolute left-0 top-0 h-full w-72 max-w-[85vw] bg-white p-4 shadow-xl md:w-80">
+          <aside className="absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col bg-white p-4 shadow-xl md:w-80">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900">開発者管理</h2>
               <button
@@ -126,13 +139,9 @@ export function DevSidebar() {
                 閉じる
               </button>
             </div>
-            <div className="mb-4 rounded border bg-gray-50 p-3">
-              <p className="text-xs font-semibold tracking-wide text-gray-500">アカウント</p>
-              <p className="mt-1 break-all text-sm font-medium text-gray-900">{email}</p>
-              <p className="mt-2 text-xs font-semibold tracking-wide text-gray-500">ロール</p>
-              <p className="mt-1 text-sm font-medium text-gray-900">{roleLabel}</p>
+            <div className="min-h-0 flex-1 overflow-y-auto pb-2">
+              {renderNavLinks(() => setIsOpen(false))}
             </div>
-            {renderNavLinks(() => setIsOpen(false))}
           </aside>
         </div>
       ) : null}

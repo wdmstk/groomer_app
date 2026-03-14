@@ -1,0 +1,113 @@
+import { NextResponse } from 'next/server'
+import { createStoreScopedClient } from '@/lib/supabase/store'
+import { requireStoreFeatureAccess } from '@/lib/feature-access'
+import { isHotelFeatureEnabledForStore } from '@/lib/hotel/feature-gate'
+import { asObjectOrNull } from '@/lib/object-utils'
+import { parseOptionalInteger } from '@/lib/hotel/stay-items'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+async function requireStoreContext() {
+  const { supabase, storeId } = await createStoreScopedClient()
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+  if (userError || !user) {
+    return { ok: false as const, status: 401, message: 'Unauthorized' }
+  }
+
+  const { data: membership, error: membershipError } = await supabase
+    .from('store_memberships')
+    .select('role')
+    .eq('store_id', storeId)
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (membershipError || !membership) {
+    return { ok: false as const, status: 403, message: membershipError?.message ?? 'Forbidden' }
+  }
+
+  const access = await requireStoreFeatureAccess({
+    supabase,
+    storeId,
+    minimumPlan: 'standard',
+    requiredOption: 'hotel',
+  })
+
+  if (!access.ok) {
+    return { ok: false as const, status: 403, message: access.message }
+  }
+
+  if (!isHotelFeatureEnabledForStore(storeId)) {
+    return { ok: false as const, status: 403, message: 'Hotel feature is not enabled for this store.' }
+  }
+
+  return { ok: true as const, supabase, storeId, user, role: membership.role as string }
+}
+
+export async function GET() {
+  const guard = await requireStoreContext()
+  if (!guard.ok) {
+    return NextResponse.json({ message: guard.message }, { status: guard.status })
+  }
+
+  const { data, error } = await guard.supabase
+    .from('hotel_settings')
+    .select('id, store_id, max_concurrent_pets, calendar_open_hour, calendar_close_hour')
+    .eq('store_id', guard.storeId)
+    .maybeSingle()
+
+  if (error) {
+    return NextResponse.json({ message: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({
+    settings: data ?? {
+      id: null,
+      store_id: guard.storeId,
+      max_concurrent_pets: 1,
+      calendar_open_hour: 8,
+      calendar_close_hour: 20,
+    },
+  })
+}
+
+export async function PATCH(request: Request) {
+  const guard = await requireStoreContext()
+  if (!guard.ok) {
+    return NextResponse.json({ message: guard.message }, { status: guard.status })
+  }
+
+  const bodyRaw: unknown = await request.json().catch(() => null)
+  const body = asObjectOrNull(bodyRaw)
+  if (!body) {
+    return NextResponse.json({ message: 'Invalid JSON body.' }, { status: 400 })
+  }
+
+  const maxConcurrentPets = Math.max(1, parseOptionalInteger(body.max_concurrent_pets, 1) ?? 1)
+  const calendarOpenHour = parseOptionalInteger(body.calendar_open_hour, 8)
+  const calendarCloseHour = parseOptionalInteger(body.calendar_close_hour, 20)
+
+  const payload = {
+    store_id: guard.storeId,
+    max_concurrent_pets: maxConcurrentPets,
+    calendar_open_hour: calendarOpenHour,
+    calendar_close_hour: calendarCloseHour,
+    updated_at: new Date().toISOString(),
+  }
+
+  const { data, error } = await guard.supabase
+    .from('hotel_settings')
+    .upsert(payload, { onConflict: 'store_id' })
+    .select('id, store_id, max_concurrent_pets, calendar_open_hour, calendar_close_hour')
+    .single()
+
+  if (error) {
+    return NextResponse.json({ message: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true, settings: data })
+}

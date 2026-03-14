@@ -4,6 +4,7 @@ import {
   getMemberPortalReservationPrefill,
   MemberPortalServiceError,
 } from '@/lib/member-portal'
+import { pickClientIpFromHeaders, toPrivacyHash } from '@/lib/privacy-hash'
 
 type RouteParams = {
   params: Promise<{
@@ -11,11 +12,26 @@ type RouteParams = {
   }>
 }
 
-export async function GET(_request: Request, { params }: RouteParams) {
+function noStoreHeaders() {
+  return {
+    'Cache-Control': 'no-store',
+    Pragma: 'no-cache',
+    'X-Robots-Tag': 'noindex, nofollow',
+  }
+}
+
+export async function GET(request: Request, { params }: RouteParams) {
   const { token } = await params
+  const ipHash = toPrivacyHash(pickClientIpFromHeaders(request.headers))
+  const uaHash = toPrivacyHash(request.headers.get('user-agent'))
 
   try {
-    const prefill = await getMemberPortalReservationPrefill(token)
+    const prefill = await getMemberPortalReservationPrefill(token, {
+      accessContext: {
+        ipHash,
+        uaHash,
+      },
+    })
     const qr =
       prefill.pet &&
       buildPetQrProfile({
@@ -43,12 +59,15 @@ export async function GET(_request: Request, { params }: RouteParams) {
         }).qrPayload,
       })),
       qrPayload: qr?.qrPayload ?? '',
-    })
+    }, { headers: noStoreHeaders() })
   } catch (error) {
     if (error instanceof MemberPortalServiceError) {
-      return NextResponse.json({ message: error.message }, { status: error.status })
+      return NextResponse.json(
+        { message: error.message },
+        { status: error.status, headers: noStoreHeaders() }
+      )
     }
     const message = error instanceof Error ? error.message : 'Unexpected error'
-    return NextResponse.json({ message }, { status: 500 })
+    return NextResponse.json({ message }, { status: 500, headers: noStoreHeaders() })
   }
 }

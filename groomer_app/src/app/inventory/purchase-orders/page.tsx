@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -57,7 +58,11 @@ export default async function InventoryPurchaseOrdersPage() {
     <section className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">発注管理</h1>
-        <p className="text-sm text-gray-600">発注の作成とステータス管理を行います。</p>
+        <p className="mt-1 text-sm">
+          <Link href="/inventory/reorder-suggestions" className="text-blue-600">
+            発注提案一覧から下書き生成
+          </Link>
+        </p>
       </div>
 
       <Card>

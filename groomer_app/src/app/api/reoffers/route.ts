@@ -6,6 +6,7 @@ import {
   renderSlotReofferLineTemplate,
 } from '@/lib/reoffers/templates'
 import { createStoreScopedClient } from '@/lib/supabase/store'
+import type { Json } from '@/lib/supabase/database.types'
 
 function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
@@ -87,7 +88,7 @@ type ReofferLogRow = {
   appointment_id: string
   actor_user_id: string | null
   event_type: string
-  payload: Record<string, unknown> | null
+  payload: { [key: string]: Json | undefined } | null
   created_at: string
 }
 
@@ -568,6 +569,7 @@ export async function POST(request: Request) {
   const subject =
     typeof body?.subject === 'string' && body.subject.trim() ? body.subject.trim() : 'キャンセル枠のご案内'
   const notes = typeof body?.notes === 'string' ? body.notes.trim() : null
+  const sendMode = body?.kind === 'reoffer_draft' ? 'draft' : 'immediate'
 
   if (!appointmentId || !targetCustomerId) {
     return NextResponse.json({ message: 'appointment_id と target_customer_id は必須です。' }, { status: 400 })
@@ -606,6 +608,50 @@ export async function POST(request: Request) {
 
   if (!appointment || !customer) {
     return NextResponse.json({ message: '再販対象の予約または顧客が見つかりません。' }, { status: 404 })
+  }
+
+  if (sendMode === 'draft') {
+    const { data: reoffer, error: reofferError } = await supabase
+      .from('slot_reoffers')
+      .insert({
+        store_id: storeId,
+        appointment_id: appointmentId,
+        target_customer_id: targetCustomerId,
+        target_pet_id: targetPetId,
+        target_staff_id: targetStaffId,
+        status: 'draft',
+        sent_at: null,
+        notes,
+      })
+      .select('id, appointment_id, target_customer_id, status, sent_at, accepted_at')
+      .single()
+
+    if (reofferError) {
+      return NextResponse.json({ message: reofferError.message }, { status: 500 })
+    }
+
+    const { error: logError } = await supabase.from('slot_reoffer_logs').insert({
+      store_id: storeId,
+      slot_reoffer_id: reoffer.id,
+      appointment_id: appointmentId,
+      actor_user_id: user?.id ?? null,
+      event_type: 'candidate_selected',
+      payload: {
+        phase: 'drafted',
+        target_customer_id: targetCustomerId,
+        target_pet_id: targetPetId,
+        target_staff_id: targetStaffId,
+        channel,
+        subject,
+        notes,
+      },
+    })
+
+    if (logError) {
+      return NextResponse.json({ message: logError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ reoffer }, { status: 201 })
   }
 
   const notificationTarget =
@@ -728,36 +774,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: notificationError.message }, { status: 500 })
   }
 
-  const { error: logError } = await supabase.from('slot_reoffer_logs').insert([
-    {
-      store_id: storeId,
-      slot_reoffer_id: reoffer.id,
-      appointment_id: appointmentId,
-      actor_user_id: user?.id ?? null,
-      event_type: 'candidate_selected',
-      payload: {
-        target_customer_id: targetCustomerId,
-        target_pet_id: targetPetId,
-        target_staff_id: targetStaffId,
-      },
+  const { error: logError } = await supabase.from('slot_reoffer_logs').insert({
+    store_id: storeId,
+    slot_reoffer_id: reoffer.id,
+    appointment_id: appointmentId,
+    actor_user_id: user?.id ?? null,
+    event_type: 'sent',
+    payload: {
+      phase: 'immediate_send',
+      target_customer_id: targetCustomerId,
+      target_pet_id: targetPetId,
+      target_staff_id: targetStaffId,
+      channel,
+      subject,
+      notes,
+      notification_status: notificationStatus,
     },
-    {
-      store_id: storeId,
-      slot_reoffer_id: reoffer.id,
-      appointment_id: appointmentId,
-      actor_user_id: user?.id ?? null,
-      event_type: 'sent',
-      payload: {
-        target_customer_id: targetCustomerId,
-        target_pet_id: targetPetId,
-        target_staff_id: targetStaffId,
-        channel,
-        subject,
-        notes,
-        notification_status: notificationStatus,
-      },
-    },
-  ])
+  })
 
   if (logError) {
     return NextResponse.json({ message: logError.message }, { status: 500 })

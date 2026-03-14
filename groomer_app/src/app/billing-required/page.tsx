@@ -10,9 +10,6 @@ export default function BillingRequiredPage() {
     <section className="mx-auto max-w-3xl space-y-6 p-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold text-gray-900">お支払い設定が必要です</h1>
-        <p className="text-sm text-gray-600">
-          試用期間が終了したか、現在の契約ステータスでは利用を継続できません。
-        </p>
       </div>
 
       <Card>

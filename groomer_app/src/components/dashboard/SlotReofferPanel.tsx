@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 
 type SlotCandidate = {
@@ -125,8 +125,12 @@ function formatEventLabel(eventType: string) {
       return '候補選定'
     case 'sent':
       return '送信記録'
+    case 'drafted':
+      return '起票'
     case 'accepted':
       return '受付完了'
+    case 'appointment_created':
+      return '予約作成'
     case 'expired':
       return '期限切れ'
     case 'canceled':
@@ -167,7 +171,7 @@ export function SlotReofferPanel() {
     [customers, waitlistForm.customerId]
   )
 
-  const loadSlots = async () => {
+  const loadSlots = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -181,24 +185,28 @@ export function SlotReofferPanel() {
       setWaitlists(payload?.waitlists ?? [])
       setCustomers(payload?.customers ?? [])
       setStaffs(payload?.staffs ?? [])
-      if (!waitlistForm.customerId && payload?.customers?.[0]?.id) {
+      if (payload?.customers?.[0]?.id) {
         const firstCustomer = payload.customers[0]
-        setWaitlistForm((current) => ({
-          ...current,
-          customerId: firstCustomer.id,
-          petId: firstCustomer.pets[0]?.id ?? '',
-        }))
+        setWaitlistForm((current) =>
+          current.customerId
+            ? current
+            : {
+                ...current,
+                customerId: firstCustomer.id,
+                petId: firstCustomer.pets[0]?.id ?? '',
+              }
+        )
       }
     } catch {
       setError('空き枠再販データの取得中に通信エラーが発生しました。')
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     void loadSlots()
-  }, [])
+  }, [loadSlots])
 
   const sendReoffer = async (slot: SlotRow, candidate: SlotCandidate) => {
     setSavingId(`${slot.appointment_id}:${candidate.customer_id}:send`)
@@ -209,6 +217,7 @@ export function SlotReofferPanel() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          kind: 'reoffer_draft',
           appointment_id: slot.appointment_id,
           target_customer_id: candidate.customer_id,
           target_pet_id: candidate.pet_id,
@@ -226,10 +235,32 @@ export function SlotReofferPanel() {
         setError(payload?.message ?? '再販送信記録に失敗しました。')
         return
       }
-      setMessage(`${candidate.customer_name}様への再販送信を記録しました。`)
+      setMessage(`${candidate.customer_name}様への再販案内を起票しました。`)
       await loadSlots()
     } catch {
       setError('再販送信記録中に通信エラーが発生しました。')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const approveReofferSend = async (log: SlotSentLog) => {
+    setSavingId(`${log.id}:approve-send`)
+    setMessage('')
+    setError('')
+    try {
+      const response = await fetch(`/api/reoffers/${log.id}/approve-send`, {
+        method: 'POST',
+      })
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null
+      if (!response.ok) {
+        setError(payload?.message ?? '承認送信に失敗しました。')
+        return
+      }
+      setMessage(`${log.target_customer_name ?? '対象顧客'} への再販送信を承認しました。`)
+      await loadSlots()
+    } catch {
+      setError('承認送信中に通信エラーが発生しました。')
     } finally {
       setSavingId(null)
     }
@@ -589,7 +620,7 @@ export function SlotReofferPanel() {
                           onClick={() => void sendReoffer(slot, candidate)}
                           disabled={savingId === `${slot.appointment_id}:${candidate.customer_id}:send`}
                         >
-                          再販送信を記録
+                          再販案内を起票
                         </Button>
                       </div>
                     </div>
@@ -616,6 +647,26 @@ export function SlotReofferPanel() {
                           送信: {formatDateTime(log.sent_at)} / 受付: {formatDateTime(log.accepted_at)}
                         </p>
                       </div>
+                      {log.status === 'draft' ? (
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            className="bg-blue-600 hover:bg-blue-700"
+                            onClick={() => void approveReofferSend(log)}
+                            disabled={savingId === `${log.id}:approve-send`}
+                          >
+                            承認して送信
+                          </Button>
+                          <Button
+                            type="button"
+                            className="bg-gray-700 hover:bg-gray-800"
+                            onClick={() => void updateReofferStatus(slot, log, 'canceled')}
+                            disabled={savingId === `${log.id}:canceled`}
+                          >
+                            起票を取り下げ
+                          </Button>
+                        </div>
+                      ) : null}
                       {log.status === 'sent' ? (
                         <div className="flex flex-wrap gap-2">
                           <Button

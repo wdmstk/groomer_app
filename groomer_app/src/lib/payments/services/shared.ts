@@ -1,5 +1,6 @@
 import type { createStoreScopedClient } from '@/lib/supabase/store'
 import { insertAuditLogBestEffort } from '@/lib/audit-logs'
+import type { Database } from '@/lib/supabase/database.types'
 
 export class PaymentServiceError extends Error {
   status: number
@@ -152,9 +153,12 @@ export async function reconcilePaymentVisitLink(
   paymentId: string,
   visitId: string
 ) {
+  const payload: Database['public']['Tables']['payments']['Update'] = {
+    visit_id: visitId,
+  }
   const { error } = await supabase
     .from('payments')
-    .update({ visit_id: visitId })
+    .update(payload)
     .eq('id', paymentId)
     .eq('store_id', storeId)
 
@@ -192,7 +196,7 @@ async function ensureVisitMenus(
     )
   )
 
-  const visitMenuPayload = menus
+  const visitMenuPayload: Database['public']['Tables']['visit_menus']['Insert'][] = menus
     .map((menu) => ({
       store_id: storeId,
       visit_id: visitId,
@@ -315,18 +319,26 @@ export async function handlePaymentCompletion(
   let visitId = (await findVisitByAppointment(supabase, storeId, appointmentId))?.id ?? null
 
   if (!visitId) {
+    if (!appointment.customer_id) {
+      throw new PaymentServiceError('予約に顧客情報がありません。', 400)
+    }
+    if (!appointment.start_time) {
+      throw new PaymentServiceError('予約に開始日時がありません。', 400)
+    }
+    const visitInsertPayload: Database['public']['Tables']['visits']['Insert'] = {
+      store_id: storeId,
+      customer_id: appointment.customer_id,
+      appointment_id: appointment.id,
+      staff_id: appointment.staff_id,
+      visit_date: appointment.start_time,
+      menu: appointment.menu,
+      total_amount: totalAmount,
+      notes: '会計完了時に自動作成',
+    }
+
     const { data: visit, error: visitError } = await supabase
       .from('visits')
-      .insert({
-        store_id: storeId,
-        customer_id: appointment.customer_id,
-        appointment_id: appointment.id,
-        staff_id: appointment.staff_id,
-        visit_date: appointment.start_time,
-        menu: appointment.menu,
-        total_amount: totalAmount,
-        notes: '会計完了時に自動作成',
-      })
+      .insert(visitInsertPayload)
       .select('id')
       .single()
 

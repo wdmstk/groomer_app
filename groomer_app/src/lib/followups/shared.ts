@@ -30,6 +30,15 @@ export const FOLLOWUP_EVENT_TYPES = new Set<string>([
 ] as const)
 export type StoreRole = 'owner' | 'admin' | 'staff'
 
+export const FOLLOWUP_ALLOWED_STATUS_TRANSITIONS: Record<string, Set<string>> = {
+  open: new Set(['in_progress', 'snoozed', 'resolved_no_need', 'resolved_lost']),
+  in_progress: new Set(['snoozed', 'resolved_no_need', 'resolved_lost', 'resolved_booked']),
+  snoozed: new Set(['in_progress', 'resolved_no_need', 'resolved_lost', 'resolved_booked']),
+  resolved_booked: new Set<string>(),
+  resolved_no_need: new Set<string>(),
+  resolved_lost: new Set<string>(),
+}
+
 export function jsonError(message: string, status: number) {
   return NextResponse.json({ message }, { status })
 }
@@ -104,7 +113,9 @@ export async function assertFollowupTaskInStore(params: {
 }) {
   const { data, error } = await params.supabase
     .from('customer_followup_tasks')
-    .select('id, customer_id, status')
+    .select(
+      'id, customer_id, status, assigned_user_id, snoozed_until, resolved_at, resolution_type, resolution_note'
+    )
     .eq('id', params.followupId)
     .eq('store_id', params.storeId)
     .maybeSingle()

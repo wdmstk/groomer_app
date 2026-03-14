@@ -61,6 +61,9 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   const currentStatus = normalizeStatus(appointment.status)
+  if (currentStatus === nextStatus) {
+    return NextResponse.redirect(new URL(redirectTo ?? resolveRedirectPath(redirectTab), request.url))
+  }
   const expectedNext = statusTransitionMap[currentStatus]
   if (!expectedNext || nextStatus !== expectedNext) {
     return NextResponse.json({ message: '不正なステータス遷移です。' }, { status: 400 })

@@ -11,10 +11,9 @@ function parseCsv(value: string | undefined) {
 export async function requireDeveloperAdmin() {
   const supabase = await createServerSupabaseClient()
   const {
-    data: { session },
+    data: { user },
     error,
-  } = await supabase.auth.getSession()
-  const user = session?.user ?? null
+  } = await supabase.auth.getUser()
 
   if (error || !user) {
     return { ok: false as const, status: 401, message: 'Unauthorized' }

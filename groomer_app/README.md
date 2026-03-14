@@ -27,6 +27,18 @@ Next.js の詳細は以下を参照してください。
 - [Next.js Documentation](https://nextjs.org/docs): 機能・APIの公式ドキュメント
 - [Learn Next.js](https://nextjs.org/learn): インタラクティブなチュートリアル
 
+## Supabase型の更新
+
+`src/lib/supabase/database.types.ts` は Supabase から再生成できます。
+
+1. `SUPABASE_PROJECT_ID` を設定
+2. 必要に応じて `supabase login` 済みの状態にする
+3. 以下を実行
+
+```bash
+npm run types:generate:supabase
+```
+
 フィードバックやコントリビュートは [Next.js GitHub リポジトリ](https://github.com/vercel/next.js) を参照してください。
 
 ## Vercel デプロイ
@@ -91,6 +103,7 @@ Next.js の開発元が提供する [Vercel Platform](https://vercel.com/new?utm
 18. カルテ写真アップロードを使う場合は `../supabase_storage_pet_photos.sql` を適用し、必要に応じて `SUPABASE_UPLOAD_BUCKET` を設定する（未設定時 `pet-photos`）。
 19. 写真カルテ（施術前後の自動整理、時系列ギャラリー、7日限定共有）を使う場合は `../supabase_medical_record_photos.sql` を適用する。
 20. Supabase Dashboard の `Authentication > Providers > Email` で `Leaked password protection` を **ON** にする（HaveIBeenPwned連携）。
+21. 利用者ごとのUIテーマ切替を使う場合は `../supabase_staffs_ui_theme.sql` を適用する。
 
 ### Cron登録とは
 

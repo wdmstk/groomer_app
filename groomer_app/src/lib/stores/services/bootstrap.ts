@@ -106,7 +106,7 @@ export async function bootstrapStore(params: {
         const { error } = await admin.from('store_subscriptions').upsert(
           {
             store_id: storeId,
-            plan_code: 'free',
+            plan_code: 'light',
             billing_status: 'trialing',
             billing_cycle: 'monthly',
             amount_jpy: 0,

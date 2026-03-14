@@ -16,7 +16,26 @@ type ServiceMenusPageProps = {
   }>
 }
 
-const categoryOptions = ['シャンプー', 'カット', 'オプション', 'その他']
+const categoryOptions = ['トリミング', 'お手入れ', 'セット', 'オプション']
+
+type ServiceMenuRow = {
+  id: string
+  name: string
+  category: string | null
+  price: number
+  duration: number
+  tax_rate: number | null
+  tax_included: boolean | null
+  is_active: boolean | null
+  is_instant_bookable: boolean | null
+  display_order: number | null
+  notes: string | null
+}
+
+type AppointmentDurationLearningRow = {
+  menu: string | null
+  duration: number | null
+}
 
 export default async function ServiceMenusPage({ searchParams }: ServiceMenusPageProps) {
   const resolvedSearchParams = await searchParams
@@ -30,30 +49,74 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
   const { data: menus } = await supabase
     .from('service_menus')
     .select(
-      'id, name, category, price, duration, tax_rate, tax_included, is_active, display_order, notes'
+      'id, name, category, price, duration, tax_rate, tax_included, is_active, is_instant_bookable, display_order, notes'
     )
     .eq('store_id', storeId)
     .order('display_order', { ascending: true })
     .order('created_at', { ascending: false })
 
   const { data: editMenu } = editId
-    ? await supabase
+      ? await supabase
         .from('service_menus')
         .select(
-          'id, name, category, price, duration, tax_rate, tax_included, is_active, display_order, notes'
+          'id, name, category, price, duration, tax_rate, tax_included, is_active, is_instant_bookable, display_order, notes'
         )
         .eq('id', editId)
         .eq('store_id', storeId)
         .single()
     : { data: null }
 
-  const menuList = menus ?? []
+  const menuList = (menus ?? []) as ServiceMenuRow[]
+  const learningWindowDays = 60
+  const now = new Date()
+  const learningStartIso = new Date(now.getTime() - learningWindowDays * 24 * 60 * 60 * 1000).toISOString()
+  const { data: completedAppointments } = await supabase
+    .from('appointments')
+    .select('menu, duration')
+    .eq('store_id', storeId)
+    .in('status', ['完了', '来店済'])
+    .gte('start_time', learningStartIso)
+    .not('duration', 'is', null)
+
+  const durationLearningRows = (completedAppointments ?? []) as AppointmentDurationLearningRow[]
+  const actualDurationsByMenu = new Map<string, number[]>()
+  durationLearningRows.forEach((row) => {
+    const menuName = row.menu?.trim()
+    if (!menuName || !row.duration || row.duration <= 0) return
+    const list = actualDurationsByMenu.get(menuName) ?? []
+    list.push(row.duration)
+    actualDurationsByMenu.set(menuName, list)
+  })
+  const durationSuggestionByMenuId = new Map<
+    string,
+    { recommendedDuration: number; currentDuration: number; sampleCount: number; delta: number }
+  >()
+  menuList.forEach((menu) => {
+    const samples = actualDurationsByMenu.get(menu.name) ?? []
+    if (samples.length < 5) return
+    const avg = Math.round(samples.reduce((sum, value) => sum + value, 0) / samples.length)
+    const delta = avg - menu.duration
+    if (Math.abs(delta) < 10) return
+    durationSuggestionByMenuId.set(menu.id, {
+      recommendedDuration: Math.max(1, avg),
+      currentDuration: menu.duration,
+      sampleCount: samples.length,
+      delta,
+    })
+  })
+  const durationSuggestionRows = menuList
+    .map((menu) => {
+      const suggestion = durationSuggestionByMenuId.get(menu.id)
+      if (!suggestion) return null
+      return { menu, suggestion }
+    })
+    .filter((row): row is { menu: ServiceMenuRow; suggestion: { recommendedDuration: number; currentDuration: number; sampleCount: number; delta: number } } => Boolean(row))
+    .sort((a, b) => Math.abs(b.suggestion.delta) - Math.abs(a.suggestion.delta))
 
   return (
     <section className="space-y-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-gray-900">施術メニュー管理</h1>
-        <p className="text-gray-600">施術メニューの登録・更新・削除が行えます。</p>
       </div>
 
       <div className="flex items-center gap-4 border-b">
@@ -68,6 +131,37 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
       </div>
 
       <Card>
+        <div className="mb-4 flex items-center justify-between rounded border border-violet-200 bg-violet-50 p-3">
+          <div>
+            <p className="text-xs text-violet-700">所要時間の自己学習補正（直近{learningWindowDays}日）</p>
+            <p className="text-sm font-semibold text-violet-900">
+              推奨更新候補 {durationSuggestionRows.length} 件
+            </p>
+          </div>
+          <Link href="/appointments?tab=list&modal=create" className="rounded bg-violet-700 px-3 py-2 text-xs font-semibold text-white">
+            予約作成へ
+          </Link>
+        </div>
+        {durationSuggestionRows.length > 0 ? (
+          <div className="mb-4 space-y-2">
+            {durationSuggestionRows.slice(0, 5).map(({ menu, suggestion }) => (
+              <div key={menu.id} className="flex flex-col gap-2 rounded border border-violet-200 bg-violet-50 p-3 text-sm md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="font-semibold text-gray-900">{menu.name}</p>
+                  <p className="text-gray-700">
+                    現在 {suggestion.currentDuration} 分 → 推奨 {suggestion.recommendedDuration} 分
+                    （差分 {suggestion.delta > 0 ? '+' : ''}{suggestion.delta} 分 / 実績 {suggestion.sampleCount} 件）
+                  </p>
+                </div>
+                <Link href={`/service-menus?tab=list&edit=${menu.id}`} className="rounded border border-violet-300 px-3 py-1.5 text-xs font-semibold text-violet-700">
+                  このメニューを編集
+                </Link>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mb-4 text-sm text-gray-500">推奨更新候補はありません（実績5件以上かつ差分10分以上で表示）。</p>
+        )}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">メニュー一覧</h2>
           <div className="flex items-center gap-3">
@@ -94,8 +188,14 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
                   <p>税率: {menu.tax_rate ?? 0.1}</p>
                   <p>税込: {menu.tax_included ? '税込' : '税抜'}</p>
                   <p>有効: {menu.is_active ? '有効' : '無効'}</p>
+                  <p>即時確定対象: {menu.is_instant_bookable ? '対象' : '対象外'}</p>
                   <p>表示順: {menu.display_order ?? 0}</p>
                   <p>備考: {menu.notes ?? 'なし'}</p>
+                  {durationSuggestionByMenuId.has(menu.id) ? (
+                    <p className="mt-1 inline-flex rounded bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                      推奨 {durationSuggestionByMenuId.get(menu.id)?.recommendedDuration} 分
+                    </p>
+                  ) : null}
                   <div className="mt-2 flex items-center gap-2">
                     <Link
                       href={`/service-menus?tab=list&edit=${menu.id}`}
@@ -122,9 +222,11 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
                     <th className="py-2 px-2">カテゴリ</th>
                     <th className="py-2 px-2">価格</th>
                     <th className="py-2 px-2">時間</th>
+                    <th className="py-2 px-2">推奨所要時間</th>
                     <th className="py-2 px-2">税率</th>
                     <th className="py-2 px-2">税込</th>
                     <th className="py-2 px-2">有効</th>
+                    <th className="py-2 px-2">即時確定対象</th>
                     <th className="py-2 px-2">表示順</th>
                     <th className="py-2 px-2">備考</th>
                     <th className="py-2 px-2">操作</th>
@@ -137,9 +239,19 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
                       <td className="py-3 px-2">{menu.category ?? '未設定'}</td>
                       <td className="py-3 px-2">{menu.price.toLocaleString()} 円</td>
                       <td className="py-3 px-2">{menu.duration} 分</td>
+                      <td className="py-3 px-2">
+                        {durationSuggestionByMenuId.has(menu.id) ? (
+                          <span className="rounded bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-700">
+                            推奨 {durationSuggestionByMenuId.get(menu.id)?.recommendedDuration} 分
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">-</span>
+                        )}
+                      </td>
                       <td className="py-3 px-2">{menu.tax_rate ?? 0.1}</td>
                       <td className="py-3 px-2">{menu.tax_included ? '税込' : '税抜'}</td>
                       <td className="py-3 px-2">{menu.is_active ? '有効' : '無効'}</td>
+                      <td className="py-3 px-2">{menu.is_instant_bookable ? '対象' : '対象外'}</td>
                       <td className="py-3 px-2">{menu.display_order ?? 0}</td>
                       <td className="py-3 px-2">{menu.notes ?? 'なし'}</td>
                       <td className="py-3 px-2">
@@ -255,6 +367,17 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
                 >
                   <option value="true">有効</option>
                   <option value="false">無効</option>
+                </select>
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                公開予約の即時確定対象
+                <select
+                  name="is_instant_bookable"
+                  defaultValue={editMenu?.is_instant_bookable ?? false ? 'true' : 'false'}
+                  className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400 outline-none"
+                >
+                  <option value="false">対象外</option>
+                  <option value="true">対象</option>
                 </select>
               </label>
               <label className="space-y-2 text-sm text-gray-700">

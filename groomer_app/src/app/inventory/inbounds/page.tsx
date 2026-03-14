@@ -50,7 +50,6 @@ export default async function InventoryInboundsPage() {
     <section className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">入庫登録</h1>
-        <p className="text-sm text-gray-600">仕入れや返品受入の入庫を記録します。</p>
       </div>
 
       <Card>

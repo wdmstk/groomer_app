@@ -1,6 +1,7 @@
 import { estimateDurationMinutes } from '@/lib/appointments/duration'
 import { validateAppointmentConflict } from '@/lib/appointments/conflict'
 import {
+  addMinutesToIso,
   AppointmentServiceError,
   type AppointmentSupabaseClient,
   type AppointmentWriteInput,
@@ -11,6 +12,8 @@ import {
   toUtcIsoFromJstInput,
   validateAppointmentWriteInput,
 } from '@/lib/appointments/services/shared'
+import type { Database } from '@/lib/supabase/database.types'
+import { isObjectRecord } from '@/lib/object-utils'
 
 function toOptionalStringFromUnknown(value: unknown) {
   if (typeof value !== 'string') return null
@@ -23,17 +26,23 @@ function toOptionalStringFromForm(value: FormDataEntryValue | null) {
   return normalized || null
 }
 
-export function normalizeUpdateAppointmentJsonInput(body: Record<string, unknown> | null): AppointmentWriteInput {
-  const rawMenuIds = Array.isArray(body?.menu_ids) ? body?.menu_ids : []
+function asRecordOrNull(value: unknown): { [key: string]: unknown } | null {
+  if (!isObjectRecord(value)) return null
+  return value
+}
+
+export function normalizeUpdateAppointmentJsonInput(body: unknown): AppointmentWriteInput {
+  const normalized = asRecordOrNull(body)
+  const rawMenuIds = Array.isArray(normalized?.menu_ids) ? normalized.menu_ids : []
   return {
-    customerId: toOptionalStringFromUnknown(body?.customer_id),
-    petId: toOptionalStringFromUnknown(body?.pet_id),
-    staffId: toOptionalStringFromUnknown(body?.staff_id),
-    startTimeIso: toUtcIsoFromJstInput(toOptionalStringFromUnknown(body?.start_time)),
-    endTimeIso: toUtcIsoFromJstInput(toOptionalStringFromUnknown(body?.end_time)),
+    customerId: toOptionalStringFromUnknown(normalized?.customer_id),
+    petId: toOptionalStringFromUnknown(normalized?.pet_id),
+    staffId: toOptionalStringFromUnknown(normalized?.staff_id),
+    startTimeIso: toUtcIsoFromJstInput(toOptionalStringFromUnknown(normalized?.start_time)),
+    endTimeIso: toUtcIsoFromJstInput(toOptionalStringFromUnknown(normalized?.end_time)),
     menuIds: rawMenuIds.map((value) => String(value)).filter(Boolean),
-    status: toOptionalStringFromUnknown(body?.status),
-    notes: toOptionalStringFromUnknown(body?.notes),
+    status: toOptionalStringFromUnknown(normalized?.status),
+    notes: toOptionalStringFromUnknown(normalized?.notes),
   }
 }
 
@@ -69,13 +78,14 @@ export async function updateAppointment(params: {
     staffId: input.staffId!,
     menus: selectedMenus.map((menu) => ({ id: menu.id, duration: menu.duration })),
   })
+  const normalizedEndTimeIso = addMinutesToIso(input.startTimeIso!, estimatedDuration)
 
   const conflictCheck = await validateAppointmentConflict({
     supabase,
     storeId,
     staffId: input.staffId!,
     startTimeIso: input.startTimeIso!,
-    endTimeIso: input.endTimeIso!,
+    endTimeIso: normalizedEndTimeIso,
     excludeAppointmentId: appointmentId,
   })
   if (!conflictCheck.ok) {
@@ -86,20 +96,22 @@ export async function updateAppointment(params: {
     )
   }
 
+  const payload: Database['public']['Tables']['appointments']['Update'] = {
+    customer_id: input.customerId!,
+    pet_id: input.petId!,
+    staff_id: input.staffId!,
+    start_time: input.startTimeIso!,
+    end_time: normalizedEndTimeIso,
+    menu: summary.names,
+    duration: estimatedDuration,
+    status: input.status,
+    notes: input.notes,
+    store_id: storeId,
+  }
+
   const { data, error } = await supabase
     .from('appointments')
-    .update({
-      customer_id: input.customerId,
-      pet_id: input.petId,
-      staff_id: input.staffId,
-      start_time: input.startTimeIso,
-      end_time: input.endTimeIso,
-      menu: summary.names,
-      duration: estimatedDuration,
-      status: input.status,
-      notes: input.notes,
-      store_id: storeId,
-    })
+    .update(payload)
     .eq('id', appointmentId)
     .eq('store_id', storeId)
     .select('id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes')

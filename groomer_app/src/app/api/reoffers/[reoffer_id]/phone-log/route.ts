@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createStoreScopedClient } from '@/lib/supabase/store'
+import { asObjectOrNull } from '@/lib/object-utils'
 
 export async function POST(
   request: Request,
@@ -11,12 +12,8 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser()
 
-  const body = (await request.json().catch(() => null)) as
-    | {
-        result?: string
-        note?: string
-      }
-    | null
+  const bodyRaw: unknown = await request.json().catch(() => null)
+  const body = asObjectOrNull(bodyRaw)
 
   const result =
     body?.result === 'connected' || body?.result === 'voicemail' || body?.result === 'no_answer'

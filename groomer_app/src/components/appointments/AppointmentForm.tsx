@@ -662,7 +662,12 @@ export function AppointmentForm({
             required
             value={endTime}
             onChange={onInputChanged(setEndTime)}
+            readOnly
+            className="bg-gray-50 text-gray-600"
           />
+          <p className="text-xs text-gray-500">
+            開始日時とメニュー所要時間から自動計算します。保存時もサーバー側で再計算されます。
+          </p>
         </label>
         <label className="space-y-2 text-sm text-gray-700">
           担当スタッフ

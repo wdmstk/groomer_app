@@ -1,4 +1,5 @@
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import type { Json } from '@/lib/supabase/database.types'
 import {
   CronSharedCoreError,
   finishJobRunCore,
@@ -32,7 +33,7 @@ export async function startJobRun(params: {
   requestedByUserId?: string | null
   sourceJobRunId?: string | null
   lockTimeoutMinutes?: number
-  meta?: Record<string, unknown>
+  meta?: Json
 }) {
   try {
     const admin = createAdminSupabaseClient()
@@ -100,7 +101,7 @@ export async function startJobRun(params: {
 export async function finishJobRun(params: {
   jobRunId: string | null
   status: 'succeeded' | 'failed'
-  meta?: Record<string, unknown>
+  meta?: Json
   lastError?: string | null
 }) {
   if (!params.jobRunId) return

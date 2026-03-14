@@ -11,7 +11,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('service_menus')
     .select(
-      'id, name, category, price, duration, tax_rate, tax_included, is_active, display_order, notes'
+      'id, name, category, price, duration, tax_rate, tax_included, is_active, is_instant_bookable, display_order, notes'
     )
     .eq('store_id', storeId)
     .order('display_order', { ascending: true })
@@ -52,6 +52,7 @@ export async function POST(request: Request) {
     tax_rate: formData.get('tax_rate') ? Number(formData.get('tax_rate')) : 0.1,
     tax_included: parseBoolean(formData.get('tax_included')?.toString() ?? 'true'),
     is_active: parseBoolean(formData.get('is_active')?.toString() ?? 'true'),
+    is_instant_bookable: parseBoolean(formData.get('is_instant_bookable')?.toString() ?? 'false'),
     display_order: formData.get('display_order') ? Number(formData.get('display_order')) : 0,
     notes: formData.get('notes')?.toString() || null,
   }

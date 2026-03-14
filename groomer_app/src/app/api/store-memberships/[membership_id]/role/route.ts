@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createStoreScopedClient } from '@/lib/supabase/store'
+import { asStorePlanOptionsClient, fetchStorePlanOptionState } from '@/lib/store-plan-options'
+import { isPlanAtLeast } from '@/lib/subscription-plan'
 
 type RouteParams = {
   params: Promise<{
@@ -11,6 +13,16 @@ const ALLOWED_ROLES = new Set(['owner', 'admin', 'staff'])
 
 async function updateMembershipRole(request: Request, membershipId: string, redirectOnSuccess: boolean) {
   const { supabase, storeId } = await createStoreScopedClient()
+  const planState = await fetchStorePlanOptionState({
+    supabase: asStorePlanOptionsClient(supabase),
+    storeId,
+  })
+  if (!isPlanAtLeast(planState.planCode, 'standard')) {
+    return NextResponse.json(
+      { message: 'ライトプランでは権限変更は利用できません。スタンダード以上で利用できます。' },
+      { status: 403 }
+    )
+  }
   const {
     data: { user },
     error: userError,

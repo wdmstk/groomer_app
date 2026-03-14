@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { resolveCurrentStoreId } from '@/lib/supabase/store'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/Card'
+import type { Json } from '@/lib/supabase/database.types'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -29,7 +30,7 @@ type NotificationLogRow = {
   body: string | null
   target: string | null
   dedupe_key: string | null
-  payload: Record<string, unknown> | null
+  payload: { [key: string]: Json | undefined } | null
   sent_at: string
   customers?:
     | { id: string; full_name: string; phone_number: string | null; line_id: string | null }
@@ -60,7 +61,7 @@ function formatDateTime(value: string) {
   }).format(date)
 }
 
-function getFailureReason(payload: Record<string, unknown> | null) {
+function getFailureReason(payload: { [key: string]: Json | undefined } | null) {
   if (!payload) return 'unknown'
   if (typeof payload.reason === 'string' && payload.reason) return payload.reason
   if (typeof payload.notification_status === 'string' && payload.notification_status) {
@@ -192,7 +193,7 @@ export default async function NotificationLogsPage({ searchParams }: Notificatio
   const failureSummary = (((failureRows ?? []) as Array<{
     status: string
     notification_type: string
-    payload: Record<string, unknown> | null
+    payload: { [key: string]: Json | undefined } | null
   }>) ?? []
   ).reduce(
     (acc, row) => {
@@ -207,7 +208,6 @@ export default async function NotificationLogsPage({ searchParams }: Notificatio
     <section className="space-y-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-gray-900">通知ログ</h1>
-        <p className="text-gray-600">followup / reoffer / reminder / test_send を横断で確認します。</p>
       </div>
 
       <Card>

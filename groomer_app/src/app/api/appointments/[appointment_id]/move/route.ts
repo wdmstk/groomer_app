@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { insertAuditLogBestEffort } from '@/lib/audit-logs'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { validateAppointmentConflict } from '@/lib/appointments/conflict'
+import { addMinutesToIso } from '@/lib/appointments/services/shared'
+import { asObjectOrNull } from '@/lib/object-utils'
 
 type RouteParams = {
   params: Promise<{
@@ -135,21 +137,15 @@ async function buildDelayImpactAlert(params: {
 export async function POST(request: Request, { params }: RouteParams) {
   const startedAtMs = Date.now()
   const { appointment_id } = await params
-  const body = (await request.json().catch(() => null)) as
-    | {
-        start_time?: string
-        end_time?: string
-        staff_id?: string
-      }
-    | null
+  const bodyRaw: unknown = await request.json().catch(() => null)
+  const body = asObjectOrNull(bodyRaw)
 
   const startTimeIso = toIsoString(body?.start_time)
-  const endTimeIso = toIsoString(body?.end_time)
   const staffId = typeof body?.staff_id === 'string' ? body.staff_id : ''
 
-  if (!startTimeIso || !endTimeIso || !staffId) {
+  if (!startTimeIso || !staffId) {
     return NextResponse.json(
-      { message: '開始/終了日時またはスタッフが不正です。', processing_ms: Date.now() - startedAtMs },
+      { message: '開始日時またはスタッフが不正です。', processing_ms: Date.now() - startedAtMs },
       { status: 400 }
     )
   }
@@ -161,7 +157,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   const { data: target, error: targetError } = await supabase
     .from('appointments')
-    .select('id, customer_id, pet_id, staff_id, start_time, end_time, status, notes')
+    .select('id, customer_id, pet_id, staff_id, start_time, end_time, duration, status, notes')
     .eq('id', appointment_id)
     .eq('store_id', storeId)
     .maybeSingle()
@@ -186,12 +182,15 @@ export async function POST(request: Request, { params }: RouteParams) {
     )
   }
 
+  const durationMin = Math.max(1, Number(target.duration ?? 0))
+  const normalizedEndTimeIso = addMinutesToIso(startTimeIso, durationMin)
+
   const conflictCheck = await validateAppointmentConflict({
     supabase,
     storeId,
     staffId,
     startTimeIso,
-    endTimeIso,
+    endTimeIso: normalizedEndTimeIso,
     excludeAppointmentId: appointment_id,
   })
   if (!conflictCheck.ok) {
@@ -210,7 +209,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     .update({
       staff_id: staffId,
       start_time: startTimeIso,
-      end_time: endTimeIso,
+      end_time: normalizedEndTimeIso,
     })
     .eq('id', appointment_id)
     .eq('store_id', storeId)
@@ -234,7 +233,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       ...target,
       staff_id: staffId,
       start_time: startTimeIso,
-      end_time: endTimeIso,
+      end_time: normalizedEndTimeIso,
     },
     payload: {
       previous_staff_id: target.staff_id,
@@ -242,7 +241,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       previous_start_time: target.start_time,
       next_start_time: startTimeIso,
       previous_end_time: target.end_time,
-      next_end_time: endTimeIso,
+      next_end_time: normalizedEndTimeIso,
     },
   })
 
@@ -251,7 +250,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     storeId,
     staffId,
     appointmentId: appointment_id,
-    baseEndTimeIso: endTimeIso,
+    baseEndTimeIso: normalizedEndTimeIso,
   })
 
   return NextResponse.json({

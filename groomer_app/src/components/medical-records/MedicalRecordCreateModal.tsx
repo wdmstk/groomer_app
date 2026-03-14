@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { useCallback, useState, type ChangeEvent } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -440,12 +441,13 @@ export function MedicalRecordCreateModal({
                   <div className="space-y-3">
                     {photos.map((photo, index) => (
                       <div key={`${photo.storagePath}-${index}`} className="grid gap-3 rounded border p-3 md:grid-cols-[160px_1fr]">
-                        <div className="overflow-hidden rounded border bg-slate-50">
+                        <div className="relative h-40 overflow-hidden rounded border bg-slate-50">
                           {photo.signedUrl ? (
-                            <img
+                            <Image
                               src={photo.signedUrl}
                               alt={`カルテ写真 ${index + 1}`}
-                              className="h-40 w-full object-cover"
+                              fill
+                              className="object-cover"
                             />
                           ) : (
                             <div className="flex h-40 items-center justify-center text-xs text-gray-500">プレビューなし</div>
@@ -539,9 +541,9 @@ export function MedicalRecordCreateModal({
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {galleryEntries.map((entry) => (
                       <article key={entry.id} className="overflow-hidden rounded border">
-                        <div className="aspect-[4/3] bg-slate-50">
+                        <div className="relative aspect-[4/3] bg-slate-50">
                           {entry.signedUrl ? (
-                            <img src={entry.signedUrl} alt="過去カルテ写真" className="h-full w-full object-cover" />
+                            <Image src={entry.signedUrl} alt="過去カルテ写真" fill className="object-cover" />
                           ) : (
                             <div className="flex h-full items-center justify-center text-xs text-gray-500">画像なし</div>
                           )}

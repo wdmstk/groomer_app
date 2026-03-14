@@ -45,9 +45,6 @@ export default function SetupStorePage() {
     <section className="mx-auto w-full max-w-xl space-y-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold text-gray-900">店舗セットアップ</h1>
-        <p className="text-sm text-gray-600">
-          初回店舗の作成、または owner 権限ユーザーによる追加店舗の作成ができます。作成者は owner 権限になります。
-        </p>
       </div>
 
       <Card>

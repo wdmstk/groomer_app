@@ -10,7 +10,7 @@ export default function SupportChatLayout({ children }: SupportChatLayoutProps) 
     <div className="min-h-screen bg-gray-50 lg:flex">
       <Sidebar />
 
-      <main className="flex-1 p-4 sm:p-6">{children}</main>
+      <main className="flex-1 p-4 pt-20 sm:p-6 sm:pt-24">{children}</main>
     </div>
   )
 }

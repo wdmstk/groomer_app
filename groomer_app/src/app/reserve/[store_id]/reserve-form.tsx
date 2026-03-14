@@ -17,6 +17,7 @@ type ReserveFormProps = {
 type ReserveMetaResponse = {
   store: { id: string; name: string }
   menus: MenuOption[]
+  instant_menu_ids?: string[]
 }
 
 type MemberPortalPetOption = {
@@ -38,16 +39,64 @@ type QrPayload = {
   sig?: string
 }
 
+type SlotCandidate = {
+  start_time: string
+  end_time: string
+  staff_id?: string | null
+}
+
+function formatSlotLabel(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  return new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
+}
+
+function formatSlotTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '--:--'
+  return new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
+}
+
+function toJstDatetimeLocalValue(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const shifted = new Date(date.getTime() + 9 * 60 * 60 * 1000)
+  const year = shifted.getUTCFullYear()
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(shifted.getUTCDate()).padStart(2, '0')
+  const hour = String(shifted.getUTCHours()).padStart(2, '0')
+  const minute = String(shifted.getUTCMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hour}:${minute}`
+}
+
 export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProps) {
   const [storeName, setStoreName] = useState('')
   const [menus, setMenus] = useState<MenuOption[]>([])
   const [selectedMenuIds, setSelectedMenuIds] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [slotLoading, setSlotLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [slotMessage, setSlotMessage] = useState('')
   const [cancelUrl, setCancelUrl] = useState('')
   const [copyMessage, setCopyMessage] = useState('')
+  const [instantMenuIds, setInstantMenuIds] = useState<string[]>([])
+  const [slotCandidates, setSlotCandidates] = useState<SlotCandidate[]>([])
+  const [selectedSlotStartIso, setSelectedSlotStartIso] = useState('')
+  const [selectedSlotStaffId, setSelectedSlotStaffId] = useState('')
 
   const [customerName, setCustomerName] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -88,6 +137,7 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
 
       setStoreName(json.store.name)
       setMenus(json.menus ?? [])
+      setInstantMenuIds(json.instant_menu_ids ?? [])
       setIsLoading(false)
     }
 
@@ -164,6 +214,54 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
     setQrPetName(selectedPet.name)
   }, [memberPortalPets, selectedMemberPortalPetId])
 
+  useEffect(() => {
+    if (selectedMenuIds.length === 0) {
+      setSlotCandidates([])
+      setSlotMessage('')
+      setSelectedSlotStartIso('')
+      setSelectedSlotStaffId('')
+      return
+    }
+
+    const instantSet = new Set(instantMenuIds)
+    const isInstantSelection = selectedMenuIds.every((id) => instantSet.has(id))
+    if (!isInstantSelection) {
+      setSlotCandidates([])
+      setSlotMessage('選択メニューは即時確定枠の対象外です。希望日時を入力して申請してください。')
+      setSelectedSlotStartIso('')
+      setSelectedSlotStaffId('')
+      return
+    }
+
+    let mounted = true
+    setSlotLoading(true)
+    setSlotMessage('')
+    const query = encodeURIComponent(selectedMenuIds.join(','))
+
+    async function loadSlots() {
+      const response = await fetch(`/api/public/reserve/${storeId}/slots?menu_ids=${query}`, {
+        cache: 'no-store',
+      })
+      const json = (await response.json().catch(() => ({}))) as {
+        message?: string
+        slots?: SlotCandidate[]
+      }
+      if (!mounted) return
+      setSlotCandidates(json.slots ?? [])
+      setSlotMessage(json.message ?? '')
+      setSelectedSlotStartIso('')
+      setSelectedSlotStaffId('')
+    }
+
+    void loadSlots().finally(() => {
+      if (mounted) setSlotLoading(false)
+    })
+
+    return () => {
+      mounted = false
+    }
+  }, [instantMenuIds, selectedMenuIds, storeId])
+
   const totalDuration = useMemo(() => {
     return menus
       .filter((menu) => selectedMenuIds.includes(menu.id))
@@ -174,6 +272,12 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
     setSelectedMenuIds((prev) =>
       prev.includes(menuId) ? prev.filter((id) => id !== menuId) : [...prev, menuId]
     )
+  }
+
+  const handleSlotPick = (slot: SlotCandidate) => {
+    setSelectedSlotStartIso(slot.start_time)
+    setSelectedSlotStaffId(slot.staff_id ?? '')
+    setPreferredStart(toJstDatetimeLocalValue(slot.start_time))
   }
 
   const applyQrPayload = async (raw: string) => {
@@ -298,6 +402,7 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
           qrPayload: qrPayloadText || null,
           menuIds: selectedMenuIds,
           memberPortalToken,
+          preferredStaffId: selectedSlotStaffId,
         }),
       })
 
@@ -324,6 +429,9 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
       setQrMessage('')
       setQrError('')
       setSelectedMenuIds([])
+      setSelectedSlotStartIso('')
+      setSelectedSlotStaffId('')
+      setSlotCandidates([])
     } finally {
       setIsSubmitting(false)
     }
@@ -504,6 +612,35 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
             </div>
             <p className="mt-2 text-xs text-gray-600">選択合計時間: {totalDuration} 分</p>
           </div>
+
+          {selectedMenuIds.length > 0 ? (
+            <div className="rounded border border-emerald-200 bg-emerald-50 p-3">
+              <p className="mb-2 text-sm font-semibold text-emerald-900">空き枠候補（即時確定対象メニュー）</p>
+              {slotLoading ? <p className="text-xs text-emerald-800">空き枠を読み込み中...</p> : null}
+              {!slotLoading && slotCandidates.length > 0 ? (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {slotCandidates.map((slot) => {
+                    const selected = selectedSlotStartIso === slot.start_time
+                    return (
+                      <button
+                        key={slot.start_time}
+                        type="button"
+                        onClick={() => handleSlotPick(slot)}
+                        className={`rounded border px-3 py-2 text-left text-xs font-medium ${
+                          selected
+                            ? 'border-emerald-700 bg-emerald-700 text-white'
+                            : 'border-emerald-300 bg-white text-emerald-900'
+                        }`}
+                      >
+                        {formatSlotLabel(slot.start_time)} - {formatSlotTime(slot.end_time)}
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : null}
+              {slotMessage ? <p className="mt-2 text-xs text-emerald-800">{slotMessage}</p> : null}
+            </div>
+          ) : null}
 
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           {message ? <p className="text-sm text-green-700">{message}</p> : null}

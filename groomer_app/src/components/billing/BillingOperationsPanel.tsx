@@ -18,6 +18,12 @@ export function BillingOperationsPanel({ preferredProvider }: BillingOperationsP
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
+  const actionLabel: Record<ActionType, string> = {
+    cancel_at_period_end: '期間終了で解約',
+    cancel_immediately: '即時解約',
+    refund_request: '返金依頼を記録',
+  }
+
   async function updatePreferredProvider(nextProvider: Provider) {
     setIsLoading(true)
     setError('')
@@ -106,31 +112,31 @@ export function BillingOperationsPanel({ preferredProvider }: BillingOperationsP
         <p className="mb-2 text-sm font-semibold text-gray-900">返金 / 解約オペレーション補助</p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm text-gray-700">
-            provider
+            決済手段
             <select
               value={provider}
               onChange={(event) => setProvider(event.target.value as Provider)}
               className="w-full rounded border p-2"
             >
-              <option value="stripe">stripe</option>
-              <option value="komoju">komoju</option>
+              <option value="stripe">クレジットカード（Stripe）</option>
+              <option value="komoju">キャリア決済（KOMOJU）</option>
             </select>
           </label>
           <label className="space-y-1 text-sm text-gray-700">
-            action
+            操作
             <select
               value={action}
               onChange={(event) => setAction(event.target.value as ActionType)}
               className="w-full rounded border p-2"
             >
-              <option value="cancel_at_period_end">cancel_at_period_end</option>
-              <option value="cancel_immediately">cancel_immediately</option>
-              <option value="refund_request">refund_request</option>
+              <option value="cancel_at_period_end">{actionLabel.cancel_at_period_end}</option>
+              <option value="cancel_immediately">{actionLabel.cancel_immediately}</option>
+              <option value="refund_request">{actionLabel.refund_request}</option>
             </select>
           </label>
           {action === 'refund_request' ? (
             <label className="space-y-1 text-sm text-gray-700 md:col-span-2">
-              amount_jpy
+              返金金額（円）
               <input
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
@@ -141,7 +147,7 @@ export function BillingOperationsPanel({ preferredProvider }: BillingOperationsP
             </label>
           ) : null}
           <label className="space-y-1 text-sm text-gray-700 md:col-span-2">
-            reason
+            理由（任意）
             <textarea
               value={reason}
               onChange={(event) => setReason(event.target.value)}

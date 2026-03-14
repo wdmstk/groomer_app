@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { requireDeveloperAdmin } from '@/lib/auth/developer-admin'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { FailedWebhookEventsPanel } from '@/components/dev/FailedWebhookEventsPanel'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -38,18 +39,26 @@ export default async function BillingAlertsPage() {
       <section className="space-y-4">
         <h1 className="text-2xl font-semibold text-gray-900">課金アラート</h1>
         <Card>
-          <p className="text-sm text-red-700">このページは開発者管理者のみアクセスできます。</p>
+          <p className="text-sm text-red-700">このページはサポート管理者のみアクセスできます。</p>
         </Card>
       </section>
     )
   }
 
   const admin = createAdminSupabaseClient()
-  const { data } = await admin
-    .from('store_subscriptions')
-    .select('store_id, billing_status, trial_started_at, trial_days, past_due_since, stores(name)')
-    .in('billing_status', ['trialing', 'past_due', 'canceled'])
-    .order('updated_at', { ascending: false })
+  const [{ data }, { data: failedWebhookEvents }] = await Promise.all([
+    admin
+      .from('store_subscriptions')
+      .select('store_id, billing_status, trial_started_at, trial_days, past_due_since, stores(name)')
+      .in('billing_status', ['trialing', 'past_due', 'canceled'])
+      .order('updated_at', { ascending: false }),
+    admin
+      .from('billing_webhook_events')
+      .select('id, created_at, store_id, provider, event_type, event_id, status, error_message, stores(name)')
+      .eq('status', 'failed')
+      .order('created_at', { ascending: false })
+      .limit(100),
+  ])
 
   const rows = (data ?? []) as AlertRow[]
   const important = rows
@@ -61,9 +70,6 @@ export default async function BillingAlertsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">課金アラート</h1>
-          <p className="text-sm text-gray-600">
-            試用終了が近い店舗、past_due、canceled を集約表示します。
-          </p>
         </div>
         <Link
           href="/dev"
@@ -97,6 +103,29 @@ export default async function BillingAlertsPage() {
           </table>
         </div>
       </Card>
+
+      {failedWebhookEvents && failedWebhookEvents.length > 0 ? (
+        <FailedWebhookEventsPanel
+          events={
+            failedWebhookEvents as {
+              id: string
+              created_at: string
+              store_id: string | null
+              provider: 'stripe' | 'komoju'
+              event_type: string
+              event_id: string | null
+              status: 'failed'
+              error_message: string | null
+              stores?: { name: string | null } | { name: string | null }[] | null
+            }[]
+          }
+        />
+      ) : (
+        <Card>
+          <h2 className="text-lg font-semibold text-gray-900">Webhook失敗イベント再処理</h2>
+          <p className="mt-2 text-sm text-gray-600">再処理対象の失敗イベントはありません。</p>
+        </Card>
+      )}
     </section>
   )
 }

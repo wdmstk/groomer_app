@@ -28,7 +28,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
   const { data, error } = await supabase
     .from('service_menus')
     .select(
-      'id, name, category, price, duration, tax_rate, tax_included, is_active, display_order, notes'
+      'id, name, category, price, duration, tax_rate, tax_included, is_active, is_instant_bookable, display_order, notes'
     )
     .eq('id', menu_id)
     .eq('store_id', storeId)
@@ -54,6 +54,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     tax_rate: body.tax_rate ?? null,
     tax_included: body.tax_included ?? null,
     is_active: body.is_active ?? null,
+    is_instant_bookable: body.is_instant_bookable ?? null,
     display_order: body.display_order ?? null,
     notes: body.notes ?? null,
   }
@@ -76,7 +77,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     .eq('id', menu_id)
     .eq('store_id', storeId)
     .select(
-      'id, name, category, price, duration, tax_rate, tax_included, is_active, display_order, notes'
+      'id, name, category, price, duration, tax_rate, tax_included, is_active, is_instant_bookable, display_order, notes'
     )
     .single()
 
@@ -121,6 +122,7 @@ export async function POST(request: Request, context: RouteParams) {
       tax_rate: formData.get('tax_rate') ? Number(formData.get('tax_rate')) : null,
       tax_included: parseBoolean(formData.get('tax_included')?.toString() ?? 'true'),
       is_active: parseBoolean(formData.get('is_active')?.toString() ?? 'true'),
+      is_instant_bookable: parseBoolean(formData.get('is_instant_bookable')?.toString() ?? 'false'),
       display_order: formData.get('display_order') ? Number(formData.get('display_order')) : 0,
       notes: formData.get('notes')?.toString() || null,
     }

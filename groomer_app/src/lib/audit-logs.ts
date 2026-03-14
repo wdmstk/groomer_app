@@ -1,6 +1,11 @@
 import type { createStoreScopedClient } from '@/lib/supabase/store'
+import type { Database, Json } from '@/lib/supabase/database.types'
 
 type AuditSupabaseClient = Awaited<ReturnType<typeof createStoreScopedClient>>['supabase']
+
+function toJson(value: unknown): Json {
+  return (value ?? null) as Json
+}
 
 export async function insertAuditLog(params: {
   supabase: AuditSupabaseClient
@@ -11,17 +16,21 @@ export async function insertAuditLog(params: {
   action: string
   before?: unknown
   after?: unknown
-  payload?: Record<string, unknown>
+  payload?: Json
 }) {
-  const { error } = await params.supabase.from('audit_logs').insert({
+  const payload: Database['public']['Tables']['audit_logs']['Insert'] = {
     store_id: params.storeId,
     actor_user_id: params.actorUserId ?? null,
     entity_type: params.entityType,
     entity_id: params.entityId,
     action: params.action,
-    before: params.before ?? null,
-    after: params.after ?? null,
-    payload: params.payload ?? {},
+    before: toJson(params.before),
+    after: toJson(params.after),
+    payload: toJson(params.payload ?? {}),
+  }
+
+  const { error } = await params.supabase.from('audit_logs').insert({
+    ...payload,
   })
 
   if (error) {
@@ -38,7 +47,7 @@ export async function insertAuditLogBestEffort(params: {
   action: string
   before?: unknown
   after?: unknown
-  payload?: Record<string, unknown>
+  payload?: Json
 }) {
   try {
     await insertAuditLog(params)

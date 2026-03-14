@@ -22,6 +22,7 @@ function safeSetCookie(
       path: '/',
       sameSite: 'lax',
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
     })
   } catch {
     // Ignore when cookies are read-only (e.g. Server Components render context).

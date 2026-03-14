@@ -108,7 +108,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
         action: 'revoked',
         before: row,
         after: {
-          ...(row as Record<string, unknown>),
+          ...row,
           revoked_at: nowIso,
         },
         payload: {

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDefaultFollowupLineTemplate } from '@/lib/notification-templates'
+import type { Database, Json } from '@/lib/supabase/database.types'
+import type { JsonObject } from '@/lib/object-utils'
 import {
   FOLLOWUP_STATUSES,
   getFollowupRouteContext,
@@ -11,6 +13,14 @@ import {
 } from '@/lib/followups/shared'
 
 const REVISIT_CYCLE_DAYS = 45
+
+type FollowupTaskInsert = Database['public']['Tables']['customer_followup_tasks']['Insert']
+type FollowupEventInsert = Database['public']['Tables']['customer_followup_events']['Insert']
+type FollowupTaskLike = JsonObject & { id: string; assigned_user_id?: Json }
+
+function toJson(value: unknown): Json {
+  return (value ?? null) as Json
+}
 
 function addDays(value: string, days: number) {
   const date = new Date(value)
@@ -98,7 +108,7 @@ export async function GET(request: Request) {
             .eq('template_key', 'followup_line'),
         ])
       : await Promise.all([
-          Promise.resolve({ data: [] as Array<Record<string, unknown>>, error: null }),
+          Promise.resolve({ data: [] as JsonObject[], error: null }),
           supabase.from('staffs').select('id, user_id, full_name').eq('store_id', storeId),
           supabase
             .from('notification_templates')
@@ -127,13 +137,13 @@ export async function GET(request: Request) {
       .filter((row) => Boolean(row.user_id))
       .map((row) => [row.user_id as string, row.full_name])
   )
-  const eventsByTaskId = new Map<string, Array<Record<string, unknown>>>()
+  const eventsByTaskId = new Map<string, JsonObject[]>()
   ;((taskEvents ?? []) as Array<{
     id: string
     task_id: string
     actor_user_id: string | null
     event_type: string
-    payload: Record<string, unknown>
+    payload: JsonObject
     created_at: string
   }>).forEach((event) => {
     const current = eventsByTaskId.get(event.task_id) ?? []
@@ -146,13 +156,13 @@ export async function GET(request: Request) {
 
   if (!includeCandidates) {
     return NextResponse.json({
-      tasks: ((tasks ?? []) as Array<Record<string, unknown>>).map((task) => ({
+      tasks: ((tasks ?? []) as FollowupTaskLike[]).map((task) => ({
         ...task,
         assignee_name:
           task.assigned_user_id && typeof task.assigned_user_id === 'string'
             ? staffNameByUserId.get(task.assigned_user_id) ?? null
             : null,
-        events: eventsByTaskId.get(task.id as string) ?? [],
+        events: eventsByTaskId.get(task.id) ?? [],
       })),
       candidates: [],
       assignees: ((staffRows ?? []) as Array<{ user_id: string | null; full_name: string }>)
@@ -296,13 +306,13 @@ export async function GET(request: Request) {
     .sort((a, b) => b.overdue_days - a.overdue_days)
 
   return NextResponse.json({
-    tasks: ((tasks ?? []) as Array<Record<string, unknown>>).map((task) => ({
+    tasks: ((tasks ?? []) as FollowupTaskLike[]).map((task) => ({
       ...task,
       assignee_name:
         task.assigned_user_id && typeof task.assigned_user_id === 'string'
           ? candidateStaffNameByUserId.get(task.assigned_user_id) ?? null
           : null,
-      events: eventsByTaskId.get(task.id as string) ?? [],
+      events: eventsByTaskId.get(task.id) ?? [],
     })),
     candidates,
     assignees: ((staffs ?? []) as Array<{ user_id: string | null; full_name: string }>)
@@ -359,7 +369,7 @@ export async function POST(request: Request) {
     if (!pet) return jsonError('ペットが見つかりません。', 404)
   }
 
-  const insertPayload = {
+  const insertPayload: FollowupTaskInsert = {
     store_id: storeId,
     customer_id: customerId,
     pet_id: petId,
@@ -384,17 +394,19 @@ export async function POST(request: Request) {
     return jsonError(insertError.message, insertError.code === '23505' ? 409 : 500)
   }
 
-  const { error: eventError } = await supabase.from('customer_followup_events').insert({
+  const followupEvent: FollowupEventInsert = {
     store_id: storeId,
     task_id: task.id,
     actor_user_id: user.id,
     event_type: 'task_created',
-    payload: {
+    payload: toJson({
       assigned_user_id: assignedUserId,
       priority,
       due_on: dueOn,
-    },
-  })
+    }),
+  }
+
+  const { error: eventError } = await supabase.from('customer_followup_events').insert(followupEvent)
 
   if (eventError) {
     return jsonError(eventError.message, 500)

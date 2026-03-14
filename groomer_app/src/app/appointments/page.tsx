@@ -361,7 +361,6 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold text-gray-900">予約管理</h1>
-          <p className="text-gray-600">予約情報の登録・更新・削除が行えます。</p>
         </div>
         <ReserveUrlCopyButton />
       </div>
@@ -476,8 +475,8 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
 
               <div className="hidden overflow-x-auto md:block">
                 <table className="min-w-full text-sm text-left">
-                  <thead className="text-gray-500 border-b">
-                    <tr>
+                  <tbody className="divide-y">
+                    <tr className="text-gray-500 border-b">
                       <th className="py-2 px-2">顧客</th>
                       <th className="py-2 px-2">ペット</th>
                       <th className="py-2 px-2">担当</th>
@@ -489,8 +488,6 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                       <th className="py-2 px-2">備考</th>
                       <th className="py-2 px-2">操作</th>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y">
                     {appointmentList.map((appointment) => (
                       <tr key={appointment.id} className="text-gray-700">
                         <td className="py-3 px-2 font-medium text-gray-900">

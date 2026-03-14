@@ -1,3 +1,5 @@
+import type { Json } from '@/lib/supabase/database.types'
+
 export class JobRunsServiceError extends Error {
   status: number
 
@@ -27,7 +29,7 @@ type RawJobRun = {
   trigger: string
   requested_by_user_id: string | null
   source_job_run_id: string | null
-  meta: Record<string, unknown> | null
+  meta: Json | null
 }
 
 type JobRunListResult = {
