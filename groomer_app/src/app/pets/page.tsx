@@ -18,6 +18,7 @@ type PetRow = {
   name: string
   customer_id: string
   breed: string | null
+  coat_volume: string | null
   gender: string | null
   date_of_birth: string | null
   weight: number | null
@@ -75,9 +76,9 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
   const { supabase, storeId } = await createStoreScopedClient()
 
   const petsSelectWithQr =
-    'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, qr_code_url, qr_payload, customers(full_name)'
+    'id, name, customer_id, breed, coat_volume, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, qr_code_url, qr_payload, customers(full_name)'
   const petsSelectBase =
-    'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, customers(full_name)'
+    'id, name, customer_id, breed, coat_volume, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, customers(full_name)'
   const petsQuery = await supabase
     .from('pets')
     .select(petsSelectWithQr)
@@ -110,6 +111,7 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
       .from('pets')
       .select(
         'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, qr_code_url, qr_payload'
+          .replace('breed, ', 'breed, coat_volume, ')
       )
       .eq('id', editId)
       .eq('store_id', storeId)
@@ -120,6 +122,7 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
         .from('pets')
         .select(
           'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes'
+            .replace('breed, ', 'breed, coat_volume, ')
         )
         .eq('id', editId)
         .eq('store_id', storeId)
@@ -184,6 +187,7 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                     <p className="font-semibold text-gray-900">{pet.name}</p>
                     <p>飼い主: {getRelatedValue(pet.customers, 'full_name')}</p>
                     <p>犬種: {pet.breed ?? '未登録'}</p>
+                    <p>毛量: {pet.coat_volume === 'heavy' ? '多め' : pet.coat_volume === 'light' ? '少なめ' : pet.coat_volume === 'normal' ? '標準' : '未登録'}</p>
                     <p>性別: {pet.gender ?? '未登録'}</p>
                     <p>生年月日: {pet.date_of_birth ?? '未登録'}</p>
                     <p>体重: {pet.weight ? `${pet.weight} kg` : '未登録'}</p>
@@ -218,6 +222,7 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                       <th className="py-2 px-2">ペット名</th>
                       <th className="py-2 px-2">飼い主</th>
                       <th className="py-2 px-2">犬種</th>
+                      <th className="py-2 px-2">毛量</th>
                       <th className="py-2 px-2">性別</th>
                       <th className="py-2 px-2">生年月日</th>
                       <th className="py-2 px-2">体重</th>
@@ -238,6 +243,9 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                         <td className="py-3 px-2 font-medium text-gray-900">{pet.name}</td>
                         <td className="py-3 px-2">{getRelatedValue(pet.customers, 'full_name')}</td>
                         <td className="py-3 px-2">{pet.breed ?? '未登録'}</td>
+                        <td className="py-3 px-2">
+                          {pet.coat_volume === 'heavy' ? '多め' : pet.coat_volume === 'light' ? '少なめ' : pet.coat_volume === 'normal' ? '標準' : '未登録'}
+                        </td>
                         <td className="py-3 px-2">{pet.gender ?? '未登録'}</td>
                         <td className="py-3 px-2">{pet.date_of_birth ?? '未登録'}</td>
                         <td className="py-3 px-2">{pet.weight ? `${pet.weight} kg` : '未登録'}</td>
@@ -333,6 +341,18 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                 defaultValue={editPetData?.breed ?? ''}
                 placeholder="トイプードル"
               />
+            </label>
+            <label className="space-y-2 text-sm text-gray-700">
+              毛量
+              <select
+                name="coat_volume"
+                defaultValue={editPetData?.coat_volume ?? 'normal'}
+                className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400 outline-none"
+              >
+                <option value="normal">標準</option>
+                <option value="heavy">多め</option>
+                <option value="light">少なめ</option>
+              </select>
             </label>
             <label className="space-y-2 text-sm text-gray-700">
               性別

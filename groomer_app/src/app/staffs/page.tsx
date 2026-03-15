@@ -1,13 +1,23 @@
 import Link from 'next/link'
+import nextDynamic from 'next/dynamic'
 import { createClient } from '@supabase/supabase-js'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { FormModal } from '@/components/ui/FormModal'
 import { createStoreScopedClient } from '@/lib/supabase/store'
-import { InviteManager } from '@/components/staffs/InviteManager'
 import { asStorePlanOptionsClient, fetchStorePlanOptionState } from '@/lib/store-plan-options'
 import { isPlanAtLeast } from '@/lib/subscription-plan'
+
+const FormModal = nextDynamic(
+  () => import('@/components/ui/FormModal').then((mod) => mod.FormModal)
+)
+
+const InviteManager = nextDynamic(
+  () => import('@/components/staffs/InviteManager').then((mod) => mod.InviteManager),
+  {
+    loading: () => <p className="text-sm text-gray-500">スタッフ招待を読み込み中...</p>,
+  }
+)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0

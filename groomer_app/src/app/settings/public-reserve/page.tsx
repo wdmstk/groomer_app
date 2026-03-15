@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
+import { DEFAULT_RESERVATION_PAYMENT_SETTINGS } from '@/lib/appointments/reservation-payment'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
 export const dynamic = 'force-dynamic'
@@ -39,6 +40,13 @@ export default async function PublicReserveSettingsPage() {
     .eq('store_id', storeId)
     .eq('is_active', true)
     .order('date_key', { ascending: true })
+  const { data: reservationPaymentSettingsRow } = await supabase
+    .from('store_reservation_payment_settings')
+    .select(
+      'prepayment_enabled, card_hold_enabled, cancellation_day_before_percent, cancellation_same_day_percent, cancellation_no_show_percent, no_show_charge_mode'
+    )
+    .eq('store_id', storeId)
+    .maybeSingle()
 
   const publicConflictWarnThreshold =
     Number(storeSettings?.public_reserve_conflict_warn_threshold_percent ?? 10) || 10
@@ -61,6 +69,10 @@ export default async function PublicReserveSettingsPage() {
     .map((row) => row.date_key)
     .filter((value): value is string => typeof value === 'string' && value.length > 0)
     .join('\n')
+  const reservationPaymentSettings = {
+    ...DEFAULT_RESERVATION_PAYMENT_SETTINGS,
+    ...reservationPaymentSettingsRow,
+  }
 
   return (
     <section className="space-y-6">
@@ -90,6 +102,101 @@ export default async function PublicReserveSettingsPage() {
           </p>
         </Card>
       ) : null}
+
+      <details className="rounded border border-gray-200 bg-white p-3" open>
+        <summary className="cursor-pointer text-sm font-semibold text-gray-900">事前決済 / キャンセルポリシー</summary>
+        <div className="mt-3">
+          <p className="mb-3 text-xs text-gray-500">
+            予約時に事前決済またはカード仮押さえを選べるようにし、無断キャンセル時の請求運用を設定します。
+          </p>
+          <form
+            action="/api/settings/reservation-payment-settings"
+            method="post"
+            className="grid grid-cols-1 gap-3 md:grid-cols-3"
+          >
+            <label className="inline-flex items-center gap-2 rounded border p-3 text-sm text-gray-700">
+              <input type="hidden" name="prepayment_enabled" value="false" />
+              <input
+                type="checkbox"
+                name="prepayment_enabled"
+                value="true"
+                defaultChecked={reservationPaymentSettings.prepayment_enabled}
+                disabled={!canManage}
+              />
+              事前決済を有効化
+            </label>
+            <label className="inline-flex items-center gap-2 rounded border p-3 text-sm text-gray-700">
+              <input type="hidden" name="card_hold_enabled" value="false" />
+              <input
+                type="checkbox"
+                name="card_hold_enabled"
+                value="true"
+                defaultChecked={reservationPaymentSettings.card_hold_enabled}
+                disabled={!canManage}
+              />
+              カード仮押さえを有効化
+            </label>
+            <label className="text-xs text-gray-700">
+              無断キャンセル請求モード
+              <select
+                name="no_show_charge_mode"
+                defaultValue={reservationPaymentSettings.no_show_charge_mode}
+                className="mt-1 w-full rounded border p-2 text-sm"
+                disabled={!canManage}
+              >
+                <option value="manual">ワンタップ請求</option>
+                <option value="auto">自動請求</option>
+              </select>
+            </label>
+            <label className="text-xs text-gray-700">
+              前日キャンセル料（%）
+              <input
+                type="number"
+                min={0}
+                max={100}
+                name="cancellation_day_before_percent"
+                defaultValue={reservationPaymentSettings.cancellation_day_before_percent}
+                className="mt-1 w-full rounded border p-2 text-sm"
+                disabled={!canManage}
+              />
+            </label>
+            <label className="text-xs text-gray-700">
+              当日キャンセル料（%）
+              <input
+                type="number"
+                min={0}
+                max={100}
+                name="cancellation_same_day_percent"
+                defaultValue={reservationPaymentSettings.cancellation_same_day_percent}
+                className="mt-1 w-full rounded border p-2 text-sm"
+                disabled={!canManage}
+              />
+            </label>
+            <label className="text-xs text-gray-700">
+              無断キャンセル料（%）
+              <input
+                type="number"
+                min={0}
+                max={100}
+                name="cancellation_no_show_percent"
+                defaultValue={reservationPaymentSettings.cancellation_no_show_percent}
+                className="mt-1 w-full rounded border p-2 text-sm"
+                disabled={!canManage}
+              />
+            </label>
+            <div className="md:col-span-3 flex items-end">
+              <input type="hidden" name="redirect_to" value="/settings/public-reserve" />
+              <button
+                type="submit"
+                disabled={!canManage}
+                className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                事前決済設定を保存
+              </button>
+            </div>
+          </form>
+        </div>
+      </details>
 
       <details className="rounded border border-gray-200 bg-white p-3" open>
         <summary className="cursor-pointer text-sm font-semibold text-gray-900">アラート閾値</summary>
@@ -266,4 +373,3 @@ export default async function PublicReserveSettingsPage() {
     </section>
   )
 }
-

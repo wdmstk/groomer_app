@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
-import { renderFollowupLineTemplate } from '@/lib/notification-templates'
+import { renderNextVisitSuggestionLineTemplate } from '@/lib/notification-templates'
 import type { JsonObject } from '@/lib/object-utils'
 
 type RelationValue = {
@@ -24,6 +24,7 @@ type CandidateRow = {
   suggestedAssignedName: string | null
   lastVisitAt: string
   recommendedAt: string
+  recommendationReason: string
   overdueDays: number
 }
 
@@ -39,6 +40,7 @@ type FollowupTaskRow = {
   snoozed_until: string | null
   assigned_user_id?: string | null
   resolution_note: string | null
+  recommendation_reason?: string | null
   last_contacted_at: string | null
   last_contact_method: string | null
   assignee_name?: string | null
@@ -67,6 +69,7 @@ type FollowupResponse = {
     suggested_assigned_name: string | null
     last_visit_at: string
     recommended_at: string
+    recommendation_reason: string
     overdue_days: number
   }>
   assignees?: Array<{
@@ -74,10 +77,49 @@ type FollowupResponse = {
     full_name: string
   }>
   templates?: {
-    followup_line?: {
+    next_visit_suggestion_line?: {
       body: string
     }
   }
+}
+
+const followupResponseCache = new Map<string, FollowupResponse>()
+const inflightFollowupRequests = new Map<string, Promise<FollowupResponse>>()
+
+async function fetchFollowupResponse(searchParams: URLSearchParams) {
+  const key = searchParams.toString()
+  const cached = followupResponseCache.get(key)
+  if (cached) {
+    return cached
+  }
+
+  const inflight = inflightFollowupRequests.get(key)
+  if (inflight) {
+    return inflight
+  }
+
+  const request = fetch(`/api/followups?${key}`, {
+    method: 'GET',
+    cache: 'no-store',
+  }).then(async (response) => {
+    const payload = (await response.json().catch(() => null)) as FollowupResponse | { message?: string } | null
+    if (!response.ok || !payload || !('tasks' in payload)) {
+      throw new Error((payload as { message?: string } | null)?.message ?? 'フォローアップ取得に失敗しました。')
+    }
+    const data = payload as FollowupResponse
+    followupResponseCache.set(key, data)
+    return data
+  }).finally(() => {
+    inflightFollowupRequests.delete(key)
+  })
+
+  inflightFollowupRequests.set(key, request)
+  return request
+}
+
+function clearFollowupResponseCache() {
+  followupResponseCache.clear()
+  inflightFollowupRequests.clear()
 }
 
 function toJstDateLabel(value: string) {
@@ -175,18 +217,7 @@ export function RevisitAlertList() {
       if (windowFilter !== 'all') {
         searchParams.set('window_days', windowFilter)
       }
-
-      const response = await fetch(`/api/followups?${searchParams.toString()}`, {
-        method: 'GET',
-        cache: 'no-store',
-      })
-      const payload = (await response.json().catch(() => null)) as FollowupResponse | { message?: string } | null
-      if (!response.ok) {
-        setError((payload as { message?: string } | null)?.message ?? 'フォローアップ取得に失敗しました。')
-        return
-      }
-
-      const data = payload as FollowupResponse
+      const data = await fetchFollowupResponse(searchParams)
       const nextCandidates = (data.candidates ?? []).map((row) => ({
         customerId: row.customer_id,
         customerName: row.customer_name,
@@ -198,16 +229,17 @@ export function RevisitAlertList() {
         suggestedAssignedName: row.suggested_assigned_name,
         lastVisitAt: row.last_visit_at,
         recommendedAt: row.recommended_at,
+        recommendationReason: row.recommendation_reason,
         overdueDays: row.overdue_days,
       }))
 
       setTasks(data.tasks ?? [])
       setCandidates(nextCandidates)
       setAvailableAssignees(data.assignees ?? [])
-      setFollowupTemplateBody(data.templates?.followup_line?.body ?? '')
+      setFollowupTemplateBody(data.templates?.next_visit_suggestion_line?.body ?? '')
       setSelectedIds(nextCandidates.map((row) => row.customerId))
-    } catch {
-      setError('通信エラーが発生しました。')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '通信エラーが発生しました。')
     } finally {
       setLoading(false)
     }
@@ -254,10 +286,12 @@ export function RevisitAlertList() {
   const copyFollowupMessage = async () => {
     const text = selectedRows
       .map((row) =>
-        renderFollowupLineTemplate({
+        renderNextVisitSuggestionLineTemplate({
           customerName: row.customerName,
+          petName: 'ペット',
           lastVisitAt: row.lastVisitAt,
           recommendedAt: row.recommendedAt,
+          recommendationReason: row.recommendationReason,
           templateBody: followupTemplateBody || undefined,
         })
       )
@@ -270,10 +304,12 @@ export function RevisitAlertList() {
     lastVisitAt: string
     recommendedAt: string
   }) => {
-    const text = renderFollowupLineTemplate({
+    const text = renderNextVisitSuggestionLineTemplate({
       customerName: row.customerName,
+      petName: 'ペット',
       lastVisitAt: row.lastVisitAt,
       recommendedAt: row.recommendedAt,
+      recommendationReason: row.recommendationReason,
       templateBody: followupTemplateBody || undefined,
     })
     await copyText(text, `${row.customerName}様向け連絡文をコピーしました。`)
@@ -319,6 +355,7 @@ export function RevisitAlertList() {
         return
       }
       setMessage(`${row.customerName}様をフォローアップキューに追加しました。`)
+      clearFollowupResponseCache()
       await loadData()
     } catch {
       setError('フォローアップ作成中に通信エラーが発生しました。')
@@ -349,6 +386,7 @@ export function RevisitAlertList() {
         return
       }
       setMessage('フォローアップ状態を更新しました。')
+      clearFollowupResponseCache()
       await loadData()
     } catch {
       setError('ステータス更新中に通信エラーが発生しました。')
@@ -375,6 +413,7 @@ export function RevisitAlertList() {
       }
 
       setMessage('担当者を更新しました。')
+      clearFollowupResponseCache()
       await loadData()
     } catch {
       setError('担当者更新中に通信エラーが発生しました。')
@@ -410,6 +449,7 @@ export function RevisitAlertList() {
         return
       }
       setMessage('対応履歴を記録しました。')
+      clearFollowupResponseCache()
       await loadData()
     } catch {
       setError('対応履歴の記録中に通信エラーが発生しました。')
@@ -462,6 +502,7 @@ export function RevisitAlertList() {
     petName: getRelationValue(task.pets, 'name'),
     lastVisitAt: task.last_visit_at,
     recommendedAt: task.recommended_at,
+    recommendation_reason: task.recommendation_reason ?? null,
     overdueDays: Math.max(
       0,
       Math.floor((Date.now() - new Date(task.recommended_at).getTime()) / (24 * 60 * 60 * 1000))
@@ -598,6 +639,7 @@ export function RevisitAlertList() {
                       <th className="px-2 py-2">ペット</th>
                       <th className="px-2 py-2">前回来店</th>
                       <th className="px-2 py-2">推奨来店日</th>
+                      <th className="px-2 py-2">算出根拠</th>
                       <th className="px-2 py-2">超過日数</th>
                       <th className="px-2 py-2">担当引継ぎ</th>
                       <th className="px-2 py-2">電話</th>
@@ -619,6 +661,7 @@ export function RevisitAlertList() {
                         <td className="px-2 py-3">{row.petId ? '引継ぎあり' : '未特定'}</td>
                         <td className="px-2 py-3">{toJstDateLabel(row.lastVisitAt)}</td>
                         <td className="px-2 py-3">{toJstDateLabel(row.recommendedAt)}</td>
+                        <td className="px-2 py-3 text-xs text-gray-500">{row.recommendationReason}</td>
                         <td className="px-2 py-3">{row.overdueDays} 日</td>
                         <td className="px-2 py-3">{row.suggestedAssignedName ?? '未割当'}</td>
                         <td className="px-2 py-3">{row.phoneNumber ?? '未登録'}</td>
@@ -808,10 +851,15 @@ export function RevisitAlertList() {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const body = renderFollowupLineTemplate({
+                                  const body = renderNextVisitSuggestionLineTemplate({
                                     customerName: task.customerName,
+                                    petName: task.petName ?? 'ペット',
                                     lastVisitAt: task.lastVisitAt,
                                     recommendedAt: task.recommendedAt,
+                                    recommendationReason:
+                                      typeof task.recommendation_reason === 'string'
+                                        ? task.recommendation_reason
+                                        : '前回施術内容からおすすめ時期を算出',
                                     templateBody: followupTemplateBody || undefined,
                                   })
                                   void copyText(body, `${task.customerName}様向け連絡文をコピーしました。`)

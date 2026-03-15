@@ -19,6 +19,8 @@ type NotificationSettingsRow = {
   reminder_same_day_send_hour_jst: number
   followup_line_enabled: boolean
   followup_days: number[]
+  next_visit_line_enabled: boolean
+  next_visit_notice_days_before: number
   slot_reoffer_line_enabled: boolean
   monthly_message_limit: number
   monthly_message_limit_with_option: number
@@ -34,6 +36,8 @@ const DEFAULT_SETTINGS: Omit<NotificationSettingsRow, 'store_id'> = {
   reminder_same_day_send_hour_jst: 9,
   followup_line_enabled: true,
   followup_days: [30, 60],
+  next_visit_line_enabled: true,
+  next_visit_notice_days_before: 3,
   slot_reoffer_line_enabled: true,
   monthly_message_limit: 1000,
   monthly_message_limit_with_option: 3000,
@@ -172,7 +176,7 @@ export async function GET() {
   const { data, error } = await guard.supabase
     .from('store_notification_settings')
     .select(
-      'store_id, reminder_line_enabled, reminder_email_enabled, reminder_day_before_enabled, reminder_same_day_enabled, reminder_day_before_send_hour_jst, reminder_same_day_send_hour_jst, followup_line_enabled, followup_days, slot_reoffer_line_enabled, monthly_message_limit, monthly_message_limit_with_option, over_limit_behavior'
+      'store_id, reminder_line_enabled, reminder_email_enabled, reminder_day_before_enabled, reminder_same_day_enabled, reminder_day_before_send_hour_jst, reminder_same_day_send_hour_jst, followup_line_enabled, followup_days, next_visit_line_enabled, next_visit_notice_days_before, slot_reoffer_line_enabled, monthly_message_limit, monthly_message_limit_with_option, over_limit_behavior'
     )
     .eq('store_id', guard.storeId)
     .maybeSingle()
@@ -246,6 +250,13 @@ export async function POST(request: Request) {
     reminder_same_day_send_hour_jst: reminderSameDaySendHour,
     followup_line_enabled: toBoolean(read('followup_line_enabled'), DEFAULT_SETTINGS.followup_line_enabled),
     followup_days: toFollowupDays(read('followup_days'), DEFAULT_SETTINGS.followup_days),
+    next_visit_line_enabled: toBoolean(read('next_visit_line_enabled'), DEFAULT_SETTINGS.next_visit_line_enabled),
+    next_visit_notice_days_before: toInt(
+      read('next_visit_notice_days_before'),
+      0,
+      30,
+      DEFAULT_SETTINGS.next_visit_notice_days_before
+    ),
     slot_reoffer_line_enabled: toBoolean(read('slot_reoffer_line_enabled'), DEFAULT_SETTINGS.slot_reoffer_line_enabled),
     monthly_message_limit: monthlyMessageLimit,
     monthly_message_limit_with_option: monthlyMessageLimitWithOption,
