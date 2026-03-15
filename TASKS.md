@@ -104,3 +104,93 @@ Agents should update this file when tasks are completed.
 Completed tasks should be marked:
 
 [x] Task name
+
+---
+
+# TASKS
+
+## 事前決済
+- ブランチ: `feature/prepayment`
+- 概要: 予約時に事前決済またはカード仮押さえを選択できるようにし、無断キャンセル請求とキャンセルポリシー管理を追加する
+- 影響範囲: API / DB / UI
+- リスク: 予約作成と既存会計フローの二重課金、無断キャンセル時の請求判定、既存予約画面の一覧表示崩れ
+- 完了条件: 予約時の決済方式選択、設定画面でのキャンセルポリシー管理、無断キャンセル請求導線、予約一覧バッジ表示、テスト追加が完了している
+- 進捗:
+  - [x] 既存予約/会計/課金連携の調査反映
+  - [x] DB拡張
+  - [x] API追加
+  - [x] UI実装
+  - [ ] テスト
+  - [ ] PR作成
+
+## LINEの自動マーケ
+- ブランチ: `feature/line-auto-marketing`
+- 概要: 施術日、犬種、毛量から次回来店推奨日を算出し、既存LINE通知基盤で自動送信する
+- 影響範囲: API / DB / UI
+- リスク: 推奨日ロジックの過剰送信、既存 reminder/followup 通知との重複、テンプレート互換性
+- 完了条件: 推奨日計算、送信ジョブ、テンプレート編集、通知ログ記録、テスト追加が完了している
+- 進捗:
+  - [x] 既存LINE/通知テンプレ/cron基盤の調査反映
+  - [x] DB拡張
+  - [x] テンプレート基盤の拡張開始
+  - [x] API追加
+  - [x] UI実装
+  - [ ] テスト
+  - [ ] PR作成
+
+## 写真カルテのAIタグ付け
+- ブランチ: `feature/ai-photo-tags`
+- 概要: 写真カルテにAI解析タグを非同期付与し、カルテ画面で確認と編集ができるようにする
+- 影響範囲: API / DB / UI
+- リスク: 推論遅延、タグ誤判定、写真保存フローとの競合、既存カルテ作成UXの劣化
+- 完了条件: 非同期推論API、タグ保存、カルテ画面表示/編集、失敗時の再試行導線、テスト追加が完了している
+- 進捗:
+  - [x] 既存カルテ/写真保存フローの調査反映
+  - [x] DB拡張
+  - [x] API追加
+  - [x] UI実装
+  - [x] テスト
+  - [ ] PR作成
+
+## AIタグ活用導線の改善
+- ブランチ: `feat/medical-record-ai-tag-usage`
+- 概要: カルテ一覧でAIタグをチップ表示し、タグや解析状態で絞り込めるようにして、詳細を開かなくても要確認カルテを見つけやすくする
+- 影響範囲: UI / 一覧導線 / テスト
+- リスク: 一覧の情報量増加、モバイル表示の圧迫、タグ絞り込み条件の分かりにくさ
+- 完了条件: 一覧のタグ可視化、タグフィルタ、解析状態フィルタ、関連テスト追加が完了している
+- 進捗:
+  - [x] 既存カルテ一覧UIの調査反映
+  - [x] UI実装
+  - [x] テスト
+  - [ ] PR作成
+
+## 顧客LTV分析
+- ブランチ: `feature/customer-ltv`
+- 概要: 既存の visits / payments を集計して年間売上、来店回数、平均単価、オプション利用率、LTVランクを可視化する
+- 影響範囲: API / DB / UI
+- リスク: 売上集計の整合性、会計未確定データの扱い、一覧画面の負荷、店舗スコープ漏れ
+- 完了条件: 集計方針決定、一覧表示、指標計算、LTVランク表示、テスト追加が完了している
+- 進捗:
+  - [x] 既存売上/来店データ構造の調査反映
+  - [x] 集計方式の決定
+  - [x] DB拡張またはView追加
+  - [x] API追加
+  - [x] UI実装
+  - [x] テスト
+  - [ ] PR作成
+
+## Issues
+- `main` から4本の専用ブランチを作成済み。実装は依存順の都合で `feature/prepayment` から着手している
+- 現時点の外部決済連携は店舗サブスク課金向け `KOMOJU` が中心で、予約事前決済向けの顧客課金APIは未実装
+- AI推論基盤は未導入のため、写真カルテAIタグ付けは新規バックエンドAPIとジョブ管理の追加が必要
+- 顧客LTVはまず動的集計Viewで実装。データ量増加時のみ nightly snapshot へ移行する方針
+- 遅いページ群は DB 側 index 不足の可能性が高く、`appointments / medical_records / customers / pets / staffs` に非破壊 index を追加して検証する
+- 2026-03-15 時点の全ページ棚卸しでは、根本原因は「一律 DB 遅延」ではなく、巨大 client component と初期表示で不要なクエリ取得の混在。横展開は `docs/page-performance-audit-2026-03-15.md` の基準で進める
+- 2026-03-15 時点で主要ページには performance 横展開を反映済み。残作業は `inventory / billing / settings/storage` の追加計測と、PR 用の差分整理が中心
+- `settings/storage` は Storage API の `Bad Gateway` を吸収するため、設定画面のみ 5 秒タイムアウト付きの部分フォールバックを採用。厳密な容量判定は upload 側ロジックを維持する
+
+## Dependencies
+- 推奨マージ順: `feature/prepayment` -> `feature/line-auto-marketing` -> `feature/ai-photo-tags` -> `feature/customer-ltv`
+- `feature/line-auto-marketing` は既存 `notification_templates` / `customer_notification_logs` / cron 基盤に依存
+- `feature/ai-photo-tags` は既存 `medical_records` / `medical_record_photos` 基盤に依存
+- `feature/customer-ltv` は既存 `visits` / `visit_menus` / `payments` の整合した集計に依存

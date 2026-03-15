@@ -102,8 +102,9 @@ Next.js の開発元が提供する [Vercel Platform](https://vercel.com/new?utm
 17. ペットごとのQRプロフィール画像を保存する場合は `../supabase_pet_qr_profiles.sql` を適用する。
 18. カルテ写真アップロードを使う場合は `../supabase_storage_pet_photos.sql` を適用し、必要に応じて `SUPABASE_UPLOAD_BUCKET` を設定する（未設定時 `pet-photos`）。
 19. 写真カルテ（施術前後の自動整理、時系列ギャラリー、7日限定共有）を使う場合は `../supabase_medical_record_photos.sql` を適用する。
-20. Supabase Dashboard の `Authentication > Providers > Email` で `Leaked password protection` を **ON** にする（HaveIBeenPwned連携）。
-21. 利用者ごとのUIテーマ切替を使う場合は `../supabase_staffs_ui_theme.sql` を適用する。
+20. 写真カルテAIタグを活用する場合は、カルテ一覧 `/medical-records?tab=list` でタグチップと解析状態から絞り込みできる。運用時は `/api/cron/medical-record-ai-tags` の定期実行を登録する。
+21. Supabase Dashboard の `Authentication > Providers > Email` で `Leaked password protection` を **ON** にする（HaveIBeenPwned連携）。
+22. 利用者ごとのUIテーマ切替を使う場合は `../supabase_staffs_ui_theme.sql` を適用する。
 
 ### Cron登録とは
 
