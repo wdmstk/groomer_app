@@ -26,6 +26,7 @@ export type StoreStorageQuotaState = {
   extraCapacityBytes: number
   customLimitBytes: number | null
   totalLimitBytes: number
+  usageWarning: string | null
 }
 
 const GB = 1024 * 1024 * 1024
@@ -35,6 +36,13 @@ export const PLAN_STORAGE_LIMIT_BYTES: Record<AppPlan, number> = {
   light: 5 * GB,
   standard: 10 * GB,
   pro: 20 * GB,
+}
+
+export function buildStorageQuotaWarningMessage(error: unknown) {
+  const message = error instanceof Error ? error.message.trim() : ''
+  return message
+    ? `使用量の取得に失敗したため、暫定値を表示しています: ${message}`
+    : '使用量の取得に失敗したため、暫定値を表示しています。'
 }
 
 function toSafeInt(value: unknown, fallback = 0) {
@@ -129,16 +137,29 @@ export function formatBytesToJa(bytes: number) {
 export async function fetchStoreStorageQuotaState(params: {
   storeId: string
   bucket: string
+  allowUsageFetchFailure?: boolean
 }) {
   const admin = createAdminSupabaseClient()
-  const [{ data: sub }, { data: policyRow }, objects] = await Promise.all([
+  const objectsPromise = params.allowUsageFetchFailure
+    ? fetchStoreStorageObjects({ storeId: params.storeId, bucket: params.bucket })
+        .then((objects) => ({ objects, usageWarning: null as string | null }))
+        .catch((error: unknown) => ({
+          objects: [] as StorageObjectRow[],
+          usageWarning: buildStorageQuotaWarningMessage(error),
+        }))
+    : fetchStoreStorageObjects({ storeId: params.storeId, bucket: params.bucket }).then((objects) => ({
+        objects,
+        usageWarning: null as string | null,
+      }))
+
+  const [{ data: sub }, { data: policyRow }, { objects, usageWarning }] = await Promise.all([
     admin.from('store_subscriptions').select('plan_code').eq('store_id', params.storeId).maybeSingle(),
     admin
       .from('store_storage_policies')
       .select('store_id, policy, extra_capacity_gb, custom_limit_mb')
       .eq('store_id', params.storeId)
       .maybeSingle(),
-    fetchStoreStorageObjects({ storeId: params.storeId, bucket: params.bucket }),
+    objectsPromise,
   ])
 
   const planCode = normalizePlanCode(sub?.plan_code)
@@ -160,6 +181,7 @@ export async function fetchStoreStorageQuotaState(params: {
     extraCapacityBytes,
     customLimitBytes,
     totalLimitBytes,
+    usageWarning,
   } satisfies StoreStorageQuotaState
 }
 

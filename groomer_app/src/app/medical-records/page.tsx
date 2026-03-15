@@ -20,7 +20,7 @@ import {
   getMedicalRecordAiTagStatusLabel,
   getMedicalRecordAiTagStatusTone,
   type MedicalRecordAiTagStatus,
-} from '@/lib/medical-records/tags'
+} from '@/lib/medical-records/tags.ts'
 
 const MedicalRecordCreateModal = nextDynamic(
   () => import('@/components/medical-records/MedicalRecordCreateModal').then((mod) => mod.MedicalRecordCreateModal)
@@ -592,9 +592,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                     </div>
                     <p>担当: {getRelatedValue(record.staffs, 'full_name')}</p>
                     <p>施術日時: {formatDateTimeJst(record.record_date)}</p>
-                    <p>メニュー: {record.menu}</p>
-                    <p>予約ID: {record.appointment_id ?? 'なし'}</p>
-                    <p>会計ID: {record.payment_id ?? 'なし'}</p>
+                    <p>メニュー: {record.menu ?? '未登録'}</p>
                     <p>状態: {record.status === 'finalized' ? '確定' : '下書き'}</p>
                     <p>写真: {photoCountByRecordId.get(record.id) ?? 0} 枚</p>
                     <p>所要時間: {record.duration ? `${record.duration} 分` : '未登録'}</p>
@@ -659,8 +657,6 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                       <th className="py-2 px-2">担当</th>
                       <th className="py-2 px-2">施術日時</th>
                       <th className="py-2 px-2">メニュー</th>
-                      <th className="py-2 px-2">予約ID</th>
-                      <th className="py-2 px-2">会計ID</th>
                       <th className="py-2 px-2">状態</th>
                       <th className="py-2 px-2">写真</th>
                       <th className="py-2 px-2">所要時間</th>
@@ -685,9 +681,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                         </td>
                         <td className="py-3 px-2">{getRelatedValue(record.staffs, 'full_name')}</td>
                         <td className="py-3 px-2">{formatDateTimeJst(record.record_date)}</td>
-                        <td className="py-3 px-2">{record.menu}</td>
-                        <td className="py-3 px-2">{record.appointment_id ?? 'なし'}</td>
-                        <td className="py-3 px-2">{record.payment_id ?? 'なし'}</td>
+                        <td className="py-3 px-2">{record.menu ?? '未登録'}</td>
                         <td className="py-3 px-2">{record.status === 'finalized' ? '確定' : '下書き'}</td>
                         <td className="py-3 px-2">{photoCountByRecordId.get(record.id) ?? 0} 枚</td>
                         <td className="py-3 px-2">

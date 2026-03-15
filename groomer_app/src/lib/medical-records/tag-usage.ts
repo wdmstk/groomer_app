@@ -1,4 +1,4 @@
-import { getMedicalRecordAiTagStatusLabel, parseMedicalRecordTags } from '@/lib/medical-records/tags'
+import { getMedicalRecordAiTagStatusLabel, parseMedicalRecordTags } from '@/lib/medical-records/tags.ts'
 
 export type MedicalRecordAiFilterStatus = 'all' | 'queued' | 'processing' | 'completed' | 'failed' | 'idle'
 

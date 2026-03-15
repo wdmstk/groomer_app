@@ -35,6 +35,7 @@ export default async function StorageSettingsPage({ searchParams }: PageProps) {
   const quota = await fetchStoreStorageQuotaState({
     storeId: guard.storeId,
     bucket,
+    allowUsageFetchFailure: true,
   })
   const usagePercent = quota.totalLimitBytes > 0 ? Math.min(100, (quota.usageBytes / quota.totalLimitBytes) * 100) : 0
   return (
@@ -54,6 +55,11 @@ export default async function StorageSettingsPage({ searchParams }: PageProps) {
       {params?.error ? (
         <Card className="border border-red-200 bg-red-50">
           <p className="text-sm text-red-700">{params.error}</p>
+        </Card>
+      ) : null}
+      {quota.usageWarning ? (
+        <Card className="border border-amber-200 bg-amber-50">
+          <p className="text-sm text-amber-800">{quota.usageWarning}</p>
         </Card>
       ) : null}
 
