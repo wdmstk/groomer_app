@@ -44,6 +44,15 @@ const DEFAULT_FOLLOWUP_LINE_TEMPLATE = `{{customer_name}}様
 いつもありがとうございます。前回ご来店日（{{last_visit_date}}）から45日が経過したため、ご連絡しました。
 次回のおすすめ来店日は {{recommended_date}} 前後です。ご都合の良い日時をご連絡ください。`
 
+const DEFAULT_NEXT_VISIT_SUGGESTION_LINE_TEMPLATE = `{{customer_name}}様
+{{pet_name}}ちゃんの次回来店のおすすめ時期が近づいています。
+
+前回施術日: {{last_visit_date}}
+おすすめ来店日: {{recommended_date}}
+目安: {{recommendation_reason}}
+
+ご都合の良い日時があれば、そのままご返信ください。`
+
 const DEFAULT_REMINDER_LINE_TEMPLATE = `{{customer_name}}様、明日のトリミング予約のご案内です。
 店舗: {{store_name}}
 日時: {{appointment_range}}
@@ -84,6 +93,10 @@ export function getDefaultSlotReofferLineTemplate() {
 
 export function getDefaultFollowupLineTemplate() {
   return DEFAULT_FOLLOWUP_LINE_TEMPLATE
+}
+
+export function getDefaultNextVisitSuggestionLineTemplate() {
+  return DEFAULT_NEXT_VISIT_SUGGESTION_LINE_TEMPLATE
 }
 
 export function getDefaultReminderLineTemplate() {
@@ -144,6 +157,23 @@ export function renderFollowupLineTemplate(params: {
     customer_name: params.customerName,
     last_visit_date: formatLineDate(params.lastVisitAt),
     recommended_date: formatLineDate(params.recommendedAt),
+  })
+}
+
+export function renderNextVisitSuggestionLineTemplate(params: {
+  customerName: string
+  petName: string
+  lastVisitAt: string
+  recommendedAt: string
+  recommendationReason: string
+  templateBody?: string | null
+}) {
+  return fillTemplate(params.templateBody ?? DEFAULT_NEXT_VISIT_SUGGESTION_LINE_TEMPLATE, {
+    customer_name: params.customerName,
+    pet_name: params.petName,
+    last_visit_date: formatLineDate(params.lastVisitAt),
+    recommended_date: formatLineDate(params.recommendedAt),
+    recommendation_reason: params.recommendationReason,
   })
 }
 

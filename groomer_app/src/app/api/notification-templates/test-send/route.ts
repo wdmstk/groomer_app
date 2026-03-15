@@ -5,12 +5,14 @@ import { sendEmail } from '@/lib/resend'
 import {
   getDefaultFollowupLineTemplate,
   getDefaultHotelStayReportLineTemplate,
+  getDefaultNextVisitSuggestionLineTemplate,
   getDefaultReminderEmailSubjectTemplate,
   getDefaultReminderEmailTemplate,
   getDefaultReminderLineTemplate,
   getDefaultSlotReofferLineTemplate,
   renderFollowupLineTemplate,
   renderHotelStayReportLineTemplate,
+  renderNextVisitSuggestionLineTemplate,
   renderReminderTemplate,
   renderSlotReofferLineTemplate,
 } from '@/lib/notification-templates'
@@ -20,6 +22,7 @@ import { asObjectOrNull } from '@/lib/object-utils'
 type TemplateKey =
   | 'slot_reoffer_line'
   | 'followup_line'
+  | 'next_visit_suggestion_line'
   | 'reminder_line'
   | 'reminder_email'
   | 'hotel_stay_report_line'
@@ -36,6 +39,7 @@ export async function POST(request: Request) {
   const templateKey =
     body?.template_key === 'slot_reoffer_line' ||
     body?.template_key === 'followup_line' ||
+    body?.template_key === 'next_visit_suggestion_line' ||
     body?.template_key === 'reminder_line' ||
     body?.template_key === 'reminder_email' ||
     body?.template_key === 'hotel_stay_report_line'
@@ -54,6 +58,8 @@ export async function POST(request: Request) {
       ? getDefaultSlotReofferLineTemplate()
       : templateKey === 'followup_line'
         ? getDefaultFollowupLineTemplate()
+        : templateKey === 'next_visit_suggestion_line'
+          ? getDefaultNextVisitSuggestionLineTemplate()
         : templateKey === 'reminder_line'
           ? getDefaultReminderLineTemplate()
           : templateKey === 'hotel_stay_report_line'
@@ -63,8 +69,10 @@ export async function POST(request: Request) {
     templateKey === 'reminder_email'
       ? getDefaultReminderEmailSubjectTemplate()
       : templateKey === 'followup_line'
-        ? '再来店フォロー'
-        : templateKey === 'slot_reoffer_line'
+      ? '再来店フォロー'
+      : templateKey === 'next_visit_suggestion_line'
+        ? '次回来店のご提案'
+      : templateKey === 'slot_reoffer_line'
           ? 'キャンセル枠のご案内'
           : templateKey === 'hotel_stay_report_line'
             ? '宿泊レポート'
@@ -101,6 +109,18 @@ export async function POST(request: Request) {
               templateBody,
             }),
           }
+        : templateKey === 'next_visit_suggestion_line'
+          ? {
+              subject: templateSubject,
+              body: renderNextVisitSuggestionLineTemplate({
+                customerName: 'テスト顧客',
+                petName: 'テスト犬',
+                lastVisitAt: '2026-02-01T10:00:00+09:00',
+                recommendedAt: '2026-03-18T10:00:00+09:00',
+                recommendationReason: '犬種: トイプードル / 毛量: 多め / 施術後38日目安',
+                templateBody,
+              }),
+            }
         : templateKey === 'hotel_stay_report_line'
           ? {
               subject: templateSubject,

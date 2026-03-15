@@ -90,6 +90,23 @@ on conflict (store_id, template_key, channel) do nothing;
 insert into public.notification_templates (store_id, template_key, channel, subject, body)
 select
   stores.id,
+  'next_visit_suggestion_line',
+  'line',
+  '次回来店のご提案',
+  '{{customer_name}}様
+{{pet_name}}ちゃんの次回来店のおすすめ時期が近づいています。
+
+前回施術日: {{last_visit_date}}
+おすすめ来店日: {{recommended_date}}
+目安: {{recommendation_reason}}
+
+ご都合の良い日時があれば、そのままご返信ください。'
+from public.stores
+on conflict (store_id, template_key, channel) do nothing;
+
+insert into public.notification_templates (store_id, template_key, channel, subject, body)
+select
+  stores.id,
   'reminder_line',
   'line',
   '前日リマインド',

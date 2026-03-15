@@ -28,7 +28,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
   const { data, error } = await supabase
     .from('pets')
     .select(
-      'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes'
+      'id, name, customer_id, breed, coat_volume, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes'
     )
     .eq('id', pet_id)
     .eq('store_id', storeId)
@@ -48,6 +48,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     name: body.name ?? null,
     customer_id: body.customer_id ?? null,
     breed: body.breed ?? null,
+    coat_volume: body.coat_volume ?? null,
     gender: body.gender ?? null,
     date_of_birth: body.date_of_birth ?? null,
     weight: body.weight ?? null,
@@ -70,7 +71,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
   } = await supabase.auth.getUser()
   const { data: before } = await supabase
     .from('pets')
-    .select('id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes')
+    .select('id, name, customer_id, breed, coat_volume, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes')
     .eq('id', pet_id)
     .eq('store_id', storeId)
     .maybeSingle()
@@ -91,7 +92,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     .eq('id', pet_id)
     .eq('store_id', storeId)
     .select(
-      'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes'
+      'id, name, customer_id, breed, coat_volume, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes'
     )
     .single()
 
@@ -138,7 +139,7 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
   } = await supabase.auth.getUser()
   const { data: before } = await supabase
     .from('pets')
-    .select('id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes')
+    .select('id, name, customer_id, breed, coat_volume, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes')
     .eq('id', pet_id)
     .eq('store_id', storeId)
     .maybeSingle()
@@ -167,7 +168,7 @@ async function deletePet(petId: string) {
   const { supabase, storeId } = await createStoreScopedClient()
   const { data: before } = await supabase
     .from('pets')
-    .select('id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes')
+    .select('id, name, customer_id, breed, coat_volume, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes')
     .eq('id', petId)
     .eq('store_id', storeId)
     .maybeSingle()
@@ -208,6 +209,7 @@ export async function POST(request: Request, context: RouteParams) {
       name: formData.get('name')?.toString() || null,
       customer_id: formData.get('customer_id')?.toString() || null,
       breed: formData.get('breed')?.toString() || null,
+      coat_volume: formData.get('coat_volume')?.toString() || null,
       gender: formData.get('gender')?.toString() || null,
       date_of_birth: formData.get('date_of_birth')?.toString() || null,
       weight: formData.get('weight') ? Number(formData.get('weight')) : null,
@@ -230,7 +232,7 @@ export async function POST(request: Request, context: RouteParams) {
     } = await supabase.auth.getUser()
     const { data: before } = await supabase
       .from('pets')
-      .select('id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes')
+      .select('id, name, customer_id, breed, coat_volume, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes')
       .eq('id', pet_id)
       .eq('store_id', storeId)
       .maybeSingle()
@@ -250,7 +252,7 @@ export async function POST(request: Request, context: RouteParams) {
       .update({ ...payload, store_id: storeId })
       .eq('id', pet_id)
       .eq('store_id', storeId)
-      .select('id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes')
+      .select('id, name, customer_id, breed, coat_volume, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes')
       .single()
 
     if (error) {
