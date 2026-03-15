@@ -46,7 +46,7 @@ AI agents should prioritize unfinished tasks.
 * [x] Design `appointment_groups` or equivalent grouping model
 * [x] Define backward-compatible migration strategy
 * [x] Update booking APIs to support grouped bookings
-* [ ] Update notifications and cancellation flows for grouped bookings
+* [x] Update notifications and cancellation flows for grouped bookings
 * [x] Add DB migrations and tests
 
 ### Supporting Work

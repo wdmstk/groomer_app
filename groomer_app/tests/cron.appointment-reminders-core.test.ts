@@ -76,3 +76,14 @@ test('makeReminderDedupeKey includes timing and channel', () => {
   })
   assert.equal(key, 'reminder:same_day:line:apt-1:2026-03-12')
 })
+
+test('makeReminderDedupeKey prefers group id when present', () => {
+  const key = makeReminderDedupeKey({
+    timing: 'day_before',
+    channel: 'email',
+    appointmentId: 'apt-1',
+    groupId: 'group-1',
+    appointmentDateJst: '2026-03-12',
+  })
+  assert.equal(key, 'reminder:day_before:email:group-1:2026-03-12')
+})

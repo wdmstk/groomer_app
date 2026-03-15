@@ -19,6 +19,7 @@ import {
 
 type AppointmentRow = {
   id: string
+  group_id: string | null
   start_time: string
   menu: string
   customer_id: string | null
@@ -150,7 +151,7 @@ export async function runAppointmentRemindersJob() {
 
   const { data: upcomingAppointments, error: appointmentsError } = await admin
     .from('appointments')
-    .select('id, start_time, menu, customer_id, store_id')
+    .select('id, group_id, start_time, menu, customer_id, store_id')
     .gte('start_time', startOfWindow)
     .lte('start_time', endOfWindow)
     .eq('status', '予約済')
@@ -215,12 +216,14 @@ export async function runAppointmentRemindersJob() {
         channel: 'line',
         appointmentId: appointment.id,
         appointmentDateJst: appointment.appointmentDateJst,
+        groupId: appointment.group_id,
       }),
       makeReminderDedupeKey({
         timing: appointment.timing,
         channel: 'email',
         appointmentId: appointment.id,
         appointmentDateJst: appointment.appointmentDateJst,
+        groupId: appointment.group_id,
       }),
     ])
     const { data: existingLogs } = await admin
@@ -299,6 +302,7 @@ export async function runAppointmentRemindersJob() {
         channel: 'line',
         appointmentId: appointment.id,
         appointmentDateJst: appointment.appointmentDateJst,
+        groupId: appointment.group_id,
       })
       if (existingDedupeKeys.has(lineDedupeKey)) {
         skipped += 1
@@ -386,6 +390,7 @@ export async function runAppointmentRemindersJob() {
         channel: 'email',
         appointmentId: appointment.id,
         appointmentDateJst: appointment.appointmentDateJst,
+        groupId: appointment.group_id,
       })
       if (existingDedupeKeys.has(emailDedupeKey)) {
         skipped += 1

@@ -127,6 +127,7 @@ export function makeReminderDedupeKey(params: {
   channel: ReminderChannel
   appointmentId: string
   appointmentDateJst: string
+  groupId?: string | null
 }) {
-  return `reminder:${params.timing}:${params.channel}:${params.appointmentId}:${params.appointmentDateJst}`
+  return `reminder:${params.timing}:${params.channel}:${params.groupId ?? params.appointmentId}:${params.appointmentDateJst}`
 }
