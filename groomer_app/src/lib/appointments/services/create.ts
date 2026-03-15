@@ -2,6 +2,10 @@ import { estimateDurationMinutes } from '@/lib/appointments/duration'
 import { ensureAppointmentGroupId } from '@/lib/appointments/groups'
 import { validateAppointmentConflict } from '@/lib/appointments/conflict'
 import {
+  getInitialReservationPaymentState,
+  normalizeReservationPaymentMethod,
+} from '@/lib/appointments/reservation-payment'
+import {
   addMinutesToIso,
   AppointmentServiceError,
   type AppointmentSupabaseClient,
@@ -30,6 +34,7 @@ export function normalizeCreateAppointmentInput(formData: FormData): Appointment
     groupId: toOptionalString(formData.get('group_id')),
     status: toOptionalString(formData.get('status')) ?? '予約済',
     notes: toOptionalString(formData.get('notes')),
+    reservationPaymentMethod: toOptionalString(formData.get('reservation_payment_method')) ?? 'none',
   }
 }
 
@@ -75,6 +80,8 @@ export async function createAppointment(params: {
     existingGroupId: input.groupId ?? null,
     source: 'manual',
   })
+  const reservationPaymentMethod = normalizeReservationPaymentMethod(input.reservationPaymentMethod)
+  const reservationPaymentState = getInitialReservationPaymentState(reservationPaymentMethod)
 
   const payload = {
     store_id: storeId,
@@ -88,6 +95,10 @@ export async function createAppointment(params: {
     duration: estimatedDuration,
     status: input.status ?? '予約済',
     notes: input.notes,
+    reservation_payment_method: reservationPaymentMethod,
+    reservation_payment_status: reservationPaymentState.reservationPaymentStatus,
+    reservation_payment_paid_at: reservationPaymentState.reservationPaymentPaidAt,
+    reservation_payment_authorized_at: reservationPaymentState.reservationPaymentAuthorizedAt,
   }
 
   const { data: appointment, error } = await supabase

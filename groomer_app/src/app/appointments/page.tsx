@@ -1,10 +1,24 @@
 import Link from 'next/link'
+import nextDynamic from 'next/dynamic'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { createStoreScopedClient } from '@/lib/supabase/store'
-import { AppointmentCalendar } from '@/components/appointments/AppointmentCalendar'
 import { ReserveUrlCopyButton } from '@/components/ui/ReserveUrlCopyButton'
-import { AppointmentCreateModal } from '@/components/appointments/AppointmentCreateModal'
+import {
+  DEFAULT_RESERVATION_PAYMENT_SETTINGS,
+  getReservationPaymentBadge,
+} from '@/lib/appointments/reservation-payment'
+
+const AppointmentCalendar = nextDynamic(
+  () => import('@/components/appointments/AppointmentCalendar').then((mod) => mod.AppointmentCalendar),
+  {
+    loading: () => <p className="text-sm text-gray-500">カレンダーを読み込み中...</p>,
+  }
+)
+
+const AppointmentCreateModal = nextDynamic(
+  () => import('@/components/appointments/AppointmentCreateModal').then((mod) => mod.AppointmentCreateModal)
+)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -195,47 +209,55 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
   const reofferNote = resolvedSearchParams?.reoffer_note
   const reofferId = resolvedSearchParams?.reoffer_id
   const modalCloseRedirect = `/appointments?tab=${activeTab}`
+  const needsFormSupportData =
+    isCreateModalOpen || Boolean(editId) || Boolean(followupFromId) || Boolean(reofferCustomerId)
   const defaultDateTimeRange = getDefaultDateTimeRangeJst()
   const { supabase, storeId } = await createStoreScopedClient()
 
   const { data: appointments } = await supabase
     .from('appointments')
     .select(
-      'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, checked_in_at, in_service_at, payment_waiting_at, completed_at, customers(full_name), pets(name), staffs(full_name)'
+      'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, checked_in_at, in_service_at, payment_waiting_at, completed_at, reservation_payment_method, reservation_payment_status, customers(full_name), pets(name), staffs(full_name)'
     )
     .eq('store_id', storeId)
     .order('start_time', { ascending: false })
 
-  const { data: customers } = await supabase
-    .from('customers')
-    .select('id, full_name')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const { data: customers } = needsFormSupportData
+    ? await supabase
+        .from('customers')
+        .select('id, full_name')
+        .eq('store_id', storeId)
+        .order('created_at', { ascending: false })
+    : { data: [] }
 
-  const { data: pets } = await supabase
-    .from('pets')
-    .select('id, name, customer_id')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const { data: pets } = needsFormSupportData
+    ? await supabase
+        .from('pets')
+        .select('id, name, customer_id')
+        .eq('store_id', storeId)
+        .order('created_at', { ascending: false })
+    : { data: [] }
 
-  const { data: staffs } = await supabase
-    .from('staffs')
-    .select('id, full_name')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const { data: staffs } = needsFormSupportData
+    ? await supabase
+        .from('staffs')
+        .select('id, full_name')
+        .eq('store_id', storeId)
+        .order('created_at', { ascending: false })
+    : { data: [] }
 
-  const { data: editAppointment } = editId
+  const { data: editAppointment } = needsFormSupportData && editId
     ? await supabase
         .from('appointments')
         .select(
-          'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes'
+          'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, reservation_payment_method'
         )
         .eq('id', editId)
         .eq('store_id', storeId)
         .single()
     : { data: null }
 
-  const { data: menuSelections } = editId
+  const { data: menuSelections } = needsFormSupportData && editId
     ? await supabase
         .from('appointment_menus')
         .select('menu_id')
@@ -243,12 +265,23 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
         .eq('store_id', storeId)
     : { data: [] }
 
-  const { data: serviceMenus } = await supabase
-    .from('service_menus')
-    .select('id, name, price, duration, tax_rate, tax_included, is_active')
-    .eq('store_id', storeId)
-    .order('display_order', { ascending: true })
-    .order('created_at', { ascending: false })
+  const { data: serviceMenus } = needsFormSupportData
+    ? await supabase
+        .from('service_menus')
+        .select('id, name, price, duration, tax_rate, tax_included, is_active')
+        .eq('store_id', storeId)
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false })
+    : { data: [] }
+  const { data: reservationPaymentSettingsRow } = needsFormSupportData
+    ? await supabase
+        .from('store_reservation_payment_settings')
+        .select(
+          'prepayment_enabled, card_hold_enabled, cancellation_day_before_percent, cancellation_same_day_percent, cancellation_no_show_percent, no_show_charge_mode'
+        )
+        .eq('store_id', storeId)
+        .maybeSingle()
+    : { data: null }
 
   const appointmentList = appointments ?? []
   const customerNoShowCounts = appointmentList.reduce(
@@ -264,12 +297,16 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
   const petOptions: PetOption[] = pets ?? []
   const staffOptions: StaffOption[] = staffs ?? []
   const menuOptions: ServiceMenuOption[] = serviceMenus ?? []
+  const reservationPaymentSettings = {
+    ...DEFAULT_RESERVATION_PAYMENT_SETTINGS,
+    ...reservationPaymentSettingsRow,
+  }
   const defaultMenuIds = ((menuSelections ?? []) as { menu_id: string }[])
     .map((menu) => menu.menu_id?.trim())
     .filter(Boolean) as string[]
   const appointmentIds = appointmentList.map((appointment) => appointment.id)
   const { data: appointmentMenuRows } =
-    appointmentIds.length > 0
+    needsFormSupportData && appointmentIds.length > 0
       ? await supabase
           .from('appointment_menus')
           .select('appointment_id, menu_id')
@@ -304,6 +341,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
     endTime: appointment.end_time,
     menu: appointment.menu,
     status: appointment.status ?? '予約済',
+    reservation_payment_method: appointment.reservation_payment_method ?? 'none',
   }))
 
   const followupSource =
@@ -418,6 +456,20 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                     <p>所要時間: {appointment.duration} 分</p>
                     <p>ステータス: {appointment.status ?? '予約済'}</p>
                     {(() => {
+                      const badge = getReservationPaymentBadge({
+                        method: appointment.reservation_payment_method,
+                        status: appointment.reservation_payment_status,
+                      })
+                      if (!badge) return null
+                      return (
+                        <p>
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                        </p>
+                      )
+                    })()}
+                    {(() => {
                       const transition = getStatusTransitionTime(appointment.status, appointment)
                       if (!transition?.value) return null
                       return (
@@ -462,6 +514,18 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                           次回予約
                         </Link>
                       ) : null}
+                      {appointment.status === '無断キャンセル' &&
+                      appointment.reservation_payment_method !== 'none' ? (
+                        <form
+                          action={`/api/appointments/${appointment.id}/reservation-payment/claim`}
+                          method="post"
+                        >
+                          <input type="hidden" name="redirect_to" value="/appointments?tab=list" />
+                          <Button type="submit" className="bg-amber-600 hover:bg-amber-700">
+                            {reservationPaymentSettings.no_show_charge_mode === 'auto' ? '請求状態を反映' : '無断キャンセル請求'}
+                          </Button>
+                        </form>
+                      ) : null}
                       <form action={`/api/appointments/${appointment.id}`} method="post">
                         <input type="hidden" name="_method" value="delete" />
                         <Button type="submit" className="bg-red-500 hover:bg-red-600">
@@ -503,6 +567,18 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                         <td className="py-3 px-2">{appointment.duration} 分</td>
                         <td className="py-3 px-2">
                           <p>{appointment.status ?? '予約済'}</p>
+                          {(() => {
+                            const badge = getReservationPaymentBadge({
+                              method: appointment.reservation_payment_method,
+                              status: appointment.reservation_payment_status,
+                            })
+                            if (!badge) return null
+                            return (
+                              <p className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${badge.className}`}>
+                                {badge.label}
+                              </p>
+                            )
+                          })()}
                           {(() => {
                             const transition = getStatusTransitionTime(appointment.status, appointment)
                             if (!transition?.value) return null
@@ -549,6 +625,18 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                               >
                                 次回予約
                               </Link>
+                            ) : null}
+                            {appointment.status === '無断キャンセル' &&
+                            appointment.reservation_payment_method !== 'none' ? (
+                              <form
+                                action={`/api/appointments/${appointment.id}/reservation-payment/claim`}
+                                method="post"
+                              >
+                                <input type="hidden" name="redirect_to" value="/appointments?tab=list" />
+                                <Button type="submit" className="bg-amber-600 hover:bg-amber-700">
+                                  {reservationPaymentSettings.no_show_charge_mode === 'auto' ? '請求状態を反映' : '無断キャンセル請求'}
+                                </Button>
+                              </form>
                             ) : null}
                             <form action={`/api/appointments/${appointment.id}`} method="post">
                               <input type="hidden" name="_method" value="delete" />
@@ -607,6 +695,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
           recommendationMessage={!editAppointment ? followupRecommendationMessage : undefined}
           followupTaskId={!editAppointment ? followupTaskId : undefined}
           reofferId={!editAppointment ? reofferId : undefined}
+          reservationPaymentSettings={reservationPaymentSettings}
         />
       ) : null}
     </section>

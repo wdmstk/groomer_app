@@ -56,6 +56,16 @@ type EditAppointment = {
   duration: number | null
   status: string | null
   notes: string | null
+  reservation_payment_method?: string | null
+}
+
+type ReservationPaymentSettings = {
+  prepayment_enabled: boolean
+  card_hold_enabled: boolean
+  cancellation_day_before_percent: number
+  cancellation_same_day_percent: number
+  cancellation_no_show_percent: number
+  no_show_charge_mode: 'manual' | 'auto'
 }
 
 type AppointmentCreateModalProps = {
@@ -78,6 +88,7 @@ type AppointmentCreateModalProps = {
     status?: string
     notes?: string
   }
+  reservationPaymentSettings: ReservationPaymentSettings
   recommendationMessage?: string
   customerNoShowCounts?: Record<string, number>
   followupTaskId?: string
