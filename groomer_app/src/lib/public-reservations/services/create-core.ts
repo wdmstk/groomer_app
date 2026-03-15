@@ -268,6 +268,8 @@ export async function createPublicReservationCore(params: {
       ? '予約を確定しました。ご来店をお待ちしています。'
       : '予約申請を受け付けました。店舗確認後に確定となります。',
     appointmentId,
+    customerId,
+    petId,
     status: appointmentStatus,
     assignedStaffId: staffId,
     cancelUrl: `${requestOrigin}/reserve/cancel?token=${encodeURIComponent(cancelToken)}`,

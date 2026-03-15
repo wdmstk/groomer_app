@@ -115,6 +115,16 @@ type QrPayload = {
   pet_id?: string
 }
 
+type CreatedAppointmentSummary = {
+  id: string
+  customerId: string
+  petId: string
+  customerName: string
+  petName: string
+  startTime: string
+  menuSummary: string
+}
+
 export function AppointmentForm({
   editAppointment,
   customerOptions,
@@ -164,6 +174,8 @@ export function AppointmentForm({
   const [fieldChangeCount, setFieldChangeCount] = useState(0)
   const [submitError, setSubmitError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [submitMessage, setSubmitMessage] = useState('')
+  const [createdAppointments, setCreatedAppointments] = useState<CreatedAppointmentSummary[]>([])
   const [qrMessage, setQrMessage] = useState('')
   const [qrError, setQrError] = useState('')
   const [qrDecoding, setQrDecoding] = useState(false)
@@ -206,6 +218,7 @@ export function AppointmentForm({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setSubmitError('')
+    setSubmitMessage('')
     setSubmitting(true)
     sendFormMetric()
 
@@ -214,6 +227,9 @@ export function AppointmentForm({
       const response = await fetch(formAction, {
         method: 'POST',
         body: formData,
+        headers: {
+          accept: 'application/json',
+        },
       })
 
       if (response.redirected) {
@@ -224,6 +240,14 @@ export function AppointmentForm({
       const payload = (await response.json().catch(() => null)) as
         | {
             message?: string
+            id?: string
+            appointment?: {
+              id?: string
+              customer_id?: string | null
+              pet_id?: string | null
+              start_time?: string | null
+              menu?: string | null
+            } | null
             conflict?: {
               startTime?: string | null
               endTime?: string | null
@@ -249,12 +273,44 @@ export function AppointmentForm({
         return
       }
 
-      window.location.href = '/appointments'
+      if (editAppointment) {
+        window.location.href = '/appointments'
+        return
+      }
+
+      const createdAppointment = payload?.appointment
+      const createdCustomerId = createdAppointment?.customer_id ?? selectedCustomerId
+      const createdPetId = createdAppointment?.pet_id ?? selectedPetId
+      const customerName =
+        customerList.find((customer) => customer.id === createdCustomerId)?.full_name ?? '顧客'
+      const petName = petList.find((pet) => pet.id === createdPetId)?.name ?? 'ペット'
+      setCreatedAppointments((prev) => [
+        {
+          id: createdAppointment?.id ?? payload?.id ?? String(Date.now()),
+          customerId: createdCustomerId,
+          petId: createdPetId,
+          customerName,
+          petName,
+          startTime: createdAppointment?.start_time ?? new Date(`${startTime}:00+09:00`).toISOString(),
+          menuSummary: createdAppointment?.menu ?? menuOptions.filter((menu) => selectedMenuIds.includes(menu.id)).map((menu) => menu.name).join(' / '),
+        },
+        ...prev,
+      ])
+      setSubmitMessage('予約を保存しました。同じ顧客の別のペット予約を続けて作成できます。')
     } catch {
       setSubmitError('通信エラーが発生しました。時間をおいて再度お試しください。')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleContinueWithAnotherPet = () => {
+    setSelectedPetId('')
+    setQuickPetName('')
+    setQuickPetBreed('')
+    setCopyMessage('')
+    setSubmitError('')
+    setSubmitMessage('別のペットを選んで続けて予約できます。')
   }
 
   const handleQrImageScan = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -716,6 +772,37 @@ export function AppointmentForm({
       {submitError ? (
         <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {submitError}
+        </div>
+      ) : null}
+      {submitMessage ? (
+        <div className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          {submitMessage}
+        </div>
+      ) : null}
+      {createdAppointments.length > 0 ? (
+        <div className="space-y-3 rounded border border-sky-200 bg-sky-50 p-3">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="font-semibold text-sky-900">家族単位の作成確認</p>
+              <p className="text-xs text-sky-700">このセッションで作成した予約です。</p>
+            </div>
+            {!editAppointment ? (
+              <Button type="button" onClick={handleContinueWithAnotherPet} className="bg-sky-700 hover:bg-sky-800">
+                別のペットを続けて予約
+              </Button>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            {createdAppointments.map((appointment) => (
+              <div key={appointment.id} className="rounded border border-sky-100 bg-white px-3 py-2 text-sm text-sky-950">
+                <p className="font-semibold">
+                  {appointment.customerName} / {appointment.petName}
+                </p>
+                <p>開始: {formatDateTimeJst(appointment.startTime)}</p>
+                <p>メニュー: {appointment.menuSummary || '未設定'}</p>
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
       <div className="flex items-center gap-2">

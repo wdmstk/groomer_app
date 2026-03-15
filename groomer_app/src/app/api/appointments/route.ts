@@ -8,6 +8,11 @@ import { toOptionalString } from '@/lib/followups/shared'
 const appointmentAuditSelect =
   'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes'
 
+function requestPrefersJson(request: Request) {
+  const accept = request.headers.get('accept') ?? ''
+  return accept.includes('application/json')
+}
+
 export async function GET() {
   const { supabase, storeId } = await createStoreScopedClient()
   const { data, error } = await supabase
@@ -116,6 +121,13 @@ export async function POST(request: Request) {
         payload: {
           created_appointment_id: created.id,
         },
+      })
+    }
+
+    if (requestPrefersJson(request)) {
+      return NextResponse.json({
+        id: created.id,
+        appointment: createdAppointment ?? created,
       })
     }
 
