@@ -9,6 +9,52 @@ AI agents should prioritize unfinished tasks.
 
 # Current Tasks
 
+## Differentiation Features
+
+### Phase 1: Photo Medical Record UX
+
+* [x] Create branch `feat/medical-record-fast-flow`
+* [x] Add appointment/payment driven prefill into photo medical record flow
+* [x] Replace generic photo upload entry with `施術前を撮る` / `施術後を撮る`
+* [x] Optimize photo medical record modal for mobile-first operation
+* [x] Show share actions immediately after save
+* [x] Add one-tap LINE send when customer has `line_id`
+* [ ] Add tests for photo upload/share flow where feasible
+
+### Phase 2: Deep LINE Integration
+
+* [ ] Create branch `feat/medical-record-line-share`
+* [x] Add medical record LINE share sending path using existing `line_id`
+* [x] Store notification logs for medical record share sends
+* [ ] Create branch `feat/line-webhook-linking`
+* [ ] Add LINE webhook endpoint
+* [ ] Verify LINE signature and persist webhook events
+* [ ] Design or implement customer auto-link flow from LINE events
+* [ ] Update customer screens to show LINE linked/unlinked state clearly
+
+### Phase 3: Multi-pet Booking UX
+
+* [ ] Create branch `feat/multi-pet-booking-ui`
+* [ ] Add sequential family booking flow for same customer
+* [ ] Add `別のペットを続けて予約` action after first booking
+* [ ] Extend public reservation flow to add another pet in one session
+* [ ] Add family-level booking confirmation UI
+
+### Phase 4: Multi-pet Booking Data Model
+
+* [ ] Create branch `feat/multi-pet-booking-group-model`
+* [ ] Design `appointment_groups` or equivalent grouping model
+* [ ] Define backward-compatible migration strategy
+* [ ] Update booking APIs to support grouped bookings
+* [ ] Update notifications and cancellation flows for grouped bookings
+* [ ] Add DB migrations and tests
+
+### Supporting Work
+
+* [x] Keep `docs/differentiation-feature-roadmap.md` updated as implementation decisions evolve
+* [ ] Run lint/tests for each feature branch
+* [ ] Update README or runbooks when user-facing behavior changes
+
 ## Core Features
 
 * [ ] Implement CSV file parser

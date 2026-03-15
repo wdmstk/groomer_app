@@ -15,6 +15,11 @@ type RouteParams = {
   }>
 }
 
+function requestPrefersJson(request: Request) {
+  const accept = request.headers.get('accept') ?? ''
+  return accept.includes('application/json')
+}
+
 const medicalRecordAuditSelect =
   'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes'
 
@@ -191,6 +196,9 @@ export async function POST(request: Request, context: RouteParams) {
         before,
         after: updated,
       })
+      if (requestPrefersJson(request)) {
+        return NextResponse.json(updated)
+      }
       return NextResponse.redirect(new URL('/medical-records', request.url))
     } catch (error) {
       if (error instanceof MedicalRecordServiceError) {

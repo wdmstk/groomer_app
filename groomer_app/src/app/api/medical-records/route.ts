@@ -7,6 +7,11 @@ import {
 } from '@/lib/medical-records/services/create'
 import { MedicalRecordServiceError } from '@/lib/medical-records/services/shared'
 
+function requestPrefersJson(request: Request) {
+  const accept = request.headers.get('accept') ?? ''
+  return accept.includes('application/json')
+}
+
 export async function GET() {
   const { supabase, storeId } = await createStoreScopedClient()
   const { data, error } = await supabase
@@ -55,6 +60,12 @@ export async function POST(request: Request) {
       action: 'created',
       after: createdRecord ?? created,
     })
+    if (requestPrefersJson(request)) {
+      return NextResponse.json({
+        id: created.id,
+        record: createdRecord ?? created,
+      })
+    }
     return NextResponse.redirect(new URL('/medical-records', request.url))
   } catch (error) {
     if (error instanceof MedicalRecordServiceError) {
