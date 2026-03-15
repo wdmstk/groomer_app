@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { insertAuditLogBestEffort } from '@/lib/audit-logs'
 import { createStoreScopedClient } from '@/lib/supabase/store'
+import { enqueueMedicalRecordAiTagJob } from '@/lib/medical-records/ai-tags'
 import { deleteMedicalRecord } from '@/lib/medical-records/services/delete'
 import { MedicalRecordServiceError } from '@/lib/medical-records/services/shared'
 import {
@@ -21,7 +22,7 @@ function requestPrefersJson(request: Request) {
 }
 
 const medicalRecordAuditSelect =
-  'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes'
+  'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes, tags, ai_tag_status, ai_tag_error, ai_tag_last_analyzed_at, ai_tag_source'
 
 export async function GET(_request: Request, { params }: RouteParams) {
   const { record_id } = await params
@@ -29,7 +30,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
   const { data, error } = await supabase
     .from('medical_records')
     .select(
-      'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes'
+      'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes, tags, ai_tag_status, ai_tag_error, ai_tag_last_analyzed_at, ai_tag_source'
     )
     .eq('id', record_id)
     .eq('store_id', storeId)
@@ -64,6 +65,15 @@ export async function PUT(request: Request, { params }: RouteParams) {
       recordId: record_id,
       input,
     })
+    if ((input.photoDrafts?.length ?? 0) > 0) {
+      await enqueueMedicalRecordAiTagJob({
+        supabase,
+        storeId,
+        medicalRecordId: record_id,
+        requestedByUserId: user?.id ?? null,
+        source: 'record_saved',
+      })
+    }
     await insertAuditLogBestEffort({
       supabase,
       storeId,
@@ -186,6 +196,15 @@ export async function POST(request: Request, context: RouteParams) {
         recordId: record_id,
         input,
       })
+      if ((input.photoDrafts?.length ?? 0) > 0) {
+        await enqueueMedicalRecordAiTagJob({
+          supabase,
+          storeId,
+          medicalRecordId: record_id,
+          requestedByUserId: user?.id ?? null,
+          source: 'record_saved',
+        })
+      }
       await insertAuditLogBestEffort({
         supabase,
         storeId,

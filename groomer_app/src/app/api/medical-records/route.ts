@@ -5,6 +5,7 @@ import {
   createMedicalRecord,
   normalizeCreateMedicalRecordInput,
 } from '@/lib/medical-records/services/create'
+import { enqueueMedicalRecordAiTagJob } from '@/lib/medical-records/ai-tags'
 import { MedicalRecordServiceError } from '@/lib/medical-records/services/shared'
 
 function requestPrefersJson(request: Request) {
@@ -17,7 +18,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('medical_records')
     .select(
-      'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes, pets(name), staffs(full_name)'
+      'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes, tags, ai_tag_status, ai_tag_error, ai_tag_last_analyzed_at, ai_tag_source, pets(name), staffs(full_name)'
     )
     .eq('store_id', storeId)
     .order('record_date', { ascending: false })
@@ -46,11 +47,20 @@ export async function POST(request: Request) {
     const { data: createdRecord } = await supabase
       .from('medical_records')
       .select(
-        'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes'
+        'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes, tags, ai_tag_status, ai_tag_error, ai_tag_last_analyzed_at, ai_tag_source'
       )
       .eq('id', created.id)
       .eq('store_id', storeId)
       .maybeSingle()
+    if ((input.photoDrafts?.length ?? 0) > 0) {
+      await enqueueMedicalRecordAiTagJob({
+        supabase,
+        storeId,
+        medicalRecordId: created.id,
+        requestedByUserId: user?.id ?? null,
+        source: 'record_saved',
+      })
+    }
     await insertAuditLogBestEffort({
       supabase,
       storeId,

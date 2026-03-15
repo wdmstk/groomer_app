@@ -7,6 +7,7 @@ import {
   MedicalRecordServiceError,
   type MedicalRecordSupabaseClient,
   type MedicalRecordWriteInput,
+  normalizeMedicalRecordTagsInput,
   normalizeStatus,
   removeStorageObjects,
   resolvePaymentLink,
@@ -57,6 +58,11 @@ export function normalizeUpdateMedicalRecordJsonInput(body: unknown): UpdateMedi
     skinCondition: toOptionalString(normalized?.skin_condition),
     behaviorNotes: toOptionalString(normalized?.behavior_notes),
     cautionNotes: toOptionalString(normalized?.caution_notes),
+    tags: normalizeMedicalRecordTagsInput(
+      Array.isArray(normalized?.tags)
+        ? (normalized?.tags as string[])
+        : toOptionalString(normalized?.tags)
+    ),
     photoDrafts: parseMedicalRecordPhotoDrafts(toOptionalString(normalized?.photo_payload)),
   }
 }
@@ -86,6 +92,7 @@ export function normalizeUpdateMedicalRecordFormInput(formData: FormData): Updat
     skinCondition: toOptionalFormString(formData.get('skin_condition')),
     behaviorNotes: toOptionalFormString(formData.get('behavior_notes')),
     cautionNotes: toOptionalFormString(formData.get('caution_notes')),
+    tags: normalizeMedicalRecordTagsInput(formData.get('tags')?.toString() ?? null),
     photoDrafts: parseMedicalRecordPhotoDrafts(toOptionalFormString(formData.get('photo_payload'))),
   }
 }
@@ -162,6 +169,7 @@ export async function updateMedicalRecord(params: {
     behavior_notes: input.behaviorNotes,
     photos: input.photoDrafts.map((photo) => photo.storagePath),
     caution_notes: input.cautionNotes,
+    tags: input.tags,
     store_id: storeId,
   }
 
@@ -171,7 +179,7 @@ export async function updateMedicalRecord(params: {
     .eq('id', recordId)
     .eq('store_id', storeId)
     .select(
-      'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes'
+      'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes, tags, ai_tag_status, ai_tag_error, ai_tag_last_analyzed_at, ai_tag_source'
     )
     .single()
 
