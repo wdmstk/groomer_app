@@ -1,14 +1,18 @@
 import Link from 'next/link'
+import nextDynamic from 'next/dynamic'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { createStoreScopedClient } from '@/lib/supabase/store'
-import { MedicalRecordCreateModal } from '@/components/medical-records/MedicalRecordCreateModal'
 import { MedicalRecordShareButton } from '@/components/medical-records/MedicalRecordShareButton'
 import {
   createSignedPhotoUrlMap,
   type MedicalRecordPhotoDraft,
   type MedicalRecordPhotoType,
 } from '@/lib/medical-records/photos'
+
+const MedicalRecordCreateModal = nextDynamic(
+  () => import('@/components/medical-records/MedicalRecordCreateModal').then((mod) => mod.MedicalRecordCreateModal)
+)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -65,6 +69,10 @@ type EditRecord = {
   payment_id: string | null
   status: 'draft' | 'finalized' | null
   finalized_at: string | null
+  ai_tag_status: string | null
+  ai_tag_error: string | null
+  ai_tag_last_analyzed_at: string | null
+  ai_tag_source: string | null
   record_date: string | null
   menu: string | null
   duration: number | null
@@ -73,6 +81,7 @@ type EditRecord = {
   behavior_notes: string | null
   photos: string[] | null
   caution_notes: string | null
+  tags: string[] | null
 }
 
 type RecordPhotoRow = {
@@ -83,6 +92,10 @@ type RecordPhotoRow = {
   comment: string | null
   sort_order: number
   taken_at: string | null
+}
+
+type RecordPhotoCountRow = {
+  medical_record_id: string
 }
 
 type GalleryPhotoRow = {
@@ -150,45 +163,59 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
   const editId = resolvedSearchParams?.edit
   const prefillAppointmentId = resolvedSearchParams?.appointment_id ?? ''
   const prefillPaymentId = resolvedSearchParams?.payment_id ?? ''
+  const needsFormSupportData =
+    activeTab === 'pending' || isCreateModalOpen || Boolean(editId) || Boolean(prefillAppointmentId) || Boolean(prefillPaymentId)
   const { supabase, storeId } = await createStoreScopedClient()
 
   const { data: medicalRecords } = await supabase
     .from('medical_records')
     .select(
-      'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes, pets(name), staffs(full_name)'
+      'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, ai_tag_status, ai_tag_error, ai_tag_last_analyzed_at, ai_tag_source, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes, tags, pets(name), staffs(full_name)'
     )
     .eq('store_id', storeId)
     .order('record_date', { ascending: false })
 
-  const { data: pets } = await supabase
-    .from('pets')
-    .select('id, name')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const { data: pets } =
+    needsFormSupportData
+      ? await supabase
+          .from('pets')
+          .select('id, name')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      : { data: [] }
 
-  const { data: staffs } = await supabase
-    .from('staffs')
-    .select('id, full_name')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const { data: staffs } =
+    needsFormSupportData
+      ? await supabase
+          .from('staffs')
+          .select('id, full_name')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      : { data: [] }
 
-  const { data: appointments } = await supabase
-    .from('appointments')
-    .select('id, customer_id, pet_id, staff_id, start_time, menu, duration, customers(full_name), pets(name), staffs(full_name)')
-    .eq('store_id', storeId)
-    .order('start_time', { ascending: false })
+  const { data: appointments } =
+    needsFormSupportData
+      ? await supabase
+          .from('appointments')
+          .select('id, customer_id, pet_id, staff_id, start_time, menu, duration, customers(full_name), pets(name), staffs(full_name)')
+          .eq('store_id', storeId)
+          .order('start_time', { ascending: false })
+      : { data: [] }
 
-  const { data: payments } = await supabase
-    .from('payments')
-    .select('id, appointment_id, total_amount, paid_at, method, created_at')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const { data: payments } =
+    needsFormSupportData
+      ? await supabase
+          .from('payments')
+          .select('id, appointment_id, total_amount, paid_at, method, created_at')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      : { data: [] }
 
   const { data: editRecord } = editId
     ? await supabase
         .from('medical_records')
         .select(
-          'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes'
+          'id, pet_id, staff_id, appointment_id, payment_id, status, finalized_at, ai_tag_status, ai_tag_error, ai_tag_last_analyzed_at, ai_tag_source, record_date, menu, duration, shampoo_used, skin_condition, behavior_notes, photos, caution_notes, tags'
         )
         .eq('id', editId)
         .eq('store_id', storeId)
@@ -286,13 +313,22 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
   const recordIds = recordList.map((record) => record.id)
   const currentGalleryPetId = defaultPetId
 
-  const { data: recordPhotos } =
+  const { data: recordPhotoCounts } =
     recordIds.length > 0
+      ? await supabase
+          .from('medical_record_photos')
+          .select('medical_record_id')
+          .eq('store_id', storeId)
+          .in('medical_record_id', recordIds)
+      : { data: [] }
+
+  const { data: editRecordPhotos } =
+    editRecord
       ? await supabase
           .from('medical_record_photos')
           .select('id, medical_record_id, photo_type, storage_path, comment, sort_order, taken_at')
           .eq('store_id', storeId)
-          .in('medical_record_id', recordIds)
+          .eq('medical_record_id', editRecord.id)
           .order('sort_order', { ascending: true })
           .order('created_at', { ascending: true })
       : { data: [] }
@@ -312,14 +348,14 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
   const signedUrlMap = await createSignedPhotoUrlMap(
     supabase,
     [
-      ...((recordPhotos ?? []) as RecordPhotoRow[]).map((photo) => photo.storage_path),
+      ...((editRecordPhotos ?? []) as RecordPhotoRow[]).map((photo) => photo.storage_path),
       ...((galleryPhotos ?? []) as GalleryPhotoRow[]).map((photo) => photo.storage_path),
     ],
     60 * 60
   )
 
   const photoEntriesByRecordId = new Map<string, MedicalRecordPhotoDraft[]>()
-  ;((recordPhotos ?? []) as RecordPhotoRow[]).forEach((photo) => {
+  ;((editRecordPhotos ?? []) as RecordPhotoRow[]).forEach((photo) => {
     const current = photoEntriesByRecordId.get(photo.medical_record_id) ?? []
     current.push({
       id: photo.id,
@@ -347,12 +383,10 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
   })
 
   const editPhotoEntries = editRecord ? photoEntriesByRecordId.get(editRecord.id) ?? [] : []
-  const photoCountByRecordId = new Map<string, number>(
-    Array.from(photoEntriesByRecordId.entries()).map(([recordId, photosForRecord]) => [
-      recordId,
-      photosForRecord.length,
-    ])
-  )
+  const photoCountByRecordId = new Map<string, number>()
+  ;((recordPhotoCounts ?? []) as RecordPhotoCountRow[]).forEach((row) => {
+    photoCountByRecordId.set(row.medical_record_id, (photoCountByRecordId.get(row.medical_record_id) ?? 0) + 1)
+  })
 
   return (
     <section className="space-y-6">
@@ -415,6 +449,8 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                     <p>皮膚状態: {record.skin_condition ?? '未登録'}</p>
                     <p>問題行動: {record.behavior_notes ?? '未登録'}</p>
                     <p>注意事項: {record.caution_notes ?? '未登録'}</p>
+                    <p>AIタグ: {record.tags?.join(', ') ?? 'なし'}</p>
+                    <p>AI解析: {record.ai_tag_status ?? 'idle'}</p>
                     <div className="mt-2 space-y-2">
                       <div className="flex items-center gap-2">
                         <Link
@@ -453,6 +489,8 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                       <th className="py-2 px-2">皮膚状態</th>
                       <th className="py-2 px-2">問題行動</th>
                       <th className="py-2 px-2">注意事項</th>
+                      <th className="py-2 px-2">AIタグ</th>
+                      <th className="py-2 px-2">AI解析</th>
                       <th className="py-2 px-2">操作</th>
                     </tr>
                   </thead>
@@ -476,6 +514,8 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                         <td className="py-3 px-2">{record.skin_condition ?? '未登録'}</td>
                         <td className="py-3 px-2">{record.behavior_notes ?? '未登録'}</td>
                         <td className="py-3 px-2">{record.caution_notes ?? '未登録'}</td>
+                        <td className="py-3 px-2">{record.tags?.join(', ') ?? 'なし'}</td>
+                        <td className="py-3 px-2">{record.ai_tag_status ?? 'idle'}</td>
                         <td className="py-3 px-2">
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">

@@ -6,6 +6,12 @@ import { useCallback, useRef, useState, type ChangeEvent, type FormEvent } from 
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useDismissibleModal } from '@/hooks/useDismissibleModal'
+import {
+  getMedicalRecordAiTagStatusLabel,
+  getMedicalRecordAiTagStatusTone,
+  normalizeMedicalRecordAiTagStatus,
+  type MedicalRecordAiTagStatus,
+} from '@/lib/medical-records/tags'
 import type {
   MedicalRecordPhotoDraft,
   MedicalRecordPhotoType,
@@ -37,6 +43,11 @@ type EditRecord = {
   behavior_notes: string | null
   photos: string[] | null
   caution_notes: string | null
+  tags?: string[] | null
+  ai_tag_status?: string | null
+  ai_tag_error?: string | null
+  ai_tag_last_analyzed_at?: string | null
+  ai_tag_source?: string | null
 }
 
 type LinkedAppointmentSummary = {
@@ -121,6 +132,17 @@ function formatDateTimeJst(value: string | null | undefined) {
   }).format(date)
 }
 
+function splitTagInput(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(/[\n,、]/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  )
+}
+
 export function MedicalRecordCreateModal({
   editRecord,
   petOptions,
@@ -146,6 +168,7 @@ export function MedicalRecordCreateModal({
   const [petId, setPetId] = useState(defaultPetId)
   const [recordDate, setRecordDate] = useState(toDateTimeLocalValue(defaultRecordDate))
   const [photos, setPhotos] = useState<MedicalRecordPhotoDraft[]>(photoEntries)
+  const [tagInput, setTagInput] = useState((editRecord?.tags ?? []).join(', '))
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -153,6 +176,14 @@ export function MedicalRecordCreateModal({
   const [saveMessage, setSaveMessage] = useState('')
   const [savedRecordId, setSavedRecordId] = useState(editRecord?.id ?? '')
   const [savedStatus, setSavedStatus] = useState<'draft' | 'finalized'>(defaultStatus)
+  const [aiTagStatus, setAiTagStatus] = useState<MedicalRecordAiTagStatus>(
+    normalizeMedicalRecordAiTagStatus(editRecord?.ai_tag_status)
+  )
+  const [aiTagError, setAiTagError] = useState(editRecord?.ai_tag_error ?? '')
+  const [aiTagLastAnalyzedAt, setAiTagLastAnalyzedAt] = useState(editRecord?.ai_tag_last_analyzed_at ?? '')
+  const [aiTagSource, setAiTagSource] = useState(editRecord?.ai_tag_source ?? '')
+  const [aiTagLoading, setAiTagLoading] = useState(false)
+  const [aiTagMessage, setAiTagMessage] = useState('')
   const [shareUrl, setShareUrl] = useState('')
   const [shareLoading, setShareLoading] = useState(false)
   const [shareError, setShareError] = useState('')
@@ -251,7 +282,18 @@ export function MedicalRecordCreateModal({
         },
       })
       const payload = (await response.json().catch(() => null)) as
-        | { id?: string; record?: { id?: string }; message?: string }
+        | {
+            id?: string
+            record?: {
+              id?: string
+              tags?: string[] | null
+              ai_tag_status?: string | null
+              ai_tag_error?: string | null
+              ai_tag_last_analyzed_at?: string | null
+              ai_tag_source?: string | null
+            }
+            message?: string
+          }
         | null
       if (!response.ok) {
         throw new Error(payload?.message ?? 'カルテの保存に失敗しました。')
@@ -260,6 +302,11 @@ export function MedicalRecordCreateModal({
       const nextRecordId = payload?.id ?? payload?.record?.id ?? editRecord?.id ?? ''
       setSavedRecordId(nextRecordId)
       setSavedStatus(nextStatus)
+      setAiTagStatus(normalizeMedicalRecordAiTagStatus(payload?.record?.ai_tag_status))
+      setAiTagError(payload?.record?.ai_tag_error ?? '')
+      setAiTagLastAnalyzedAt(payload?.record?.ai_tag_last_analyzed_at ?? '')
+      setAiTagSource(payload?.record?.ai_tag_source ?? '')
+      setTagInput((payload?.record?.tags ?? splitTagInput(tagInput)).join(', '))
       setSaveMessage(nextStatus === 'finalized' ? 'カルテを確定しました。共有できます。' : '下書きを保存しました。')
       router.refresh()
     } catch (error) {
@@ -289,6 +336,39 @@ export function MedicalRecordCreateModal({
       setShareError(error instanceof Error ? error.message : '共有URLの発行に失敗しました。')
     } finally {
       setShareLoading(false)
+    }
+  }
+
+  const handleRunAiTagAnalysis = async (action: 'queue' | 'retry') => {
+    const targetRecordId = savedRecordId || editRecord?.id
+    if (!targetRecordId) return
+    setAiTagLoading(true)
+    setAiTagError('')
+    setAiTagMessage('')
+    try {
+      const response = await fetch(`/api/medical-records/${targetRecordId}/ai-tags`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: action === 'retry' ? 'retry' : 'queue',
+        }),
+      })
+      const payload = (await response.json().catch(() => null)) as
+        | { message?: string }
+        | null
+      if (!response.ok) {
+        throw new Error(payload?.message ?? 'AIタグ解析の受付に失敗しました。')
+      }
+      setAiTagStatus('queued')
+      setAiTagSource('rule_based_v1')
+      setAiTagMessage(payload?.message ?? 'AIタグ解析を受け付けました。')
+      router.refresh()
+    } catch (error) {
+      setAiTagError(error instanceof Error ? error.message : 'AIタグ解析の受付に失敗しました。')
+    } finally {
+      setAiTagLoading(false)
     }
   }
 
@@ -381,6 +461,7 @@ export function MedicalRecordCreateModal({
             <form action={formAction} method="post" className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
               {editRecord && <input type="hidden" name="_method" value="put" />}
               <input type="hidden" name="appointment_id" value={linkedAppointmentId} />
+              <input type="hidden" name="tags" value={tagInput} />
               <input
                 type="hidden"
                 name="photo_payload"
@@ -536,6 +617,60 @@ export function MedicalRecordCreateModal({
                 </div>
 
                 <section className="space-y-3 rounded-xl border border-slate-200 p-4">
+                  <div className="flex flex-col gap-3 rounded-xl border border-violet-200 bg-violet-50 p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h4 className="text-sm font-semibold text-violet-950">AIタグ</h4>
+                        <p className="text-xs text-violet-900">
+                          写真コメントとカルテ内容からタグ候補を非同期で付与します。必要に応じて手動修正できます。
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex w-fit rounded-full px-2 py-1 text-xs font-semibold ${getMedicalRecordAiTagStatusTone(aiTagStatus)}`}
+                      >
+                        {getMedicalRecordAiTagStatusLabel(aiTagStatus)}
+                      </span>
+                    </div>
+                    <label className="space-y-2 text-xs text-gray-700">
+                      タグ
+                      <textarea
+                        value={tagInput}
+                        onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setTagInput(event.target.value)}
+                        rows={3}
+                        className="w-full rounded border bg-white p-2 outline-none focus:ring-2 focus:ring-violet-400"
+                        placeholder="毛玉:少, 皮膚状態:正常"
+                      />
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        onClick={() => handleRunAiTagAnalysis(aiTagStatus === 'failed' ? 'retry' : 'queue')}
+                        disabled={aiTagLoading || !(savedRecordId || editRecord?.id)}
+                        className="min-h-11 bg-violet-700 text-sm hover:bg-violet-800"
+                      >
+                        {aiTagLoading ? '受付中...' : aiTagStatus === 'failed' ? 'AIタグを再解析' : 'AIタグを解析'}
+                      </Button>
+                      {!(savedRecordId || editRecord?.id) ? (
+                        <p className="text-xs text-amber-700">カルテ保存後にAIタグ解析を開始できます。</p>
+                      ) : null}
+                    </div>
+                    <div className="grid gap-1 text-xs text-violet-900">
+                      <p>最終解析: {aiTagLastAnalyzedAt ? formatDateTimeJst(aiTagLastAnalyzedAt) : '未実行'}</p>
+                      <p>プロバイダ: {aiTagSource || '未設定'}</p>
+                    </div>
+                    {splitTagInput(tagInput).length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {splitTagInput(tagInput).map((tag) => (
+                          <span key={tag} className="rounded-full bg-white px-2 py-1 text-xs font-medium text-violet-900">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    {aiTagMessage ? <p className="text-xs text-emerald-700">{aiTagMessage}</p> : null}
+                    {aiTagError ? <p className="text-xs text-red-600">{aiTagError}</p> : null}
+                  </div>
+
                   <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <div>
                       <h4 className="text-sm font-semibold text-gray-900">写真カルテ</h4>
