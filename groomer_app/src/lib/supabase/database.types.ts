@@ -194,6 +194,10 @@ export type Database = {
           notes: string | null
           payment_waiting_at: string | null
           pet_id: string
+          reservation_payment_authorized_at: string | null
+          reservation_payment_method: string
+          reservation_payment_paid_at: string | null
+          reservation_payment_status: string
           staff_id: string
           start_time: string
           status: string | null
@@ -214,6 +218,10 @@ export type Database = {
           notes?: string | null
           payment_waiting_at?: string | null
           pet_id: string
+          reservation_payment_authorized_at?: string | null
+          reservation_payment_method?: string
+          reservation_payment_paid_at?: string | null
+          reservation_payment_status?: string
           staff_id: string
           start_time: string
           status?: string | null
@@ -234,6 +242,10 @@ export type Database = {
           notes?: string | null
           payment_waiting_at?: string | null
           pet_id?: string
+          reservation_payment_authorized_at?: string | null
+          reservation_payment_method?: string
+          reservation_payment_paid_at?: string | null
+          reservation_payment_status?: string
           staff_id?: string
           start_time?: string
           status?: string | null
@@ -2218,8 +2230,81 @@ export type Database = {
           },
         ]
       }
+      medical_record_ai_tag_jobs: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          medical_record_id: string
+          provider: string
+          queued_at: string
+          requested_by_user_id: string | null
+          result_tags: string[] | null
+          source: string
+          started_at: string | null
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          medical_record_id: string
+          provider?: string
+          queued_at?: string
+          requested_by_user_id?: string | null
+          result_tags?: string[] | null
+          source?: string
+          started_at?: string | null
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          medical_record_id?: string
+          provider?: string
+          queued_at?: string
+          requested_by_user_id?: string | null
+          result_tags?: string[] | null
+          source?: string
+          started_at?: string | null
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medical_record_ai_tag_jobs_medical_record_id_fkey"
+            columns: ["medical_record_id"]
+            isOneToOne: false
+            referencedRelation: "medical_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medical_record_ai_tag_jobs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medical_records: {
         Row: {
+          ai_tag_error: string | null
+          ai_tag_last_analyzed_at: string | null
+          ai_tag_source: string | null
+          ai_tag_status: string
           appointment_id: string | null
           behavior_notes: string | null
           caution_notes: string | null
@@ -2237,9 +2322,14 @@ export type Database = {
           staff_id: string
           status: string
           store_id: string
+          tags: string[] | null
           updated_at: string | null
         }
         Insert: {
+          ai_tag_error?: string | null
+          ai_tag_last_analyzed_at?: string | null
+          ai_tag_source?: string | null
+          ai_tag_status?: string
           appointment_id?: string | null
           behavior_notes?: string | null
           caution_notes?: string | null
@@ -2257,9 +2347,14 @@ export type Database = {
           staff_id: string
           status?: string
           store_id: string
+          tags?: string[] | null
           updated_at?: string | null
         }
         Update: {
+          ai_tag_error?: string | null
+          ai_tag_last_analyzed_at?: string | null
+          ai_tag_source?: string | null
+          ai_tag_status?: string
           appointment_id?: string | null
           behavior_notes?: string | null
           caution_notes?: string | null
@@ -2277,6 +2372,7 @@ export type Database = {
           staff_id?: string
           status?: string
           store_id?: string
+          tags?: string[] | null
           updated_at?: string | null
         }
         Relationships: [
@@ -2593,6 +2689,7 @@ export type Database = {
       pets: {
         Row: {
           breed: string | null
+          coat_volume: string | null
           chronic_diseases: string[] | null
           created_at: string | null
           customer_id: string
@@ -2610,6 +2707,7 @@ export type Database = {
         }
         Insert: {
           breed?: string | null
+          coat_volume?: string | null
           chronic_diseases?: string[] | null
           created_at?: string | null
           customer_id: string
@@ -2627,6 +2725,7 @@ export type Database = {
         }
         Update: {
           breed?: string | null
+          coat_volume?: string | null
           chronic_diseases?: string[] | null
           created_at?: string | null
           customer_id?: string
@@ -3251,6 +3350,8 @@ export type Database = {
           followup_line_enabled: boolean
           monthly_message_limit: number
           monthly_message_limit_with_option: number
+          next_visit_line_enabled: boolean
+          next_visit_notice_days_before: number
           notification_option_enabled: boolean
           over_limit_behavior: string
           reminder_day_before_enabled: boolean
@@ -3270,6 +3371,8 @@ export type Database = {
           followup_line_enabled?: boolean
           monthly_message_limit?: number
           monthly_message_limit_with_option?: number
+          next_visit_line_enabled?: boolean
+          next_visit_notice_days_before?: number
           notification_option_enabled?: boolean
           over_limit_behavior?: string
           reminder_day_before_enabled?: boolean
@@ -3289,6 +3392,8 @@ export type Database = {
           followup_line_enabled?: boolean
           monthly_message_limit?: number
           monthly_message_limit_with_option?: number
+          next_visit_line_enabled?: boolean
+          next_visit_notice_days_before?: number
           notification_option_enabled?: boolean
           over_limit_behavior?: string
           reminder_day_before_enabled?: boolean
@@ -3305,6 +3410,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "store_notification_settings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_reservation_payment_settings: {
+        Row: {
+          cancellation_day_before_percent: number
+          cancellation_no_show_percent: number
+          cancellation_same_day_percent: number
+          card_hold_enabled: boolean
+          created_at: string
+          no_show_charge_mode: string
+          prepayment_enabled: boolean
+          store_id: string
+          updated_at: string
+          updated_by_user_id: string | null
+        }
+        Insert: {
+          cancellation_day_before_percent?: number
+          cancellation_no_show_percent?: number
+          cancellation_same_day_percent?: number
+          card_hold_enabled?: boolean
+          created_at?: string
+          no_show_charge_mode?: string
+          prepayment_enabled?: boolean
+          store_id: string
+          updated_at?: string
+          updated_by_user_id?: string | null
+        }
+        Update: {
+          cancellation_day_before_percent?: number
+          cancellation_no_show_percent?: number
+          cancellation_same_day_percent?: number
+          card_hold_enabled?: boolean
+          created_at?: string
+          no_show_charge_mode?: string
+          prepayment_enabled?: boolean
+          store_id?: string
+          updated_at?: string
+          updated_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_reservation_payment_settings_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: true
             referencedRelation: "stores"
@@ -3934,6 +4086,34 @@ export type Database = {
           },
           {
             foreignKeyName: "appointments_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_ltv_summary_v: {
+        Row: {
+          annual_sales: number | null
+          average_spend: number | null
+          customer_id: string | null
+          last_paid_at: string | null
+          ltv_rank: string | null
+          option_usage_rate: number | null
+          store_id: string | null
+          visit_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"

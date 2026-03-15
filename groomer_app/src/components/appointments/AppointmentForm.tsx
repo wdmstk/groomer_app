@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { AppointmentMenuSelector } from '@/components/appointments/AppointmentMenuSelector'
+import { DEFAULT_RESERVATION_PAYMENT_SETTINGS } from '@/lib/appointments/reservation-payment'
 import { APPOINTMENT_METRIC_EVENTS } from '@/lib/appointments/metrics'
 
 type CustomerOption = {
@@ -58,6 +59,16 @@ type EditAppointment = {
   duration: number | null
   status: string | null
   notes: string | null
+  reservation_payment_method?: string | null
+}
+
+type ReservationPaymentSettings = {
+  prepayment_enabled: boolean
+  card_hold_enabled: boolean
+  cancellation_day_before_percent: number
+  cancellation_same_day_percent: number
+  cancellation_no_show_percent: number
+  no_show_charge_mode: 'manual' | 'auto'
 }
 
 type AppointmentFormProps = {
@@ -85,6 +96,7 @@ type AppointmentFormProps = {
   cancelHref?: string
   followupTaskId?: string
   reofferId?: string
+  reservationPaymentSettings: ReservationPaymentSettings
 }
 
 function toLocalInputValue(date: Date) {
@@ -145,6 +157,7 @@ export function AppointmentForm({
   cancelHref = '/appointments?tab=list',
   followupTaskId,
   reofferId,
+  reservationPaymentSettings = DEFAULT_RESERVATION_PAYMENT_SETTINGS,
 }: AppointmentFormProps) {
   const [customerList, setCustomerList] = useState(customerOptions)
   const [petList, setPetList] = useState(petOptions)
@@ -163,6 +176,9 @@ export function AppointmentForm({
   const [selectedMenuIds, setSelectedMenuIds] = useState(defaultMenuIds)
   const [status, setStatus] = useState(editAppointment?.status ?? initialPrefill?.status ?? '予約済')
   const [notes, setNotes] = useState(editAppointment?.notes ?? initialPrefill?.notes ?? '')
+  const [reservationPaymentMethod, setReservationPaymentMethod] = useState(
+    editAppointment?.reservation_payment_method ?? 'none'
+  )
   const [copyMessage, setCopyMessage] = useState('')
   const [copyTimeMode, setCopyTimeMode] = useState<'keep_start' | 'copy_full'>('keep_start')
   const [quickCustomerName, setQuickCustomerName] = useState('')
@@ -776,6 +792,28 @@ export function AppointmentForm({
               </option>
             ))}
           </select>
+        </label>
+        <label className="space-y-2 text-sm text-gray-700">
+          予約時の決済
+          <select
+            name="reservation_payment_method"
+            value={reservationPaymentMethod}
+            onChange={onSelectChanged(setReservationPaymentMethod)}
+            className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            <option value="none">現地会計のみ</option>
+            {reservationPaymentSettings.prepayment_enabled || reservationPaymentMethod === 'prepayment' ? (
+              <option value="prepayment">事前決済</option>
+            ) : null}
+            {reservationPaymentSettings.card_hold_enabled || reservationPaymentMethod === 'card_hold' ? (
+              <option value="card_hold">カード仮押さえ</option>
+            ) : null}
+          </select>
+          <p className="text-xs text-gray-500">
+            前日 {reservationPaymentSettings.cancellation_day_before_percent}% / 当日{' '}
+            {reservationPaymentSettings.cancellation_same_day_percent}% / 無断キャンセル{' '}
+            {reservationPaymentSettings.cancellation_no_show_percent}% を設定反映
+          </p>
         </label>
         <label className={`space-y-2 text-sm text-gray-700 ${singleColumn ? '' : 'md:col-span-2'}`}>
           備考
