@@ -24,6 +24,7 @@ export type PublicReservationInput = {
   customerName: string
   phoneNumber: string
   email: string
+  groupId?: string
   petName: string
   petBreed: string
   petGender: string
@@ -63,6 +64,7 @@ export function normalizePublicReservationInput(body: unknown): PublicReservatio
     customerName: typeof source.customerName === 'string' ? source.customerName.trim() : '',
     phoneNumber: typeof source.phoneNumber === 'string' ? source.phoneNumber.trim() : '',
     email: typeof source.email === 'string' ? source.email.trim() : '',
+    groupId: typeof source.groupId === 'string' ? source.groupId.trim() : '',
     petName: typeof source.petName === 'string' ? source.petName.trim() : '',
     petBreed: typeof source.petBreed === 'string' ? source.petBreed.trim() : '',
     petGender: typeof source.petGender === 'string' ? source.petGender.trim() : '',

@@ -42,12 +42,12 @@ AI agents should prioritize unfinished tasks.
 
 ### Phase 4: Multi-pet Booking Data Model
 
-* [ ] Create branch `feat/multi-pet-booking-group-model`
-* [ ] Design `appointment_groups` or equivalent grouping model
-* [ ] Define backward-compatible migration strategy
-* [ ] Update booking APIs to support grouped bookings
+* [x] Create branch `feat/multi-pet-booking-group-model`
+* [x] Design `appointment_groups` or equivalent grouping model
+* [x] Define backward-compatible migration strategy
+* [x] Update booking APIs to support grouped bookings
 * [ ] Update notifications and cancellation flows for grouped bookings
-* [ ] Add DB migrations and tests
+* [x] Add DB migrations and tests
 
 ### Supporting Work
 

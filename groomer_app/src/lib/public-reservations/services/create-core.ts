@@ -47,6 +47,12 @@ export type CreatePublicReservationDeps = {
   fetchCustomerByEmail(params: { storeId: string; email: string }): Promise<CustomerRecord | null>
   fetchCustomerByPhone(params: { storeId: string; phoneNumber: string }): Promise<CustomerRecord | null>
   fetchCustomerName(params: { storeId: string; customerId: string }): Promise<string | null>
+  ensureAppointmentGroup(params: {
+    storeId: string
+    customerId: string
+    groupId?: string | null
+    source: 'public' | 'member_portal'
+  }): Promise<string>
   createCustomer(params: { storeId: string; input: PublicReservationInput }): Promise<string>
   updateCustomerContacts(params: {
     storeId: string
@@ -58,6 +64,7 @@ export type CreatePublicReservationDeps = {
   createPet(params: { storeId: string; customerId: string; input: PublicReservationInput }): Promise<string>
   createAppointment(params: {
     storeId: string
+    groupId: string
     customerId: string
     petId: string
     staffId: string
@@ -80,6 +87,7 @@ export type CreatePublicReservationDeps = {
     menus: PublicReservationMenuSnapshot[]
   }): Promise<void>
   createCancelToken(params: { appointmentId: string; storeId: string }): string
+  createGroupCancelToken(params: { appointmentId: string; storeId: string; groupId: string }): string
 }
 
 async function resolveCustomerAndPetCore(params: {
@@ -238,9 +246,16 @@ export async function createPublicReservationCore(params: {
   }
   const requestNotePrefix = input.memberPortalToken ? '会員証経由Web申請' : '顧客Web申請'
   const mergedNotes = input.notes ? `${requestNotePrefix}: ${input.notes}` : requestNotePrefix
+  const groupId = await deps.ensureAppointmentGroup({
+    storeId,
+    customerId,
+    groupId: input.groupId ?? null,
+    source: input.memberPortalToken ? 'member_portal' : 'public',
+  })
 
   const appointmentId = await deps.createAppointment({
     storeId,
+    groupId,
     customerId,
     petId,
     staffId,
@@ -262,16 +277,22 @@ export async function createPublicReservationCore(params: {
     appointmentId,
     storeId,
   })
+  const groupCancelToken = deps.createGroupCancelToken({
+    appointmentId,
+    storeId,
+    groupId,
+  })
 
   return {
     message: isInstantReservation
       ? '予約を確定しました。ご来店をお待ちしています。'
       : '予約申請を受け付けました。店舗確認後に確定となります。',
     appointmentId,
+    groupId,
     customerId,
     petId,
     status: appointmentStatus,
     assignedStaffId: staffId,
-    cancelUrl: `${requestOrigin}/reserve/cancel?token=${encodeURIComponent(cancelToken)}`,
+    cancelUrl: `${requestOrigin}/reserve/cancel?token=${encodeURIComponent(groupCancelToken || cancelToken)}`,
   }
 }

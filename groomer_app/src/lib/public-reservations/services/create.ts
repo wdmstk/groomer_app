@@ -2,6 +2,7 @@ import { createReservationCancelToken } from '@/lib/reservation-cancel-token'
 import { verifySignedPetQrPayload } from '@/lib/qr/pet-profile-signature'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { estimateDurationMinutes } from '@/lib/appointments/duration'
+import { ensureAppointmentGroupId } from '@/lib/appointments/groups'
 import { validateAppointmentConflict } from '@/lib/appointments/conflict'
 import {
   buildSlotCandidates,
@@ -254,6 +255,15 @@ export async function createPublicReservation(params: {
           .single()
         return data?.full_name ?? null
       },
+      async ensureAppointmentGroup({ storeId, customerId, groupId, source }) {
+        return ensureAppointmentGroupId({
+          supabase: admin,
+          storeId,
+          customerId,
+          existingGroupId: groupId,
+          source,
+        })
+      },
       async createCustomer({ storeId, input }) {
         const { data, error } = await admin
           .from('customers')
@@ -309,6 +319,7 @@ export async function createPublicReservation(params: {
       },
       async createAppointment({
         storeId,
+        groupId,
         customerId,
         petId,
         staffId,
@@ -323,6 +334,7 @@ export async function createPublicReservation(params: {
           .from('appointments')
           .insert({
             store_id: storeId,
+            group_id: groupId,
             customer_id: customerId,
             pet_id: petId,
             staff_id: staffId,
@@ -367,6 +379,9 @@ export async function createPublicReservation(params: {
       },
       createCancelToken({ appointmentId, storeId }) {
         return createReservationCancelToken({ appointmentId, storeId })
+      },
+      createGroupCancelToken({ appointmentId, storeId, groupId }) {
+        return createReservationCancelToken({ appointmentId, storeId, groupId })
       },
     },
   })

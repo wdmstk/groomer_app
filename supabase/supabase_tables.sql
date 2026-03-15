@@ -57,12 +57,23 @@ CREATE TABLE staffs (
     role text NOT NULL DEFAULT 'staff'
 );
 
+-- appointment_groups テーブル
+CREATE TABLE appointment_groups (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now(),
+    store_id uuid NOT NULL REFERENCES stores(id),
+    customer_id uuid NOT NULL REFERENCES customers(id),
+    source text NOT NULL DEFAULT 'manual'
+);
+
 -- appointments テーブル
 CREATE TABLE appointments (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now(),
     customer_id uuid NOT NULL REFERENCES customers(id),
+    group_id uuid REFERENCES appointment_groups(id),
     pet_id uuid NOT NULL REFERENCES pets(id),
     staff_id uuid NOT NULL REFERENCES staffs(id),
     start_time timestamptz NOT NULL,

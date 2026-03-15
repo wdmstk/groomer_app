@@ -6,7 +6,7 @@ import { AppointmentServiceError } from '@/lib/appointments/services/shared'
 import { toOptionalString } from '@/lib/followups/shared'
 
 const appointmentAuditSelect =
-  'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes'
+  'id, group_id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes'
 
 function requestPrefersJson(request: Request) {
   const accept = request.headers.get('accept') ?? ''
@@ -127,6 +127,7 @@ export async function POST(request: Request) {
     if (requestPrefersJson(request)) {
       return NextResponse.json({
         id: created.id,
+        groupId: created.groupId,
         appointment: createdAppointment ?? created,
       })
     }
