@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import type { ChangeEvent, FormEvent } from 'react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { AppointmentMenuSelector } from '@/components/appointments/AppointmentMenuSelector'
@@ -180,6 +180,15 @@ export function AppointmentForm({
   const [qrError, setQrError] = useState('')
   const [qrDecoding, setQrDecoding] = useState(false)
   const formOpenedAtRef = useRef(Date.now())
+  const createdAppointmentsRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (createdAppointments.length === 0) return
+    createdAppointmentsRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+    })
+  }, [createdAppointments.length])
 
   const onInputChanged = (setter: (value: string) => void) => (event: ChangeEvent<HTMLInputElement>) => {
     setFieldChangeCount((prev) => prev + 1)
@@ -780,11 +789,16 @@ export function AppointmentForm({
         </div>
       ) : null}
       {createdAppointments.length > 0 ? (
-        <div className="space-y-3 rounded border border-sky-200 bg-sky-50 p-3">
+        <div
+          ref={createdAppointmentsRef}
+          className="space-y-3 rounded border border-sky-200 bg-sky-50 p-3 ring-2 ring-sky-100"
+        >
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="font-semibold text-sky-900">家族単位の作成確認</p>
-              <p className="text-xs text-sky-700">このセッションで作成した予約です。</p>
+              <p className="text-xs text-sky-700">
+                1頭目の保存後は、ここから「別のペットを続けて予約」に進みます。
+              </p>
             </div>
             {!editAppointment ? (
               <Button type="button" onClick={handleContinueWithAnotherPet} className="bg-sky-700 hover:bg-sky-800">
