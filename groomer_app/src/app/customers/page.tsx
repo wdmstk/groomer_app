@@ -1,12 +1,23 @@
 import Link from 'next/link'
+import nextDynamic from 'next/dynamic'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createStoreScopedClient } from '@/lib/supabase/store'
-import { RevisitAlertList } from '@/components/customers/RevisitAlertList'
-import { CustomerCreateModal } from '@/components/customers/CustomerCreateModal'
+import { CustomerLtvProvider, CustomerLtvSummary } from '@/components/customers/CustomerLtvSummary'
 import { CustomerMemberPortalControls } from '@/components/customers/CustomerMemberPortalControls'
+
+const RevisitAlertList = nextDynamic(
+  () => import('@/components/customers/RevisitAlertList').then((mod) => mod.RevisitAlertList),
+  {
+    loading: () => <p className="text-sm text-gray-500">来店周期アラートを読み込み中...</p>,
+  }
+)
+
+const CustomerCreateModal = nextDynamic(
+  () => import('@/components/customers/CustomerCreateModal').then((mod) => mod.CustomerCreateModal)
+)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -81,38 +92,52 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
     resolvedSearchParams?.modal === 'create' || resolvedSearchParams?.tab === 'new'
   const editId = resolvedSearchParams?.edit
   const waitlistCustomerId = resolvedSearchParams?.waitlist_customer
+  const isWaitlistModalOpen = resolvedSearchParams?.modal === 'waitlist' && Boolean(waitlistCustomerId)
+  const needsListSupportData = activeTab === 'list' || isCreateModalOpen || Boolean(editId) || isWaitlistModalOpen
   const modalCloseRedirect = `/customers?tab=${activeTab}`
   const { supabase, storeId } = await createStoreScopedClient()
-  const adminSupabase = createAdminSupabaseClient()
+  const adminSupabase = needsListSupportData ? createAdminSupabaseClient() : null
   const { data } = await supabase
     .from('customers')
     .select('id, full_name, phone_number, email, address, line_id, how_to_know, rank, tags')
     .eq('store_id', storeId)
     .order('created_at', { ascending: false })
   const customers = (data as Customer[]) ?? []
-  const { data: petRows } = await supabase
-    .from('pets')
-    .select('id, name, customer_id')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
-  const { data: staffRows } = await supabase
-    .from('staffs')
-    .select('id, full_name')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
-  const { data: appointmentRows } = await supabase
-    .from('appointments')
-    .select('customer_id, status')
-    .eq('store_id', storeId)
-  const { data: memberPortalRows } = await adminSupabase
-    .from('member_portal_links')
-    .select('id, customer_id, expires_at, last_used_at')
-    .eq('store_id', storeId)
-    .eq('purpose', 'member_portal')
-    .is('revoked_at', null)
-    .gt('expires_at', new Date().toISOString())
-    .order('expires_at', { ascending: false })
-  const { data: editCustomer } = editId
+  const { data: petRows } =
+    isWaitlistModalOpen
+      ? await supabase
+          .from('pets')
+          .select('id, name, customer_id')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      : { data: [] }
+  const { data: staffRows } =
+    isWaitlistModalOpen
+      ? await supabase
+          .from('staffs')
+          .select('id, full_name')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      : { data: [] }
+  const { data: appointmentRows } = needsListSupportData
+    ? await supabase
+        .from('appointments')
+        .select('customer_id')
+        .eq('store_id', storeId)
+        .eq('status', '無断キャンセル')
+    : { data: [] }
+  const { data: memberPortalRows } =
+    needsListSupportData && adminSupabase
+      ? await adminSupabase
+          .from('member_portal_links')
+          .select('id, customer_id, expires_at, last_used_at')
+          .eq('store_id', storeId)
+          .eq('purpose', 'member_portal')
+          .is('revoked_at', null)
+          .gt('expires_at', new Date().toISOString())
+          .order('expires_at', { ascending: false })
+      : { data: [] }
+  const { data: editCustomer } = needsListSupportData && editId
     ? (await supabase
         .from('customers')
         .select('id, full_name, phone_number, email, address, line_id, how_to_know, rank, tags')
@@ -120,9 +145,9 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
         .eq('store_id', storeId)
         .single()) as { data: Customer | null }
     : { data: null }
-  const noShowCounts = ((appointmentRows ?? []) as Array<{ customer_id: string | null; status: string | null }>).reduce(
+  const noShowCounts = ((appointmentRows ?? []) as Array<{ customer_id: string | null }>).reduce(
     (acc, row) => {
-      if (row.customer_id && row.status === '無断キャンセル') {
+      if (row.customer_id) {
         acc[row.customer_id] = (acc[row.customer_id] ?? 0) + 1
       }
       return acc
@@ -169,6 +194,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
       </div>
 
       {activeTab === 'list' ? (
+        <CustomerLtvProvider>
         <Card>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">顧客一覧</h2>
@@ -206,6 +232,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                     </div>
                     <p>来店経路: {customer.how_to_know ?? '未登録'}</p>
                     <p>ランク: {customer.rank ?? '通常'}</p>
+                    <CustomerLtvSummary customerId={customer.id} variant="mobile" />
                     <p>タグ: {customer.tags?.join(', ') ?? 'なし'}</p>
                     <div className="mt-2">
                       <CustomerMemberPortalControls
@@ -251,6 +278,11 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                       <th className="py-2 px-2">LINE ID</th>
                       <th className="py-2 px-2">来店経路</th>
                       <th className="py-2 px-2">ランク</th>
+                      <th className="py-2 px-2">LTV</th>
+                      <th className="py-2 px-2">年間売上</th>
+                      <th className="py-2 px-2">来店回数</th>
+                      <th className="py-2 px-2">平均単価</th>
+                      <th className="py-2 px-2">オプション利用率</th>
                       <th className="py-2 px-2">タグ</th>
                       <th className="py-2 px-2">会員証</th>
                       <th className="py-2 px-2">操作</th>
@@ -273,6 +305,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                         <td className="py-3 px-2">{renderLineStatus(customer)}</td>
                         <td className="py-3 px-2">{customer.how_to_know ?? '未登録'}</td>
                         <td className="py-3 px-2">{customer.rank ?? '通常'}</td>
+                        <CustomerLtvSummary customerId={customer.id} variant="table" />
                         <td className="py-3 px-2">{customer.tags?.join(', ') ?? 'なし'}</td>
                         <td className="py-3 px-2 align-top">
                           <CustomerMemberPortalControls
@@ -313,6 +346,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
             </>
           )}
         </Card>
+        </CustomerLtvProvider>
       ) : (
         <Card className="space-y-3">
           <RevisitAlertList />
