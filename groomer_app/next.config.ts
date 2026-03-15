@@ -3,6 +3,17 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
+const supabaseHostname = (() => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (!supabaseUrl) return null
+
+  try {
+    return new URL(supabaseUrl).hostname
+  } catch {
+    return null
+  }
+})()
+
 const cspReportOnly = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -19,6 +30,17 @@ const cspReportOnly = [
 const nextConfig: NextConfig = {
   turbopack: {
     root: dirname,
+  },
+  images: {
+    remotePatterns: supabaseHostname
+      ? [
+          {
+            protocol: 'https',
+            hostname: supabaseHostname,
+            pathname: '/storage/v1/object/**',
+          },
+        ]
+      : [],
   },
   async headers() {
     return [

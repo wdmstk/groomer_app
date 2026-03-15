@@ -1,13 +1,11 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import { cookies } from 'next/headers'
 import { PointerCaptureGuard } from '@/components/dev/PointerCaptureGuard'
 import { ThemeHydrator } from '@/components/ui/ThemeHydrator'
 import { UI_THEMES } from '@/lib/ui/themes'
 import { resolveUiThemeOrDefault, UI_THEME_COOKIE, UI_THEME_STORAGE_KEY } from '@/lib/ui/theme-preference'
+import '@fontsource/inter/latin.css'
 import './globals.css';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Groomer App',
@@ -31,7 +29,7 @@ export default async function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
-      <body className={inter.className}>
+      <body>
         <ThemeHydrator />
         <PointerCaptureGuard />
         {children}

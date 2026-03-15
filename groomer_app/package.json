@@ -16,6 +16,7 @@
     "types:generate:supabase": "node ./scripts/generate-supabase-types.mjs"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.8",
     "@line/bot-sdk": "^10.6.0",
     "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/supabase-js": "^2.94.1",
