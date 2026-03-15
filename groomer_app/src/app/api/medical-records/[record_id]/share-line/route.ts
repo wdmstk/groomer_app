@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server'
 import { insertAuditLogBestEffort } from '@/lib/audit-logs'
 import { sendLineMessage } from '@/lib/line'
 import {
-  buildMedicalRecordShareLineMessage,
   buildMedicalRecordShareUrl,
   createMedicalRecordShareLink,
 } from '@/lib/medical-records/share'
+import {
+  getDefaultMedicalRecordShareLineTemplate,
+  renderMedicalRecordShareLineTemplate,
+} from '@/lib/notification-templates'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
@@ -78,10 +81,25 @@ export async function POST(request: Request, { params }: RouteParams) {
     })
     const shareUrl = buildMedicalRecordShareUrl(request.url, shareToken)
     const petRelation = Array.isArray(record.pets) ? record.pets[0] : record.pets
-    const body = buildMedicalRecordShareLineMessage({
-      customerName: customer.full_name,
-      petName: petRelation?.name ?? null,
+    const { data: templateRow, error: templateError } = await supabase
+      .from('notification_templates')
+      .select('subject, body, is_active')
+      .eq('store_id', storeId)
+      .eq('template_key', 'medical_record_share_line')
+      .eq('channel', 'line')
+      .maybeSingle()
+    if (templateError && !templateError.message.includes('notification_templates')) {
+      throw new Error(templateError.message)
+    }
+    if (templateRow && templateRow.is_active === false) {
+      return NextResponse.json({ message: 'medical_record_share_line template is disabled.' }, { status: 400 })
+    }
+
+    const body = renderMedicalRecordShareLineTemplate({
+      customerName: customer.full_name ?? 'お客様',
+      petName: petRelation?.name ?? 'ペット',
       shareUrl,
+      templateBody: templateRow?.body?.trim() || getDefaultMedicalRecordShareLineTemplate(),
     })
 
     const { data: queuedLog, error: logError } = await supabase
@@ -94,7 +112,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         channel: 'line',
         notification_type: 'other',
         status: 'queued',
-        subject: '写真カルテ共有',
+        subject: templateRow?.subject?.trim() || '写真カルテ共有',
         body,
         target: customer.line_id,
         payload: {

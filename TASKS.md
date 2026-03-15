@@ -23,7 +23,7 @@ AI agents should prioritize unfinished tasks.
 
 ### Phase 2: Deep LINE Integration
 
-* [ ] Create branch `feat/medical-record-line-share`
+* [x] Create branch `feat/medical-record-line-share`
 * [x] Add medical record LINE share sending path using existing `line_id`
 * [x] Store notification logs for medical record share sends
 * [ ] Create branch `feat/line-webhook-linking`

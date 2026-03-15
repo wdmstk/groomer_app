@@ -64,6 +64,20 @@ on conflict (store_id, template_key, channel) do nothing;
 insert into public.notification_templates (store_id, template_key, channel, subject, body)
 select
   stores.id,
+  'medical_record_share_line',
+  'line',
+  '写真カルテ共有',
+  '{{customer_name}}様
+{{pet_name}}ちゃんの写真カルテをご案内します。
+
+こちらからご確認ください。
+{{share_url}}'
+from public.stores
+on conflict (store_id, template_key, channel) do nothing;
+
+insert into public.notification_templates (store_id, template_key, channel, subject, body)
+select
+  stores.id,
   'followup_line',
   'line',
   '再来店フォロー',

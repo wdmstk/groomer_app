@@ -4,6 +4,7 @@ import { asObjectOrNull } from '@/lib/object-utils'
 import {
   getDefaultFollowupLineTemplate,
   getDefaultHotelStayReportLineTemplate,
+  getDefaultMedicalRecordShareLineTemplate,
   getDefaultReminderEmailSubjectTemplate,
   getDefaultReminderEmailTemplate,
   getDefaultReminderLineTemplate,
@@ -31,6 +32,10 @@ const DEFAULT_TEMPLATES = {
     subject: '宿泊レポート',
     body: getDefaultHotelStayReportLineTemplate(),
   },
+  medical_record_share_line: {
+    subject: '写真カルテ共有',
+    body: getDefaultMedicalRecordShareLineTemplate(),
+  },
 } as const
 
 const NOTIFICATION_SCOPE_TEMPLATE_KEYS = [
@@ -38,6 +43,7 @@ const NOTIFICATION_SCOPE_TEMPLATE_KEYS = [
   'followup_line',
   'reminder_line',
   'reminder_email',
+  'medical_record_share_line',
 ] as const
 
 const ALL_TEMPLATE_KEYS = [
@@ -105,7 +111,8 @@ export async function PATCH(request: Request) {
     body?.template_key === 'followup_line' ||
     body?.template_key === 'reminder_line' ||
     body?.template_key === 'reminder_email' ||
-    body?.template_key === 'hotel_stay_report_line'
+    body?.template_key === 'hotel_stay_report_line' ||
+    body?.template_key === 'medical_record_share_line'
       ? body.template_key
       : null
   const channel =

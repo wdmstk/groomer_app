@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import {
+  renderMedicalRecordShareLineTemplate,
   renderFollowupLineTemplate,
   renderReminderTemplate,
   renderSlotReofferLineTemplate,
@@ -18,12 +19,14 @@ type TemplateKey =
   | 'slot_reoffer_line'
   | 'followup_line'
   | 'reminder_line'
+  | 'medical_record_share_line'
   | 'reminder_email'
 
 const TEMPLATE_KEYS: TemplateKey[] = [
   'slot_reoffer_line',
   'followup_line',
   'reminder_line',
+  'medical_record_share_line',
   'reminder_email',
 ]
 
@@ -31,6 +34,7 @@ const TEMPLATE_LABELS: Record<TemplateKey, string> = {
   slot_reoffer_line: '再販LINEテンプレ',
   followup_line: '再来店フォローLINEテンプレ',
   reminder_line: '前日リマインドLINEテンプレ',
+  medical_record_share_line: '写真カルテ共有LINEテンプレ',
   reminder_email: '前日リマインドメールテンプレ',
 }
 
@@ -39,6 +43,7 @@ export function NotificationTemplateEditor() {
     slot_reoffer_line: { subject: '', body: '', is_active: true },
     followup_line: { subject: '', body: '', is_active: true },
     reminder_line: { subject: '', body: '', is_active: true },
+    medical_record_share_line: { subject: '', body: '', is_active: true },
     reminder_email: { subject: '', body: '', is_active: true },
   })
   const [loading, setLoading] = useState(true)
@@ -49,6 +54,7 @@ export function NotificationTemplateEditor() {
     slot_reoffer_line: '',
     followup_line: '',
     reminder_line: '',
+    medical_record_share_line: '',
     reminder_email: '',
   })
 
@@ -72,6 +78,8 @@ export function NotificationTemplateEditor() {
           slot_reoffer_line: payload.templates?.slot_reoffer_line ?? current.slot_reoffer_line,
           followup_line: payload.templates?.followup_line ?? current.followup_line,
           reminder_line: payload.templates?.reminder_line ?? current.reminder_line,
+          medical_record_share_line:
+            payload.templates?.medical_record_share_line ?? current.medical_record_share_line,
           reminder_email: payload.templates?.reminder_email ?? current.reminder_email,
         }))
       }
@@ -187,6 +195,15 @@ export function NotificationTemplateEditor() {
         })
         return rendered
       })(),
+      medical_record_share_line: {
+        subject: templates.medical_record_share_line.subject ?? '写真カルテ共有',
+        body: renderMedicalRecordShareLineTemplate({
+          customerName: '山田',
+          petName: 'ココ',
+          shareUrl: 'https://example.com/shared/medical-records/sample-token',
+          templateBody: templates.medical_record_share_line.body,
+        }),
+      },
       reminder_email: (() => {
         const rendered = renderReminderTemplate({
           customerName: '山田様',
@@ -229,6 +246,8 @@ export function NotificationTemplateEditor() {
                       ? ' {{customer_name}}, {{appointment_range}}, {{menu}}, {{pet_name}}, {{note}}'
                       : templateKey === 'followup_line'
                         ? ' {{customer_name}}, {{last_visit_date}}, {{recommended_date}}'
+                        : templateKey === 'medical_record_share_line'
+                          ? ' {{customer_name}}, {{pet_name}}, {{share_url}}'
                         : ' {{customer_name}}, {{store_name}}, {{appointment_range}}, {{menu}}'}
                   </p>
                 </div>
