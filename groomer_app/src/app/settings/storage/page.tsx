@@ -1,11 +1,18 @@
+import nextDynamic from 'next/dynamic'
 import { Card } from '@/components/ui/Card'
 import { requireOwnerStoreMembership } from '@/lib/auth/store-owner'
-import { StorageAddonCheckoutPanel } from '@/components/billing/StorageAddonCheckoutPanel'
 import {
   fetchStoreStorageQuotaState,
   formatBytesToJa,
 } from '@/lib/storage-quota'
 import { getMedicalRecordPhotoBucket } from '@/lib/medical-records/photos'
+
+const StorageAddonCheckoutPanel = nextDynamic(
+  () => import('@/components/billing/StorageAddonCheckoutPanel').then((mod) => mod.StorageAddonCheckoutPanel),
+  {
+    loading: () => <p className="text-sm text-gray-500">容量追加課金パネルを読み込み中...</p>,
+  }
+)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -35,6 +42,7 @@ export default async function StorageSettingsPage({ searchParams }: PageProps) {
   const quota = await fetchStoreStorageQuotaState({
     storeId: guard.storeId,
     bucket,
+    allowPartialUsageFailure: true,
   })
   const usagePercent = quota.totalLimitBytes > 0 ? Math.min(100, (quota.usageBytes / quota.totalLimitBytes) * 100) : 0
   return (
@@ -56,13 +64,21 @@ export default async function StorageSettingsPage({ searchParams }: PageProps) {
           <p className="text-sm text-red-700">{params.error}</p>
         </Card>
       ) : null}
+      {quota.usageUnavailable ? (
+        <Card className="border border-amber-200 bg-amber-50">
+          <p className="text-sm text-amber-800">
+            ストレージ使用量の自動集計に失敗しました。容量設定の編集は可能ですが、現在の使用量表示は一時的に利用できません。
+          </p>
+          {quota.usageFetchError ? <p className="mt-1 text-xs text-amber-700">{quota.usageFetchError}</p> : null}
+        </Card>
+      ) : null}
 
       <Card>
         <h2 className="text-lg font-semibold text-gray-900">現在の使用状況</h2>
         <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-gray-700 md:grid-cols-2">
           <p>対象バケット: {bucket}</p>
           <p>プラン: {quota.planCode}</p>
-          <p>使用量: {formatBytesToJa(quota.usageBytes)}</p>
+          <p>使用量: {quota.usageUnavailable ? '取得失敗' : formatBytesToJa(quota.usageBytes)}</p>
           <p>上限: {formatBytesToJa(quota.totalLimitBytes)}</p>
           <p>基本上限: {formatBytesToJa(quota.baseLimitBytes)}</p>
           <p>追加容量: {formatBytesToJa(quota.extraCapacityBytes)}</p>
@@ -71,10 +87,12 @@ export default async function StorageSettingsPage({ searchParams }: PageProps) {
           <div className="h-3 w-full overflow-hidden rounded bg-gray-100">
             <div
               className={`h-full ${usagePercent >= 90 ? 'bg-red-500' : usagePercent >= 70 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-              style={{ width: `${usagePercent}%` }}
+              style={{ width: quota.usageUnavailable ? '0%' : `${usagePercent}%` }}
             />
           </div>
-          <p className="mt-2 text-xs text-gray-600">{usagePercent.toFixed(1)}%</p>
+          <p className="mt-2 text-xs text-gray-600">
+            {quota.usageUnavailable ? '使用率を表示できません' : `${usagePercent.toFixed(1)}%`}
+          </p>
         </div>
       </Card>
 

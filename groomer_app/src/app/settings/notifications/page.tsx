@@ -1,8 +1,15 @@
 import Link from 'next/link'
+import nextDynamic from 'next/dynamic'
 import { Card } from '@/components/ui/Card'
 import { createStoreScopedClient } from '@/lib/supabase/store'
-import { NotificationTemplateEditor } from '@/components/dashboard/NotificationTemplateEditor'
 import { requireStoreFeatureAccess } from '@/lib/feature-access'
+
+const NotificationTemplateEditor = nextDynamic(
+  () => import('@/components/dashboard/NotificationTemplateEditor').then((mod) => mod.NotificationTemplateEditor),
+  {
+    loading: () => <p className="text-sm text-gray-500">テンプレートエディタを読み込み中...</p>,
+  }
+)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -25,6 +32,8 @@ type NotificationSettingsRow = {
   reminder_same_day_send_hour_jst: number | null
   followup_line_enabled: boolean | null
   followup_days: number[] | null
+  next_visit_line_enabled: boolean | null
+  next_visit_notice_days_before: number | null
   slot_reoffer_line_enabled: boolean | null
   monthly_message_limit: number | null
   monthly_message_limit_with_option: number | null
@@ -40,6 +49,8 @@ const DEFAULT_SETTINGS = {
   reminder_same_day_send_hour_jst: 9,
   followup_line_enabled: true,
   followup_days: [30, 60],
+  next_visit_line_enabled: true,
+  next_visit_notice_days_before: 3,
   slot_reoffer_line_enabled: true,
   monthly_message_limit: 1000,
   monthly_message_limit_with_option: 3000,
@@ -113,7 +124,7 @@ export default async function NotificationSettingsPage({ searchParams }: PagePro
   const { data: settingsRow } = await supabase
     .from('store_notification_settings')
     .select(
-      'reminder_line_enabled, reminder_email_enabled, reminder_day_before_enabled, reminder_same_day_enabled, reminder_day_before_send_hour_jst, reminder_same_day_send_hour_jst, followup_line_enabled, followup_days, slot_reoffer_line_enabled, monthly_message_limit, monthly_message_limit_with_option, over_limit_behavior'
+      'reminder_line_enabled, reminder_email_enabled, reminder_day_before_enabled, reminder_same_day_enabled, reminder_day_before_send_hour_jst, reminder_same_day_send_hour_jst, followup_line_enabled, followup_days, next_visit_line_enabled, next_visit_notice_days_before, slot_reoffer_line_enabled, monthly_message_limit, monthly_message_limit_with_option, over_limit_behavior'
     )
     .eq('store_id', storeId)
     .maybeSingle()
@@ -140,6 +151,16 @@ export default async function NotificationSettingsPage({ searchParams }: PagePro
   )
   const followupLineEnabled = toBool(settings?.followup_line_enabled, DEFAULT_SETTINGS.followup_line_enabled)
   const followupDays = toFollowupDays(settings?.followup_days)
+  const nextVisitLineEnabled = toBool(
+    settings?.next_visit_line_enabled,
+    DEFAULT_SETTINGS.next_visit_line_enabled
+  )
+  const nextVisitNoticeDaysBefore = toInt(
+    settings?.next_visit_notice_days_before,
+    DEFAULT_SETTINGS.next_visit_notice_days_before,
+    0,
+    30
+  )
   const slotReofferLineEnabled = toBool(
     settings?.slot_reoffer_line_enabled,
     DEFAULT_SETTINGS.slot_reoffer_line_enabled
@@ -300,6 +321,17 @@ export default async function NotificationSettingsPage({ searchParams }: PagePro
               再来店フォローLINEを有効化
             </label>
             <label className="inline-flex items-center gap-2 rounded border p-3 text-sm text-gray-700">
+              <input type="hidden" name="next_visit_line_enabled" value="false" />
+              <input
+                type="checkbox"
+                name="next_visit_line_enabled"
+                value="true"
+                defaultChecked={nextVisitLineEnabled}
+                disabled={!canManage}
+              />
+              次回来店提案LINEを有効化
+            </label>
+            <label className="inline-flex items-center gap-2 rounded border p-3 text-sm text-gray-700">
               <input type="hidden" name="slot_reoffer_line_enabled" value="false" />
               <input
                 type="checkbox"
@@ -319,6 +351,18 @@ export default async function NotificationSettingsPage({ searchParams }: PagePro
                 type="text"
                 name="followup_days"
                 defaultValue={followupDays.join(',')}
+                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                disabled={!canManage}
+              />
+            </label>
+            <label className="text-sm text-gray-700 md:col-span-1">
+              提案LINE送信日数前
+              <input
+                type="number"
+                min={0}
+                max={30}
+                name="next_visit_notice_days_before"
+                defaultValue={nextVisitNoticeDaysBefore}
                 className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
                 disabled={!canManage}
               />

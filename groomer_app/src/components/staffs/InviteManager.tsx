@@ -10,6 +10,41 @@ type InviteRow = {
   expires_at: string
 }
 
+let cachedInvites: InviteRow[] | null = null
+let inflightInvitesPromise: Promise<InviteRow[] | null> | null = null
+
+async function fetchInvites() {
+  if (cachedInvites) {
+    return cachedInvites
+  }
+  if (inflightInvitesPromise) {
+    return inflightInvitesPromise
+  }
+
+  inflightInvitesPromise = fetch('/api/store-invites', { cache: 'no-store' })
+    .then(async (response) => {
+      const json = (await response.json().catch(() => ({}))) as {
+        invites?: InviteRow[]
+        message?: string
+      }
+      if (!response.ok) {
+        throw new Error(json.message ?? '招待一覧の取得に失敗しました。')
+      }
+      cachedInvites = json.invites ?? []
+      return cachedInvites
+    })
+    .finally(() => {
+      inflightInvitesPromise = null
+    })
+
+  return inflightInvitesPromise
+}
+
+function clearInvitesCache() {
+  cachedInvites = null
+  inflightInvitesPromise = null
+}
+
 export function InviteManager() {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'admin' | 'staff'>('staff')
@@ -20,18 +55,14 @@ export function InviteManager() {
   const [error, setError] = useState('')
 
   async function loadInvites() {
-    const response = await fetch('/api/store-invites', { cache: 'no-store' })
-    const json = (await response.json().catch(() => ({}))) as {
-      invites?: InviteRow[]
-      message?: string
-    }
-    if (!response.ok) {
-      setError(json.message ?? '招待一覧の取得に失敗しました。')
+    try {
+      const invitesPayload = await fetchInvites()
+      setInvites(invitesPayload ?? [])
       setIsLoading(false)
-      return
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '招待一覧の取得に失敗しました。')
+      setIsLoading(false)
     }
-    setInvites(json.invites ?? [])
-    setIsLoading(false)
   }
 
   useEffect(() => {
@@ -59,6 +90,7 @@ export function InviteManager() {
 
       setMessage(json.message ?? '招待リンクを作成しました。')
       setEmail('')
+      clearInvitesCache()
       await loadInvites()
     } finally {
       setIsSubmitting(false)

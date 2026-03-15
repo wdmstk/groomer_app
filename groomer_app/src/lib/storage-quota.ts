@@ -22,6 +22,8 @@ export type StoreStorageQuotaState = {
   planCode: AppPlan
   policy: StorageLimitPolicy
   usageBytes: number
+  usageUnavailable: boolean
+  usageFetchError: string | null
   baseLimitBytes: number
   extraCapacityBytes: number
   customLimitBytes: number | null
@@ -129,23 +131,43 @@ export function formatBytesToJa(bytes: number) {
 export async function fetchStoreStorageQuotaState(params: {
   storeId: string
   bucket: string
+  allowPartialUsageFailure?: boolean
 }) {
   const admin = createAdminSupabaseClient()
-  const [{ data: sub }, { data: policyRow }, objects] = await Promise.all([
+  const objectListingPromise = fetchStoreStorageObjects({ storeId: params.storeId, bucket: params.bucket })
+  const safeObjectListingPromise = (
+    params.allowPartialUsageFailure
+      ? Promise.race([
+          objectListingPromise,
+          new Promise<StorageObjectRow[]>((_, reject) => {
+            setTimeout(() => reject(new Error('ストレージ集計がタイムアウトしました')), 5000)
+          }),
+        ])
+      : objectListingPromise
+  )
+  const [{ data: sub }, { data: policyRow }, objectsResult] = await Promise.all([
     admin.from('store_subscriptions').select('plan_code').eq('store_id', params.storeId).maybeSingle(),
     admin
       .from('store_storage_policies')
       .select('store_id, policy, extra_capacity_gb, custom_limit_mb')
       .eq('store_id', params.storeId)
       .maybeSingle(),
-    fetchStoreStorageObjects({ storeId: params.storeId, bucket: params.bucket }),
+    safeObjectListingPromise
+      .then((rows) => ({ rows, error: null as string | null }))
+      .catch((error: unknown) => {
+        if (!params.allowPartialUsageFailure) throw error
+        return {
+          rows: [] as StorageObjectRow[],
+          error: error instanceof Error ? error.message : '容量の取得に失敗しました',
+        }
+      }),
   ])
 
   const planCode = normalizePlanCode(sub?.plan_code)
   const policy = (policyRow?.policy ?? 'block') as StorageLimitPolicy
   const extraCapacityGb = toSafeInt(policyRow?.extra_capacity_gb, 0)
   const customLimitMb = typeof policyRow?.custom_limit_mb === 'number' ? toSafeInt(policyRow.custom_limit_mb) : null
-  const usageBytes = objects.reduce((sum, row) => sum + parseObjectSize(row), 0)
+  const usageBytes = objectsResult.rows.reduce((sum, row) => sum + parseObjectSize(row), 0)
   const baseLimitBytes = PLAN_STORAGE_LIMIT_BYTES[planCode]
   const extraCapacityBytes = extraCapacityGb * GB
   const customLimitBytes = customLimitMb !== null ? customLimitMb * MB : null
@@ -156,6 +178,8 @@ export async function fetchStoreStorageQuotaState(params: {
     planCode,
     policy,
     usageBytes,
+    usageUnavailable: objectsResult.error !== null,
+    usageFetchError: objectsResult.error,
     baseLimitBytes,
     extraCapacityBytes,
     customLimitBytes,
