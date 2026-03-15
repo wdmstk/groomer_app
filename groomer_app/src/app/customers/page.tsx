@@ -23,6 +23,25 @@ type Customer = {
   tags: string[] | null
 }
 
+function renderLineStatus(customer: Customer) {
+  if (customer.line_id) {
+    return (
+      <div className="space-y-1">
+        <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+          連携済み
+        </span>
+        <p className="text-xs text-gray-500">{customer.line_id}</p>
+      </div>
+    )
+  }
+
+  return (
+    <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">
+      未連携
+    </span>
+  )
+}
+
 type PetOption = {
   id: string
   name: string
@@ -181,7 +200,10 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                     <p>電話番号: {customer.phone_number ?? '未登録'}</p>
                     <p>メール: {customer.email ?? '未登録'}</p>
                     <p>住所: {customer.address ?? '未登録'}</p>
-                    <p>LINE ID: {customer.line_id ?? '未登録'}</p>
+                    <div className="flex items-center gap-2">
+                      <span>LINE:</span>
+                      {renderLineStatus(customer)}
+                    </div>
                     <p>来店経路: {customer.how_to_know ?? '未登録'}</p>
                     <p>ランク: {customer.rank ?? '通常'}</p>
                     <p>タグ: {customer.tags?.join(', ') ?? 'なし'}</p>
@@ -248,7 +270,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                         <td className="py-3 px-2">{customer.phone_number ?? '未登録'}</td>
                         <td className="py-3 px-2">{customer.email ?? '未登録'}</td>
                         <td className="py-3 px-2">{customer.address ?? '未登録'}</td>
-                        <td className="py-3 px-2">{customer.line_id ?? '未登録'}</td>
+                        <td className="py-3 px-2">{renderLineStatus(customer)}</td>
                         <td className="py-3 px-2">{customer.how_to_know ?? '未登録'}</td>
                         <td className="py-3 px-2">{customer.rank ?? '通常'}</td>
                         <td className="py-3 px-2">{customer.tags?.join(', ') ?? 'なし'}</td>

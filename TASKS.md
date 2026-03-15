@@ -26,11 +26,11 @@ AI agents should prioritize unfinished tasks.
 * [ ] Create branch `feat/medical-record-line-share`
 * [x] Add medical record LINE share sending path using existing `line_id`
 * [x] Store notification logs for medical record share sends
-* [ ] Create branch `feat/line-webhook-linking`
-* [ ] Add LINE webhook endpoint
-* [ ] Verify LINE signature and persist webhook events
-* [ ] Design or implement customer auto-link flow from LINE events
-* [ ] Update customer screens to show LINE linked/unlinked state clearly
+* [x] Create branch `feat/line-webhook-linking`
+* [x] Add LINE webhook endpoint
+* [x] Verify LINE signature and persist webhook events
+* [x] Design or implement customer auto-link flow from LINE events
+* [x] Update customer screens to show LINE linked/unlinked state clearly
 
 ### Phase 3: Multi-pet Booking UX
 

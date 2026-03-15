@@ -101,8 +101,8 @@
 
 不足:
 
-- LINE Webhook受信口が見当たらない
-- 友だち追加イベントからの自動紐付けがない
+- LINE Webhook受信口は `feat/line-webhook-linking` で追加着手済み
+- 友だち追加イベントからの完全自動紐付けはまだない
 - LINE上で予約導線を閉じる設計が弱い
 
 評価:
@@ -215,6 +215,18 @@
 - LINE Webhook受信API追加
 - 友だち追加イベント / 連携メッセージ / トークン連携導線を追加
 - `customers.line_id` の手入力依存を下げる
+
+実装状況:
+
+- 完了:
+  - `groomer_app/src/app/api/webhooks/line/route.ts` を追加
+  - `LINE_CHANNEL_SECRET` を使った署名検証を追加
+  - `supabase/supabase_line_webhook_events.sql` でイベント保存テーブルを追加
+  - 既存 `customers.line_id` と照合して `matched_customer_id` を保存する最小自動紐付けを追加
+  - 顧客一覧で `LINE ID` 表示を `連携済み` / `未連携` の状態表示に変更
+- 残り:
+  - 友だち追加から顧客側で連携完了させる導線
+  - 複数店舗・未紐付けユーザー向けの再連携導線
 
 フェーズ3でやること:
 
