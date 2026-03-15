@@ -1,7 +1,14 @@
 import Link from 'next/link'
+import nextDynamic from 'next/dynamic'
 import { createStoreScopedClient } from '@/lib/supabase/store'
-import { OpsStatusActionForm } from '@/components/ops/OpsStatusActionForm'
-import { OpsRevertStatusForm } from '@/components/ops/OpsRevertStatusForm'
+
+const OpsStatusActionForm = nextDynamic(
+  () => import('@/components/ops/OpsStatusActionForm').then((mod) => mod.OpsStatusActionForm)
+)
+
+const OpsRevertStatusForm = nextDynamic(
+  () => import('@/components/ops/OpsRevertStatusForm').then((mod) => mod.OpsRevertStatusForm)
+)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0

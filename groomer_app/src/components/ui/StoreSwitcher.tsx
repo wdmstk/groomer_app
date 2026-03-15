@@ -1,27 +1,10 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useEffectEvent, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { DEFAULT_UI_THEME, isUiTheme, type UiTheme } from '@/lib/ui/themes'
 import { UI_THEME_STORAGE_KEY } from '@/lib/ui/theme-preference'
-
-type StoreOption = {
-  id: string
-  name: string
-  role: 'owner' | 'admin' | 'staff'
-  planCode?: string
-  uiTheme?: UiTheme
-  hotelOptionEnabled?: boolean
-  notificationOptionEnabled?: boolean
-}
-
-type StoreResponse = {
-  activeStoreId: string | null
-  stores: StoreOption[]
-  user?: {
-    email?: string
-  }
-}
+import { clearStoreResponseCache, fetchStoreResponse, type StoreResponse } from '@/lib/stores/client'
 
 type StoreSwitcherProps = {
   onActiveStoreNameChange?: (name: string) => void
@@ -53,26 +36,23 @@ export function StoreSwitcher({
   const [data, setData] = useState<StoreResponse>({ activeStoreId: null, stores: [] })
   const [isLoading, setIsLoading] = useState(true)
   const [isPending, startTransition] = useTransition()
+  const emitUserEmailChange = useEffectEvent((email: string) => {
+    if (!onUserEmailChange) return
+    onUserEmailChange(email)
+  })
 
   useEffect(() => {
     let isMounted = true
 
     async function loadStores() {
-      const response = await fetch('/api/stores', { cache: 'no-store' })
-      if (!response.ok) {
-        if (isMounted) {
-          setIsLoading(false)
-        }
+      const json = await fetchStoreResponse()
+      if (!json) {
+        if (isMounted) setIsLoading(false)
         return
       }
-
-      const json = (await response.json()) as StoreResponse
       if (isMounted) {
         const resolvedActiveStoreId = json.activeStoreId ?? json.stores[0]?.id ?? null
         setData({ ...json, activeStoreId: resolvedActiveStoreId })
-        if (onUserEmailChange) {
-          onUserEmailChange(json.user?.email ?? '')
-        }
         setIsLoading(false)
       }
     }
@@ -81,7 +61,11 @@ export function StoreSwitcher({
     return () => {
       isMounted = false
     }
-  }, [onUserEmailChange])
+  }, [])
+
+  useEffect(() => {
+    emitUserEmailChange(data.user?.email ?? '')
+  }, [data.user?.email])
 
   useEffect(() => {
     if (!onActiveStoreNameChange) return
@@ -90,6 +74,13 @@ export function StoreSwitcher({
       onActiveStoreNameChange(activeStore.name)
     }
   }, [data.activeStoreId, data.stores, onActiveStoreNameChange])
+
+  useEffect(() => {
+    const activeStoreId = data.activeStoreId ?? data.stores[0]?.id ?? ''
+    if (typeof window !== 'undefined' && activeStoreId) {
+      window.sessionStorage.setItem('active_store_id', activeStoreId)
+    }
+  }, [data.activeStoreId, data.stores])
 
   useEffect(() => {
     const activeStore = data.stores.find((store) => store.id === data.activeStoreId) ?? data.stores[0]
@@ -154,6 +145,10 @@ export function StoreSwitcher({
       return
     }
 
+    clearStoreResponseCache()
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem('active_store_id', nextStoreId)
+    }
     setData((prev) => ({ ...prev, activeStoreId: nextStoreId }))
     startTransition(() => {
       router.refresh()

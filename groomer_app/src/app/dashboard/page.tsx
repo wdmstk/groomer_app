@@ -1,10 +1,20 @@
 import Link from 'next/link'
+import nextDynamic from 'next/dynamic'
 import { resolveCurrentStoreId } from '@/lib/supabase/store'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/Card'
-import { QuickPaymentModal } from '@/components/dashboard/QuickPaymentModal'
-import { SlotReofferPanel } from '@/components/dashboard/SlotReofferPanel'
 import type { Json } from '@/lib/supabase/database.types'
+
+const QuickPaymentModal = nextDynamic(
+  () => import('@/components/dashboard/QuickPaymentModal').then((mod) => mod.QuickPaymentModal)
+)
+
+const SlotReofferPanel = nextDynamic(
+  () => import('@/components/dashboard/SlotReofferPanel').then((mod) => mod.SlotReofferPanel),
+  {
+    loading: () => <div className="p-4 text-sm text-gray-500">空き枠再販を読み込み中...</div>,
+  }
+)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -645,6 +655,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const predictiveWindowStartDate = new Date(now.getTime() - predictiveWindowDays * 24 * 60 * 60 * 1000)
   const predictiveWindowStartIso = predictiveWindowStartDate.toISOString()
   const predictiveWindowStartDateKey = predictiveWindowStartDate.toISOString().slice(0, 10)
+  const needsOperationsInsights = activeTab === 'overview' || activeTab === 'operations'
+  const needsFollowupInsights = activeTab === 'overview' || activeTab === 'followups'
+  const needsFollowupDetails = activeTab === 'followups'
+  const needsReofferInsights = activeTab === 'overview' || activeTab === 'reoffers'
+  const needsReofferDetails = activeTab === 'reoffers'
 
   const supabase = await createServerSupabaseClient()
   const storeId = await resolveCurrentStoreId()
@@ -727,26 +742,30 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         .eq('store_id', storeId)
         .eq('date_key', todayDateKey)
         .maybeSingle(),
-      supabase
-        .from('followup_daily_summary_v')
-        .select(
-          'date_key, task_count, open_count, in_progress_count, snoozed_count, resolved_booked_count, resolved_no_need_count, resolved_lost_count, due_today_count, touched_count, renotified_count'
-        )
-        .eq('store_id', storeId)
-        .gte('date_key', followupWindowStartDateKey)
-        .lte('date_key', todayDateKey),
-      supabase
-        .from('reoffer_daily_summary_v')
-        .select(
-          'date_key, total_count, accepted_count, booked_count, phone_contact_count, connected_call_count'
-        )
-        .eq('store_id', storeId)
-        .gte('date_key', followupWindowStartDateKey)
-        .lte('date_key', todayDateKey),
+      needsFollowupInsights
+        ? supabase
+            .from('followup_daily_summary_v')
+            .select(
+              'date_key, task_count, open_count, in_progress_count, snoozed_count, resolved_booked_count, resolved_no_need_count, resolved_lost_count, due_today_count, touched_count, renotified_count'
+            )
+            .eq('store_id', storeId)
+            .gte('date_key', followupWindowStartDateKey)
+            .lte('date_key', todayDateKey)
+        : Promise.resolve({ data: [] }),
+      needsReofferInsights
+        ? supabase
+            .from('reoffer_daily_summary_v')
+            .select(
+              'date_key, total_count, accepted_count, booked_count, phone_contact_count, connected_call_count'
+            )
+            .eq('store_id', storeId)
+            .gte('date_key', followupWindowStartDateKey)
+            .lte('date_key', todayDateKey)
+        : Promise.resolve({ data: [] }),
     ])
 
   const { data: medicalRecords } =
-    petIds.length > 0
+    needsOperationsInsights && petIds.length > 0
       ? await supabase
           .from('medical_records')
           .select('id, pet_id, record_date, menu, skin_condition, behavior_notes, caution_notes')
@@ -762,79 +781,102 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     .gte('visit_date', todayStart.toISOString())
     .lt('visit_date', tomorrowStart.toISOString())
 
-  const { data: allVisits } = await supabase
-    .from('visits')
-    .select('customer_id, visit_date')
-    .eq('store_id', storeId)
-    .order('visit_date', { ascending: false })
+  const { data: allVisits } = needsFollowupDetails
+    ? await supabase
+        .from('visits')
+        .select('customer_id, visit_date')
+        .eq('store_id', storeId)
+        .order('visit_date', { ascending: false })
+    : { data: [] }
 
-  const { data: customerRows } = await supabase
-    .from('customers')
-    .select('id, full_name, phone_number, line_id')
-    .eq('store_id', storeId)
+  const { data: customerRows } = needsFollowupDetails
+    ? await supabase
+        .from('customers')
+        .select('id, full_name, phone_number, line_id')
+        .eq('store_id', storeId)
+    : { data: [] }
 
-  const { data: predictiveCustomerFeatures } = await supabase
-    .from('predictive_customer_daily_features')
-    .select(
-      'customer_id, metric_date_jst, appointments_count, completed_count, canceled_count, no_show_count, latest_start_time'
-    )
-    .eq('store_id', storeId)
-    .gte('metric_date_jst', predictiveWindowStartDateKey)
-    .lte('metric_date_jst', todayDateKey)
+  const { data: predictiveCustomerFeatures } = needsFollowupInsights
+    ? await supabase
+        .from('predictive_customer_daily_features')
+        .select(
+          'customer_id, metric_date_jst, appointments_count, completed_count, canceled_count, no_show_count, latest_start_time'
+        )
+        .eq('store_id', storeId)
+        .gte('metric_date_jst', predictiveWindowStartDateKey)
+        .lte('metric_date_jst', todayDateKey)
+    : { data: [] }
 
-  const { data: predictiveStoreFeatures } = await supabase
-    .from('predictive_store_daily_features')
-    .select('metric_date_jst, appointments_count, no_show_count')
-    .eq('store_id', storeId)
-    .gte('metric_date_jst', followupWindowStartDateKey)
-    .lte('metric_date_jst', todayDateKey)
+  const { data: predictiveStoreFeatures } = needsFollowupDetails
+    ? await supabase
+        .from('predictive_store_daily_features')
+        .select('metric_date_jst, appointments_count, no_show_count')
+        .eq('store_id', storeId)
+        .gte('metric_date_jst', followupWindowStartDateKey)
+        .lte('metric_date_jst', todayDateKey)
+    : { data: [] }
 
-  const { data: delayFeatureRows } = await supabase
-    .from('appointments')
-    .select('start_time, checked_in_at, status')
-    .eq('store_id', storeId)
-    .gte('start_time', predictiveWindowStartIso)
-    .lt('start_time', tomorrowStart.toISOString())
-    .neq('status', 'キャンセル')
-    .neq('status', '無断キャンセル')
+  const { data: delayFeatureRows } = needsOperationsInsights
+    ? await supabase
+        .from('appointments')
+        .select('start_time, checked_in_at, status')
+        .eq('store_id', storeId)
+        .gte('start_time', predictiveWindowStartIso)
+        .lt('start_time', tomorrowStart.toISOString())
+        .neq('status', 'キャンセル')
+        .neq('status', '無断キャンセル')
+    : { data: [] }
 
-  const { data: storeSettings } = await supabase
-    .from('stores')
-    .select(
-      'public_reserve_conflict_warn_threshold_percent, public_reserve_staff_bias_warn_threshold_percent'
-    )
-    .eq('id', storeId)
-    .maybeSingle()
+  const { data: storeSettings } = needsReofferDetails
+    ? await supabase
+        .from('stores')
+        .select(
+          'public_reserve_conflict_warn_threshold_percent, public_reserve_staff_bias_warn_threshold_percent'
+        )
+        .eq('id', storeId)
+        .maybeSingle()
+    : { data: null }
 
-  const { data: followupTasks } = await supabase
-    .from('customer_followup_tasks')
-    .select(
-      'id, status, resolved_at, due_on, recommended_at, resolution_type, assigned_user_id, customers(full_name, phone_number, line_id)'
-    )
-    .eq('store_id', storeId)
+  const { data: followupTasks } = needsFollowupDetails
+    ? await supabase
+        .from('customer_followup_tasks')
+        .select(
+          'id, status, resolved_at, due_on, recommended_at, resolution_type, assigned_user_id, customers(full_name, phone_number, line_id)'
+        )
+        .eq('store_id', storeId)
+    : { data: [] }
 
-  const { data: followupStaffs } = await supabase
-    .from('staffs')
-    .select('id, user_id, full_name')
-    .eq('store_id', storeId)
+  const { data: followupStaffs } =
+    needsFollowupDetails || needsReofferDetails
+      ? await supabase
+          .from('staffs')
+          .select('id, user_id, full_name')
+          .eq('store_id', storeId)
+      : { data: [] }
 
-  const { data: reofferRows } = await supabase
-    .from('slot_reoffers')
-    .select('id, status, sent_at, accepted_at, target_staff_id')
-    .eq('store_id', storeId)
+  const { data: reofferRows } = needsReofferDetails
+    ? await supabase
+        .from('slot_reoffers')
+        .select('id, status, sent_at, accepted_at, target_staff_id')
+        .eq('store_id', storeId)
+    : { data: [] }
 
-  const { data: reofferLogs } = await supabase
-    .from('slot_reoffer_logs')
-    .select('slot_reoffer_id, event_type, payload, created_at')
-    .eq('store_id', storeId)
+  const { data: reofferLogs } = needsReofferDetails
+    ? await supabase
+        .from('slot_reoffer_logs')
+        .select('slot_reoffer_id, event_type, payload, created_at')
+        .eq('store_id', storeId)
+    : { data: [] }
 
-  const { data: serviceMenusForInstant } = await supabase
-    .from('service_menus')
-    .select('id, name, is_active, is_instant_bookable')
-    .eq('store_id', storeId)
-    .eq('is_active', true)
-    .order('display_order', { ascending: true })
-    .order('created_at', { ascending: false })
+  const { data: serviceMenusForInstant } = needsReofferDetails
+    ? await supabase
+        .from('service_menus')
+        .select('id, name, is_active, is_instant_bookable')
+        .eq('store_id', storeId)
+        .eq('is_active', true)
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false })
+    : { data: [] }
 
   const { data: todayPayments } = await supabase
     .from('payments')
@@ -870,7 +912,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     { count: publicReservationInstantConfirmedWindowCount },
     { count: publicReservationConflictRejectedWindowCount },
     { data: publicReservationInstantConfirmedWindowRows },
-  ] = await Promise.all([
+  ] = await Promise.all(needsReofferDetails ? [
     supabase
       .from('audit_logs')
       .select('id', { count: 'exact', head: true })
@@ -931,6 +973,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .contains('payload', { flow: 'instant_confirmed' })
       .gte('created_at', followupWindowStartIso)
       .lt('created_at', tomorrowStart.toISOString()),
+  ] : [
+    Promise.resolve({ count: 0 }),
+    Promise.resolve({ count: 0 }),
+    Promise.resolve({ count: 0 }),
+    Promise.resolve({ data: [] }),
+    Promise.resolve({ count: 0 }),
+    Promise.resolve({ count: 0 }),
+    Promise.resolve({ count: 0 }),
+    Promise.resolve({ data: [] }),
   ])
   const publicSubmittedToday = publicReservationSubmittedTodayCount ?? 0
   const publicInstantConfirmedToday = publicReservationInstantConfirmedTodayCount ?? 0

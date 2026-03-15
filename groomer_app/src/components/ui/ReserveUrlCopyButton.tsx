@@ -1,22 +1,25 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-
-type StoreResponse = {
-  activeStoreId: string | null
-}
+import { fetchStoreResponse } from '@/lib/stores/client'
 
 export function ReserveUrlCopyButton() {
   const [activeStoreId, setActiveStoreId] = useState<string | null>(null)
   const [copyMessage, setCopyMessage] = useState('')
 
   async function fetchActiveStoreId() {
-    const response = await fetch('/api/stores', { cache: 'no-store' })
-    if (!response.ok) {
-      return null
+    if (typeof window !== 'undefined') {
+      const persistedStoreId = window.sessionStorage.getItem('active_store_id')
+      if (persistedStoreId) {
+        return persistedStoreId
+      }
     }
-    const json = (await response.json()) as StoreResponse
-    return json.activeStoreId
+    const json = await fetchStoreResponse()
+    const nextStoreId = json?.activeStoreId ?? null
+    if (typeof window !== 'undefined' && nextStoreId) {
+      window.sessionStorage.setItem('active_store_id', nextStoreId)
+    }
+    return nextStoreId
   }
 
   useEffect(() => {
