@@ -30,6 +30,8 @@ type AppointmentSummary = {
   start_time: string
   menu: string | null
   duration: number | null
+  customer_id: string | null
+  customers?: { id: string; full_name: string | null; line_id: string | null } | { id: string; full_name: string | null; line_id: string | null }[] | null
   staffs?: { full_name: string } | { full_name: string }[] | null
 }
 
@@ -210,7 +212,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
     effectiveLinkedAppointmentId
       ? await supabase
           .from('appointments')
-          .select('id, pet_id, staff_id, start_time, menu, duration, staffs(full_name)')
+          .select('id, customer_id, pet_id, staff_id, start_time, menu, duration, customers(id, full_name, line_id), staffs(full_name)')
           .eq('id', effectiveLinkedAppointmentId)
           .eq('store_id', storeId)
           .maybeSingle()
@@ -245,6 +247,13 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
     }))
 
   const linkedAppointmentSummary = prefillAppointment as AppointmentSummary | null
+  const linkedAppointmentCustomer = (() => {
+    if (!linkedAppointmentSummary?.customers) return null
+    if (Array.isArray(linkedAppointmentSummary.customers)) {
+      return linkedAppointmentSummary.customers[0] ?? null
+    }
+    return linkedAppointmentSummary.customers
+  })()
   const linkedAppointmentStaffName = (() => {
     if (!linkedAppointmentSummary?.staffs) return null
     if (Array.isArray(linkedAppointmentSummary.staffs)) {
@@ -677,6 +686,15 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                   menu: linkedAppointmentSummary.menu,
                   duration: linkedAppointmentSummary.duration,
                   staff_name: linkedAppointmentStaffName,
+                }
+              : null
+          }
+          linkedCustomerSummary={
+            linkedAppointmentCustomer
+              ? {
+                  id: linkedAppointmentCustomer.id,
+                  full_name: linkedAppointmentCustomer.full_name ?? null,
+                  hasLineId: Boolean(linkedAppointmentCustomer.line_id),
                 }
               : null
           }

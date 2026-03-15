@@ -2,11 +2,9 @@ import { NextResponse } from 'next/server'
 import { insertAuditLogBestEffort } from '@/lib/audit-logs'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import type { Database } from '@/lib/supabase/database.types'
 import {
-  generateMedicalRecordShareToken,
-  getMedicalRecordShareExpiresAt,
-  hashMedicalRecordShareToken,
+  buildMedicalRecordShareUrl,
+  createMedicalRecordShareLink,
 } from '@/lib/medical-records/share'
 
 type RouteParams = {
@@ -38,45 +36,37 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json({ message: '確定済みカルテのみ共有できます。' }, { status: 400 })
   }
 
-  const shareToken = generateMedicalRecordShareToken()
-  const expiresAt = getMedicalRecordShareExpiresAt()
-  const shareLinkInsert: Database['public']['Tables']['medical_record_share_links']['Insert'] = {
-    store_id: storeId,
-    medical_record_id: record_id,
-    token_hash: hashMedicalRecordShareToken(shareToken),
-    expires_at: expiresAt,
-    created_by_user_id: user?.id ?? null,
+  try {
+    const { shareLink, shareToken, expiresAt } = await createMedicalRecordShareLink({
+      supabase: adminSupabase,
+      storeId,
+      recordId: record_id,
+      createdByUserId: user?.id ?? null,
+    })
+
+    await insertAuditLogBestEffort({
+      supabase,
+      storeId,
+      actorUserId: user?.id ?? null,
+      entityType: 'medical_record',
+      entityId: record_id,
+      action: 'shared',
+      before: record,
+      after: {
+        ...record,
+        shared: true,
+      },
+      payload: {
+        share_link_id: shareLink.id,
+        expires_at: shareLink.expires_at,
+        created_by_user_id: shareLink.created_by_user_id,
+      },
+    })
+
+    const shareUrl = buildMedicalRecordShareUrl(request.url, shareToken)
+    return NextResponse.json({ shareUrl, expiresAt })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '共有URLの発行に失敗しました。'
+    return NextResponse.json({ message }, { status: 500 })
   }
-
-  const { data: shareLink, error } = await adminSupabase
-    .from('medical_record_share_links')
-    .insert(shareLinkInsert)
-    .select('id, medical_record_id, expires_at, created_by_user_id')
-    .single()
-
-  if (error) {
-    return NextResponse.json({ message: error.message }, { status: 500 })
-  }
-
-  await insertAuditLogBestEffort({
-    supabase,
-    storeId,
-    actorUserId: user?.id ?? null,
-    entityType: 'medical_record',
-    entityId: record_id,
-    action: 'shared',
-    before: record,
-    after: {
-      ...record,
-      shared: true,
-    },
-    payload: {
-      share_link_id: shareLink.id,
-      expires_at: shareLink.expires_at,
-      created_by_user_id: shareLink.created_by_user_id,
-    },
-  })
-
-  const shareUrl = new URL(`/shared/medical-records/${shareToken}`, request.url).toString()
-  return NextResponse.json({ shareUrl, expiresAt })
 }
