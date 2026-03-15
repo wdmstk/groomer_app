@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getDefaultFollowupLineTemplate } from '@/lib/notification-templates'
+import {
+  addDays,
+  getRecommendedVisitIntervalDays,
+  getRecommendationReason,
+} from '@/lib/followups/recommendation'
 import type { Database, Json } from '@/lib/supabase/database.types'
 import type { JsonObject } from '@/lib/object-utils'
 import {
@@ -12,20 +17,12 @@ import {
   toOptionalString,
 } from '@/lib/followups/shared'
 
-const REVISIT_CYCLE_DAYS = 45
-
 type FollowupTaskInsert = Database['public']['Tables']['customer_followup_tasks']['Insert']
 type FollowupEventInsert = Database['public']['Tables']['customer_followup_events']['Insert']
 type FollowupTaskLike = JsonObject & { id: string; assigned_user_id?: Json }
 
 function toJson(value: unknown): Json {
   return (value ?? null) as Json
-}
-
-function addDays(value: string, days: number) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return null
-  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
 }
 
 function resolveBooleanFlag(value: string | null) {
@@ -176,7 +173,7 @@ export async function GET(request: Request) {
     })
   }
 
-  const [{ data: customers, error: customersError }, { data: visits, error: visitsError }, { data: appointments, error: appointmentsError }, { data: activeTasks, error: activeTasksError }, { data: staffs, error: staffsError }] =
+  const [{ data: customers, error: customersError }, { data: visits, error: visitsError }, { data: appointments, error: appointmentsError }, { data: activeTasks, error: activeTasksError }, { data: staffs, error: staffsError }, { data: pets, error: petsError }, { data: nextVisitTemplateRows, error: nextVisitTemplateError }] =
     await Promise.all([
       supabase
         .from('customers')
@@ -199,9 +196,26 @@ export async function GET(request: Request) {
         .from('staffs')
         .select('id, user_id, full_name')
         .eq('store_id', storeId),
+      supabase.from('pets').select('id, breed, coat_volume').eq('store_id', storeId),
+      supabase
+        .from('notification_templates')
+        .select('template_key, body')
+        .eq('store_id', storeId)
+        .eq('channel', 'line')
+        .eq('is_active', true)
+        .eq('template_key', 'next_visit_suggestion_line'),
     ])
 
-  const firstError = customersError ?? visitsError ?? appointmentsError ?? activeTasksError ?? staffsError
+  const firstError =
+    customersError ??
+    visitsError ??
+    appointmentsError ??
+    activeTasksError ??
+    staffsError ??
+    petsError ??
+    (nextVisitTemplateError && !nextVisitTemplateError.message.includes('notification_templates')
+      ? nextVisitTemplateError
+      : null)
   if (firstError) {
     return jsonError(firstError.message, 500)
   }
@@ -233,6 +247,12 @@ export async function GET(request: Request) {
       start_time: string | null
       status: string | null
     }>).map((row) => [row.id, row])
+  )
+  const petById = new Map(
+    ((pets ?? []) as Array<{ id: string; breed: string | null; coat_volume: string | null }>).map((row) => [
+      row.id,
+      row,
+    ])
   )
   const customerIdsWithFutureBookings = new Set(
     ((appointments ?? []) as Array<{
@@ -279,7 +299,12 @@ export async function GET(request: Request) {
       const sourceAppointment = lastVisit.appointmentId
         ? appointmentById.get(lastVisit.appointmentId) ?? null
         : null
-      const recommendedAt = addDays(lastVisit.visitDate, REVISIT_CYCLE_DAYS)
+      const sourcePet = sourceAppointment?.pet_id ? petById.get(sourceAppointment.pet_id) ?? null : null
+      const intervalDays = getRecommendedVisitIntervalDays({
+        breed: sourcePet?.breed,
+        coatVolume: sourcePet?.coat_volume,
+      })
+      const recommendedAt = addDays(lastVisit.visitDate, intervalDays)
       if (!recommendedAt) return null
       if (recommendedAt.getTime() > nowMs) return null
       if (windowDays !== null && recommendedAt.getTime() < nowMs - windowDays * 24 * 60 * 60 * 1000) {
@@ -299,6 +324,11 @@ export async function GET(request: Request) {
           (sourceAppointment?.staff_id ? staffByStaffId.get(sourceAppointment.staff_id)?.full_name : null) ?? null,
         last_visit_at: lastVisit.visitDate,
         recommended_at: recommendedAt.toISOString(),
+        recommendation_reason: getRecommendationReason({
+          breed: sourcePet?.breed,
+          coatVolume: sourcePet?.coat_volume,
+          intervalDays,
+        }),
         overdue_days: Math.max(0, Math.floor((nowMs - recommendedAt.getTime()) / (24 * 60 * 60 * 1000))),
       }
     })
@@ -321,6 +351,11 @@ export async function GET(request: Request) {
     templates: {
       followup_line: {
         body: followupTemplate,
+      },
+      next_visit_suggestion_line: {
+        body:
+          ((nextVisitTemplateRows ?? []) as Array<{ template_key: string; body: string }>)[0]?.body ??
+          followupTemplate,
       },
     },
   })

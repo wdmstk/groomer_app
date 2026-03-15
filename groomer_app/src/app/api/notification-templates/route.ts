@@ -5,6 +5,7 @@ import {
   getDefaultFollowupLineTemplate,
   getDefaultHotelStayReportLineTemplate,
   getDefaultMedicalRecordShareLineTemplate,
+  getDefaultNextVisitSuggestionLineTemplate,
   getDefaultReminderEmailSubjectTemplate,
   getDefaultReminderEmailTemplate,
   getDefaultReminderLineTemplate,
@@ -19,6 +20,10 @@ const DEFAULT_TEMPLATES = {
   followup_line: {
     subject: '再来店フォロー',
     body: getDefaultFollowupLineTemplate(),
+  },
+  next_visit_suggestion_line: {
+    subject: '次回来店のご提案',
+    body: getDefaultNextVisitSuggestionLineTemplate(),
   },
   reminder_line: {
     subject: '前日リマインド',
@@ -41,6 +46,7 @@ const DEFAULT_TEMPLATES = {
 const NOTIFICATION_SCOPE_TEMPLATE_KEYS = [
   'slot_reoffer_line',
   'followup_line',
+  'next_visit_suggestion_line',
   'reminder_line',
   'reminder_email',
   'medical_record_share_line',
@@ -109,6 +115,7 @@ export async function PATCH(request: Request) {
   const templateKey =
     body?.template_key === 'slot_reoffer_line' ||
     body?.template_key === 'followup_line' ||
+    body?.template_key === 'next_visit_suggestion_line' ||
     body?.template_key === 'reminder_line' ||
     body?.template_key === 'reminder_email' ||
     body?.template_key === 'hotel_stay_report_line' ||
