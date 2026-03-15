@@ -55,6 +55,10 @@ test('createPublicReservationCore creates customer, pet, appointment, and cancel
     async fetchCustomerName() {
       return null
     },
+    async ensureAppointmentGroup() {
+      calls.push('ensureAppointmentGroup')
+      return 'group-1'
+    },
     async createCustomer() {
       calls.push('createCustomer')
       return 'customer-1'
@@ -72,6 +76,7 @@ test('createPublicReservationCore creates customer, pet, appointment, and cancel
     },
     async createAppointment(params) {
       calls.push('createAppointment')
+      assert.equal(params.groupId, 'group-1')
       assert.equal(params.menuSummaryNames, 'シャンプー')
       assert.equal(params.duration, 75)
       assert.equal(params.status, '予約申請')
@@ -90,6 +95,9 @@ test('createPublicReservationCore creates customer, pet, appointment, and cancel
     },
     createCancelToken({ appointmentId, storeId }) {
       return `${storeId}:${appointmentId}`
+    },
+    createGroupCancelToken({ groupId, storeId }) {
+      return `${storeId}:${groupId}`
     },
   }
 
@@ -114,10 +122,11 @@ test('createPublicReservationCore creates customer, pet, appointment, and cancel
   })
 
   assert.equal(result.appointmentId, 'appointment-1')
+  assert.equal(result.groupId, 'group-1')
   assert.equal(result.status, '予約申請')
   assert.equal(
     result.cancelUrl,
-    'https://example.com/reserve/cancel?token=store-1%3Aappointment-1'
+    'https://example.com/reserve/cancel?token=store-1%3Agroup-1'
   )
   assert.deepEqual(appointmentMenus, [
     { storeId: 'store-1', appointmentId: 'appointment-1', menuCount: 1 },
@@ -130,6 +139,7 @@ test('createPublicReservationCore creates customer, pet, appointment, and cancel
     'fetchExistingPet',
     'createPet',
     'estimateDuration',
+    'ensureAppointmentGroup',
     'createAppointment',
     'insertAppointmentMenus',
   ])
@@ -180,6 +190,9 @@ test('createPublicReservationCore confirms instantly for instant-bookable menus'
     async fetchCustomerName() {
       return null
     },
+    async ensureAppointmentGroup() {
+      return 'group-2'
+    },
     async createCustomer() {
       return 'customer-1'
     },
@@ -191,6 +204,7 @@ test('createPublicReservationCore confirms instantly for instant-bookable menus'
       return 'pet-1'
     },
     async createAppointment(params) {
+      assert.equal(params.groupId, 'group-2')
       assert.equal(params.status, '予約済')
       return 'appointment-2'
     },
@@ -200,6 +214,9 @@ test('createPublicReservationCore confirms instantly for instant-bookable menus'
     async insertAppointmentMenus() {},
     createCancelToken() {
       return 'token'
+    },
+    createGroupCancelToken() {
+      return 'group-token'
     },
   }
 
@@ -269,6 +286,9 @@ test('createPublicReservationCore rejects instant confirmation when slot conflic
     async fetchCustomerName() {
       return null
     },
+    async ensureAppointmentGroup() {
+      return 'group-3'
+    },
     async createCustomer() {
       return 'customer-1'
     },
@@ -288,6 +308,9 @@ test('createPublicReservationCore rejects instant confirmation when slot conflic
     async insertAppointmentMenus() {},
     createCancelToken() {
       return 'token'
+    },
+    createGroupCancelToken() {
+      return 'group-token'
     },
   }
 
@@ -361,6 +384,9 @@ test('createPublicReservationCore rejects instant confirmation when start is out
     async fetchCustomerName() {
       return null
     },
+    async ensureAppointmentGroup() {
+      return 'group-4'
+    },
     async createCustomer() {
       return 'customer-1'
     },
@@ -380,6 +406,9 @@ test('createPublicReservationCore rejects instant confirmation when start is out
     async insertAppointmentMenus() {},
     createCancelToken() {
       return 'token'
+    },
+    createGroupCancelToken() {
+      return 'group-token'
     },
   }
 

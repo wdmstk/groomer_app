@@ -44,7 +44,7 @@ export function CancelReservationClient({ token }: CancelReservationClientProps)
       <section className="mx-auto max-w-lg rounded-lg border bg-white p-5 sm:p-6">
         <h1 className="text-xl font-semibold text-gray-900">予約キャンセル</h1>
         <p className="mt-2 text-sm text-gray-600">
-          この操作で予約申請（または予約）をキャンセルします。よろしければ実行してください。
+          この操作で予約申請（または家族予約を含む予約）をキャンセルします。よろしければ実行してください。
         </p>
 
         <button

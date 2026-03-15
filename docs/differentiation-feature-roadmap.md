@@ -200,6 +200,14 @@
   - `appointments.group_id`
 - 1回の家族予約に対して複数予約を束ねる
 
+実装状況:
+
+- `feat/multi-pet-booking-group-model` で `appointment_groups` と `appointments.group_id` を採用
+- 既存予約は `group_id` nullable のまま残し、新規予約のみ後方互換を保ってグループ化
+- 管理画面予約と公開予約の両方で、2頭目以降を同じ `group_id` へ追加
+- 公開予約のキャンセル URL は同一 `group_id` をまとめてキャンセルする形式に更新
+- リマインド通知は同一 `group_id` に対して 1 通へ抑制し、家族予約での重複送信を防止
+
 フェーズ3でやること:
 
 - グループ単位の確認画面

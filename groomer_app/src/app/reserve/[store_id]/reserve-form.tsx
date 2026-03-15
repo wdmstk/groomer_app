@@ -47,6 +47,7 @@ type SlotCandidate = {
 
 type SubmittedReservationSummary = {
   appointmentId: string
+  groupId: string | null
   petName: string
   preferredStart: string
   status: string
@@ -105,6 +106,7 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
   const [selectedSlotStartIso, setSelectedSlotStartIso] = useState('')
   const [selectedSlotStaffId, setSelectedSlotStaffId] = useState('')
   const [submittedReservations, setSubmittedReservations] = useState<SubmittedReservationSummary[]>([])
+  const [currentGroupId, setCurrentGroupId] = useState('')
 
   const [customerName, setCustomerName] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -402,6 +404,7 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
           customerName,
           phoneNumber,
           email,
+          groupId: currentGroupId,
           petName,
           petBreed,
           petGender,
@@ -418,6 +421,7 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
         message?: string
         cancelUrl?: string
         appointmentId?: string
+        groupId?: string
         status?: string
       }
       if (!response.ok) {
@@ -428,12 +432,14 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
       setSubmittedReservations((prev) => [
         {
           appointmentId: json.appointmentId ?? `${Date.now()}`,
+          groupId: (json.groupId ?? currentGroupId) || null,
           petName,
           preferredStart,
           status: json.status ?? '予約申請',
         },
         ...prev,
       ])
+      setCurrentGroupId(json.groupId ?? currentGroupId)
       setMessage(json.message ?? '予約申請を受け付けました。')
       setCancelUrl(json.cancelUrl ?? '')
       setPetName('')

@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 
 type CancelTokenPayload = {
   appointmentId: string
+  groupId?: string
   storeId: string
   exp: number
 }
@@ -26,10 +27,12 @@ function sign(payloadBase64: string, secret: string) {
 
 export function createReservationCancelToken({
   appointmentId,
+  groupId,
   storeId,
   expiresInSeconds = DEFAULT_EXPIRES_IN_SECONDS,
 }: {
   appointmentId: string
+  groupId?: string
   storeId: string
   expiresInSeconds?: number
 }) {
@@ -40,6 +43,7 @@ export function createReservationCancelToken({
 
   const payload: CancelTokenPayload = {
     appointmentId,
+    ...(groupId ? { groupId } : {}),
     storeId,
     exp: Math.floor(Date.now() / 1000) + expiresInSeconds,
   }

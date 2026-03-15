@@ -117,6 +117,7 @@ type QrPayload = {
 
 type CreatedAppointmentSummary = {
   id: string
+  groupId: string | null
   customerId: string
   petId: string
   customerName: string
@@ -176,6 +177,7 @@ export function AppointmentForm({
   const [submitting, setSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState('')
   const [createdAppointments, setCreatedAppointments] = useState<CreatedAppointmentSummary[]>([])
+  const [currentGroupId, setCurrentGroupId] = useState('')
   const [qrMessage, setQrMessage] = useState('')
   const [qrError, setQrError] = useState('')
   const [qrDecoding, setQrDecoding] = useState(false)
@@ -250,8 +252,10 @@ export function AppointmentForm({
         | {
             message?: string
             id?: string
+            groupId?: string
             appointment?: {
               id?: string
+              group_id?: string | null
               customer_id?: string | null
               pet_id?: string | null
               start_time?: string | null
@@ -288,6 +292,8 @@ export function AppointmentForm({
       }
 
       const createdAppointment = payload?.appointment
+      const resolvedGroupId =
+        createdAppointment?.group_id ?? payload?.groupId ?? currentGroupId ?? ''
       const createdCustomerId = createdAppointment?.customer_id ?? selectedCustomerId
       const createdPetId = createdAppointment?.pet_id ?? selectedPetId
       const customerName =
@@ -296,6 +302,7 @@ export function AppointmentForm({
       setCreatedAppointments((prev) => [
         {
           id: createdAppointment?.id ?? payload?.id ?? String(Date.now()),
+          groupId: resolvedGroupId || null,
           customerId: createdCustomerId,
           petId: createdPetId,
           customerName,
@@ -305,6 +312,7 @@ export function AppointmentForm({
         },
         ...prev,
       ])
+      setCurrentGroupId(resolvedGroupId)
       setSubmitMessage('予約を保存しました。同じ顧客の別のペット予約を続けて作成できます。')
     } catch {
       setSubmitError('通信エラーが発生しました。時間をおいて再度お試しください。')
@@ -533,6 +541,7 @@ export function AppointmentForm({
       onSubmit={handleSubmit}
     >
       {editAppointment && <input type="hidden" name="_method" value="put" />}
+      {!editAppointment && currentGroupId ? <input type="hidden" name="group_id" value={currentGroupId} /> : null}
       {followupTaskId ? <input type="hidden" name="followup_task_id" value={followupTaskId} /> : null}
       {reofferId ? <input type="hidden" name="reoffer_id" value={reofferId} /> : null}
       {recommendationMessage ? (

@@ -84,6 +84,48 @@ export type Database = {
           },
         ]
       }
+      appointment_groups: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          source: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          source?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          source?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_groups_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_groups_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_metrics: {
         Row: {
           actor_user_id: string | null
@@ -145,6 +187,7 @@ export type Database = {
           customer_id: string
           duration: number
           end_time: string
+          group_id: string | null
           id: string
           in_service_at: string | null
           menu: string
@@ -164,6 +207,7 @@ export type Database = {
           customer_id: string
           duration: number
           end_time: string
+          group_id?: string | null
           id?: string
           in_service_at?: string | null
           menu: string
@@ -183,6 +227,7 @@ export type Database = {
           customer_id?: string
           duration?: number
           end_time?: string
+          group_id?: string | null
           id?: string
           in_service_at?: string | null
           menu?: string
@@ -196,6 +241,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "appointments_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "appointments_customer_id_fkey"
             columns: ["customer_id"]

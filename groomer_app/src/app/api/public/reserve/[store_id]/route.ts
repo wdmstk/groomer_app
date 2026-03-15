@@ -59,11 +59,13 @@ export async function POST(request: Request, { params }: RouteParams) {
         before: null,
         after: toJson({
           id: data.appointmentId,
+          group_id: data.groupId ?? null,
           status: data.status,
         }),
         payload: toJson({
           source: 'member_portal',
           member_portal_token_present: true,
+          appointment_group_id: data.groupId ?? null,
         }),
       })
     }
@@ -78,10 +80,12 @@ export async function POST(request: Request, { params }: RouteParams) {
         before: null,
         after: toJson({
           id: data.appointmentId,
+          group_id: data.groupId ?? null,
           status: data.status,
         }),
         payload: toJson({
           flow: data.status === '予約済' ? 'instant_confirmed' : 'request_pending',
+          appointment_group_id: data.groupId ?? null,
           staff_id: data.assignedStaffId ?? null,
           selected_menu_count: input.menuIds.length,
           has_member_portal_token: Boolean(input.memberPortalToken),

@@ -31,6 +31,7 @@ export type AppointmentWriteInput = {
   startTimeIso: string | null
   endTimeIso: string | null
   menuIds: string[]
+  groupId?: string | null
   status: string | null
   notes: string | null
 }

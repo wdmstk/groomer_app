@@ -1,4 +1,5 @@
 import { estimateDurationMinutes } from '@/lib/appointments/duration'
+import { ensureAppointmentGroupId } from '@/lib/appointments/groups'
 import { validateAppointmentConflict } from '@/lib/appointments/conflict'
 import {
   addMinutesToIso,
@@ -26,6 +27,7 @@ export function normalizeCreateAppointmentInput(formData: FormData): Appointment
     startTimeIso: toUtcIsoFromJstInput(toOptionalString(formData.get('start_time'))),
     endTimeIso: toUtcIsoFromJstInput(toOptionalString(formData.get('end_time'))),
     menuIds: formData.getAll('menu_ids').map((value) => value.toString()).filter(Boolean),
+    groupId: toOptionalString(formData.get('group_id')),
     status: toOptionalString(formData.get('status')) ?? '予約済',
     notes: toOptionalString(formData.get('notes')),
   }
@@ -66,8 +68,17 @@ export async function createAppointment(params: {
     )
   }
 
+  const groupId = await ensureAppointmentGroupId({
+    supabase,
+    storeId,
+    customerId: input.customerId!,
+    existingGroupId: input.groupId ?? null,
+    source: 'manual',
+  })
+
   const payload = {
     store_id: storeId,
+    group_id: groupId,
     customer_id: input.customerId,
     pet_id: input.petId,
     staff_id: input.staffId,
@@ -95,5 +106,5 @@ export async function createAppointment(params: {
   }
 
   await syncAppointmentMenus(supabase, storeId, appointmentId, selectedMenus)
-  return { id: appointmentId }
+  return { id: appointmentId, groupId }
 }
