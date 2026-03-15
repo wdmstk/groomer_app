@@ -45,6 +45,13 @@ type SlotCandidate = {
   staff_id?: string | null
 }
 
+type SubmittedReservationSummary = {
+  appointmentId: string
+  petName: string
+  preferredStart: string
+  status: string
+}
+
 function formatSlotLabel(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '-'
@@ -97,6 +104,7 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
   const [slotCandidates, setSlotCandidates] = useState<SlotCandidate[]>([])
   const [selectedSlotStartIso, setSelectedSlotStartIso] = useState('')
   const [selectedSlotStaffId, setSelectedSlotStaffId] = useState('')
+  const [submittedReservations, setSubmittedReservations] = useState<SubmittedReservationSummary[]>([])
 
   const [customerName, setCustomerName] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -406,17 +414,28 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
         }),
       })
 
-      const json = (await response.json().catch(() => ({}))) as { message?: string; cancelUrl?: string }
+      const json = (await response.json().catch(() => ({}))) as {
+        message?: string
+        cancelUrl?: string
+        appointmentId?: string
+        status?: string
+      }
       if (!response.ok) {
         setError(json.message ?? '予約申請に失敗しました。')
         return
       }
 
+      setSubmittedReservations((prev) => [
+        {
+          appointmentId: json.appointmentId ?? `${Date.now()}`,
+          petName,
+          preferredStart,
+          status: json.status ?? '予約申請',
+        },
+        ...prev,
+      ])
       setMessage(json.message ?? '予約申請を受け付けました。')
       setCancelUrl(json.cancelUrl ?? '')
-      setCustomerName('')
-      setPhoneNumber('')
-      setEmail('')
       setPetName('')
       setPetBreed('')
       setPetGender('')
@@ -435,6 +454,24 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  function handleContinueWithAnotherPet() {
+    setPetName('')
+    setPetBreed('')
+    setPetGender('')
+    setPreferredStart('')
+    setNotes('')
+    setQrPetName('')
+    setQrPayloadText('')
+    setQrRawInput('')
+    setQrMessage('')
+    setQrError('')
+    setSelectedMenuIds([])
+    setSelectedSlotStartIso('')
+    setSelectedSlotStaffId('')
+    setSlotCandidates([])
+    setMessage('別のペット情報を入力して続けて予約できます。')
   }
 
   async function handleCopyCancelUrl() {
@@ -644,6 +681,32 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
 
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           {message ? <p className="text-sm text-green-700">{message}</p> : null}
+          {submittedReservations.length > 0 ? (
+            <div className="rounded border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-semibold">家族予約の確認</p>
+                  <p className="text-xs text-sky-700">このセッションで送信した予約です。</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleContinueWithAnotherPet}
+                  className="rounded border border-sky-300 bg-white px-3 py-1.5 text-xs font-semibold text-sky-900"
+                >
+                  別のペットを続けて予約
+                </button>
+              </div>
+              <div className="mt-3 space-y-2">
+                {submittedReservations.map((reservation) => (
+                  <div key={reservation.appointmentId} className="rounded border border-sky-100 bg-white p-2">
+                    <p className="font-semibold">{reservation.petName}</p>
+                    <p>希望日時: {reservation.preferredStart || '未設定'}</p>
+                    <p>状態: {reservation.status}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           {cancelUrl ? (
             <div className="rounded border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
               <p className="font-semibold">キャンセル用URL</p>

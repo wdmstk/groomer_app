@@ -34,11 +34,11 @@ AI agents should prioritize unfinished tasks.
 
 ### Phase 3: Multi-pet Booking UX
 
-* [ ] Create branch `feat/multi-pet-booking-ui`
-* [ ] Add sequential family booking flow for same customer
-* [ ] Add `別のペットを続けて予約` action after first booking
-* [ ] Extend public reservation flow to add another pet in one session
-* [ ] Add family-level booking confirmation UI
+* [x] Create branch `feat/multi-pet-booking-ui`
+* [x] Add sequential family booking flow for same customer
+* [x] Add `別のペットを続けて予約` action after first booking
+* [x] Extend public reservation flow to add another pet in one session
+* [x] Add family-level booking confirmation UI
 
 ### Phase 4: Multi-pet Booking Data Model
 
