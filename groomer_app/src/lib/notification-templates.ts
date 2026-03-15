@@ -72,6 +72,12 @@ const DEFAULT_HOTEL_STAY_REPORT_LINE_TEMPLATE = `{{customer_name}}様
 
 ご不明点があれば店舗までご連絡ください。`
 
+const DEFAULT_MEDICAL_RECORD_SHARE_LINE_TEMPLATE = `{{customer_name}}様
+{{pet_name}}ちゃんの写真カルテをご案内します。
+
+こちらからご確認ください。
+{{share_url}}`
+
 export function getDefaultSlotReofferLineTemplate() {
   return DEFAULT_SLOT_REOFFER_LINE_TEMPLATE
 }
@@ -94,6 +100,10 @@ export function getDefaultReminderEmailTemplate() {
 
 export function getDefaultHotelStayReportLineTemplate() {
   return DEFAULT_HOTEL_STAY_REPORT_LINE_TEMPLATE
+}
+
+export function getDefaultMedicalRecordShareLineTemplate() {
+  return DEFAULT_MEDICAL_RECORD_SHARE_LINE_TEMPLATE
 }
 
 export function getHotelStayStatusLabel(status: string) {
@@ -177,5 +187,18 @@ export function renderHotelStayReportLineTemplate(params: {
     planned_check_in_at: formatLineDateTime(params.plannedCheckInAt),
     planned_check_out_at: formatLineDateTime(params.plannedCheckOutAt),
     report_body: params.reportBody,
+  })
+}
+
+export function renderMedicalRecordShareLineTemplate(params: {
+  customerName: string
+  petName: string
+  shareUrl: string
+  templateBody?: string | null
+}) {
+  return fillTemplate(params.templateBody ?? DEFAULT_MEDICAL_RECORD_SHARE_LINE_TEMPLATE, {
+    customer_name: params.customerName,
+    pet_name: params.petName,
+    share_url: params.shareUrl,
   })
 }
