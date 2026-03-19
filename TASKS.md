@@ -386,3 +386,156 @@ Completed tasks should be marked:
 - 2026-03-16: `npm test` 41件成功、課金/設定差分 lint 完了
 - 2026-03-16: `groomer_app/src/lib/public-reservations/presentation.ts` を追加し、公開予約フォーム/キャンセル画面のスロット表示・多頭予約サマリー・無効 URL 判定を `groomer_app/tests/public-reservations.presentation.test.ts` でカバー
 - 2026-03-16: `npm test` 42件成功、公開予約差分 lint 完了
+
+---
+
+## 動画カルテ + AIプラン拡張（非破壊導入）
+
+### 運用前提
+- 既存の写真カルテ（`medical_records` / `medical_record_photos` / 既存API / 既存UI）は挙動変更しない
+- 新規機能は追加テーブル・追加API・追加UIで実装し、既存レスポンス契約は維持する
+- 容量上限判定と追加容量課金導線は既存ロジックを再利用し、新規課金ロジックは追加しない
+- 各フェーズは専用ブランチで実装し、PRレビュー完了後に `main` へ順次マージする
+
+### Phase 1: MVP（branch: `feature/video-mvp`）
+
+#### タスク1: 動画保存基盤（DB/Storage/API）
+- タスク名: 動画保存基盤（DB/Storage/API）
+- 目的: カルテに紐づく動画のアップロード・保存・再生URL払い出しを追加する
+- 影響範囲: Supabase SQL、動画API、Storageポリシー（既存写真API/UIは変更なし）
+- リスク: Storageポリシー誤設定による参照不可、容量計測漏れ
+- 非破壊的移行案: 新規テーブル `medical_record_videos` と新規バケットを追加し、既存 `medical_record_photos` は不変更
+- 完了条件: アップロードURL発行/完了/再生URL APIが稼働し、既存写真保存フローの回帰なし
+- GitHubブランチ名: `feature/video-mvp`
+- PR作成: `feat(video-mvp): add medical record video storage foundation`
+- レビュー手順: DB migration差分、RLS、署名URLTTL、既存写真アップロード回帰を確認
+- main へのマージ手順: `main` 最新取り込み -> CI green -> squash merge -> migration適用順序をRunbookへ記録
+- 進捗:
+  - [x] `medical_record_videos` 追加SQLを作成
+  - [x] `supabase_multistore_rls.sql` の対象テーブルに `medical_record_videos` を追加
+  - [x] 動画アップロード/再生APIの追加
+  - [x] 動画Storageポリシー追加
+
+#### タスク2: 写真+動画混在一覧UI
+- タスク名: 写真+動画混在一覧UI
+- 目的: カルテ詳細で写真と動画を同一タイムラインに表示し、種別バッジで判別可能にする
+- 影響範囲: `/medical-records` 一覧/詳細UI、新規混在フィードAPI
+- リスク: 既存写真表示順の崩れ、モバイル描画負荷
+- 非破壊的移行案: 既存写真描画コンポーネントを残し、`mediaType` 分岐で動画カードを追加
+- 完了条件: 混在一覧表示、動画サムネ/再生、既存写真編集導線が維持される
+- GitHubブランチ名: `feature/video-mvp`
+- PR作成: `feat(video-mvp): integrate mixed media feed in medical records`
+- レビュー手順: UI差分比較、アクセシビリティ、E2Eで写真のみ店舗の表示維持を確認
+- main へのマージ手順: デザイン確認承認 -> E2E pass -> merge
+- 進捗:
+  - [x] カルテ一覧のメディア件数を「写真 + 動画」表示へ拡張
+  - [x] 最新メディア（写真・動画）混在セクションを一覧タブに追加
+  - [ ] 動画サムネイル生成ジョブとの接続
+  - [ ] 混在一覧のE2Eテスト追加
+
+#### タスク3: LINE短尺動画生成（10-20秒）と容量連動
+- タスク名: LINE短尺動画生成と容量連動
+- 目的: 既存LINE共有導線に短尺動画生成結果を接続し、容量加算を反映する
+- 影響範囲: 動画ジョブAPI、Storage使用量集計、共有UI
+- リスク: 生成失敗時の再試行ループ、容量二重加算
+- 非破壊的移行案: 生成物を新規 `source_type=ai_generated` で分離し、容量加算は既存集計関数へ統合
+- 完了条件: 10-20秒生成、LINE共有、容量上限時に既存追加容量導線へ遷移
+- GitHubブランチ名: `feature/video-mvp`
+- PR作成: `feat(video-mvp): add line short video generation and quota integration`
+- レビュー手順: 実動画で生成時間/失敗時挙動/容量閾値の境界値テスト確認
+- main へのマージ手順: 監視項目追加後に merge
+- 進捗:
+  - [x] 10〜20秒動画のみをLINE短尺として扱うAPIを追加
+  - [x] LINE短尺をStorage内で複製保存し、容量消費に連動
+  - [x] 既存LINE通知ログ基盤を使った動画送信APIを追加
+  - [x] LINE送信失敗時の運用再試行UI
+
+### Phase 2: AI Assist（branch: `feature/ai-assist`）
+
+#### タスク4: AI Assist推論ジョブ基盤
+- タスク名: AI Assist推論ジョブ基盤
+- 目的: 自動サムネ・タグ・カルテ文・ショート動画生成を非同期実行する
+- 影響範囲: `ai_jobs` / `ai_results` テーブル、新規ワーカー、Assist API
+- リスク: ジョブ詰まり、推論遅延、誤タグ
+- 非破壊的移行案: 手動入力導線を残し、AI結果は追記扱いで上書きしない
+- 完了条件: Assistジョブ投入/進捗/結果保存、失敗時リトライ、UI反映が可能
+- GitHubブランチ名: `feature/ai-assist`
+- PR作成: `feat(ai-assist): add async assist inference pipeline`
+- レビュー手順: キュー再実行、タイムアウト、再試行上限、監査ログを確認
+- main へのマージ手順: ステージング負荷試験通過後に merge
+
+#### タスク5: AI Assist課金オプション追加（¥1,280）
+- タスク名: AI Assist課金オプション追加
+- 目的: 既存「ホテル/通知強化」と同形式でAssistの契約ON/OFFを可能にする
+- 影響範囲: `/billing` UI、billing options API、価格表示
+- リスク: 既存オプション請求額計算との競合
+- 非破壊的移行案: 既存オプション構造を拡張（列追加 or 子テーブル）し既存項目は不変更
+- 完了条件: 価格・説明・契約状態表示、変更注意文、アップグレード導線が表示される
+- GitHubブランチ名: `feature/ai-assist`
+- PR作成: `feat(ai-assist): add ai assist option to billing page`
+- レビュー手順: 金額表示、状態遷移、既存ホテル/通知切替の回帰確認
+- main へのマージ手順: 請求シミュレーション結果確認後に merge
+
+### Phase 3: AI Pro（branch: `feature/ai-pro`）
+
+#### タスク6: AI Pro分析（性格/行動/予測）
+- タスク名: AI Pro分析機能
+- 目的: 性格分析・行動分析・施術時間予測・毛玉/追加料金予測を追加する
+- 影響範囲: Pro推論API、結果表示UI、推論結果スキーマ
+- リスク: 予測誤差、説明可能性不足
+- 非破壊的移行案: 予測値は「提案値」として表示し、既存手入力値を優先保存
+- 完了条件: Pro契約店舗のみ分析実行/表示、重要シーン抽出が機能する
+- GitHubブランチ名: `feature/ai-pro`
+- PR作成: `feat(ai-pro): add behavior and estimate predictions`
+- レビュー手順: プランゲート、推論結果のnull耐性、既存カルテ保存との整合確認
+- main へのマージ手順: QAチェックリスト完了後に merge
+
+#### タスク7: AI Pro課金オプション追加（¥1,980）
+- タスク名: AI Pro課金オプション追加
+- 目的: AssistからProへのアップグレード導線と契約状態表示を追加する
+- 影響範囲: `/billing` UI、プラン変更API、注意文表示
+- リスク: 即時反映/次月反映の誤表示
+- 非破壊的移行案: 反映タイミングは既存課金基盤の判定結果を表示のみで扱う
+- 完了条件: Pro価格・機能・状態表示、変更確認フローが動作する
+- GitHubブランチ名: `feature/ai-pro`
+- PR作成: `feat(ai-pro): add ai pro option and upgrade flow`
+- レビュー手順: アップ/ダウングレード文言、課金履歴表示、監査ログ確認
+- main へのマージ手順: Billingレビュー承認後に merge
+
+### Phase 4: AI Pro+（branch: `feature/ai-pro-plus`）
+
+#### タスク8: AI Pro+高度分析/レポート
+- タスク名: AI Pro+高度分析/レポート
+- 目的: 健康異常気づき、月次レポート、教育用ハイライト生成を追加する
+- 影響範囲: 高精度推論パイプライン、月次集計、レポートUI
+- リスク: 誤検知、処理コスト増、夜間バッチ遅延
+- 非破壊的移行案: 通知は「注意喚起」表示に限定し、医療判断を行わない注記を固定表示
+- 完了条件: Pro+契約店舗でのみ実行・閲覧可能、月次レポートが生成保存される
+- GitHubブランチ名: `feature/ai-pro-plus`
+- PR作成: `feat(ai-pro-plus): add advanced health insights and monthly reports`
+- レビュー手順: 性能計測、誤検知時UI、レポート再生成動線を確認
+- main へのマージ手順: 段階リリース設定後に merge
+
+#### タスク9: AI Pro+課金オプション追加（¥2,480）
+- タスク名: AI Pro+課金オプション追加
+- 目的: AI Pro+の契約切替とPro機能強化版の表示制御を追加する
+- 影響範囲: `/billing` UI、価格表示、契約状態判定
+- リスク: 既存課金明細の分類不整合
+- 非破壊的移行案: 既存明細テーブルに新しい `subscription_scope`/`option_code` を追加し旧データはそのまま
+- 完了条件: Pro+価格・機能比較・契約状態・変更注意文が反映される
+- GitHubブランチ名: `feature/ai-pro-plus`
+- PR作成: `feat(ai-pro-plus): add ai pro plus option on billing`
+- レビュー手順: 明細整合、UI表示崩れ、既存オプション回帰の確認
+- main へのマージ手順: 監視アラート設定完了後に merge
+
+### フェーズ横断の共通完了条件
+- 既存の写真カルテ作成/編集/共有が回帰していない
+- 容量上限到達時に既存追加容量課金導線へ遷移できる
+- `npm run lint` / `npm run build` / 主要テストが通過する
+- PRテンプレートに「後方互換性」「非破壊移行」「容量連動」の確認結果を記載する
+
+### 推奨マージ順
+1. `feature/video-mvp`
+2. `feature/ai-assist`
+3. `feature/ai-pro`
+4. `feature/ai-pro-plus`

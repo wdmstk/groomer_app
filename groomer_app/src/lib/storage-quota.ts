@@ -1,4 +1,5 @@
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { isObjectRecord } from '@/lib/object-utils'
 import { normalizePlanCode, type AppPlan } from '@/lib/subscription-plan'
 
 export type StorageLimitPolicy = 'block' | 'cleanup_orphans'
@@ -97,17 +98,33 @@ async function fetchStoreStorageObjects(params: { storeId: string; bucket: strin
   return allRows
 }
 
-async function fetchReferencedMedicalPhotoPaths(storeId: string) {
+function isUndefinedTableError(message: string | null | undefined) {
+  const normalized = (message ?? '').toLowerCase()
+  return normalized.includes('does not exist') || normalized.includes('undefined table')
+}
+
+async function fetchReferencedMedicalMediaPaths(storeId: string) {
   const admin = createAdminSupabaseClient()
   const referenced = new Set<string>()
 
-  const [{ data: rows1, error: error1 }, { data: rows2, error: error2 }] = await Promise.all([
+  const [{ data: rows1, error: error1 }, { data: rows2, error: error2 }, videoResult] = await Promise.all([
     admin.from('medical_record_photos').select('storage_path').eq('store_id', storeId),
     admin.from('medical_records').select('photos').eq('store_id', storeId),
+    admin
+      .from('medical_record_videos' as never)
+      .select('storage_path, thumbnail_path, line_short_path')
+      .eq('store_id', storeId)
+      .catch(() => ({
+        data: [] as unknown[],
+        error: null,
+      })),
   ])
 
   if (error1) throw new Error(error1.message)
   if (error2) throw new Error(error2.message)
+  if (videoResult?.error && !isUndefinedTableError(videoResult.error.message)) {
+    throw new Error(videoResult.error.message)
+  }
 
   ;((rows1 ?? []) as Array<{ storage_path: string | null }>).forEach((row) => {
     if (typeof row.storage_path === 'string' && row.storage_path.length > 0) {
@@ -119,6 +136,18 @@ async function fetchReferencedMedicalPhotoPaths(storeId: string) {
     if (!Array.isArray(row.photos)) return
     row.photos.forEach((path) => {
       if (typeof path === 'string' && path.length > 0) {
+        referenced.add(path)
+      }
+    })
+  })
+
+  ;((videoResult?.data ?? []) as unknown[]).forEach((row) => {
+    if (!isObjectRecord(row)) return
+    const storagePath = typeof row.storage_path === 'string' ? row.storage_path : null
+    const thumbnailPath = typeof row.thumbnail_path === 'string' ? row.thumbnail_path : null
+    const lineShortPath = typeof row.line_short_path === 'string' ? row.line_short_path : null
+    ;[storagePath, thumbnailPath, lineShortPath].forEach((path) => {
+      if (path && path.length > 0) {
         referenced.add(path)
       }
     })
@@ -136,37 +165,56 @@ export function formatBytesToJa(bytes: number) {
 
 export async function fetchStoreStorageQuotaState(params: {
   storeId: string
-  bucket: string
+  bucket?: string
+  buckets?: string[]
   allowUsageFetchFailure?: boolean
 }) {
   const admin = createAdminSupabaseClient()
-  const objectsPromise = params.allowUsageFetchFailure
-    ? fetchStoreStorageObjects({ storeId: params.storeId, bucket: params.bucket })
-        .then((objects) => ({ objects, usageWarning: null as string | null }))
-        .catch((error: unknown) => ({
-          objects: [] as StorageObjectRow[],
-          usageWarning: buildStorageQuotaWarningMessage(error),
-        }))
-    : fetchStoreStorageObjects({ storeId: params.storeId, bucket: params.bucket }).then((objects) => ({
-        objects,
-        usageWarning: null as string | null,
-      }))
+  const targetBuckets = Array.from(
+    new Set([...(params.buckets ?? []), ...(params.bucket ? [params.bucket] : [])].filter(Boolean))
+  )
+  if (targetBuckets.length === 0) {
+    throw new Error('Storage bucket is required.')
+  }
 
-  const [{ data: sub }, { data: policyRow }, { objects, usageWarning }] = await Promise.all([
+  const bucketObjectsPromise = Promise.all(
+    targetBuckets.map(async (bucket) => {
+      if (params.allowUsageFetchFailure) {
+        try {
+          const objects = await fetchStoreStorageObjects({ storeId: params.storeId, bucket })
+          return { bucket, objects, usageWarning: null as string | null }
+        } catch (error: unknown) {
+          return {
+            bucket,
+            objects: [] as StorageObjectRow[],
+            usageWarning: buildStorageQuotaWarningMessage(error),
+          }
+        }
+      }
+      const objects = await fetchStoreStorageObjects({ storeId: params.storeId, bucket })
+      return { bucket, objects, usageWarning: null as string | null }
+    })
+  )
+
+  const [{ data: sub }, { data: policyRow }, bucketObjects] = await Promise.all([
     admin.from('store_subscriptions').select('plan_code').eq('store_id', params.storeId).maybeSingle(),
     admin
       .from('store_storage_policies')
       .select('store_id, policy, extra_capacity_gb, custom_limit_mb')
       .eq('store_id', params.storeId)
       .maybeSingle(),
-    objectsPromise,
+    bucketObjectsPromise,
   ])
+  const usageWarning = bucketObjects
+    .map((row) => row.usageWarning)
+    .find((message): message is string => typeof message === 'string' && message.length > 0) ?? null
+  const allObjects = bucketObjects.flatMap((row) => row.objects)
 
   const planCode = normalizePlanCode(sub?.plan_code)
   const policy = (policyRow?.policy ?? 'block') as StorageLimitPolicy
   const extraCapacityGb = toSafeInt(policyRow?.extra_capacity_gb, 0)
   const customLimitMb = typeof policyRow?.custom_limit_mb === 'number' ? toSafeInt(policyRow.custom_limit_mb) : null
-  const usageBytes = objects.reduce((sum, row) => sum + parseObjectSize(row), 0)
+  const usageBytes = allObjects.reduce((sum, row) => sum + parseObjectSize(row), 0)
   const baseLimitBytes = PLAN_STORAGE_LIMIT_BYTES[planCode]
   const extraCapacityBytes = extraCapacityGb * GB
   const customLimitBytes = customLimitMb !== null ? customLimitMb * MB : null
@@ -258,12 +306,14 @@ export async function setStoreExtraCapacityGb(params: {
 export async function ensureStoreHasStorageCapacity(params: {
   storeId: string
   bucket: string
+  buckets?: string[]
   incomingBytes: number
 }) {
   const incomingBytes = Math.max(0, Math.floor(params.incomingBytes))
   const quota = await fetchStoreStorageQuotaState({
     storeId: params.storeId,
     bucket: params.bucket,
+    buckets: params.buckets,
   })
   const projectedBytes = quota.usageBytes + incomingBytes
   if (projectedBytes <= quota.totalLimitBytes) {
@@ -273,7 +323,7 @@ export async function ensureStoreHasStorageCapacity(params: {
   if (quota.policy === 'cleanup_orphans') {
     const [objects, referencedPaths] = await Promise.all([
       fetchStoreStorageObjects({ storeId: params.storeId, bucket: params.bucket }),
-      fetchReferencedMedicalPhotoPaths(params.storeId),
+      fetchReferencedMedicalMediaPaths(params.storeId),
     ])
 
     const removable = objects.filter((row) => !referencedPaths.has(row.name))

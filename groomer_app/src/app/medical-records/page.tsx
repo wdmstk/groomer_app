@@ -1,14 +1,17 @@
 import Link from 'next/link'
 import nextDynamic from 'next/dynamic'
+import Image from 'next/image'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { MedicalRecordShareButton } from '@/components/medical-records/MedicalRecordShareButton'
+import { MedicalRecordVideoLineShareButton } from '@/components/medical-records/MedicalRecordVideoLineShareButton'
 import {
   createSignedPhotoUrlMap,
   type MedicalRecordPhotoDraft,
   type MedicalRecordPhotoType,
 } from '@/lib/medical-records/photos'
+import { createSignedVideoUrlMap } from '@/lib/medical-records/videos'
 import {
   buildMedicalRecordTagFilterOptions,
   filterMedicalRecordsByAi,
@@ -110,6 +113,10 @@ type RecordPhotoCountRow = {
   medical_record_id: string
 }
 
+type RecordVideoCountRow = {
+  medical_record_id: string
+}
+
 type GalleryPhotoRow = {
   id: string
   photo_type: MedicalRecordPhotoType
@@ -121,6 +128,48 @@ type GalleryPhotoRow = {
     | { record_date: string | null; menu: string | null }[]
     | null
 }
+
+type RecentMediaPhotoRow = {
+  id: string
+  medical_record_id: string
+  photo_type: MedicalRecordPhotoType
+  storage_path: string
+  taken_at: string | null
+  created_at: string
+}
+
+type RecentMediaVideoRow = {
+  id: string
+  medical_record_id: string
+  storage_path: string
+  thumbnail_path: string | null
+  taken_at: string | null
+  created_at: string
+  duration_sec: number | null
+  source_type: 'uploaded' | 'ai_generated' | null
+}
+
+type MixedMediaEntry =
+  | {
+      id: string
+      medicalRecordId: string
+      mediaType: 'photo'
+      label: string
+      signedUrl: string | null
+      takenAt: string | null
+      createdAt: string
+    }
+  | {
+      id: string
+      medicalRecordId: string
+      mediaType: 'video'
+      label: string
+      signedUrl: string | null
+      takenAt: string | null
+      createdAt: string
+      durationSec: number | null
+      sourceType: 'uploaded' | 'ai_generated' | null
+    }
 
 type MedicalRecordsPageProps = {
   searchParams?: Promise<{
@@ -164,6 +213,14 @@ function formatDateTimeJst(value: string | null | undefined) {
     minute: '2-digit',
     hour12: false,
   }).format(date)
+}
+
+function formatDurationSec(value: number | null | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return '未設定'
+  const total = Math.max(0, Math.floor(value))
+  const mm = Math.floor(total / 60)
+  const ss = total % 60
+  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
 }
 
 function normalizeAiTagStatus(value: string | null | undefined): MedicalRecordAiTagStatus {
@@ -303,6 +360,10 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
       staffs?: { full_name: string } | { full_name: string }[] | null
     }
   >
+  const petNameByRecordId = new Map<string, string>()
+  recordList.forEach((record) => {
+    petNameByRecordId.set(record.id, getRelatedValue(record.pets, 'name'))
+  })
   const aiTagFilterOptions = buildMedicalRecordTagFilterOptions(recordList)
   const aiStatusOptions = getMedicalRecordAiStatusOptions(recordList)
   const filteredRecordList = filterMedicalRecordsByAi(recordList, {
@@ -380,6 +441,15 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
           .in('medical_record_id', recordIds)
       : { data: [] }
 
+  const { data: recordVideoCounts } =
+    recordIds.length > 0
+      ? await supabase
+          .from('medical_record_videos' as never)
+          .select('medical_record_id')
+          .eq('store_id', storeId)
+          .in('medical_record_id', recordIds)
+      : { data: [] }
+
   const { data: editRecordPhotos } =
     editRecord
       ? await supabase
@@ -403,6 +473,23 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
           .limit(24)
       : { data: [] }
 
+  const [{ data: recentPhotos }, { data: recentVideos }] = await Promise.all([
+    supabase
+      .from('medical_record_photos')
+      .select('id, medical_record_id, photo_type, storage_path, taken_at, created_at')
+      .eq('store_id', storeId)
+      .order('taken_at', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(18),
+    supabase
+      .from('medical_record_videos' as never)
+      .select('id, medical_record_id, storage_path, thumbnail_path, taken_at, created_at, duration_sec, source_type')
+      .eq('store_id', storeId)
+      .order('taken_at', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(18),
+  ])
+
   const signedUrlMap = await createSignedPhotoUrlMap(
     supabase,
     [
@@ -411,6 +498,10 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
     ],
     60 * 60
   )
+
+  const recentVideoRows = (recentVideos ?? []) as RecentMediaVideoRow[]
+  const recentVideoPreviewPaths = recentVideoRows.map((video) => video.thumbnail_path || video.storage_path)
+  const signedVideoUrlMap = await createSignedVideoUrlMap(supabase, recentVideoPreviewPaths, 60 * 60)
 
   const photoEntriesByRecordId = new Map<string, MedicalRecordPhotoDraft[]>()
   ;((editRecordPhotos ?? []) as RecordPhotoRow[]).forEach((photo) => {
@@ -445,6 +536,42 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
   ;((recordPhotoCounts ?? []) as RecordPhotoCountRow[]).forEach((row) => {
     photoCountByRecordId.set(row.medical_record_id, (photoCountByRecordId.get(row.medical_record_id) ?? 0) + 1)
   })
+  const videoCountByRecordId = new Map<string, number>()
+  ;((recordVideoCounts ?? []) as RecordVideoCountRow[]).forEach((row) => {
+    videoCountByRecordId.set(row.medical_record_id, (videoCountByRecordId.get(row.medical_record_id) ?? 0) + 1)
+  })
+
+  const mixedMediaEntries: MixedMediaEntry[] = [
+    ...((recentPhotos ?? []) as RecentMediaPhotoRow[]).map((photo) => ({
+      id: photo.id,
+      medicalRecordId: photo.medical_record_id,
+      mediaType: 'photo' as const,
+      label: photo.photo_type === 'before' ? '写真(施術前)' : '写真(施術後)',
+      signedUrl: signedUrlMap.get(photo.storage_path) ?? null,
+      takenAt: photo.taken_at,
+      createdAt: photo.created_at,
+    })),
+    ...recentVideoRows.map((video) => {
+      const previewPath = video.thumbnail_path || video.storage_path
+      return {
+        id: video.id,
+        medicalRecordId: video.medical_record_id,
+        mediaType: 'video' as const,
+        label: '動画',
+        signedUrl: signedVideoUrlMap.get(previewPath) ?? null,
+        takenAt: video.taken_at,
+        createdAt: video.created_at,
+        durationSec: video.duration_sec,
+        sourceType: video.source_type,
+      }
+    }),
+  ]
+    .sort((a, b) => {
+      const aTime = new Date(a.takenAt ?? a.createdAt).getTime()
+      const bTime = new Date(b.takenAt ?? b.createdAt).getTime()
+      return bTime - aTime
+    })
+    .slice(0, 24)
 
   return (
     <section className="space-y-6">
@@ -594,7 +721,10 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                     <p>施術日時: {formatDateTimeJst(record.record_date)}</p>
                     <p>メニュー: {record.menu ?? '未登録'}</p>
                     <p>状態: {record.status === 'finalized' ? '確定' : '下書き'}</p>
-                    <p>写真: {photoCountByRecordId.get(record.id) ?? 0} 枚</p>
+                    <p>
+                      メディア: {(photoCountByRecordId.get(record.id) ?? 0) + (videoCountByRecordId.get(record.id) ?? 0)} 件
+                      （写真 {photoCountByRecordId.get(record.id) ?? 0} / 動画 {videoCountByRecordId.get(record.id) ?? 0}）
+                    </p>
                     <p>所要時間: {record.duration ? `${record.duration} 分` : '未登録'}</p>
                     <p>シャンプー: {record.shampoo_used ?? '未登録'}</p>
                     <p>皮膚状態: {record.skin_condition ?? '未登録'}</p>
@@ -658,7 +788,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                       <th className="py-2 px-2">施術日時</th>
                       <th className="py-2 px-2">メニュー</th>
                       <th className="py-2 px-2">状態</th>
-                      <th className="py-2 px-2">写真</th>
+                      <th className="py-2 px-2">メディア</th>
                       <th className="py-2 px-2">所要時間</th>
                       <th className="py-2 px-2">シャンプー</th>
                       <th className="py-2 px-2">皮膚状態</th>
@@ -683,7 +813,12 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                         <td className="py-3 px-2">{formatDateTimeJst(record.record_date)}</td>
                         <td className="py-3 px-2">{record.menu ?? '未登録'}</td>
                         <td className="py-3 px-2">{record.status === 'finalized' ? '確定' : '下書き'}</td>
-                        <td className="py-3 px-2">{photoCountByRecordId.get(record.id) ?? 0} 枚</td>
+                        <td className="py-3 px-2">
+                          {(photoCountByRecordId.get(record.id) ?? 0) + (videoCountByRecordId.get(record.id) ?? 0)} 件
+                          <span className="block text-xs text-gray-500">
+                            写真 {photoCountByRecordId.get(record.id) ?? 0} / 動画 {videoCountByRecordId.get(record.id) ?? 0}
+                          </span>
+                        </td>
                         <td className="py-3 px-2">
                           {record.duration ? `${record.duration} 分` : '未登録'}
                         </td>
@@ -756,6 +891,80 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                   </tbody>
                 </table>
               </div>
+
+              <section className="mt-6 space-y-3 rounded-xl border border-slate-200 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-gray-900">最新メディア（写真・動画）</h3>
+                  <p className="text-xs text-gray-500">同一一覧で時系列表示</p>
+                </div>
+                {mixedMediaEntries.length === 0 ? (
+                  <p className="text-sm text-gray-500">表示できるメディアはまだありません。</p>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {mixedMediaEntries.map((entry) => {
+                      const petName = petNameByRecordId.get(entry.medicalRecordId) ?? '未登録'
+                      return (
+                        <article key={`${entry.mediaType}-${entry.id}`} className="overflow-hidden rounded border">
+                          <div className="relative aspect-[4/3] bg-slate-50">
+                            {entry.signedUrl ? (
+                              entry.mediaType === 'photo' ? (
+                                <Image src={entry.signedUrl} alt="カルテ写真" fill className="object-cover" />
+                              ) : (
+                                <video
+                                  src={entry.signedUrl}
+                                  controls
+                                  preload="metadata"
+                                  className="h-full w-full object-cover"
+                                />
+                              )
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-xs text-gray-500">
+                                プレビューなし
+                              </div>
+                            )}
+                            <span
+                              className={`absolute left-2 top-2 rounded-full px-2 py-1 text-[11px] font-semibold ${
+                                entry.mediaType === 'photo'
+                                  ? 'bg-sky-100 text-sky-800'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}
+                            >
+                              {entry.mediaType === 'photo' ? '写真' : '動画'}
+                            </span>
+                            {entry.mediaType === 'video' ? (
+                              <span className="absolute right-2 top-2 rounded-full bg-black/65 px-2 py-1 text-[11px] font-semibold text-white">
+                                {formatDurationSec(entry.durationSec)}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="space-y-1 p-3 text-xs text-gray-700">
+                            <p className="font-semibold text-gray-900">{entry.label}</p>
+                            <p>ペット: {petName}</p>
+                            <p>日時: {formatDateTimeJst(entry.takenAt ?? entry.createdAt)}</p>
+                            {entry.mediaType === 'video' && entry.sourceType === 'ai_generated' ? (
+                              <p className="text-violet-700">AI生成動画</p>
+                            ) : null}
+                            {entry.mediaType === 'video' ? (
+                              <MedicalRecordVideoLineShareButton videoId={entry.id} />
+                            ) : null}
+                            <Link
+                              href={buildMedicalRecordsHref({
+                                tab: 'list',
+                                edit: entry.medicalRecordId,
+                                aiTag: selectedAiTag,
+                                aiStatus: selectedAiStatus,
+                              })}
+                              className="inline-flex text-xs font-semibold text-blue-600"
+                            >
+                              このカルテを開く
+                            </Link>
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+                )}
+              </section>
             </>
           )}
         </Card>
