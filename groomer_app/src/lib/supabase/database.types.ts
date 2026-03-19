@@ -926,7 +926,6 @@ export type Database = {
           id: string
           line_id: string | null
           phone_number: string | null
-          rank: string | null
           store_id: string
           tags: string[] | null
           updated_at: string | null
@@ -941,7 +940,6 @@ export type Database = {
           id?: string
           line_id?: string | null
           phone_number?: string | null
-          rank?: string | null
           store_id: string
           tags?: string[] | null
           updated_at?: string | null
@@ -956,7 +954,6 @@ export type Database = {
           id?: string
           line_id?: string | null
           phone_number?: string | null
-          rank?: string | null
           store_id?: string
           tags?: string[] | null
           updated_at?: string | null
@@ -3617,6 +3614,13 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          ltv_bronze_annual_sales_threshold: number
+          ltv_bronze_visit_count_threshold: number
+          ltv_gold_annual_sales_threshold: number
+          ltv_gold_visit_count_threshold: number
+          ltv_silver_annual_sales_threshold: number
+          ltv_silver_visit_count_threshold: number
+          member_card_rank_visible: boolean
           name: string
           public_reserve_business_end_hour_jst: number
           public_reserve_business_start_hour_jst: number
@@ -3634,6 +3638,13 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          ltv_bronze_annual_sales_threshold?: number
+          ltv_bronze_visit_count_threshold?: number
+          ltv_gold_annual_sales_threshold?: number
+          ltv_gold_visit_count_threshold?: number
+          ltv_silver_annual_sales_threshold?: number
+          ltv_silver_visit_count_threshold?: number
+          member_card_rank_visible?: boolean
           name: string
           public_reserve_business_end_hour_jst?: number
           public_reserve_business_start_hour_jst?: number
@@ -3651,6 +3662,13 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          ltv_bronze_annual_sales_threshold?: number
+          ltv_bronze_visit_count_threshold?: number
+          ltv_gold_annual_sales_threshold?: number
+          ltv_gold_visit_count_threshold?: number
+          ltv_silver_annual_sales_threshold?: number
+          ltv_silver_visit_count_threshold?: number
+          member_card_rank_visible?: boolean
           name?: string
           public_reserve_business_end_hour_jst?: number
           public_reserve_business_start_hour_jst?: number

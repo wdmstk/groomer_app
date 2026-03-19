@@ -2,9 +2,11 @@ import Link from 'next/link'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { OpsStatusActionForm } from '@/components/ops/OpsStatusActionForm'
 import { OpsRevertStatusForm } from '@/components/ops/OpsRevertStatusForm'
+import { opsPageFixtures } from '@/lib/e2e/ops-page-fixtures'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type AppointmentRow = {
   id: string
@@ -94,40 +96,50 @@ function toDurationMinutes(startIso: string | null, endIso: string | null) {
 }
 
 export default async function OpsTodayPage() {
-  const { supabase, storeId } = await createStoreScopedClient()
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: opsPageFixtures.storeId }
+    : await createStoreScopedClient()
   const { startIso, endIso, nowMs } = getTodayRangeJst()
 
-  const { data } = await supabase
-    .from('appointments')
-    .select(
-      'id, customer_id, pet_id, staff_id, start_time, end_time, menu, status, notes, checked_in_at, in_service_at, payment_waiting_at, completed_at, customers(id, full_name, line_id), pets(name), staffs(full_name)'
-    )
-    .eq('store_id', storeId)
-    .gte('start_time', startIso)
-    .lt('start_time', endIso)
-    .neq('status', 'キャンセル')
-    .neq('status', '無断キャンセル')
-    .order('start_time', { ascending: true })
+  const data = isPlaywrightE2E
+    ? opsPageFixtures.appointments
+    : (
+        await supabase
+          .from('appointments')
+          .select(
+            'id, customer_id, pet_id, staff_id, start_time, end_time, menu, status, notes, checked_in_at, in_service_at, payment_waiting_at, completed_at, customers(id, full_name, line_id), pets(name), staffs(full_name)'
+          )
+          .eq('store_id', storeId)
+          .gte('start_time', startIso)
+          .lt('start_time', endIso)
+          .neq('status', 'キャンセル')
+          .neq('status', '無断キャンセル')
+          .order('start_time', { ascending: true })
+      ).data
 
   const appointments = (data ?? []) as AppointmentRow[]
   const appointmentIds = appointments.map((row) => row.id)
 
-  const [{ data: paymentRows }, { data: medicalRecordRows }] = await Promise.all([
-    appointmentIds.length > 0
-      ? supabase
-          .from('payments')
-          .select('appointment_id, paid_at')
-          .eq('store_id', storeId)
-          .in('appointment_id', appointmentIds)
-      : Promise.resolve({ data: [] as PaymentRow[] }),
-    appointmentIds.length > 0
-      ? supabase
-          .from('medical_records')
-          .select('appointment_id')
-          .eq('store_id', storeId)
-          .in('appointment_id', appointmentIds)
-      : Promise.resolve({ data: [] as MedicalRecordRow[] }),
-  ])
+  const [paymentRows, medicalRecordRows] = isPlaywrightE2E
+    ? [opsPageFixtures.payments, opsPageFixtures.medicalRecords]
+    : await Promise.all([
+        appointmentIds.length > 0
+          ? supabase
+              .from('payments')
+              .select('appointment_id, paid_at')
+              .eq('store_id', storeId)
+              .in('appointment_id', appointmentIds)
+              .then((result) => result.data ?? [])
+          : Promise.resolve([] as PaymentRow[]),
+        appointmentIds.length > 0
+          ? supabase
+              .from('medical_records')
+              .select('appointment_id')
+              .eq('store_id', storeId)
+              .in('appointment_id', appointmentIds)
+              .then((result) => result.data ?? [])
+          : Promise.resolve([] as MedicalRecordRow[]),
+      ])
 
   const paidAppointmentIds = new Set(
     ((paymentRows ?? []) as PaymentRow[])
@@ -139,19 +151,23 @@ export default async function OpsTodayPage() {
       .filter((row) => Boolean(row.appointment_id))
       .map((row) => row.appointment_id as string)
   )
-  const { count: revertedCount } = await supabase
-    .from('audit_logs')
-    .select('id', { count: 'exact', head: true })
-    .eq('store_id', storeId)
-    .eq('entity_type', 'appointment')
-    .eq('action', 'status_reverted')
-    .gte('created_at', startIso)
-    .lt('created_at', endIso)
+  const revertedCount = isPlaywrightE2E
+    ? opsPageFixtures.revertedCount
+    : (
+        await supabase
+          .from('audit_logs')
+          .select('id', { count: 'exact', head: true })
+          .eq('store_id', storeId)
+          .eq('entity_type', 'appointment')
+          .eq('action', 'status_reverted')
+          .gte('created_at', startIso)
+          .lt('created_at', endIso)
+      ).count
 
   const delayedCount = appointments.filter((appointment) => {
     const status = normalizeStatus(appointment.status)
     if (status === '完了') return false
-    return new Date(appointment.start_time).getTime() < nowMs
+    return new Date(appointment.start_time).getTime() < (isPlaywrightE2E ? opsPageFixtures.nowMs : nowMs)
   }).length
 
   const completedDurations = appointments
@@ -191,7 +207,7 @@ export default async function OpsTodayPage() {
           本日の対象予約はありません。
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3" data-testid="ops-today-list">
           {appointments.map((appointment) => {
             const action = getNextStatusAction(appointment.status)
             const normalizedStatus = normalizeStatus(appointment.status)
@@ -200,7 +216,11 @@ export default async function OpsTodayPage() {
             const customerLineId = getRelatedValue(appointment.customers, 'line_id')
             const hasLineId = customerLineId !== '未登録'
             return (
-              <article key={appointment.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <article
+                key={appointment.id}
+                className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                data-testid={`ops-card-${appointment.id}`}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm text-gray-500">

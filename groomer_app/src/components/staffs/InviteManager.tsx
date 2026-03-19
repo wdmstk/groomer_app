@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
+import { formatInviteExpiresAt } from '@/lib/staffs/presentation'
 
 type InviteRow = {
   id: string
@@ -120,7 +121,7 @@ export function InviteManager() {
             <article key={invite.id} className="rounded border p-3 text-sm text-gray-700">
               <p className="font-semibold text-gray-900">{invite.email}</p>
               <p>ロール: {invite.role}</p>
-              <p>有効期限: {new Date(invite.expires_at).toLocaleString('ja-JP')}</p>
+              <p>有効期限: {formatInviteExpiresAt(invite.expires_at)}</p>
               <button
                 type="button"
                 onClick={() => {

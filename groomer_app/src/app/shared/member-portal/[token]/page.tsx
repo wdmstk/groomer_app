@@ -36,6 +36,31 @@ function formatYen(value: number | null | undefined) {
   return `${Math.round(value).toLocaleString()} 円`
 }
 
+function getMemberRankBadge(rank: string | null | undefined) {
+  switch (rank) {
+    case 'ゴールド':
+      return {
+        label: 'ゴールド',
+        className: 'bg-amber-100 text-amber-900 border-amber-300',
+      }
+    case 'シルバー':
+      return {
+        label: 'シルバー',
+        className: 'bg-slate-100 text-slate-700 border-slate-300',
+      }
+    case 'ブロンズ':
+      return {
+        label: 'ブロンズ',
+        className: 'bg-orange-100 text-orange-900 border-orange-300',
+      }
+    default:
+      return {
+        label: 'スタンダード',
+        className: 'bg-sky-100 text-sky-800 border-sky-300',
+      }
+  }
+}
+
 export default async function SharedMemberPortalPage({
   params,
 }: SharedMemberPortalPageProps) {
@@ -61,9 +86,7 @@ export default async function SharedMemberPortalPage({
       <main className="min-h-screen bg-amber-50 px-4 py-10">
         <div className="mx-auto max-w-3xl space-y-6">
           <header className="space-y-2">
-            <p className="text-sm font-medium uppercase tracking-[0.24em] text-amber-700">
-              Member Portal
-            </p>
+            <p className="text-sm font-medium tracking-[0.08em] text-amber-700">会員ポータル</p>
             <h1 className="text-3xl font-semibold text-slate-900">会員証ページ</h1>
           </header>
           <Card className="space-y-3 border border-slate-200 bg-white">
@@ -84,13 +107,13 @@ export default async function SharedMemberPortalPage({
     )
   }
 
+  const rankBadge = payload.memberCard.rank ? getMemberRankBadge(payload.memberCard.rank) : null
+
   return (
-    <main className="min-h-screen bg-amber-50 px-4 py-6 pb-24 sm:py-10">
+    <main className="min-h-screen bg-amber-50 px-4 py-6 sm:py-10">
       <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
         <header className="space-y-2">
-          <p className="text-sm font-medium uppercase tracking-[0.24em] text-amber-700">
-            Member Portal
-          </p>
+          <p className="text-sm font-medium tracking-[0.08em] text-amber-700">会員ポータル</p>
           <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
             {payload.memberCard.label}
           </h1>
@@ -100,21 +123,26 @@ export default async function SharedMemberPortalPage({
         </header>
 
         <Card className="space-y-3 border border-amber-100 bg-white">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
-            Customer
-          </p>
+          <p className="text-xs font-semibold tracking-[0.08em] text-amber-700">ご利用者情報</p>
           <div className="space-y-1">
-            <p className="text-2xl font-semibold text-slate-900">{payload.customer.full_name}</p>
+            <p className="text-2xl font-semibold text-slate-900">{payload.customer.full_name}様</p>
             <p className="text-sm text-slate-600">{payload.store.name}</p>
+            {rankBadge ? (
+              <p className="pt-1">
+                <span
+                  className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${rankBadge.className}`}
+                >
+                  会員ランク: {rankBadge.label}
+                </span>
+              </p>
+            ) : null}
           </div>
         </Card>
 
         <Card className="space-y-4 border border-slate-200">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Next Appointment
-              </p>
+              <p className="text-xs font-semibold tracking-[0.08em] text-slate-500">ご予約情報</p>
               <h2 className="text-xl font-semibold text-slate-900">次回予約</h2>
             </div>
             {payload.nextAppointment ? (
@@ -157,21 +185,30 @@ export default async function SharedMemberPortalPage({
             </p>
           )}
 
-          <div className="pt-2">
+          <div className="flex flex-wrap gap-2 pt-2">
             <Link
-              href={`/reserve/${payload.store.id}?member_portal_token=${encodeURIComponent(token)}`}
+              href={`/reserve/${payload.store.id}?member_portal_token=${encodeURIComponent(token)}&mode=repeat`}
               className="inline-flex items-center rounded bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
             >
-              この内容で予約する
+              前回と同じ施術内容で予約する
             </Link>
+            <Link
+              href={`/reserve/${payload.store.id}?member_portal_token=${encodeURIComponent(token)}&mode=new`}
+              className="inline-flex items-center rounded border border-amber-600 bg-white px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50"
+            >
+              新規予約
+            </Link>
+          </div>
+          <div>
+            <p className="mt-2 text-xs text-slate-500">
+              日時は引き継がれません。予約フォームで新しい希望日時をご指定ください。
+            </p>
           </div>
         </Card>
 
         <Card className="space-y-3 border border-slate-200">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Revisit Guide
-            </p>
+            <p className="text-xs font-semibold tracking-[0.08em] text-slate-500">次回来店目安</p>
             <h2 className="text-xl font-semibold text-slate-900">次回来店案内</h2>
           </div>
           {payload.nextVisitSuggestion ? (
@@ -190,9 +227,7 @@ export default async function SharedMemberPortalPage({
 
         <Card className="space-y-3 border border-slate-200">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Visit History
-            </p>
+            <p className="text-xs font-semibold tracking-[0.08em] text-slate-500">来店履歴</p>
             <h2 className="text-xl font-semibold text-slate-900">来店履歴</h2>
           </div>
           {payload.visitHistory.length === 0 ? (
@@ -213,9 +248,7 @@ export default async function SharedMemberPortalPage({
 
         <Card className="space-y-3 border border-slate-200">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Announcements
-            </p>
+            <p className="text-xs font-semibold tracking-[0.08em] text-slate-500">お知らせ</p>
             <h2 className="text-xl font-semibold text-slate-900">お知らせ</h2>
           </div>
           {payload.announcements.length === 0 ? (
@@ -234,16 +267,6 @@ export default async function SharedMemberPortalPage({
             </div>
           )}
         </Card>
-      </div>
-      <div className="fixed inset-x-0 bottom-0 border-t border-amber-200 bg-white/95 p-3 backdrop-blur md:hidden">
-        <div className="mx-auto max-w-3xl">
-          <Link
-            href={`/reserve/${payload.store.id}?member_portal_token=${encodeURIComponent(token)}`}
-            className="inline-flex w-full items-center justify-center rounded bg-amber-600 px-4 py-3 text-sm font-semibold text-white hover:bg-amber-700"
-          >
-            この内容で予約する
-          </Link>
-        </div>
       </div>
     </main>
   )

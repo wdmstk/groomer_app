@@ -20,7 +20,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('customers')
-    .select('id, full_name, phone_number, email, address, line_id, how_to_know, rank, tags')
+    .select('id, full_name, phone_number, email, address, line_id, how_to_know, tags')
     .eq('store_id', storeId)
     .order('created_at', { ascending: false })
 
@@ -77,11 +77,6 @@ export async function POST(request: Request) {
         ? body.how_to_know
         : null
       : formData?.get('how_to_know')?.toString() || null,
-    rank: isJson
-      ? typeof body?.rank === 'string'
-        ? body.rank
-        : null
-      : formData?.get('rank')?.toString() || null,
     tags: isJson ? parseTags(body?.tags ?? null) : parseTags(formData?.get('tags')?.toString() || null),
   }
 

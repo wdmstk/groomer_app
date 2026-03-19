@@ -3,10 +3,12 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { FormModal } from '@/components/ui/FormModal'
+import { inventoryPageFixtures } from '@/lib/e2e/inventory-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type Item = {
   id: string
@@ -40,26 +42,36 @@ export default async function InventoryProductsPage({ searchParams }: ProductsPa
     resolvedSearchParams?.modal === 'create' || resolvedSearchParams?.tab === 'new'
   const editId = resolvedSearchParams?.edit
   const modalCloseRedirect = `/inventory/products?tab=${activeTab}`
-  const { supabase, storeId } = await createStoreScopedClient()
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: inventoryPageFixtures.storeId }
+    : await createStoreScopedClient()
 
-  const { data: items } = await supabase
-    .from('inventory_items')
-    .select(
-      'id, name, category, unit, supplier_name, jan_code, optimal_stock, reorder_point, lead_time_days, preferred_supplier_name, minimum_order_quantity, order_lot_size, is_active, notes'
-    )
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const items = isPlaywrightE2E
+    ? inventoryPageFixtures.productItems
+    : (
+        await supabase!
+          .from('inventory_items')
+          .select(
+            'id, name, category, unit, supplier_name, jan_code, optimal_stock, reorder_point, lead_time_days, preferred_supplier_name, minimum_order_quantity, order_lot_size, is_active, notes'
+          )
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      ).data
 
-  const { data: editItem } = editId
-    ? await supabase
-        .from('inventory_items')
-        .select(
-          'id, name, category, unit, supplier_name, jan_code, optimal_stock, reorder_point, lead_time_days, preferred_supplier_name, minimum_order_quantity, order_lot_size, is_active, notes'
-        )
-        .eq('id', editId)
-        .eq('store_id', storeId)
-        .single()
-    : { data: null }
+  const editItem = isPlaywrightE2E
+    ? inventoryPageFixtures.productItems.find((item) => item.id === editId) ?? null
+    : editId
+      ? (
+          await supabase!
+            .from('inventory_items')
+            .select(
+              'id, name, category, unit, supplier_name, jan_code, optimal_stock, reorder_point, lead_time_days, preferred_supplier_name, minimum_order_quantity, order_lot_size, is_active, notes'
+            )
+            .eq('id', editId)
+            .eq('store_id', storeId)
+            .single()
+        ).data
+      : null
 
   const itemList = (items ?? []) as Item[]
   const currentEdit = (editItem as Item | null) ?? null

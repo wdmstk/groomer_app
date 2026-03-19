@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { useCallback, useState, useSyncExternalStore } from 'react'
 import { StoreSwitcher } from './StoreSwitcher'
 import {
   canAccessRouteByPlan,
@@ -12,7 +12,7 @@ import {
   requiredOptionForRoute,
   requiredPlanForRoute,
 } from '@/lib/subscription-plan'
-import { DEFAULT_UI_THEME, getUiThemeLabel, UI_THEMES, type UiTheme } from '@/lib/ui/themes'
+import { DEFAULT_UI_THEME, getUiThemeLabel, isUiTheme, UI_THEMES, type UiTheme } from '@/lib/ui/themes'
 import { UI_THEME_STORAGE_KEY } from '@/lib/ui/theme-preference'
 
 type StoreRole = 'owner' | 'admin' | 'staff' | ''
@@ -34,6 +34,15 @@ type NavSection = {
 const DEFAULT_OPTION_STATE = {
   hotelOptionEnabled: false,
   notificationOptionEnabled: false,
+}
+
+function resolveClientUiThemeSnapshot() {
+  if (typeof window === 'undefined') return DEFAULT_UI_THEME
+  const fromStorage = window.sessionStorage.getItem(UI_THEME_STORAGE_KEY)
+  if (isUiTheme(fromStorage)) return fromStorage
+  const fromDom = document.documentElement.dataset.theme
+  if (isUiTheme(fromDom)) return fromDom
+  return DEFAULT_UI_THEME
 }
 
 function parseOptionState(raw: string | null | undefined) {
@@ -123,7 +132,7 @@ export function Sidebar() {
   const [optionState, setOptionState] = useState(DEFAULT_OPTION_STATE)
   const [hasOptionState, setHasOptionState] = useState(false)
   const [userEmail, setUserEmail] = useState('')
-  const [uiTheme, setUiTheme] = useState<UiTheme>(DEFAULT_UI_THEME)
+  const [uiTheme, setUiTheme] = useState<UiTheme>(resolveClientUiThemeSnapshot)
   const [themeMessage, setThemeMessage] = useState('')
   const [isThemeSaving, setIsThemeSaving] = useState(false)
   const persistedTitle = useSyncExternalStore(
@@ -157,22 +166,13 @@ export function Sidebar() {
         : window.sessionStorage.getItem('active_store_option_state') ?? '',
     () => ''
   )
-  const persistedUiTheme = useSyncExternalStore(
-    () => () => {},
-    () => (typeof window === 'undefined' ? DEFAULT_UI_THEME : window.sessionStorage.getItem(UI_THEME_STORAGE_KEY) ?? DEFAULT_UI_THEME),
-    () => DEFAULT_UI_THEME
-  )
   const persistedOptionState = parseOptionState(persistedOptionStateRaw)
   const displayTitle = title || persistedTitle || '\u00A0'
   const activeRole = role || persistedRole || ''
   const activePlanCode = normalizePlanCode(planCode || persistedPlanCode || 'light')
   const activeOptionState = hasOptionState ? optionState : persistedOptionState
   const displayUserEmail = userEmail || persistedUserEmail || 'メール未設定'
-  const activeUiTheme: UiTheme = (UI_THEMES as readonly string[]).includes(uiTheme)
-    ? uiTheme
-    : (UI_THEMES as readonly string[]).includes(persistedUiTheme)
-      ? (persistedUiTheme as UiTheme)
-      : DEFAULT_UI_THEME
+  const activeUiTheme: UiTheme = uiTheme
   const avatarLabel = (displayUserEmail[0] ?? '?').toUpperCase()
   const roleLabel = activeRole === 'owner' ? 'オーナー' : activeRole === 'admin' ? '管理者' : activeRole === 'staff' ? 'スタッフ' : '未設定'
   const displayPlanLabel = planLabel(activePlanCode)
@@ -230,11 +230,6 @@ export function Sidebar() {
     window.sessionStorage.setItem(UI_THEME_STORAGE_KEY, nextTheme)
     document.documentElement.dataset.theme = nextTheme
   }, [])
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = activeUiTheme
-    window.sessionStorage.setItem(UI_THEME_STORAGE_KEY, activeUiTheme)
-  }, [activeUiTheme])
 
   async function saveUiTheme(nextTheme: UiTheme) {
     setThemeMessage('')
@@ -388,10 +383,10 @@ export function Sidebar() {
   return (
     <>
       <header
-        className="fixed inset-x-0 top-0 z-50 border-b backdrop-blur"
+        className="fixed inset-x-0 top-0 z-50 h-20 border-b backdrop-blur"
         style={{ backgroundColor: 'var(--surface-bg)', borderColor: 'var(--border-color)' }}
       >
-        <div className="flex min-h-16 items-center justify-between gap-3 px-4 py-2 lg:px-6">
+        <div className="flex h-full items-center justify-between gap-3 px-4 lg:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"

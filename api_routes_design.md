@@ -27,12 +27,12 @@ Next.jsのAPI Routes (`src/app/api` 以下) を利用して、バックエンド
 
 *   **`GET /api/customers`**
     *   **目的**: 顧客一覧の取得。
-    *   **クエリ**: `page`, `limit`, `search`, `rank`, `tag` など（オプション）
+    *   **クエリ**: `page`, `limit`, `search`, `tag` など（オプション）
     *   **処理**: Supabaseから顧客データをフェッチします。RLSを考慮し、アクセス権限のある顧客のみを返します。
     *   **レスポンス**: 顧客データの配列。
 *   **`POST /api/customers`**
     *   **目的**: 新規顧客の登録。
-    *   **リクエスト**: `full_name`, `address`, `phone_number`, `email`, `line_id`, `how_to_know`, `rank`, `tags`
+    *   **リクエスト**: `full_name`, `address`, `phone_number`, `email`, `line_id`, `how_to_know`, `tags`
     *   **処理**: 顧客情報をSupabaseに挿入します。
     *   **レスポンス**: 登録された顧客情報。
 *   **`GET /api/customers/[customer_id]`**
@@ -41,7 +41,7 @@ Next.jsのAPI Routes (`src/app/api` 以下) を利用して、バックエンド
     *   **レスポンス**: 特定顧客のデータ。
 *   **`PUT /api/customers/[customer_id]`**
     *   **目的**: 特定顧客情報の更新。
-    *   **リクエスト**: `full_name`, `address`, `phone_number`, `email`, `line_id`, `how_to_know`, `rank`, `tags` (一部またはすべて)
+    *   **リクエスト**: `full_name`, `address`, `phone_number`, `email`, `line_id`, `how_to_know`, `tags` (一部またはすべて)
     *   **処理**: `customer_id` に基づいて顧客情報を更新します。
     *   **レスポンス**: 更新された顧客情報。
 *   **`DELETE /api/customers/[customer_id]`**

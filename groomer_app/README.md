@@ -171,3 +171,12 @@ Next.js の開発元が提供する [Vercel Platform](https://vercel.com/new?utm
 
 ### 優先3: 失注防止の標準化（抜け漏れ連絡を減らす）
 - [ ] 来店周期アラートに「対応済み/保留/不要」管理を追加し、未対応のみを継続表示
+
+## 法務ドキュメント管理
+
+法務ドキュメントは `src/` と同階層の `docs/legal/` で管理します。
+
+- `docs/legal/tokushoho.md`: 特定商取引法に基づく表記
+- `docs/legal/privacy-policy.md`: プライバシーポリシー
+- `docs/legal/terms-of-service.md`: 利用規約
+- `docs/legal/security-description.md`: セキュリティ説明書（企業向け）

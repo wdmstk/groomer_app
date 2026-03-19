@@ -5,8 +5,20 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createStoreScopedClient } from '@/lib/supabase/store'
-import { CustomerLtvProvider, CustomerLtvSummary } from '@/components/customers/CustomerLtvSummary'
+import {
+  fetchCustomerLtvSummaries,
+  getCustomerLtvRankLabel,
+  getCustomerLtvRankTone,
+  type CustomerLtvSummaryRow,
+} from '@/lib/customer-ltv'
 import { CustomerMemberPortalControls } from '@/components/customers/CustomerMemberPortalControls'
+import { customersPageFixtures } from '@/lib/e2e/customers-page-fixtures'
+import {
+  formatCustomerFallback,
+  formatCustomerNoShowCount,
+  formatCustomerTags,
+  getCustomerLineStatus,
+} from '@/lib/customers/presentation'
 
 const RevisitAlertList = nextDynamic(
   () => import('@/components/customers/RevisitAlertList').then((mod) => mod.RevisitAlertList),
@@ -30,25 +42,25 @@ type Customer = {
   address: string | null
   line_id: string | null
   how_to_know: string | null
-  rank: string | null
   tags: string[] | null
 }
 
 function renderLineStatus(customer: Customer) {
-  if (customer.line_id) {
+  const status = getCustomerLineStatus(customer.line_id)
+  if (status.linked) {
     return (
       <div className="space-y-1">
         <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-          連携済み
+          {status.badgeLabel}
         </span>
-        <p className="text-xs text-gray-500">{customer.line_id}</p>
+        <p className="text-xs text-gray-500">{status.detail}</p>
       </div>
     )
   }
 
   return (
     <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">
-      未連携
+      {status.badgeLabel}
     </span>
   )
 }
@@ -71,6 +83,10 @@ type MemberPortalLink = {
   last_used_at: string | null
 }
 
+function formatCurrency(value: number | null | undefined) {
+  return Math.round(value ?? 0).toLocaleString()
+}
+
 type CustomersPageProps = {
   searchParams?: Promise<{
     tab?: string
@@ -80,7 +96,7 @@ type CustomersPageProps = {
   }>
 }
 
-const rankOptions = ['通常', 'ブロンズ', 'シルバー', 'ゴールド']
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 export default async function CustomersPage({ searchParams }: CustomersPageProps) {
   const resolvedSearchParams = await searchParams
@@ -95,16 +111,22 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   const isWaitlistModalOpen = resolvedSearchParams?.modal === 'waitlist' && Boolean(waitlistCustomerId)
   const needsListSupportData = activeTab === 'list' || isCreateModalOpen || Boolean(editId) || isWaitlistModalOpen
   const modalCloseRedirect = `/customers?tab=${activeTab}`
-  const { supabase, storeId } = await createStoreScopedClient()
-  const adminSupabase = needsListSupportData ? createAdminSupabaseClient() : null
-  const { data } = await supabase
-    .from('customers')
-    .select('id, full_name, phone_number, email, address, line_id, how_to_know, rank, tags')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: customersPageFixtures.storeId }
+    : await createStoreScopedClient()
+  const adminSupabase = !isPlaywrightE2E && needsListSupportData ? createAdminSupabaseClient() : null
+  const data = isPlaywrightE2E
+    ? customersPageFixtures.customers
+    : (
+        await supabase
+          .from('customers')
+          .select('id, full_name, phone_number, email, address, line_id, how_to_know, tags')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      ).data
   const customers = (data as Customer[]) ?? []
   const { data: petRows } =
-    isWaitlistModalOpen
+    isWaitlistModalOpen && !isPlaywrightE2E
       ? await supabase
           .from('pets')
           .select('id, name, customer_id')
@@ -112,20 +134,26 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
           .order('created_at', { ascending: false })
       : { data: [] }
   const { data: staffRows } =
-    isWaitlistModalOpen
+    isWaitlistModalOpen && !isPlaywrightE2E
       ? await supabase
           .from('staffs')
           .select('id, full_name')
           .eq('store_id', storeId)
           .order('created_at', { ascending: false })
       : { data: [] }
-  const { data: appointmentRows } = needsListSupportData
-    ? await supabase
-        .from('appointments')
-        .select('customer_id')
-        .eq('store_id', storeId)
-        .eq('status', '無断キャンセル')
-    : { data: [] }
+  const appointmentRows = needsListSupportData
+    ? isPlaywrightE2E
+      ? customersPageFixtures.appointments
+      : (
+          await supabase
+            .from('appointments')
+            .select('customer_id')
+            .eq('store_id', storeId)
+            .eq('status', '無断キャンセル')
+        ).data ?? []
+    : []
+  const customerLtvRows =
+    needsListSupportData && !isPlaywrightE2E ? await fetchCustomerLtvSummaries({ supabase, storeId }) : []
   const { data: memberPortalRows } =
     needsListSupportData && adminSupabase
       ? await adminSupabase
@@ -136,15 +164,17 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
           .is('revoked_at', null)
           .gt('expires_at', new Date().toISOString())
           .order('expires_at', { ascending: false })
-      : { data: [] }
-  const { data: editCustomer } = needsListSupportData && editId
-    ? (await supabase
-        .from('customers')
-        .select('id, full_name, phone_number, email, address, line_id, how_to_know, rank, tags')
-        .eq('id', editId)
-        .eq('store_id', storeId)
-        .single()) as { data: Customer | null }
-    : { data: null }
+      : { data: isPlaywrightE2E ? customersPageFixtures.memberPortalLinks : [] }
+  const editCustomer = needsListSupportData && editId && !isPlaywrightE2E
+    ? (
+        (await supabase
+          .from('customers')
+          .select('id, full_name, phone_number, email, address, line_id, how_to_know, tags')
+          .eq('id', editId)
+          .eq('store_id', storeId)
+          .single()) as { data: Customer | null }
+      ).data
+    : null
   const noShowCounts = ((appointmentRows ?? []) as Array<{ customer_id: string | null }>).reduce(
     (acc, row) => {
       if (row.customer_id) {
@@ -156,6 +186,11 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   )
   const pets = (petRows as PetOption[]) ?? []
   const staffs = (staffRows as StaffOption[]) ?? []
+  const customerLtvByCustomerId = new Map<string, CustomerLtvSummaryRow>()
+  ;((customerLtvRows as CustomerLtvSummaryRow[] | null) ?? []).forEach((row) => {
+    if (!row.customer_id || customerLtvByCustomerId.has(row.customer_id)) return
+    customerLtvByCustomerId.set(row.customer_id, row)
+  })
   const activeMemberPortalByCustomerId = new Map<string, MemberPortalLink>()
   ;((memberPortalRows as MemberPortalLink[] | null) ?? []).forEach((row) => {
     if (activeMemberPortalByCustomerId.has(row.customer_id)) return
@@ -194,7 +229,6 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
       </div>
 
       {activeTab === 'list' ? (
-        <CustomerLtvProvider>
         <Card>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">顧客一覧</h2>
@@ -212,28 +246,46 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
             <p className="text-sm text-gray-500">顧客がまだ登録されていません。</p>
           ) : (
             <>
-              <div className="space-y-3 md:hidden">
-                {customers.map((customer: Customer) => (
-                  <article key={customer.id} className="rounded border p-3 text-sm text-gray-700">
+              <div className="space-y-3 md:hidden" data-testid="customers-list-mobile">
+                {customers.map((customer: Customer) => {
+                  const customerLtv = customerLtvByCustomerId.get(customer.id)
+                  return (
+                  <article
+                    key={customer.id}
+                    className="rounded border p-3 text-sm text-gray-700"
+                    data-testid={`customer-row-${customer.id}`}
+                  >
                     <p className="font-semibold text-gray-900">
                       {customer.full_name}
-                      {(noShowCounts[customer.id] ?? 0) > 0 ? (
+                      {formatCustomerNoShowCount(noShowCounts[customer.id] ?? 0) ? (
                         <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-900">
-                          無断CXL {(noShowCounts[customer.id] ?? 0)}件
+                          {formatCustomerNoShowCount(noShowCounts[customer.id] ?? 0)}
                         </span>
                       ) : null}
                     </p>
-                    <p>電話番号: {customer.phone_number ?? '未登録'}</p>
-                    <p>メール: {customer.email ?? '未登録'}</p>
-                    <p>住所: {customer.address ?? '未登録'}</p>
+                    <p>電話番号: {formatCustomerFallback(customer.phone_number)}</p>
+                    <p>メール: {formatCustomerFallback(customer.email)}</p>
+                    <p>住所: {formatCustomerFallback(customer.address)}</p>
                     <div className="flex items-center gap-2">
                       <span>LINE:</span>
                       {renderLineStatus(customer)}
                     </div>
-                    <p>来店経路: {customer.how_to_know ?? '未登録'}</p>
-                    <p>ランク: {customer.rank ?? '通常'}</p>
-                    <CustomerLtvSummary customerId={customer.id} variant="mobile" />
-                    <p>タグ: {customer.tags?.join(', ') ?? 'なし'}</p>
+                    <p>来店経路: {formatCustomerFallback(customer.how_to_know)}</p>
+                    <p>
+                      LTVランク:{' '}
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          getCustomerLtvRankTone(customerLtv?.ltv_rank)
+                        }`}
+                      >
+                        {getCustomerLtvRankLabel(customerLtv?.ltv_rank)}
+                      </span>
+                    </p>
+                    <p>年間売上: {formatCurrency(customerLtv?.annual_sales)}円</p>
+                    <p>来店回数: {customerLtv?.visit_count ?? 0}回</p>
+                    <p>平均単価: {formatCurrency(customerLtv?.average_spend)}円</p>
+                    <p>オプション利用率: {customerLtv?.option_usage_rate ?? 0}%</p>
+                    <p>タグ: {formatCustomerTags(customer.tags)}</p>
                     <div className="mt-2">
                       <CustomerMemberPortalControls
                         customerId={customer.id}
@@ -264,11 +316,12 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                       </form>
                     </div>
                   </article>
-                ))}
+                  )
+                })}
               </div>
 
               <div className="hidden overflow-x-auto md:block">
-                <table className="min-w-full text-sm text-left">
+                <table className="min-w-full text-sm text-left" data-testid="customers-list">
                   <thead className="text-gray-500 border-b">
                     <tr>
                       <th className="py-2 px-2">氏名</th>
@@ -277,7 +330,6 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                       <th className="py-2 px-2">住所</th>
                       <th className="py-2 px-2">LINE ID</th>
                       <th className="py-2 px-2">来店経路</th>
-                      <th className="py-2 px-2">ランク</th>
                       <th className="py-2 px-2">LTV</th>
                       <th className="py-2 px-2">年間売上</th>
                       <th className="py-2 px-2">来店回数</th>
@@ -289,24 +341,41 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {customers.map((customer: Customer) => (
-                      <tr key={customer.id} className="text-gray-700">
+                    {customers.map((customer: Customer) => {
+                      const customerLtv = customerLtvByCustomerId.get(customer.id)
+                      return (
+                      <tr
+                        key={customer.id}
+                        className="text-gray-700"
+                        data-testid={`customer-row-${customer.id}`}
+                      >
                         <td className="py-3 px-2 font-medium text-gray-900">
                           {customer.full_name}
-                          {(noShowCounts[customer.id] ?? 0) > 0 ? (
+                          {formatCustomerNoShowCount(noShowCounts[customer.id] ?? 0) ? (
                             <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-900">
-                              無断CXL {(noShowCounts[customer.id] ?? 0)}件
+                              {formatCustomerNoShowCount(noShowCounts[customer.id] ?? 0)}
                             </span>
                           ) : null}
                         </td>
-                        <td className="py-3 px-2">{customer.phone_number ?? '未登録'}</td>
-                        <td className="py-3 px-2">{customer.email ?? '未登録'}</td>
-                        <td className="py-3 px-2">{customer.address ?? '未登録'}</td>
+                        <td className="py-3 px-2">{formatCustomerFallback(customer.phone_number)}</td>
+                        <td className="py-3 px-2">{formatCustomerFallback(customer.email)}</td>
+                        <td className="py-3 px-2">{formatCustomerFallback(customer.address)}</td>
                         <td className="py-3 px-2">{renderLineStatus(customer)}</td>
-                        <td className="py-3 px-2">{customer.how_to_know ?? '未登録'}</td>
-                        <td className="py-3 px-2">{customer.rank ?? '通常'}</td>
-                        <CustomerLtvSummary customerId={customer.id} variant="table" />
-                        <td className="py-3 px-2">{customer.tags?.join(', ') ?? 'なし'}</td>
+                        <td className="py-3 px-2">{formatCustomerFallback(customer.how_to_know)}</td>
+                        <td className="py-3 px-2">
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              getCustomerLtvRankTone(customerLtv?.ltv_rank)
+                            }`}
+                          >
+                            {getCustomerLtvRankLabel(customerLtv?.ltv_rank)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2">{formatCurrency(customerLtv?.annual_sales)} 円</td>
+                        <td className="py-3 px-2">{customerLtv?.visit_count ?? 0} 回</td>
+                        <td className="py-3 px-2">{formatCurrency(customerLtv?.average_spend)} 円</td>
+                        <td className="py-3 px-2">{customerLtv?.option_usage_rate ?? 0}%</td>
+                        <td className="py-3 px-2">{formatCustomerTags(customer.tags)}</td>
                         <td className="py-3 px-2 align-top">
                           <CustomerMemberPortalControls
                             customerId={customer.id}
@@ -339,14 +408,14 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
             </>
           )}
         </Card>
-        </CustomerLtvProvider>
       ) : (
         <Card className="space-y-3">
           <RevisitAlertList />
@@ -414,20 +483,6 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                 defaultValue={editCustomer?.how_to_know ?? ''}
                 placeholder="Instagram, 口コミなど"
               />
-            </label>
-            <label className="space-y-2 text-sm text-gray-700">
-              顧客ランク
-              <select
-                name="rank"
-                defaultValue={editCustomer?.rank ?? '通常'}
-                className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400 outline-none"
-              >
-                {rankOptions.map((rank) => (
-                  <option key={rank} value={rank}>
-                    {rank}
-                  </option>
-                ))}
-              </select>
             </label>
             <label className="space-y-2 text-sm text-gray-700">
               タグ (カンマ区切り)

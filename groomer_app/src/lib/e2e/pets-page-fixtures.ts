@@ -1,0 +1,42 @@
+export const petsPageFixtures = {
+  storeId: 'store-e2e-demo',
+  customers: [
+    { id: 'customer-001', full_name: '山田 花子' },
+    { id: 'customer-002', full_name: '佐々木 次郎' },
+  ],
+  pets: [
+    {
+      id: 'pet-001',
+      name: 'こむぎ',
+      customer_id: 'customer-001',
+      breed: 'トイプードル',
+      gender: 'メス',
+      date_of_birth: '2021-04-03',
+      weight: 0,
+      vaccine_date: '2026-02-14',
+      chronic_diseases: ['心臓', 'アレルギー'],
+      notes: '怖がり。顔周りは短時間で。',
+      qr_code_url: null,
+      qr_payload: JSON.stringify({
+        customer_name: '山田 花子',
+        pet_name: 'こむぎ',
+      }),
+      customers: [{ full_name: '山田 花子' }],
+    },
+    {
+      id: 'pet-002',
+      name: 'ひじき',
+      customer_id: 'customer-002',
+      breed: null,
+      gender: null,
+      date_of_birth: null,
+      weight: null,
+      vaccine_date: null,
+      chronic_diseases: null,
+      notes: null,
+      qr_code_url: null,
+      qr_payload: null,
+      customers: null,
+    },
+  ],
+} as const

@@ -1,10 +1,12 @@
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
+import { inventoryPageFixtures } from '@/lib/e2e/inventory-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { aggregateStockByItem, toNumber } from '@/lib/inventory/stock'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type Item = {
   id: string
@@ -28,24 +30,34 @@ function startOfTodayIso() {
 }
 
 export default async function InventoryDashboardPage() {
-  const { supabase, storeId } = await createStoreScopedClient()
-  const now = new Date()
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: inventoryPageFixtures.storeId }
+    : await createStoreScopedClient()
+  const now = isPlaywrightE2E ? new Date(inventoryPageFixtures.dashboardNowIso) : new Date()
   const todayIso = startOfTodayIso()
   const soonDate = new Date(now)
   soonDate.setDate(soonDate.getDate() + 14)
   const soon = soonDate.toISOString().slice(0, 10)
 
-  const { data: items } = await supabase
-    .from('inventory_items')
-    .select('id, name, unit, optimal_stock')
-    .eq('store_id', storeId)
-    .eq('is_active', true)
-    .order('name', { ascending: true })
+  const items = isPlaywrightE2E
+    ? inventoryPageFixtures.dashboardItems
+    : (
+        await supabase!
+          .from('inventory_items')
+          .select('id, name, unit, optimal_stock')
+          .eq('store_id', storeId)
+          .eq('is_active', true)
+          .order('name', { ascending: true })
+      ).data
 
-  const { data: movements } = await supabase
-    .from('inventory_movements')
-    .select('item_id, movement_type, quantity_delta, expires_on, happened_at')
-    .eq('store_id', storeId)
+  const movements = isPlaywrightE2E
+    ? inventoryPageFixtures.dashboardMovements
+    : (
+        await supabase!
+          .from('inventory_movements')
+          .select('item_id, movement_type, quantity_delta, expires_on, happened_at')
+          .eq('store_id', storeId)
+      ).data
 
   const itemList = (items ?? []) as Item[]
   const movementList = (movements ?? []) as Movement[]

@@ -10,7 +10,6 @@ CREATE TABLE customers (
     email text UNIQUE,
     line_id text UNIQUE,
     how_to_know text,
-    rank text DEFAULT '通常',
     tags text[]
 );
 

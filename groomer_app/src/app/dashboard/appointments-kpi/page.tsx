@@ -1,9 +1,11 @@
 import { Card } from '@/components/ui/Card'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { requireStoreFeatureAccess } from '@/lib/feature-access'
+import { dashboardPageFixtures } from '@/lib/e2e/dashboard-page-fixtures'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type DailyMetricSummary = {
   dateKey: string
@@ -88,19 +90,23 @@ function formatMsToMinSec(ms: number) {
 }
 
 function getDateKeyDaysAgo(daysAgo: number) {
-  const date = new Date()
+  const date = isPlaywrightE2E ? new Date(dashboardPageFixtures.nowIso) : new Date()
   date.setHours(0, 0, 0, 0)
   date.setDate(date.getDate() - daysAgo)
   return toJstDateKey(date.toISOString())
 }
 
 export default async function DashboardAppointmentsKpiPage() {
-  const { supabase, storeId } = await createStoreScopedClient()
-  const access = await requireStoreFeatureAccess({
-    supabase,
-    storeId,
-    minimumPlan: 'pro',
-  })
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: dashboardPageFixtures.storeId }
+    : await createStoreScopedClient()
+  const access = isPlaywrightE2E
+    ? dashboardPageFixtures.kpiAccess
+    : await requireStoreFeatureAccess({
+        supabase,
+        storeId,
+        minimumPlan: 'pro',
+      })
   if (!access.ok) {
     return (
       <section className="space-y-4">
@@ -113,48 +119,76 @@ export default async function DashboardAppointmentsKpiPage() {
   }
   const metricsWindowStart = getDateKeyDaysAgo(29)
   const recentChartStart = getDateKeyDaysAgo(6)
-  const { data: formMetricSummaryRows } = await supabase
-    .from('appointment_form_metric_daily_summary_v')
-    .select(
-      'date_key, submission_count, new_submission_count, avg_elapsed_ms, avg_click_count, avg_field_change_count, template_copy_rate, new_avg_elapsed_ms, new_avg_click_count, new_avg_field_change_count, new_template_copy_rate'
-    )
-    .eq('store_id', storeId)
-    .gte('date_key', metricsWindowStart)
-    .order('date_key', { ascending: false })
-  const { data: durationKpiRows } = await supabase
-    .from('appointment_duration_kpi_daily_summary_v')
-    .select('date_key, comparable_appointment_count, avg_estimation_error_min, within_10_min_count')
-    .eq('store_id', storeId)
-    .gte('date_key', metricsWindowStart)
-    .order('date_key', { ascending: false })
-  const { data: staffGapKpiRows } = await supabase
-    .from('appointment_staff_gap_kpi_daily_summary_v')
-    .select('date_key, sequential_pair_count, pushed_pair_count')
-    .eq('store_id', storeId)
-    .gte('date_key', metricsWindowStart)
-    .order('date_key', { ascending: false })
-  const { data: completedDailyRows } = await supabase
-    .from('completed_appointment_daily_summary_v')
-    .select('date_key, completed_count')
-    .eq('store_id', storeId)
-    .gte('date_key', metricsWindowStart)
-    .order('date_key', { ascending: false })
-  const { data: completedRevisitRows } = await supabase
-    .from('completed_appointment_revisit_source_v')
-    .select('appointment_id, has_next_booking, is_revisit_leak')
-    .eq('store_id', storeId)
-    .order('start_time', { ascending: false })
-    .limit(500)
-  const { data: noShowCustomerRows } = await supabase
-    .from('no_show_customer_kpi_source_v')
-    .select('customer_id, no_show_count, is_repeated_no_show')
-    .eq('store_id', storeId)
-  const { data: appointmentRows } = await supabase
-    .from('appointments')
-    .select('id, customer_id, pet_id, start_time, end_time, duration, status, staff_id')
-    .eq('store_id', storeId)
-    .order('start_time', { ascending: false })
-    .limit(500)
+  const formMetricSummaryRows = isPlaywrightE2E
+    ? dashboardPageFixtures.kpiFormMetricSummaryRows
+    : (
+        await supabase!
+          .from('appointment_form_metric_daily_summary_v')
+          .select(
+            'date_key, submission_count, new_submission_count, avg_elapsed_ms, avg_click_count, avg_field_change_count, template_copy_rate, new_avg_elapsed_ms, new_avg_click_count, new_avg_field_change_count, new_template_copy_rate'
+          )
+          .eq('store_id', storeId)
+          .gte('date_key', metricsWindowStart)
+          .order('date_key', { ascending: false })
+      ).data
+  const durationKpiRows = isPlaywrightE2E
+    ? dashboardPageFixtures.kpiDurationKpiRows
+    : (
+        await supabase!
+          .from('appointment_duration_kpi_daily_summary_v')
+          .select('date_key, comparable_appointment_count, avg_estimation_error_min, within_10_min_count')
+          .eq('store_id', storeId)
+          .gte('date_key', metricsWindowStart)
+          .order('date_key', { ascending: false })
+      ).data
+  const staffGapKpiRows = isPlaywrightE2E
+    ? dashboardPageFixtures.kpiStaffGapKpiRows
+    : (
+        await supabase!
+          .from('appointment_staff_gap_kpi_daily_summary_v')
+          .select('date_key, sequential_pair_count, pushed_pair_count')
+          .eq('store_id', storeId)
+          .gte('date_key', metricsWindowStart)
+          .order('date_key', { ascending: false })
+      ).data
+  const completedDailyRows = isPlaywrightE2E
+    ? dashboardPageFixtures.kpiCompletedDailyRows
+    : (
+        await supabase!
+          .from('completed_appointment_daily_summary_v')
+          .select('date_key, completed_count')
+          .eq('store_id', storeId)
+          .gte('date_key', metricsWindowStart)
+          .order('date_key', { ascending: false })
+      ).data
+  const completedRevisitRows = isPlaywrightE2E
+    ? dashboardPageFixtures.kpiCompletedRevisitRows
+    : (
+        await supabase!
+          .from('completed_appointment_revisit_source_v')
+          .select('appointment_id, has_next_booking, is_revisit_leak')
+          .eq('store_id', storeId)
+          .order('start_time', { ascending: false })
+          .limit(500)
+      ).data
+  const noShowCustomerRows = isPlaywrightE2E
+    ? dashboardPageFixtures.kpiNoShowCustomerRows
+    : (
+        await supabase!
+          .from('no_show_customer_kpi_source_v')
+          .select('customer_id, no_show_count, is_repeated_no_show')
+          .eq('store_id', storeId)
+      ).data
+  const appointmentRows = isPlaywrightE2E
+    ? dashboardPageFixtures.kpiAppointmentRows
+    : (
+        await supabase!
+          .from('appointments')
+          .select('id, customer_id, pet_id, start_time, end_time, duration, status, staff_id')
+          .eq('store_id', storeId)
+          .order('start_time', { ascending: false })
+          .limit(500)
+      ).data
 
   const formMetrics = (formMetricSummaryRows ?? []) as AppointmentFormMetricDailySummaryRow[]
   const metricTarget = formMetrics

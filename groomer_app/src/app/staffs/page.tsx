@@ -6,11 +6,17 @@ import { Input } from '@/components/ui/Input'
 import { FormModal } from '@/components/ui/FormModal'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { InviteManager } from '@/components/staffs/InviteManager'
+import {
+  canCreateMoreStaff,
+  getStaffMembershipLabel,
+} from '@/lib/staffs/presentation'
+import { staffsPageFixtures } from '@/lib/e2e/staffs-page-fixtures'
 import { asStorePlanOptionsClient, fetchStorePlanOptionState } from '@/lib/store-plan-options'
 import { isPlanAtLeast } from '@/lib/subscription-plan'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type StaffsPageProps = {
   searchParams?: Promise<{
@@ -38,62 +44,84 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
     resolvedSearchParams?.modal === 'create' || resolvedSearchParams?.tab === 'new'
   const editId = resolvedSearchParams?.edit
   const modalCloseRedirect = `/staffs?tab=${activeTab}`
-  const { supabase, storeId } = await createStoreScopedClient()
-  const planState = await fetchStorePlanOptionState({
-    supabase: asStorePlanOptionsClient(supabase),
-    storeId,
-  })
-  const isStandardOrHigher = isPlanAtLeast(planState.planCode, 'standard')
-  const isLightPlan = !isStandardOrHigher
-  const {
-    data: { user: currentUser },
-  } = await supabase.auth.getUser()
-  const { data } = await supabase
-    .from('staffs')
-    .select('id, full_name, email, user_id')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
-  const staffs = data ?? []
-  const canCreateStaff = !isLightPlan || staffs.length < 3
-  const { data: selfMembership } = currentUser
-    ? await supabase
-        .from('store_memberships')
-        .select('id, user_id, role')
-        .eq('store_id', storeId)
-        .eq('user_id', currentUser.id)
-        .eq('is_active', true)
-        .maybeSingle()
-    : { data: null }
-  const currentMembership = selfMembership
-  const canManageRoles = currentMembership?.role === 'owner' && isStandardOrHigher
-  const admin = canManageRoles ? createAdminClient() : null
-  const { data: memberships } =
-    canManageRoles && admin
-      ? await admin
-          .from('store_memberships')
-          .select('id, user_id, role')
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: staffsPageFixtures.storeId }
+    : await createStoreScopedClient()
+  const planState = isPlaywrightE2E
+    ? { planCode: 'light', hotelOptionEnabled: false, notificationOptionEnabled: false }
+    : await fetchStorePlanOptionState({
+        supabase: asStorePlanOptionsClient(supabase),
+        storeId,
+      })
+  const isStandardOrHigher = isPlaywrightE2E ? false : isPlanAtLeast(planState.planCode, 'standard')
+  const isLightPlan = isPlaywrightE2E ? staffsPageFixtures.isLightPlan : !isStandardOrHigher
+  const currentUser = isPlaywrightE2E ? { id: 'user-001' } : (await supabase.auth.getUser()).data.user
+  const data = isPlaywrightE2E
+    ? staffsPageFixtures.staffs
+    : (
+        await supabase
+          .from('staffs')
+          .select('id, full_name, email, user_id')
           .eq('store_id', storeId)
-          .eq('is_active', true)
-      : {
-          data: currentMembership ? [currentMembership] : ([] as { id: string; user_id: string; role: 'owner' | 'admin' | 'staff' }[]),
-        }
+          .order('created_at', { ascending: false })
+      ).data
+  const staffs = data ?? []
+  const canCreateStaff = canCreateMoreStaff({ isLightPlan, staffCount: staffs.length })
+  const selfMembership = isPlaywrightE2E
+    ? staffsPageFixtures.memberships[0]
+    : currentUser
+      ? (
+          await supabase
+            .from('store_memberships')
+            .select('id, user_id, role')
+            .eq('store_id', storeId)
+            .eq('user_id', currentUser.id)
+            .eq('is_active', true)
+            .maybeSingle()
+        ).data
+      : null
+  const currentMembership = selfMembership
+  const canManageRoles = isPlaywrightE2E
+    ? staffsPageFixtures.canManageRoles
+    : currentMembership?.role === 'owner' && isStandardOrHigher
+  const admin = canManageRoles ? createAdminClient() : null
+  const memberships =
+    isPlaywrightE2E
+      ? staffsPageFixtures.memberships
+      : canManageRoles && admin
+        ? (
+            await admin
+              .from('store_memberships')
+              .select('id, user_id, role')
+              .eq('store_id', storeId)
+              .eq('is_active', true)
+          ).data
+        : (currentMembership
+            ? [currentMembership]
+            : ([] as { id: string; user_id: string; role: 'owner' | 'admin' | 'staff' }[]))
   const membershipByUserId = new Map((memberships ?? []).map((m) => [m.user_id, m]))
 
   function getMembershipLabel(userId: string | null) {
-    if (!userId) return '未連携'
-    const membership = membershipByUserId.get(userId)
-    if (membership) return membership.role
-    return canManageRoles ? '未所属' : '非表示'
+    return getStaffMembershipLabel({
+      userId,
+      canManageRoles,
+      roleByUserId: new Map(Array.from(membershipByUserId.entries()).map(([id, membership]) => [id, membership.role])),
+    })
   }
 
-  const { data: editStaff } = editId
-    ? await supabase
-        .from('staffs')
-        .select('id, full_name, email, user_id')
-        .eq('id', editId)
-        .eq('store_id', storeId)
-        .single()
-    : { data: null }
+  const editStaff =
+    !editId
+      ? null
+      : isPlaywrightE2E
+        ? staffsPageFixtures.staffs.find((staff) => staff.id === editId) ?? null
+        : (
+            await supabase
+              .from('staffs')
+              .select('id, full_name, email, user_id')
+              .eq('id', editId)
+              .eq('store_id', storeId)
+              .single()
+          ).data
 
   return (
     <section className="space-y-6">
@@ -145,11 +173,15 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
           <p className="text-sm text-gray-500">スタッフがまだ登録されていません。</p>
         ) : (
           <>
-            <div className="space-y-3 md:hidden">
+            <div className="space-y-3 md:hidden" data-testid="staffs-list-mobile">
               {staffs.map((staff) => {
                 const membership = staff.user_id ? membershipByUserId.get(staff.user_id) : undefined
                 return (
-                <article key={staff.id} className="rounded border p-3 text-sm text-gray-700">
+                <article
+                  key={staff.id}
+                  className="rounded border p-3 text-sm text-gray-700"
+                  data-testid={`staff-row-${staff.id}`}
+                >
                   <p className="font-semibold text-gray-900">{staff.full_name}</p>
                   <p>メール: {staff.email ?? '未登録'}</p>
                   <p>User ID: {staff.user_id ?? '未登録'}</p>
@@ -187,7 +219,7 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
             </div>
 
             <div className="hidden overflow-x-auto md:block">
-              <table className="min-w-full text-sm text-left">
+              <table className="min-w-full text-sm text-left" data-testid="staffs-list">
                 <thead className="text-gray-500 border-b">
                   <tr>
                     <th className="py-2 px-2">氏名</th>
@@ -201,7 +233,11 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
                   {staffs.map((staff) => {
                     const membership = staff.user_id ? membershipByUserId.get(staff.user_id) : undefined
                     return (
-                    <tr key={staff.id} className="text-gray-700">
+                    <tr
+                      key={staff.id}
+                      className="text-gray-700"
+                      data-testid={`staff-row-${staff.id}`}
+                    >
                       <td className="py-3 px-2 font-medium text-gray-900">{staff.full_name}</td>
                       <td className="py-3 px-2">{staff.email ?? '未登録'}</td>
                       <td className="py-3 px-2">{staff.user_id ?? '未登録'}</td>

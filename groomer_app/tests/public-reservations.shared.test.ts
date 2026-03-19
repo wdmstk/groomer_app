@@ -55,3 +55,15 @@ test('normalizeQrLookupInput trims qrPayload', () => {
   const input = normalizeQrLookupInput({ qrPayload: '  signed-payload  ' })
   assert.equal(input.qrPayloadText, 'signed-payload')
 })
+
+test('normalizePublicReservationInput accepts member_portal_token', () => {
+  const input = normalizePublicReservationInput({
+    customerName: 'Yamada',
+    petName: 'Pochi',
+    preferredStart: '2026-03-01T10:00',
+    menuIds: ['m1'],
+    member_portal_token: '  portal-token-1  ',
+  })
+
+  assert.equal(input.memberPortalToken, 'portal-token-1')
+})

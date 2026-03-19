@@ -49,7 +49,7 @@ export type HqManualSectionInsight = {
 }
 
 export const hqManualMeta = {
-  updatedAt: '2026-03-13',
+  updatedAt: '2026-03-16',
   targetVersion: 'groomer_app 0.1.0 / HQ Phase 1',
 }
 
@@ -68,6 +68,7 @@ export const hqManualGlossary: HqGlossaryTerm[] = [
   { term: 'full', meaning: 'カテゴリや税設定などを含めて広範囲に上書きするモードです。' },
   { term: 'delivery_id', meaning: '配信リクエストを一意に識別するIDです。' },
   { term: 'status', meaning: '配信状態。`pending` / `applied` / `rejected` が使われます。' },
+  { term: '承認結果', meaning: '各店舗が入力する承認または却下の結果です。配信全体の現在状態である status とは別物です。' },
   { term: 'pending', meaning: '承認待ち状態。全対象店舗の承認が揃うまで適用されません。' },
   { term: 'approved', meaning: '個別店舗の承認結果。全対象店舗で approved になると配信が適用されます。' },
   { term: 'rejected', meaning: '拒否状態。配信全体が中止され、再適用されません。' },
@@ -135,7 +136,7 @@ export const hqManualSections: HqManualSection[] = [
     purpose: '本部画面で表示される英字選択肢の意味を、操作前に確認できるようにします。',
     procedures: [
       '配信リクエスト作成前に overwrite_scope の意味を確認します。',
-      '承認操作前に承認/却下（内部値: approved/rejected）の意味を確認します。',
+      '承認操作前に承認と却下の意味を確認します。',
       '配信一覧確認時に status（pending/applied/rejected）の意味を確認します。',
     ],
     cautions: [
@@ -282,8 +283,8 @@ const hqSectionGuides: Record<string, HqManualSectionGuide> = {
     itemDetails: [
       { item: 'overwrite_scope=price_duration_only', detail: '価格（price）と所要時間（duration）のみを上書きします。' },
       { item: 'overwrite_scope=full', detail: 'メニュー属性を広範囲に上書きします（価格・時間以外も対象）。' },
-      { item: '承認（内部値: approved）', detail: '対象店舗の承認1件として記録されます。' },
-      { item: '却下（内部値: rejected）', detail: '配信リクエスト全体が rejected になり停止します。' },
+      { item: '承認', detail: '対象店舗が配信内容に同意した記録として保存されます。' },
+      { item: '却下', detail: '配信を進めない判断として記録され、配信全体は停止します。' },
       { item: 'status=pending', detail: '承認待ち。全対象店舗の承認がまだ揃っていません。' },
       { item: 'status=applied', detail: '適用済み。テンプレ配信が対象店舗に反映済みです。' },
       { item: 'status=rejected', detail: '拒否済み。却下により配信は実行されません。' },
@@ -292,7 +293,7 @@ const hqSectionGuides: Record<string, HqManualSectionGuide> = {
   'hq-template-approval': {
     flow: ['利用タイミング: 配信承認判断時。', '前提: owner 権限で対象店舗の承認能力あり。', '次に行う操作: 全承認後の applied 結果確認。'],
     itemDetails: [
-      { item: '承認/却下ボタン', detail: '承認は approved、却下は rejected として記録されます。' },
+      { item: '承認/却下ボタン', detail: '承認は配信を進める判断、却下は配信を止める判断として記録されます。' },
       { item: '承認記録', detail: 'hq_menu_template_delivery_approvals に upsert されます。' },
       { item: '全承認条件', detail: 'targets に並ぶ全店舗が承認済みになると適用処理に進みます。' },
       { item: '承認API', detail: 'POST /api/hq/menu-template-deliveries/[delivery_id]/approve を使用します。' },
@@ -399,8 +400,8 @@ export const hqSectionInsights: Record<string, HqManualSectionInsight> = {
           {
             card: '承認/却下操作',
             focus: '対象店舗（ID）選択、コメント、承認/却下。',
-            usage: '承認ボタンは approved、却下ボタンは rejected として記録されます。',
-            decision: '懸念あり: rejected にして理由を明記します。',
+            usage: '承認は配信を進める判断、却下は配信を止める判断として記録されます。',
+            decision: '懸念あり: 却下を選び、理由を明記します。',
           },
         ],
       },
@@ -442,8 +443,8 @@ export const hqSectionInsights: Record<string, HqManualSectionInsight> = {
         cards: [
           {
             card: '承認・却下 / status',
-            focus: 'approved / rejected と pending / applied / rejected の違い。',
-            usage: '承認/却下は操作入力値、status は現在状態として読み分けます。',
+            focus: '承認・却下という操作結果と、配信一覧の現在状態の違い。',
+            usage: '承認/却下は操作内容、status は承認待ち・適用済み・拒否済みなどの現在状態として読み分けます。',
             decision: '状態確認は status、実行判断は承認/却下を基準にします。',
           },
         ],

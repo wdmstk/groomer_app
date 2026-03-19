@@ -66,17 +66,6 @@ function LoginForm() {
             料金・プランを見る
           </Link>
         </div>
-        <div className="mt-3 flex flex-wrap justify-center gap-3 text-xs text-slate-500">
-          <Link href="/legal/privacy" className="hover:underline">
-            プライバシーポリシー
-          </Link>
-          <Link href="/legal/terms" className="hover:underline">
-            利用規約
-          </Link>
-          <Link href="/legal/security" className="hover:underline">
-            セキュリティポリシー
-          </Link>
-        </div>
       </div>
     </div>
   )

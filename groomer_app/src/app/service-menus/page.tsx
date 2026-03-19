@@ -3,6 +3,15 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { FormModal } from '@/components/ui/FormModal'
+import {
+  formatServiceMenuActive,
+  formatServiceMenuCategory,
+  formatServiceMenuInstantBookable,
+  formatServiceMenuNotes,
+  formatServiceMenuTaxIncluded,
+  formatServiceMenuTaxRate,
+} from '@/lib/service-menus/presentation'
+import { serviceMenusPageFixtures } from '@/lib/e2e/service-menus-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
 export const dynamic = 'force-dynamic'
@@ -17,6 +26,7 @@ type ServiceMenusPageProps = {
 }
 
 const categoryOptions = ['トリミング', 'お手入れ', 'セット', 'オプション']
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type ServiceMenuRow = {
   id: string
@@ -44,39 +54,54 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
     resolvedSearchParams?.modal === 'create' || resolvedSearchParams?.tab === 'new'
   const editId = resolvedSearchParams?.edit
   const modalCloseRedirect = `/service-menus?tab=${activeTab}`
-  const { supabase, storeId } = await createStoreScopedClient()
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: serviceMenusPageFixtures.storeId }
+    : await createStoreScopedClient()
 
-  const { data: menus } = await supabase
-    .from('service_menus')
-    .select(
-      'id, name, category, price, duration, tax_rate, tax_included, is_active, is_instant_bookable, display_order, notes'
-    )
-    .eq('store_id', storeId)
-    .order('display_order', { ascending: true })
-    .order('created_at', { ascending: false })
+  const menus = isPlaywrightE2E
+    ? serviceMenusPageFixtures.menus
+    : (
+        await supabase
+          .from('service_menus')
+          .select(
+            'id, name, category, price, duration, tax_rate, tax_included, is_active, is_instant_bookable, display_order, notes'
+          )
+          .eq('store_id', storeId)
+          .order('display_order', { ascending: true })
+          .order('created_at', { ascending: false })
+      ).data
 
-  const { data: editMenu } = editId
-      ? await supabase
-        .from('service_menus')
-        .select(
-          'id, name, category, price, duration, tax_rate, tax_included, is_active, is_instant_bookable, display_order, notes'
-        )
-        .eq('id', editId)
-        .eq('store_id', storeId)
-        .single()
-    : { data: null }
+  const editMenu =
+    !editId
+      ? null
+      : isPlaywrightE2E
+        ? serviceMenusPageFixtures.menus.find((menu) => menu.id === editId) ?? null
+        : (
+            await supabase
+              .from('service_menus')
+              .select(
+                'id, name, category, price, duration, tax_rate, tax_included, is_active, is_instant_bookable, display_order, notes'
+              )
+              .eq('id', editId)
+              .eq('store_id', storeId)
+              .single()
+          ).data
 
   const menuList = (menus ?? []) as ServiceMenuRow[]
   const learningWindowDays = 60
   const now = new Date()
   const learningStartIso = new Date(now.getTime() - learningWindowDays * 24 * 60 * 60 * 1000).toISOString()
-  const { data: completedAppointments } = await supabase
-    .from('appointments')
-    .select('menu, duration')
-    .eq('store_id', storeId)
-    .in('status', ['完了', '来店済'])
-    .gte('start_time', learningStartIso)
-    .not('duration', 'is', null)
+  const completedAppointments = isPlaywrightE2E
+    ? serviceMenusPageFixtures.completedAppointments
+    : (
+        await supabase
+          .from('appointments')
+          .select('menu, duration')
+          .eq('store_id', storeId)
+          .in('status', ['完了', '来店済'])
+          .gte('start_time', learningStartIso)
+          .not('duration', 'is', null)
+      ).data
 
   const durationLearningRows = (completedAppointments ?? []) as AppointmentDurationLearningRow[]
   const actualDurationsByMenu = new Map<string, number[]>()
@@ -178,19 +203,23 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
           <p className="text-sm text-gray-500">メニューがまだ登録されていません。</p>
         ) : (
           <>
-            <div className="space-y-3 md:hidden">
+            <div className="space-y-3 md:hidden" data-testid="service-menus-list-mobile">
               {menuList.map((menu) => (
-                <article key={menu.id} className="rounded border p-3 text-sm text-gray-700">
+                <article
+                  key={menu.id}
+                  className="rounded border p-3 text-sm text-gray-700"
+                  data-testid={`service-menu-row-${menu.id}`}
+                >
                   <p className="font-semibold text-gray-900">{menu.name}</p>
-                  <p>カテゴリ: {menu.category ?? '未設定'}</p>
+                  <p>カテゴリ: {formatServiceMenuCategory(menu.category)}</p>
                   <p>価格: {menu.price.toLocaleString()} 円</p>
                   <p>時間: {menu.duration} 分</p>
-                  <p>税率: {menu.tax_rate ?? 0.1}</p>
-                  <p>税込: {menu.tax_included ? '税込' : '税抜'}</p>
-                  <p>有効: {menu.is_active ? '有効' : '無効'}</p>
-                  <p>即時確定対象: {menu.is_instant_bookable ? '対象' : '対象外'}</p>
+                  <p>税率: {formatServiceMenuTaxRate(menu.tax_rate)}</p>
+                  <p>税込: {formatServiceMenuTaxIncluded(menu.tax_included)}</p>
+                  <p>有効: {formatServiceMenuActive(menu.is_active)}</p>
+                  <p>即時確定対象: {formatServiceMenuInstantBookable(menu.is_instant_bookable)}</p>
                   <p>表示順: {menu.display_order ?? 0}</p>
-                  <p>備考: {menu.notes ?? 'なし'}</p>
+                  <p>備考: {formatServiceMenuNotes(menu.notes)}</p>
                   {durationSuggestionByMenuId.has(menu.id) ? (
                     <p className="mt-1 inline-flex rounded bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
                       推奨 {durationSuggestionByMenuId.get(menu.id)?.recommendedDuration} 分
@@ -215,7 +244,7 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
             </div>
 
             <div className="hidden overflow-x-auto md:block">
-              <table className="min-w-full text-sm text-left">
+              <table className="min-w-full text-sm text-left" data-testid="service-menus-list">
                 <thead className="text-gray-500 border-b">
                   <tr>
                     <th className="py-2 px-2">メニュー</th>
@@ -234,9 +263,13 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
                 </thead>
                 <tbody className="divide-y">
                   {menuList.map((menu) => (
-                    <tr key={menu.id} className="text-gray-700">
+                    <tr
+                      key={menu.id}
+                      className="text-gray-700"
+                      data-testid={`service-menu-row-${menu.id}`}
+                    >
                       <td className="py-3 px-2 font-medium text-gray-900">{menu.name}</td>
-                      <td className="py-3 px-2">{menu.category ?? '未設定'}</td>
+                      <td className="py-3 px-2">{formatServiceMenuCategory(menu.category)}</td>
                       <td className="py-3 px-2">{menu.price.toLocaleString()} 円</td>
                       <td className="py-3 px-2">{menu.duration} 分</td>
                       <td className="py-3 px-2">
@@ -248,12 +281,12 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
                           <span className="text-xs text-gray-400">-</span>
                         )}
                       </td>
-                      <td className="py-3 px-2">{menu.tax_rate ?? 0.1}</td>
-                      <td className="py-3 px-2">{menu.tax_included ? '税込' : '税抜'}</td>
-                      <td className="py-3 px-2">{menu.is_active ? '有効' : '無効'}</td>
-                      <td className="py-3 px-2">{menu.is_instant_bookable ? '対象' : '対象外'}</td>
+                      <td className="py-3 px-2">{formatServiceMenuTaxRate(menu.tax_rate)}</td>
+                      <td className="py-3 px-2">{formatServiceMenuTaxIncluded(menu.tax_included)}</td>
+                      <td className="py-3 px-2">{formatServiceMenuActive(menu.is_active)}</td>
+                      <td className="py-3 px-2">{formatServiceMenuInstantBookable(menu.is_instant_bookable)}</td>
                       <td className="py-3 px-2">{menu.display_order ?? 0}</td>
-                      <td className="py-3 px-2">{menu.notes ?? 'なし'}</td>
+                      <td className="py-3 px-2">{formatServiceMenuNotes(menu.notes)}</td>
                       <td className="py-3 px-2">
                         <div className="flex items-center gap-2">
                           <Link

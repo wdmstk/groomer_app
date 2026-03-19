@@ -79,13 +79,27 @@ type CustomerRow = {
 type StoreRow = {
   id: string
   name: string
+  member_card_rank_visible: boolean | null
 }
 
 type PetRow = {
   id: string
   name: string
   breed: string | null
+  gender: string | null
   customer_id: string
+}
+
+type CustomerLtvRow = {
+  ltv_rank: string | null
+}
+
+type MenuIdRow = {
+  menu_id: string | null
+}
+
+type AppointmentIdRow = {
+  id: string
 }
 
 function pickFirstRelationValue<
@@ -214,7 +228,7 @@ export async function getMemberPortalPayload(
     portalLink.last_used_at = touchAt
   }
 
-  const [customerResult, storeResult, appointmentResult, visitResult] = await Promise.all([
+  const [customerResult, storeResult, appointmentResult, visitResult, ltvResult] = await Promise.all([
     adminSupabase
       .from('customers')
       .select('id, full_name')
@@ -223,7 +237,7 @@ export async function getMemberPortalPayload(
       .maybeSingle(),
     adminSupabase
       .from('stores')
-      .select('id, name')
+      .select('id, name, member_card_rank_visible')
       .eq('id', portalLink.store_id)
       .maybeSingle(),
     adminSupabase
@@ -244,6 +258,12 @@ export async function getMemberPortalPayload(
       .eq('customer_id', portalLink.customer_id)
       .order('visit_date', { ascending: false })
       .limit(5),
+    adminSupabase
+      .from('customer_ltv_summary_v')
+      .select('ltv_rank')
+      .eq('store_id', portalLink.store_id)
+      .eq('customer_id', portalLink.customer_id)
+      .maybeSingle(),
   ])
 
   if (customerResult.error) {
@@ -260,6 +280,9 @@ export async function getMemberPortalPayload(
   if (visitResult.error) {
     throw new MemberPortalServiceError(visitResult.error.message, 500)
   }
+  if (ltvResult.error) {
+    throw new MemberPortalServiceError(ltvResult.error.message, 500)
+  }
 
   if (!customerResult.data || !storeResult.data) {
     throw new MemberPortalServiceError('会員証データが見つかりません。', 404)
@@ -269,6 +292,18 @@ export async function getMemberPortalPayload(
   const store = storeResult.data as StoreRow
   const appointment = appointmentResult.data as AppointmentRelationRow | null
   const visits = (visitResult.data ?? []) as VisitRelationRow[]
+  const ltv = (ltvResult.data as CustomerLtvRow | null) ?? null
+  const memberRank = (() => {
+    switch (ltv?.ltv_rank) {
+      case 'ゴールド':
+      case 'シルバー':
+      case 'ブロンズ':
+      case 'スタンダード':
+        return ltv.ltv_rank
+      default:
+        return 'スタンダード'
+    }
+  })()
   const latestVisit = visits[0] ?? null
   const nextVisitSuggestion =
     !appointment && latestVisit
@@ -325,8 +360,9 @@ export async function getMemberPortalPayload(
       name: store.name,
     },
     memberCard: {
-      label: 'LINE会員証',
+      label: '会員証',
       expiresAt: portalLink.expires_at,
+      rank: store.member_card_rank_visible === false ? null : memberRank,
     },
     nextAppointment: appointment
       ? {
@@ -377,7 +413,7 @@ export async function getMemberPortalReservationPrefill(
 
   const { data: pets, error: petError } = await adminSupabase
     .from('pets')
-    .select('id, name, breed, customer_id')
+    .select('id, name, breed, gender, customer_id')
     .eq('store_id', payload.store.id)
     .eq('customer_id', payload.customer.id)
     .order('created_at', { ascending: true })
@@ -392,6 +428,47 @@ export async function getMemberPortalReservationPrefill(
     petList[0] ??
     null
 
+  let recommendedMenuIds: string[] = []
+  const nowIso = new Date().toISOString()
+
+  try {
+    const { data: latestPastAppointment, error: latestPastAppointmentError } = await adminSupabase
+      .from('appointments')
+      .select('id')
+      .eq('store_id', payload.store.id)
+      .eq('customer_id', payload.customer.id)
+      .lt('start_time', nowIso)
+      .order('start_time', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (latestPastAppointmentError) {
+      throw new Error(latestPastAppointmentError.message)
+    }
+
+    const latestPastAppointmentId = (latestPastAppointment as AppointmentIdRow | null)?.id ?? null
+
+    if (latestPastAppointmentId) {
+      const { data: pastAppointmentMenus, error: pastAppointmentMenusError } = await adminSupabase
+        .from('appointment_menus')
+        .select('menu_id')
+        .eq('store_id', payload.store.id)
+        .eq('appointment_id', latestPastAppointmentId)
+
+      if (pastAppointmentMenusError) {
+        throw new Error(pastAppointmentMenusError.message)
+      }
+
+      recommendedMenuIds = ((pastAppointmentMenus ?? []) as MenuIdRow[])
+        .map((row) => row.menu_id ?? '')
+        .filter(Boolean)
+    }
+  } catch (error) {
+    console.warn('Failed to resolve recommended menu ids for member portal prefill:', error)
+    recommendedMenuIds = []
+  }
+  const uniqueRecommendedMenuIds = [...new Set(recommendedMenuIds)]
+
   return {
     store: payload.store,
     customer: {
@@ -405,12 +482,15 @@ export async function getMemberPortalReservationPrefill(
           id: preferredPet.id,
           name: preferredPet.name,
           breed: preferredPet.breed ?? '',
+          gender: preferredPet.gender ?? '',
         }
       : null,
     pets: petList.map((pet) => ({
       id: pet.id,
       name: pet.name,
       breed: pet.breed ?? '',
+      gender: pet.gender ?? '',
     })),
+    recommendedMenuIds: uniqueRecommendedMenuIds,
   }
 }

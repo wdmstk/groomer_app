@@ -1,9 +1,11 @@
 import { Card } from '@/components/ui/Card'
+import { inventoryPageFixtures } from '@/lib/e2e/inventory-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { aggregateStockByItem, toNumber } from '@/lib/inventory/stock'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type Item = {
   id: string
@@ -19,26 +21,59 @@ type MovementRow = {
 }
 
 export default async function InventoryReportsPage() {
-  const { supabase, storeId } = await createStoreScopedClient()
-  const now = new Date()
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: inventoryPageFixtures.storeId }
+    : await createStoreScopedClient()
+  const now = isPlaywrightE2E ? new Date(inventoryPageFixtures.dashboardNowIso) : new Date()
   const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
-  const { data: items } = await supabase
-    .from('inventory_items')
-    .select('id, category')
-    .eq('store_id', storeId)
-    .eq('is_active', true)
+  const items = isPlaywrightE2E
+    ? inventoryPageFixtures.productItems.filter((item) => item.is_active).map((item) => ({
+        id: item.id,
+        category: item.category,
+      }))
+    : (
+        await supabase!
+          .from('inventory_items')
+          .select('id, category')
+          .eq('store_id', storeId)
+          .eq('is_active', true)
+      ).data
 
-  const { data: allMovements } = await supabase
-    .from('inventory_movements')
-    .select('item_id, movement_type, quantity_delta, unit_cost, happened_at')
-    .eq('store_id', storeId)
+  const allMovements = isPlaywrightE2E
+    ? inventoryPageFixtures.dashboardMovements.map((row) => ({
+        item_id: row.item_id,
+        movement_type: row.movement_type,
+        quantity_delta: row.quantity_delta,
+        unit_cost:
+          row.item_id === 'item-001' ? 850 : row.item_id === 'item-002' ? 320 : row.item_id === 'item-003' ? 90 : 1200,
+        happened_at: row.happened_at,
+      }))
+    : (
+        await supabase!
+          .from('inventory_movements')
+          .select('item_id, movement_type, quantity_delta, unit_cost, happened_at')
+          .eq('store_id', storeId)
+      ).data
 
-  const { data: monthMovements } = await supabase
-    .from('inventory_movements')
-    .select('item_id, movement_type, quantity_delta, unit_cost, happened_at')
-    .eq('store_id', storeId)
-    .gte('happened_at', monthAgo)
+  const monthMovements = isPlaywrightE2E
+    ? inventoryPageFixtures.dashboardMovements
+        .filter((row) => row.happened_at >= monthAgo)
+        .map((row) => ({
+          item_id: row.item_id,
+          movement_type: row.movement_type,
+          quantity_delta: row.quantity_delta,
+          unit_cost:
+            row.item_id === 'item-001' ? 850 : row.item_id === 'item-002' ? 320 : row.item_id === 'item-003' ? 90 : 1200,
+          happened_at: row.happened_at,
+        }))
+    : (
+        await supabase!
+          .from('inventory_movements')
+          .select('item_id, movement_type, quantity_delta, unit_cost, happened_at')
+          .eq('store_id', storeId)
+          .gte('happened_at', monthAgo)
+      ).data
 
   const itemList = (items ?? []) as Item[]
   const movementList = (allMovements ?? []) as MovementRow[]

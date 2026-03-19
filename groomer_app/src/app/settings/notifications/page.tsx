@@ -3,9 +3,18 @@ import { Card } from '@/components/ui/Card'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { NotificationTemplateEditor } from '@/components/dashboard/NotificationTemplateEditor'
 import { requireStoreFeatureAccess } from '@/lib/feature-access'
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  getSettingsManageLabel,
+  toSettingsBool,
+  toSettingsFollowupDays,
+  toSettingsInt,
+} from '@/lib/settings/presentation'
+import { settingsPageFixtures } from '@/lib/e2e/settings-page-fixtures'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type MembershipRole = 'owner' | 'admin' | 'staff'
 
@@ -31,55 +40,18 @@ type NotificationSettingsRow = {
   over_limit_behavior: 'queue' | 'block' | null
 }
 
-const DEFAULT_SETTINGS = {
-  reminder_line_enabled: true,
-  reminder_email_enabled: true,
-  reminder_day_before_enabled: true,
-  reminder_same_day_enabled: true,
-  reminder_day_before_send_hour_jst: 18,
-  reminder_same_day_send_hour_jst: 9,
-  followup_line_enabled: true,
-  followup_days: [30, 60],
-  slot_reoffer_line_enabled: true,
-  monthly_message_limit: 1000,
-  monthly_message_limit_with_option: 3000,
-  over_limit_behavior: 'queue' as const,
-}
-
-function toBool(value: boolean | null | undefined, fallback: boolean) {
-  return typeof value === 'boolean' ? value : fallback
-}
-
-function toInt(value: number | null | undefined, fallback: number, min: number, max: number) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
-  return Math.max(min, Math.min(max, Math.floor(value)))
-}
-
-function toFollowupDays(value: number[] | null | undefined) {
-  if (!Array.isArray(value) || value.length === 0) {
-    return DEFAULT_SETTINGS.followup_days
-  }
-  const normalized = Array.from(
-    new Set(
-      value
-        .filter((item) => Number.isFinite(item))
-        .map((item) => Math.floor(item))
-        .filter((item) => item >= 1 && item <= 365)
-    )
-  )
-    .sort((a, b) => a - b)
-    .slice(0, 6)
-  return normalized.length > 0 ? normalized : DEFAULT_SETTINGS.followup_days
-}
-
 export default async function NotificationSettingsPage({ searchParams }: PageProps) {
   const params = await searchParams
-  const { supabase, storeId } = await createStoreScopedClient()
-  const access = await requireStoreFeatureAccess({
-    supabase,
-    storeId,
-    minimumPlan: 'standard',
-  })
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: settingsPageFixtures.storeId }
+    : await createStoreScopedClient()
+  const access = isPlaywrightE2E
+    ? settingsPageFixtures.notificationAccess
+    : await requireStoreFeatureAccess({
+        supabase,
+        storeId,
+        minimumPlan: 'standard',
+      })
   if (!access.ok) {
     return (
       <section className="space-y-6">
@@ -94,67 +66,77 @@ export default async function NotificationSettingsPage({ searchParams }: PagePro
       </section>
     )
   }
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const manageState = isPlaywrightE2E
+    ? settingsPageFixtures.manageState
+    : (() => {
+        return supabase.auth.getUser().then(async ({ data: { user } }) => {
+          const membership = user
+            ? (
+                await supabase
+                  .from('store_memberships')
+                  .select('role')
+                  .eq('store_id', storeId)
+                  .eq('user_id', user.id)
+                  .eq('is_active', true)
+                  .maybeSingle()
+              ).data
+            : null
+          const currentRole = (membership?.role as MembershipRole | undefined) ?? null
+          return getSettingsManageLabel(currentRole)
+        })
+      })()
+  const resolvedManageState = await manageState
+  const canManage = resolvedManageState.canManage
 
-  const { data: membership } = user
-    ? await supabase
-        .from('store_memberships')
-        .select('role')
-        .eq('store_id', storeId)
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .maybeSingle()
-    : { data: null }
-  const currentRole = (membership?.role as MembershipRole | undefined) ?? null
-  const canManage = currentRole === 'owner' || currentRole === 'admin'
-
-  const { data: settingsRow } = await supabase
-    .from('store_notification_settings')
-    .select(
-      'reminder_line_enabled, reminder_email_enabled, reminder_day_before_enabled, reminder_same_day_enabled, reminder_day_before_send_hour_jst, reminder_same_day_send_hour_jst, followup_line_enabled, followup_days, slot_reoffer_line_enabled, monthly_message_limit, monthly_message_limit_with_option, over_limit_behavior'
-    )
-    .eq('store_id', storeId)
-    .maybeSingle()
+  const settingsRow = isPlaywrightE2E
+    ? settingsPageFixtures.notificationSettings
+    : (
+        await supabase
+          .from('store_notification_settings')
+          .select(
+            'reminder_line_enabled, reminder_email_enabled, reminder_day_before_enabled, reminder_same_day_enabled, reminder_day_before_send_hour_jst, reminder_same_day_send_hour_jst, followup_line_enabled, followup_days, slot_reoffer_line_enabled, monthly_message_limit, monthly_message_limit_with_option, over_limit_behavior'
+          )
+          .eq('store_id', storeId)
+          .maybeSingle()
+      ).data
 
   const settings = (settingsRow ?? null) as NotificationSettingsRow | null
-  const reminderLineEnabled = toBool(settings?.reminder_line_enabled, DEFAULT_SETTINGS.reminder_line_enabled)
-  const reminderEmailEnabled = toBool(settings?.reminder_email_enabled, DEFAULT_SETTINGS.reminder_email_enabled)
-  const reminderDayBeforeEnabled = toBool(
+  const reminderLineEnabled = toSettingsBool(settings?.reminder_line_enabled, DEFAULT_NOTIFICATION_SETTINGS.reminder_line_enabled)
+  const reminderEmailEnabled = toSettingsBool(settings?.reminder_email_enabled, DEFAULT_NOTIFICATION_SETTINGS.reminder_email_enabled)
+  const reminderDayBeforeEnabled = toSettingsBool(
     settings?.reminder_day_before_enabled,
-    DEFAULT_SETTINGS.reminder_day_before_enabled
+    DEFAULT_NOTIFICATION_SETTINGS.reminder_day_before_enabled
   )
-  const reminderSameDayEnabled = toBool(settings?.reminder_same_day_enabled, DEFAULT_SETTINGS.reminder_same_day_enabled)
-  const reminderDayBeforeHour = toInt(
+  const reminderSameDayEnabled = toSettingsBool(settings?.reminder_same_day_enabled, DEFAULT_NOTIFICATION_SETTINGS.reminder_same_day_enabled)
+  const reminderDayBeforeHour = toSettingsInt(
     settings?.reminder_day_before_send_hour_jst,
-    DEFAULT_SETTINGS.reminder_day_before_send_hour_jst,
+    DEFAULT_NOTIFICATION_SETTINGS.reminder_day_before_send_hour_jst,
     0,
     23
   )
-  const reminderSameDayHour = toInt(
+  const reminderSameDayHour = toSettingsInt(
     settings?.reminder_same_day_send_hour_jst,
-    DEFAULT_SETTINGS.reminder_same_day_send_hour_jst,
+    DEFAULT_NOTIFICATION_SETTINGS.reminder_same_day_send_hour_jst,
     0,
     23
   )
-  const followupLineEnabled = toBool(settings?.followup_line_enabled, DEFAULT_SETTINGS.followup_line_enabled)
-  const followupDays = toFollowupDays(settings?.followup_days)
-  const slotReofferLineEnabled = toBool(
+  const followupLineEnabled = toSettingsBool(settings?.followup_line_enabled, DEFAULT_NOTIFICATION_SETTINGS.followup_line_enabled)
+  const followupDays = toSettingsFollowupDays(settings?.followup_days)
+  const slotReofferLineEnabled = toSettingsBool(
     settings?.slot_reoffer_line_enabled,
-    DEFAULT_SETTINGS.slot_reoffer_line_enabled
+    DEFAULT_NOTIFICATION_SETTINGS.slot_reoffer_line_enabled
   )
-  const monthlyLimit = toInt(settings?.monthly_message_limit, DEFAULT_SETTINGS.monthly_message_limit, 0, 1_000_000)
-  const monthlyLimitWithOption = toInt(
+  const monthlyLimit = toSettingsInt(settings?.monthly_message_limit, DEFAULT_NOTIFICATION_SETTINGS.monthly_message_limit, 0, 1_000_000)
+  const monthlyLimitWithOption = toSettingsInt(
     settings?.monthly_message_limit_with_option,
-    DEFAULT_SETTINGS.monthly_message_limit_with_option,
+    DEFAULT_NOTIFICATION_SETTINGS.monthly_message_limit_with_option,
     monthlyLimit,
     1_000_000
   )
   const overLimitBehavior =
     settings?.over_limit_behavior === 'block'
       ? 'block'
-      : DEFAULT_SETTINGS.over_limit_behavior
+      : DEFAULT_NOTIFICATION_SETTINGS.over_limit_behavior
 
   return (
     <section className="space-y-6">
@@ -173,7 +155,7 @@ export default async function NotificationSettingsPage({ searchParams }: PagePro
       <Card className="border border-slate-200 bg-slate-50">
         <p className="text-sm font-semibold text-gray-900">権限</p>
         <p className="mt-1 text-xs text-gray-600">
-          現在のロール: {currentRole ?? '未所属'} / 変更権限: {canManage ? 'あり（owner/admin）' : 'なし'}
+          現在のロール: {resolvedManageState.currentRole} / 変更権限: {resolvedManageState.label}
         </p>
       </Card>
       <Card className="border border-slate-200 bg-slate-50">

@@ -227,6 +227,14 @@ async function shouldBlockBySubscription(req: NextRequest, userId: string) {
 }
 
 export async function proxy(req: NextRequest) {
+  if (process.env.PLAYWRIGHT_E2E === '1') {
+    return NextResponse.next({
+      request: {
+        headers: req.headers,
+      },
+    })
+  }
+
   const memberPortalRateLimitResponse = handleMemberPortalRateLimit(req)
   if (memberPortalRateLimitResponse) {
     return memberPortalRateLimitResponse

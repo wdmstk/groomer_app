@@ -4,6 +4,14 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { PetCreateModal } from '@/components/pets/PetCreateModal'
+import { petsPageFixtures } from '@/lib/e2e/pets-page-fixtures'
+import {
+  formatPetFallback,
+  formatPetList,
+  formatPetWeight,
+  getPetRelatedValue,
+  resolvePetQrDisplayUrl,
+} from '@/lib/pets/presentation'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -38,32 +46,7 @@ type PetsPageProps = {
 }
 
 const genderOptions = ['オス', 'メス', '不明']
-
-function getRelatedValue<T extends Record<string, string>>(
-  relation: T | T[] | null | undefined,
-  key: keyof T
-) {
-  if (!relation) return '未登録'
-  if (Array.isArray(relation)) return relation[0]?.[key] ?? '未登録'
-  return relation[key] ?? '未登録'
-}
-
-function resolveQrDisplayUrl(pet: Pick<PetRow, 'qr_code_url' | 'qr_payload'>) {
-  if (!pet.qr_payload) return pet.qr_code_url
-  try {
-    const parsed = JSON.parse(pet.qr_payload) as {
-      customer_name?: string
-      pet_name?: string
-    }
-    const customerName = parsed.customer_name ?? ''
-    const petName = parsed.pet_name ?? ''
-    return `/api/qr/pet-profile?customer_name=${encodeURIComponent(
-      customerName
-    )}&pet_name=${encodeURIComponent(petName)}&payload=${encodeURIComponent(pet.qr_payload)}&v=2`
-  } catch {
-    return pet.qr_code_url
-  }
-}
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 export default async function PetsPage({ searchParams }: PetsPageProps) {
   const resolvedSearchParams = await searchParams
@@ -72,40 +55,55 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
     resolvedSearchParams?.modal === 'create' || resolvedSearchParams?.tab === 'new'
   const editId = resolvedSearchParams?.edit
   const modalCloseRedirect = `/pets?tab=${activeTab}`
-  const { supabase, storeId } = await createStoreScopedClient()
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: petsPageFixtures.storeId }
+    : await createStoreScopedClient()
 
   const petsSelectWithQr =
     'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, qr_code_url, qr_payload, customers(full_name)'
   const petsSelectBase =
     'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, customers(full_name)'
-  const petsQuery = await supabase
-    .from('pets')
-    .select(petsSelectWithQr)
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
-  const petsData =
-    petsQuery.error && petsQuery.error.message.includes('qr_code_url')
-      ? (
-          await supabase
-            .from('pets')
-            .select(petsSelectBase)
-            .eq('store_id', storeId)
-            .order('created_at', { ascending: false })
-        ).data?.map((row) => ({
-          ...row,
-          qr_code_url: null,
-          qr_payload: null,
-        })) ?? []
-      : petsQuery.data ?? []
+  const petsData = isPlaywrightE2E
+    ? petsPageFixtures.pets
+    : (() => {
+        return supabase
+          .from('pets')
+          .select(petsSelectWithQr)
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      })()
 
-  const { data: customers } = await supabase
-    .from('customers')
-    .select('id, full_name')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const resolvedPetsData = isPlaywrightE2E
+    ? petsData
+    : await petsData.then((petsQuery) =>
+        petsQuery.error && petsQuery.error.message.includes('qr_code_url')
+          ? supabase
+              .from('pets')
+              .select(petsSelectBase)
+              .eq('store_id', storeId)
+              .order('created_at', { ascending: false })
+              .then((response) =>
+                response.data?.map((row) => ({
+                  ...row,
+                  qr_code_url: null,
+                  qr_payload: null,
+                })) ?? []
+              )
+          : petsQuery.data ?? []
+      )
+
+  const customers = isPlaywrightE2E
+    ? petsPageFixtures.customers
+    : (
+        await supabase
+          .from('customers')
+          .select('id, full_name')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      ).data
 
   let editPetData: PetRow | null = null
-  if (editId) {
+  if (editId && !isPlaywrightE2E) {
     const editWithQr = await supabase
       .from('pets')
       .select(
@@ -135,8 +133,11 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
       editPetData = (editWithQr.data as PetRow | null) ?? null
     }
   }
+  if (editId && isPlaywrightE2E) {
+    editPetData = (petsPageFixtures.pets.find((pet) => pet.id === editId) as PetRow | undefined) ?? null
+  }
 
-  const petList = (petsData ?? []) as PetRow[]
+  const petList = (resolvedPetsData ?? []) as PetRow[]
   const customerOptions: CustomerOption[] = customers ?? []
 
   return (
@@ -174,22 +175,26 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
             <p className="text-sm text-gray-500">ペットがまだ登録されていません。</p>
           ) : (
             <>
-              <div className="space-y-3 md:hidden">
+              <div className="space-y-3 md:hidden" data-testid="pets-list-mobile">
                 {petList.map((pet) => (
-                  <article key={pet.id} className="rounded border p-3 text-sm text-gray-700">
+                  <article
+                    key={pet.id}
+                    className="rounded border p-3 text-sm text-gray-700"
+                    data-testid={`pet-row-${pet.id}`}
+                  >
                     {(() => {
-                      const qrDisplayUrl = resolveQrDisplayUrl(pet)
+                      const qrDisplayUrl = resolvePetQrDisplayUrl(pet)
                       return (
                         <>
                     <p className="font-semibold text-gray-900">{pet.name}</p>
-                    <p>飼い主: {getRelatedValue(pet.customers, 'full_name')}</p>
-                    <p>犬種: {pet.breed ?? '未登録'}</p>
-                    <p>性別: {pet.gender ?? '未登録'}</p>
-                    <p>生年月日: {pet.date_of_birth ?? '未登録'}</p>
-                    <p>体重: {pet.weight ? `${pet.weight} kg` : '未登録'}</p>
-                    <p>ワクチン: {pet.vaccine_date ?? '未登録'}</p>
-                    <p>持病: {pet.chronic_diseases?.join(', ') ?? 'なし'}</p>
-                    <p>注意事項: {pet.notes ?? '未登録'}</p>
+                    <p>飼い主: {getPetRelatedValue(pet.customers, 'full_name')}</p>
+                    <p>犬種: {formatPetFallback(pet.breed)}</p>
+                    <p>性別: {formatPetFallback(pet.gender)}</p>
+                    <p>生年月日: {formatPetFallback(pet.date_of_birth)}</p>
+                    <p>体重: {formatPetWeight(pet.weight)}</p>
+                    <p>ワクチン: {formatPetFallback(pet.vaccine_date)}</p>
+                    <p>持病: {formatPetList(pet.chronic_diseases)}</p>
+                    <p>注意事項: {formatPetFallback(pet.notes)}</p>
                     <p>
                       QR: {qrDisplayUrl ? <a href={qrDisplayUrl} className="text-blue-600 underline" target="_blank" rel="noreferrer">表示</a> : '未生成'}
                     </p>
@@ -212,7 +217,7 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
               </div>
 
               <div className="hidden overflow-x-auto md:block">
-                <table className="min-w-full text-sm text-left">
+                <table className="min-w-full text-sm text-left" data-testid="pets-list">
                   <thead className="text-gray-500 border-b">
                     <tr>
                       <th className="py-2 px-2">ペット名</th>
@@ -230,20 +235,24 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                   </thead>
                   <tbody className="divide-y">
                     {petList.map((pet) => (
-                      <tr key={pet.id} className="text-gray-700">
+                      <tr
+                        key={pet.id}
+                        className="text-gray-700"
+                        data-testid={`pet-row-${pet.id}`}
+                      >
                         {(() => {
-                          const qrDisplayUrl = resolveQrDisplayUrl(pet)
+                          const qrDisplayUrl = resolvePetQrDisplayUrl(pet)
                           return (
                             <>
                         <td className="py-3 px-2 font-medium text-gray-900">{pet.name}</td>
-                        <td className="py-3 px-2">{getRelatedValue(pet.customers, 'full_name')}</td>
-                        <td className="py-3 px-2">{pet.breed ?? '未登録'}</td>
-                        <td className="py-3 px-2">{pet.gender ?? '未登録'}</td>
-                        <td className="py-3 px-2">{pet.date_of_birth ?? '未登録'}</td>
-                        <td className="py-3 px-2">{pet.weight ? `${pet.weight} kg` : '未登録'}</td>
-                        <td className="py-3 px-2">{pet.vaccine_date ?? '未登録'}</td>
-                        <td className="py-3 px-2">{pet.chronic_diseases?.join(', ') ?? 'なし'}</td>
-                        <td className="py-3 px-2">{pet.notes ?? '未登録'}</td>
+                        <td className="py-3 px-2">{getPetRelatedValue(pet.customers, 'full_name')}</td>
+                        <td className="py-3 px-2">{formatPetFallback(pet.breed)}</td>
+                        <td className="py-3 px-2">{formatPetFallback(pet.gender)}</td>
+                        <td className="py-3 px-2">{formatPetFallback(pet.date_of_birth)}</td>
+                        <td className="py-3 px-2">{formatPetWeight(pet.weight)}</td>
+                        <td className="py-3 px-2">{formatPetFallback(pet.vaccine_date)}</td>
+                        <td className="py-3 px-2">{formatPetList(pet.chronic_diseases)}</td>
+                        <td className="py-3 px-2">{formatPetFallback(pet.notes)}</td>
                         <td className="py-3 px-2">
                           {qrDisplayUrl ? (
                             <a

@@ -81,8 +81,8 @@ export function DevSidebar() {
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-50 border-b bg-white/95 backdrop-blur">
-        <div className="flex min-h-16 items-center justify-between gap-3 px-4 py-2 lg:px-6">
+      <header className="fixed inset-x-0 top-0 z-50 h-20 border-b bg-white/95 backdrop-blur">
+        <div className="flex h-full items-center justify-between gap-3 px-4 lg:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"

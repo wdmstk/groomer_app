@@ -26,7 +26,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
   const { supabase, storeId } = await createStoreScopedClient()
   const { data, error } = await supabase
     .from('customers')
-    .select('id, full_name, phone_number, email, address, line_id, how_to_know, rank, tags')
+    .select('id, full_name, phone_number, email, address, line_id, how_to_know, tags')
     .eq('id', customer_id)
     .eq('store_id', storeId)
     .single()
@@ -48,7 +48,6 @@ export async function PUT(request: Request, { params }: RouteParams) {
     address: body.address ?? null,
     line_id: body.line_id ?? null,
     how_to_know: body.how_to_know ?? null,
-    rank: body.rank ?? null,
     tags: parseTags(body.tags ?? null),
   }
 
@@ -62,7 +61,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
   } = await supabase.auth.getUser()
   const { data: before } = await supabase
     .from('customers')
-    .select('id, full_name, phone_number, email, address, line_id, how_to_know, rank, tags')
+    .select('id, full_name, phone_number, email, address, line_id, how_to_know, tags')
     .eq('id', customer_id)
     .eq('store_id', storeId)
     .maybeSingle()
@@ -71,7 +70,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     .update(payload)
     .eq('id', customer_id)
     .eq('store_id', storeId)
-    .select('id, full_name, phone_number, email, address, line_id, how_to_know, rank, tags')
+    .select('id, full_name, phone_number, email, address, line_id, how_to_know, tags')
     .single()
 
   if (error) {
@@ -100,7 +99,7 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
   } = await supabase.auth.getUser()
   const { data: before } = await supabase
     .from('customers')
-    .select('id, full_name, phone_number, email, address, line_id, how_to_know, rank, tags')
+    .select('id, full_name, phone_number, email, address, line_id, how_to_know, tags')
     .eq('id', customer_id)
     .eq('store_id', storeId)
     .maybeSingle()
@@ -133,7 +132,7 @@ async function deleteCustomer(customerId: string) {
   const { supabase, storeId } = await createStoreScopedClient()
   const { data: before } = await supabase
     .from('customers')
-    .select('id, full_name, phone_number, email, address, line_id, how_to_know, rank, tags')
+    .select('id, full_name, phone_number, email, address, line_id, how_to_know, tags')
     .eq('id', customerId)
     .eq('store_id', storeId)
     .maybeSingle()
@@ -180,7 +179,6 @@ export async function POST(request: Request, context: RouteParams) {
       address: formData.get('address')?.toString() || null,
       line_id: formData.get('line_id')?.toString() || null,
       how_to_know: formData.get('how_to_know')?.toString() || null,
-      rank: formData.get('rank')?.toString() || null,
       tags: parseTags(formData.get('tags')?.toString() || null),
     }
 
@@ -194,7 +192,7 @@ export async function POST(request: Request, context: RouteParams) {
     } = await supabase.auth.getUser()
     const { data: before } = await supabase
       .from('customers')
-      .select('id, full_name, phone_number, email, address, line_id, how_to_know, rank, tags')
+      .select('id, full_name, phone_number, email, address, line_id, how_to_know, tags')
       .eq('id', customer_id)
       .eq('store_id', storeId)
       .maybeSingle()
@@ -203,7 +201,7 @@ export async function POST(request: Request, context: RouteParams) {
       .update(payload)
       .eq('id', customer_id)
       .eq('store_id', storeId)
-      .select('id, full_name, phone_number, email, address, line_id, how_to_know, rank, tags')
+      .select('id, full_name, phone_number, email, address, line_id, how_to_know, tags')
       .single()
 
     if (error) {

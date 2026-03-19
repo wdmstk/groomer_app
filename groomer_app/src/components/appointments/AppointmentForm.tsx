@@ -6,6 +6,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { AppointmentMenuSelector } from '@/components/appointments/AppointmentMenuSelector'
+import {
+  buildAppointmentConflictMessage,
+  buildCreatedAppointmentSummary,
+  formatAppointmentFormDateTimeJst,
+  selectLatestReservableTemplate,
+  type CreatedAppointmentSummary,
+} from '@/lib/appointments/form-presentation'
 import { APPOINTMENT_METRIC_EVENTS } from '@/lib/appointments/metrics'
 
 type CustomerOption = {
@@ -96,34 +103,9 @@ function toLocalInputValue(date: Date) {
   return `${yyyy}-${mm}-${dd}T${hh}:${min}`
 }
 
-function formatDateTimeJst(value: string | null | undefined) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  return new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
-}
-
 type QrPayload = {
   customer_id?: string
   pet_id?: string
-}
-
-type CreatedAppointmentSummary = {
-  id: string
-  groupId: string | null
-  customerId: string
-  petId: string
-  customerName: string
-  petName: string
-  startTime: string
-  menuSummary: string
 }
 
 export function AppointmentForm({
@@ -269,15 +251,7 @@ export function AppointmentForm({
         | null
 
       if (response.status === 409) {
-        const conflict = payload?.conflict
-        if (conflict?.startTime || conflict?.endTime) {
-          setSubmitError(
-            `${payload?.message ?? '同じスタッフに時間が重複する予約があります。'} ` +
-              `衝突: ${formatDateTimeJst(conflict.startTime)} - ${formatDateTimeJst(conflict.endTime)}`
-          )
-        } else {
-          setSubmitError(payload?.message ?? '同じスタッフに時間が重複する予約があります。')
-        }
+        setSubmitError(buildAppointmentConflictMessage(payload))
         return
       }
 
@@ -291,28 +265,23 @@ export function AppointmentForm({
         return
       }
 
-      const createdAppointment = payload?.appointment
-      const resolvedGroupId =
-        createdAppointment?.group_id ?? payload?.groupId ?? currentGroupId ?? ''
-      const createdCustomerId = createdAppointment?.customer_id ?? selectedCustomerId
-      const createdPetId = createdAppointment?.pet_id ?? selectedPetId
-      const customerName =
-        customerList.find((customer) => customer.id === createdCustomerId)?.full_name ?? '顧客'
-      const petName = petList.find((pet) => pet.id === createdPetId)?.name ?? 'ペット'
       setCreatedAppointments((prev) => [
-        {
-          id: createdAppointment?.id ?? payload?.id ?? String(Date.now()),
-          groupId: resolvedGroupId || null,
-          customerId: createdCustomerId,
-          petId: createdPetId,
-          customerName,
-          petName,
-          startTime: createdAppointment?.start_time ?? new Date(`${startTime}:00+09:00`).toISOString(),
-          menuSummary: createdAppointment?.menu ?? menuOptions.filter((menu) => selectedMenuIds.includes(menu.id)).map((menu) => menu.name).join(' / '),
-        },
+        buildCreatedAppointmentSummary({
+          payload,
+          currentGroupId,
+          selectedCustomerId,
+          selectedPetId,
+          startTime,
+          selectedMenuIds,
+          menuOptions,
+          customerList,
+          petList,
+        }),
         ...prev,
       ])
-      setCurrentGroupId(resolvedGroupId)
+      setCurrentGroupId(
+        payload?.appointment?.group_id ?? payload?.groupId ?? currentGroupId ?? ''
+      )
       setSubmitMessage('予約を保存しました。同じ顧客の別のペット予約を続けて作成できます。')
     } catch {
       setSubmitError('通信エラーが発生しました。時間をおいて再度お試しください。')
@@ -394,20 +363,12 @@ export function AppointmentForm({
   }, [petList, selectedCustomerId])
 
   const latestTemplate = useMemo(() => {
-    const eligible = templates.filter((template) => {
-      if (editAppointment && template.id === editAppointment.id) return false
-      if (!selectedCustomerId || !selectedPetId) return false
-      if (template.customer_id !== selectedCustomerId) return false
-      if (template.pet_id !== selectedPetId) return false
-      if (template.status === 'キャンセル' || template.status === '無断キャンセル') return false
-      return true
+    return selectLatestReservableTemplate({
+      templates,
+      selectedCustomerId,
+      selectedPetId,
+      editingAppointmentId: editAppointment?.id ?? null,
     })
-    if (eligible.length === 0) return null
-    return eligible.sort((a, b) => {
-      const aTime = a.start_time ? new Date(a.start_time).getTime() : 0
-      const bTime = b.start_time ? new Date(b.start_time).getTime() : 0
-      return bTime - aTime
-    })[0]
   }, [templates, selectedCustomerId, selectedPetId, editAppointment])
   const selectedCustomerNoShowCount = selectedCustomerId
     ? customerNoShowCounts[selectedCustomerId] ?? 0
@@ -821,7 +782,7 @@ export function AppointmentForm({
                 <p className="font-semibold">
                   {appointment.customerName} / {appointment.petName}
                 </p>
-                <p>開始: {formatDateTimeJst(appointment.startTime)}</p>
+                <p>開始: {formatAppointmentFormDateTimeJst(appointment.startTime)}</p>
                 <p>メニュー: {appointment.menuSummary || '未設定'}</p>
               </div>
             ))}

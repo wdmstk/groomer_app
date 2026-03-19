@@ -1,54 +1,21 @@
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { requireOwnerStoreMembership } from '@/lib/auth/store-owner'
+import {
+  billingOperationTypeLabel,
+  formatBillingDateTimeJst,
+  formatBillingMonthJst,
+  getBillingWebhookStatusClass,
+} from '@/lib/billing/presentation'
+import { billingPageFixtures } from '@/lib/e2e/billing-page-fixtures'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
-function formatDate(value: string | null) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  return new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
-}
-
-function formatMonthJst(value: string | null) {
-  if (!value) return '-'
-  const date = new Date(`${value}T00:00:00.000Z`)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-  }).format(date)
-}
-
-function operationTypeLabel(value: string) {
-  if (value === 'setup_assistance_request') return '初期設定代行申込'
-  if (value === 'setup_assistance_paid') return '初期設定代行 決済完了'
-  if (value === 'storage_addon_request') return '容量追加申込'
-  if (value === 'storage_addon_paid') return '容量追加 決済完了'
-  if (value === 'notification_usage_billing_calculated') return '通知従量課金 月次計算'
-  return value
-}
-
-function webhookStatusClass(status: string) {
-  if (status === 'failed') return 'bg-red-100 text-red-700'
-  if (status === 'processed') return 'bg-emerald-100 text-emerald-700'
-  return 'bg-gray-100 text-gray-700'
-}
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 export default async function BillingHistoryPage() {
-  const guard = await requireOwnerStoreMembership()
+  const guard = isPlaywrightE2E ? billingPageFixtures.guard : await requireOwnerStoreMembership()
   if (!guard.ok) {
     return (
       <section className="space-y-4">
@@ -61,51 +28,68 @@ export default async function BillingHistoryPage() {
   }
 
   const { storeId } = guard
-  const admin = createAdminSupabaseClient()
-  const [{ data: statusHistory }, { data: webhookEvents }, { data: checkoutSessions }, { data: usageMonthly }, { data: operations }] =
-    await Promise.all([
-      admin
-        .from('billing_status_history')
-        .select(
-          'created_at, provider, from_status, to_status, source, reason, provider_subscription_id'
-        )
-        .eq('store_id', storeId)
-        .order('created_at', { ascending: false })
-        .limit(100),
-      admin
-        .from('billing_webhook_events')
-        .select('id, created_at, provider, event_type, event_id, status, error_message')
-        .eq('store_id', storeId)
-        .order('created_at', { ascending: false })
-        .limit(100),
-      admin
-        .from('billing_checkout_sessions')
-        .select('created_at, provider, idempotency_key, checkout_session_id, status, expires_at')
-        .eq('store_id', storeId)
-        .order('created_at', { ascending: false })
-        .limit(100),
-      admin
-        .from('notification_usage_billing_monthly')
-        .select(
-          'month_jst, counted_sent_messages, applied_limit, billable_messages, unit_price_jpy, amount_jpy, option_enabled, calculated_at'
-        )
-        .eq('store_id', storeId)
-        .order('month_jst', { ascending: false })
-        .limit(12),
-      admin
-        .from('billing_operations')
-        .select('created_at, provider, operation_type, amount_jpy, status, reason, result_message')
-        .eq('store_id', storeId)
-        .in('operation_type', [
-          'setup_assistance_request',
-          'setup_assistance_paid',
-          'storage_addon_request',
-          'storage_addon_paid',
-          'notification_usage_billing_calculated',
-        ])
-        .order('created_at', { ascending: false })
-        .limit(100),
-    ])
+  const admin = isPlaywrightE2E ? null : createAdminSupabaseClient()
+  const statusHistory = isPlaywrightE2E
+    ? billingPageFixtures.statusHistory
+    : (
+        await admin
+          .from('billing_status_history')
+          .select(
+            'created_at, provider, from_status, to_status, source, reason, provider_subscription_id'
+          )
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+          .limit(100)
+      ).data
+  const webhookEvents = isPlaywrightE2E
+    ? billingPageFixtures.webhookEvents
+    : (
+        await admin
+          .from('billing_webhook_events')
+          .select('id, created_at, provider, event_type, event_id, status, error_message')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+          .limit(100)
+      ).data
+  const checkoutSessions = isPlaywrightE2E
+    ? billingPageFixtures.checkoutSessions
+    : (
+        await admin
+          .from('billing_checkout_sessions')
+          .select('created_at, provider, idempotency_key, checkout_session_id, status, expires_at')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+          .limit(100)
+      ).data
+  const usageMonthly = isPlaywrightE2E
+    ? billingPageFixtures.usageMonthly
+    : (
+        await admin
+          .from('notification_usage_billing_monthly')
+          .select(
+            'month_jst, counted_sent_messages, applied_limit, billable_messages, unit_price_jpy, amount_jpy, option_enabled, calculated_at'
+          )
+          .eq('store_id', storeId)
+          .order('month_jst', { ascending: false })
+          .limit(12)
+      ).data
+  const operations = isPlaywrightE2E
+    ? billingPageFixtures.operations
+    : (
+        await admin
+          .from('billing_operations')
+          .select('created_at, provider, operation_type, amount_jpy, status, reason, result_message')
+          .eq('store_id', storeId)
+          .in('operation_type', [
+            'setup_assistance_request',
+            'setup_assistance_paid',
+            'storage_addon_request',
+            'storage_addon_paid',
+            'notification_usage_billing_calculated',
+          ])
+          .order('created_at', { ascending: false })
+          .limit(100)
+      ).data
 
   return (
     <section className="space-y-6">
@@ -149,14 +133,14 @@ export default async function BillingHistoryPage() {
             <tbody className="divide-y">
               {(usageMonthly ?? []).map((row, index) => (
                 <tr key={`${row.month_jst}-${index}`} className="text-gray-700">
-                  <td className="px-2 py-3">{formatMonthJst(row.month_jst)}</td>
+                  <td className="px-2 py-3">{formatBillingMonthJst(row.month_jst)}</td>
                   <td className="px-2 py-3">{row.counted_sent_messages.toLocaleString()}</td>
                   <td className="px-2 py-3">{row.applied_limit.toLocaleString()}</td>
                   <td className="px-2 py-3">{row.billable_messages.toLocaleString()}</td>
                   <td className="px-2 py-3">{row.unit_price_jpy.toLocaleString()} 円</td>
                   <td className="px-2 py-3 font-semibold">{row.amount_jpy.toLocaleString()} 円</td>
                   <td className="px-2 py-3">{row.option_enabled ? 'ON' : 'OFF'}</td>
-                  <td className="px-2 py-3">{formatDate(row.calculated_at)}</td>
+                  <td className="px-2 py-3">{formatBillingDateTimeJst(row.calculated_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -181,9 +165,9 @@ export default async function BillingHistoryPage() {
             <tbody className="divide-y">
               {(operations ?? []).map((row, index) => (
                 <tr key={`${row.created_at}-${index}`} className="text-gray-700">
-                  <td className="px-2 py-3">{formatDate(row.created_at)}</td>
+                  <td className="px-2 py-3">{formatBillingDateTimeJst(row.created_at)}</td>
                   <td className="px-2 py-3">{row.provider}</td>
-                  <td className="px-2 py-3">{operationTypeLabel(row.operation_type)}</td>
+                  <td className="px-2 py-3">{billingOperationTypeLabel(row.operation_type)}</td>
                   <td className="px-2 py-3">{typeof row.amount_jpy === 'number' ? `${row.amount_jpy.toLocaleString()} 円` : '-'}</td>
                   <td className="px-2 py-3">{row.status}</td>
                   <td className="px-2 py-3">{row.reason ?? row.result_message ?? '-'}</td>
@@ -211,7 +195,7 @@ export default async function BillingHistoryPage() {
             <tbody className="divide-y">
               {(statusHistory ?? []).map((row, index) => (
                 <tr key={`${row.created_at}-${index}`} className="text-gray-700">
-                  <td className="px-2 py-3">{formatDate(row.created_at)}</td>
+                  <td className="px-2 py-3">{formatBillingDateTimeJst(row.created_at)}</td>
                   <td className="px-2 py-3">{row.provider ?? '-'}</td>
                   <td className="px-2 py-3">{row.from_status ?? '-'}</td>
                   <td className="px-2 py-3">{row.to_status}</td>
@@ -245,12 +229,12 @@ export default async function BillingHistoryPage() {
                   key={`${row.created_at}-${index}`}
                   className={row.status === 'failed' ? 'bg-red-50 text-gray-700' : 'text-gray-700'}
                 >
-                  <td className="px-2 py-3">{formatDate(row.created_at)}</td>
+                  <td className="px-2 py-3">{formatBillingDateTimeJst(row.created_at)}</td>
                   <td className="px-2 py-3">{row.provider}</td>
                   <td className="px-2 py-3">{row.event_type}</td>
                   <td className="px-2 py-3">{row.event_id ?? '-'}</td>
                   <td className="px-2 py-3">
-                    <span className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold ${webhookStatusClass(row.status)}`}>
+                    <span className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold ${getBillingWebhookStatusClass(row.status)}`}>
                       {row.status}
                     </span>
                   </td>
@@ -280,12 +264,12 @@ export default async function BillingHistoryPage() {
             <tbody className="divide-y">
               {(checkoutSessions ?? []).map((row, index) => (
                 <tr key={`${row.created_at}-${index}`} className="text-gray-700">
-                  <td className="px-2 py-3">{formatDate(row.created_at)}</td>
+                  <td className="px-2 py-3">{formatBillingDateTimeJst(row.created_at)}</td>
                   <td className="px-2 py-3">{row.provider}</td>
                   <td className="px-2 py-3">{row.idempotency_key}</td>
                   <td className="px-2 py-3">{row.checkout_session_id ?? '-'}</td>
                   <td className="px-2 py-3">{row.status}</td>
-                  <td className="px-2 py-3">{formatDate(row.expires_at ?? null)}</td>
+                  <td className="px-2 py-3">{formatBillingDateTimeJst(row.expires_at ?? null)}</td>
                 </tr>
               ))}
             </tbody>

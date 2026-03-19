@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers'
 import { PointerCaptureGuard } from '@/components/dev/PointerCaptureGuard'
+import { GlobalFooter } from '@/components/ui/GlobalFooter'
 import { ThemeHydrator } from '@/components/ui/ThemeHydrator'
 import { UI_THEMES } from '@/lib/ui/themes'
 import { resolveUiThemeOrDefault, UI_THEME_COOKIE, UI_THEME_STORAGE_KEY } from '@/lib/ui/theme-preference'
@@ -29,10 +30,11 @@ export default async function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
-      <body>
+      <body className="flex min-h-screen flex-col">
         <ThemeHydrator />
         <PointerCaptureGuard />
-        {children}
+        <div className="flex-1">{children}</div>
+        <GlobalFooter />
       </body>
     </html>
   );

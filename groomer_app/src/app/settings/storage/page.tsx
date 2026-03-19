@@ -1,6 +1,7 @@
 import { Card } from '@/components/ui/Card'
 import { requireOwnerStoreMembership } from '@/lib/auth/store-owner'
 import { StorageAddonCheckoutPanel } from '@/components/billing/StorageAddonCheckoutPanel'
+import { settingsPageFixtures } from '@/lib/e2e/settings-page-fixtures'
 import {
   fetchStoreStorageQuotaState,
   formatBytesToJa,
@@ -9,6 +10,7 @@ import { getMedicalRecordPhotoBucket } from '@/lib/medical-records/photos'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type PageProps = {
   searchParams?: Promise<{
@@ -19,7 +21,9 @@ type PageProps = {
 
 export default async function StorageSettingsPage({ searchParams }: PageProps) {
   const params = await searchParams
-  const guard = await requireOwnerStoreMembership()
+  const guard = isPlaywrightE2E
+    ? settingsPageFixtures.storageGuard
+    : await requireOwnerStoreMembership()
   if (!guard.ok) {
     return (
       <section className="space-y-4">
@@ -32,11 +36,13 @@ export default async function StorageSettingsPage({ searchParams }: PageProps) {
   }
 
   const bucket = getMedicalRecordPhotoBucket()
-  const quota = await fetchStoreStorageQuotaState({
-    storeId: guard.storeId,
-    bucket,
-    allowUsageFetchFailure: true,
-  })
+  const quota = isPlaywrightE2E
+    ? settingsPageFixtures.storageQuota
+    : await fetchStoreStorageQuotaState({
+        storeId: guard.storeId,
+        bucket,
+        allowUsageFetchFailure: true,
+      })
   const usagePercent = quota.totalLimitBytes > 0 ? Math.min(100, (quota.usageBytes / quota.totalLimitBytes) * 100) : 0
   return (
     <section className="space-y-6">
