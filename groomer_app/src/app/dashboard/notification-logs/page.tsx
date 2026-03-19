@@ -2,10 +2,12 @@ import Link from 'next/link'
 import { resolveCurrentStoreId } from '@/lib/supabase/store'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/Card'
+import { dashboardPageFixtures } from '@/lib/e2e/dashboard-page-fixtures'
 import type { Json } from '@/lib/supabase/database.types'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type NotificationLogsPageProps = {
   searchParams?: Promise<{
@@ -88,8 +90,8 @@ function getStatusTone(status: string) {
 
 export default async function NotificationLogsPage({ searchParams }: NotificationLogsPageProps) {
   const resolvedSearchParams = await searchParams
-  const supabase = await createServerSupabaseClient()
-  const storeId = await resolveCurrentStoreId()
+  const supabase = isPlaywrightE2E ? null : await createServerSupabaseClient()
+  const storeId = isPlaywrightE2E ? dashboardPageFixtures.storeId : await resolveCurrentStoreId()
 
   if (!storeId) {
     return (
@@ -111,66 +113,111 @@ export default async function NotificationLogsPage({ searchParams }: Notificatio
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  let logQuery = supabase
-    .from('customer_notification_logs')
-    .select(
-      'id, created_at, customer_id, appointment_id, slot_reoffer_id, channel, notification_type, status, subject, body, target, dedupe_key, payload, sent_at, customers(id, full_name, phone_number, line_id)'
-    )
-    .eq('store_id', storeId)
-    .order('sent_at', { ascending: false })
-    .range(from, to)
+  let data: NotificationLogRow[] | null = null
+  let error: { message: string } | null = null
+  let count = 0
+  let failureRows: Array<{
+    status: string
+    notification_type: string
+    payload: { [key: string]: Json | undefined } | null
+  }> | null = null
+  let failureError: { message: string } | null = null
 
-  let countQuery = supabase
-    .from('customer_notification_logs')
-    .select('id', { count: 'exact', head: true })
-    .eq('store_id', storeId)
-
-  let failureSummaryQuery = supabase
-    .from('customer_notification_logs')
-    .select('status, notification_type, payload')
-    .eq('store_id', storeId)
-
-  if (typeFilter !== 'all') {
-    logQuery = logQuery.eq('notification_type', typeFilter)
-    countQuery = countQuery.eq('notification_type', typeFilter)
-    failureSummaryQuery = failureSummaryQuery.eq('notification_type', typeFilter)
-  }
-  if (channelFilter !== 'all') {
-    logQuery = logQuery.eq('channel', channelFilter)
-    countQuery = countQuery.eq('channel', channelFilter)
-    failureSummaryQuery = failureSummaryQuery.eq('channel', channelFilter)
-  }
-  if (statusFilter !== 'all') {
-    logQuery = logQuery.eq('status', statusFilter)
-    countQuery = countQuery.eq('status', statusFilter)
-    failureSummaryQuery = failureSummaryQuery.eq('status', statusFilter)
-  }
-  if (query) {
-    const { data: matchingCustomers } = await supabase
-      .from('customers')
-      .select('id')
-      .eq('store_id', storeId)
-      .ilike('full_name', `%${query}%`)
-      .limit(100)
-    const customerIds = ((matchingCustomers ?? []) as Array<{ id: string }>).map((row) => row.id)
-    const orFilters = [
-      `subject.ilike.%${query}%`,
-      `body.ilike.%${query}%`,
-      `dedupe_key.ilike.%${query}%`,
-    ]
-    if (customerIds.length > 0) {
-      orFilters.push(`customer_id.in.(${customerIds.join(',')})`)
+  if (isPlaywrightE2E) {
+    let fixtureRows = [...dashboardPageFixtures.notificationLogs]
+    if (typeFilter !== 'all') fixtureRows = fixtureRows.filter((row) => row.notification_type === typeFilter)
+    if (channelFilter !== 'all') fixtureRows = fixtureRows.filter((row) => row.channel === channelFilter)
+    if (statusFilter !== 'all') fixtureRows = fixtureRows.filter((row) => row.status === statusFilter)
+    if (query) {
+      const customerIds = dashboardPageFixtures.notificationQueryCustomerIds.map((row) => row.id)
+      fixtureRows = fixtureRows.filter(
+        (row) =>
+          row.subject?.includes(query) ||
+          row.body?.includes(query) ||
+          row.dedupe_key?.includes(query) ||
+          (row.customer_id ? customerIds.includes(row.customer_id) : false)
+      )
     }
-    logQuery = logQuery.or(orFilters.join(','))
-    countQuery = countQuery.or(orFilters.join(','))
-    failureSummaryQuery = failureSummaryQuery.or(orFilters.join(','))
-  }
+    count = fixtureRows.length
+    data = fixtureRows.slice(from, to + 1) as NotificationLogRow[]
+    failureRows = fixtureRows
+      .filter((row) => row.status === 'failed' || row.status === 'canceled')
+      .map((row) => ({
+        status: row.status,
+        notification_type: row.notification_type,
+        payload: row.payload,
+      }))
+  } else {
+    let logQuery = supabase!
+      .from('customer_notification_logs')
+      .select(
+        'id, created_at, customer_id, appointment_id, slot_reoffer_id, channel, notification_type, status, subject, body, target, dedupe_key, payload, sent_at, customers(id, full_name, phone_number, line_id)'
+      )
+      .eq('store_id', storeId)
+      .order('sent_at', { ascending: false })
+      .range(from, to)
 
-  const [{ data, error }, { count }, { data: failureRows, error: failureError }] = await Promise.all([
-    logQuery,
-    countQuery,
-    failureSummaryQuery.in('status', ['failed', 'canceled']),
-  ])
+    let countQuery = supabase!
+      .from('customer_notification_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('store_id', storeId)
+
+    let failureSummaryQuery = supabase!
+      .from('customer_notification_logs')
+      .select('status, notification_type, payload')
+      .eq('store_id', storeId)
+
+    if (typeFilter !== 'all') {
+      logQuery = logQuery.eq('notification_type', typeFilter)
+      countQuery = countQuery.eq('notification_type', typeFilter)
+      failureSummaryQuery = failureSummaryQuery.eq('notification_type', typeFilter)
+    }
+    if (channelFilter !== 'all') {
+      logQuery = logQuery.eq('channel', channelFilter)
+      countQuery = countQuery.eq('channel', channelFilter)
+      failureSummaryQuery = failureSummaryQuery.eq('channel', channelFilter)
+    }
+    if (statusFilter !== 'all') {
+      logQuery = logQuery.eq('status', statusFilter)
+      countQuery = countQuery.eq('status', statusFilter)
+      failureSummaryQuery = failureSummaryQuery.eq('status', statusFilter)
+    }
+    if (query) {
+      const { data: matchingCustomers } = await supabase!
+        .from('customers')
+        .select('id')
+        .eq('store_id', storeId)
+        .ilike('full_name', `%${query}%`)
+        .limit(100)
+      const customerIds = ((matchingCustomers ?? []) as Array<{ id: string }>).map((row) => row.id)
+      const orFilters = [
+        `subject.ilike.%${query}%`,
+        `body.ilike.%${query}%`,
+        `dedupe_key.ilike.%${query}%`,
+      ]
+      if (customerIds.length > 0) {
+        orFilters.push(`customer_id.in.(${customerIds.join(',')})`)
+      }
+      logQuery = logQuery.or(orFilters.join(','))
+      countQuery = countQuery.or(orFilters.join(','))
+      failureSummaryQuery = failureSummaryQuery.or(orFilters.join(','))
+    }
+
+    const queryResults = await Promise.all([
+      logQuery,
+      countQuery,
+      failureSummaryQuery.in('status', ['failed', 'canceled']),
+    ])
+    data = (queryResults[0].data ?? []) as NotificationLogRow[]
+    error = queryResults[0].error
+    count = queryResults[1].count ?? 0
+    failureRows = queryResults[2].data as Array<{
+      status: string
+      notification_type: string
+      payload: { [key: string]: Json | undefined } | null
+    }> | null
+    failureError = queryResults[2].error
+  }
 
   const rows = ((data ?? []) as NotificationLogRow[]) ?? []
   const totalCount = count ?? 0

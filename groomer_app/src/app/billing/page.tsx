@@ -2,6 +2,13 @@ import nextDynamic from 'next/dynamic'
 import { Card } from '@/components/ui/Card'
 import { requireOwnerStoreMembership } from '@/lib/auth/store-owner'
 import Link from 'next/link'
+import {
+  billingOperationTypeLabel,
+  formatBillingDateOnlyJst,
+  formatBillingDateTimeJst,
+  getBillingStatusBadgeClass,
+} from '@/lib/billing/presentation'
+import { billingPageFixtures } from '@/lib/e2e/billing-page-fixtures'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { canPurchaseOptionsByPlan, normalizePlanCode, optionLabel, planLabel } from '@/lib/subscription-plan'
 import { countActiveOwnerStores } from '@/lib/billing/db'
@@ -35,33 +42,7 @@ const StorageAddonCheckoutPanel = nextDynamic(
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
-function formatDate(value: string | null) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  return new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
-}
-
-function formatDateOnly(value: string | null) {
-  if (!value) return '-'
-  const date = new Date(`${value}T00:00:00.000Z`)
-  if (Number.isNaN(date.getTime())) return '-'
-  return new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date)
-}
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 function calculateTrialEnd(trialStartedAt: string | null, trialDays: number | null) {
   if (!trialStartedAt) return null
@@ -70,26 +51,6 @@ function calculateTrialEnd(trialStartedAt: string | null, trialDays: number | nu
   const end = new Date(start)
   end.setUTCDate(end.getUTCDate() + Math.max(0, trialDays ?? 30))
   return end
-}
-
-function getStatusBadgeClass(status: string) {
-  if (status === 'active') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'trialing') return 'bg-blue-100 text-blue-700'
-  if (status === 'past_due') return 'bg-amber-100 text-amber-800'
-  if (status === 'canceled') return 'bg-red-100 text-red-700'
-  return 'bg-gray-100 text-gray-700'
-}
-
-function operationTypeLabel(value: string) {
-  if (value === 'cancel_immediately') return '即時解約'
-  if (value === 'cancel_at_period_end') return '期間終了で解約'
-  if (value === 'refund_request') return '返金依頼'
-  if (value === 'setup_assistance_request') return '初期設定代行申込'
-  if (value === 'setup_assistance_paid') return '初期設定代行 決済完了'
-  if (value === 'storage_addon_request') return '容量追加申込'
-  if (value === 'storage_addon_paid') return '容量追加 決済完了'
-  if (value === 'notification_usage_billing_calculated') return '通知従量課金 月次計算'
-  return value
 }
 
 type BillingPageProps = {
@@ -101,7 +62,7 @@ type BillingPageProps = {
 
 export default async function BillingPage({ searchParams }: BillingPageProps) {
   const params = await searchParams
-  const guard = await requireOwnerStoreMembership()
+  const guard = isPlaywrightE2E ? billingPageFixtures.guard : await requireOwnerStoreMembership()
   if (!guard.ok) {
     return (
       <section className="space-y-4">
@@ -114,38 +75,49 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   }
 
   const { storeId, user } = guard
-  const admin = createAdminSupabaseClient()
-  const ownerActiveStoreCount = await countActiveOwnerStores(user.id)
-  const [
-    { data: storeSubscription },
-    { data: billingSubscriptions },
-    { data: operations },
-    { data: storagePolicy },
-  ] = await Promise.all([
-    admin
-      .from('store_subscriptions')
-      .select(
-        'plan_code, hotel_option_enabled, notification_option_enabled, billing_cycle, billing_status, preferred_provider, amount_jpy, trial_started_at, trial_days, grace_days, past_due_since, current_period_end, next_billing_date'
-      )
-      .eq('store_id', storeId)
-      .maybeSingle(),
-    admin
-      .from('billing_subscriptions')
-      .select('provider, status, provider_subscription_id, subscription_scope, storage_addon_units, current_period_end, updated_at')
-      .eq('store_id', storeId)
-      .order('updated_at', { ascending: false }),
-    admin
-      .from('billing_operations')
-      .select('created_at, provider, operation_type, amount_jpy, reason, status, result_message')
-      .eq('store_id', storeId)
-      .order('created_at', { ascending: false })
-      .limit(20),
-    admin
-      .from('store_storage_policies')
-      .select('extra_capacity_gb')
-      .eq('store_id', storeId)
-      .maybeSingle(),
-  ])
+  const admin = isPlaywrightE2E ? null : createAdminSupabaseClient()
+  const ownerActiveStoreCount = isPlaywrightE2E
+    ? billingPageFixtures.ownerActiveStoreCount
+    : await countActiveOwnerStores(user.id)
+  const storeSubscription = isPlaywrightE2E
+    ? billingPageFixtures.storeSubscription
+    : (
+        await admin
+          .from('store_subscriptions')
+          .select(
+            'plan_code, hotel_option_enabled, notification_option_enabled, billing_cycle, billing_status, preferred_provider, amount_jpy, trial_started_at, trial_days, grace_days, past_due_since, current_period_end, next_billing_date'
+          )
+          .eq('store_id', storeId)
+          .maybeSingle()
+      ).data
+  const billingSubscriptions = isPlaywrightE2E
+    ? billingPageFixtures.billingSubscriptions
+    : (
+        await admin
+          .from('billing_subscriptions')
+          .select('provider, status, provider_subscription_id, subscription_scope, storage_addon_units, current_period_end, updated_at')
+          .eq('store_id', storeId)
+          .order('updated_at', { ascending: false })
+      ).data
+  const operations = isPlaywrightE2E
+    ? billingPageFixtures.operations
+    : (
+        await admin
+          .from('billing_operations')
+          .select('created_at, provider, operation_type, amount_jpy, reason, status, result_message')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+          .limit(20)
+      ).data
+  const storagePolicy = isPlaywrightE2E
+    ? billingPageFixtures.storagePolicy
+    : (
+        await admin
+          .from('store_storage_policies')
+          .select('extra_capacity_gb')
+          .eq('store_id', storeId)
+          .maybeSingle()
+      ).data
 
   const trialEnd = calculateTrialEnd(
     storeSubscription?.trial_started_at ?? null,
@@ -247,7 +219,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
               <span className="text-gray-500">ステータス</span>
               <span
                 className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold ${
-                  getStatusBadgeClass(storeSubscription?.billing_status ?? 'inactive')
+                  getBillingStatusBadgeClass(storeSubscription?.billing_status ?? 'inactive')
                 }`}
               >
                 {storeSubscription?.billing_status ?? 'inactive'}
@@ -264,7 +236,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
               <span className="text-gray-500">基本+オプション契約終了日</span>
               <span className="font-medium text-gray-900">
-                {formatDate(storeSubscription?.current_period_end ?? coreSubscription?.current_period_end ?? null)}
+                {formatBillingDateTimeJst(
+                  storeSubscription?.current_period_end ?? coreSubscription?.current_period_end ?? null
+                )}
               </span>
             </p>
             <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
@@ -279,7 +253,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             </p>
             <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
               <span className="text-gray-500">試用開始日</span>
-              <span className="font-medium text-gray-900">{formatDateOnly(storeSubscription?.trial_started_at ?? null)}</span>
+              <span className="font-medium text-gray-900">
+                {formatBillingDateOnlyJst(storeSubscription?.trial_started_at ?? null)}
+              </span>
             </p>
             <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
               <span className="text-gray-500">試用日数</span>
@@ -288,7 +264,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
               <span className="text-gray-500">試用終了予定日</span>
               <span className={isTrialExpired ? 'font-medium text-red-700' : 'font-medium text-gray-900'}>
-                {trialEnd ? formatDate(trialEnd.toISOString()) : '-'}
+                {trialEnd ? formatBillingDateTimeJst(trialEnd.toISOString()) : '-'}
               </span>
             </p>
             <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
@@ -297,12 +273,14 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             </p>
             <p className="flex items-center justify-between gap-4 md:col-span-2">
               <span className="text-gray-500">past_due開始日時</span>
-              <span className="font-medium text-gray-900">{formatDate(storeSubscription?.past_due_since ?? null)}</span>
+              <span className="font-medium text-gray-900">
+                {formatBillingDateTimeJst(storeSubscription?.past_due_since ?? null)}
+              </span>
             </p>
             <p className="flex items-center justify-between gap-4 md:col-span-2">
               <span className="text-gray-500">容量追加 次回請求予定日</span>
               <span className="font-medium text-gray-900">
-                {formatDate(storageSubscription?.current_period_end ?? null)}
+                {formatBillingDateTimeJst(storageSubscription?.current_period_end ?? null)}
               </span>
             </p>
           </div>
@@ -478,8 +456,8 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                     <td className="px-2 py-2.5">{row.provider}</td>
                     <td className="px-2 py-2.5">{row.status}</td>
                     <td className="px-2 py-2.5">{row.provider_subscription_id ?? '-'}</td>
-                    <td className="px-2 py-2.5">{formatDate(row.current_period_end ?? null)}</td>
-                    <td className="px-2 py-2.5">{formatDate(row.updated_at ?? null)}</td>
+                    <td className="px-2 py-2.5">{formatBillingDateTimeJst(row.current_period_end ?? null)}</td>
+                    <td className="px-2 py-2.5">{formatBillingDateTimeJst(row.updated_at ?? null)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -509,9 +487,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
               <tbody className="divide-y">
                 {operations.map((row, index) => (
                   <tr key={`${row.created_at}-${index}`} className="text-gray-700">
-                    <td className="px-2 py-2.5">{formatDate(row.created_at)}</td>
+                    <td className="px-2 py-2.5">{formatBillingDateTimeJst(row.created_at)}</td>
                     <td className="px-2 py-2.5">{row.provider}</td>
-                    <td className="px-2 py-2.5">{operationTypeLabel(row.operation_type)}</td>
+                    <td className="px-2 py-2.5">{billingOperationTypeLabel(row.operation_type)}</td>
                     <td className="px-2 py-2.5">{row.amount_jpy ?? '-'}</td>
                     <td className="px-2 py-2.5">{row.status}</td>
                     <td className="px-2 py-2.5">{row.reason || row.result_message || '-'}</td>

@@ -1,6 +1,13 @@
 'use client'
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
+import {
+  buildPublicSubmittedReservationSummary,
+  formatPublicSlotLabel,
+  formatPublicSlotTime,
+  getPublicSlotMessage,
+  toPublicJstDatetimeLocalValue,
+} from '@/lib/public-reservations/presentation'
 
 type MenuOption = {
   id: string
@@ -12,6 +19,7 @@ type MenuOption = {
 type ReserveFormProps = {
   storeId: string
   memberPortalToken?: string
+  reservationMode?: 'repeat' | 'new'
 }
 
 type ReserveMetaResponse = {
@@ -24,19 +32,7 @@ type MemberPortalPetOption = {
   id: string
   name: string
   breed: string
-  qrPayload: string
-}
-
-type QrPayload = {
-  v?: number
-  customer_id?: string
-  customer_name?: string
-  phone_number?: string
-  pet_id?: string
-  pet_name?: string
-  pet_breed?: string
-  issued_at?: string
-  sig?: string
+  gender?: string
 }
 
 type SlotCandidate = {
@@ -53,43 +49,29 @@ type SubmittedReservationSummary = {
   status: string
 }
 
-function formatSlotLabel(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  return new Intl.DateTimeFormat('ja-JP', {
+function formatDateKeyJst(date: Date) {
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'Asia/Tokyo',
+    year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
+  })
+  return formatter.format(date)
 }
 
-function formatSlotTime(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '--:--'
-  return new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
+function addDaysDateKeyJst(baseDateKey: string, days: number) {
+  const source = new Date(`${baseDateKey}T00:00:00+09:00`)
+  if (Number.isNaN(source.getTime())) return baseDateKey
+  const next = new Date(source.getTime() + days * 24 * 60 * 60 * 1000)
+  return formatDateKeyJst(next)
 }
 
-function toJstDatetimeLocalValue(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  const shifted = new Date(date.getTime() + 9 * 60 * 60 * 1000)
-  const year = shifted.getUTCFullYear()
-  const month = String(shifted.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(shifted.getUTCDate()).padStart(2, '0')
-  const hour = String(shifted.getUTCHours()).padStart(2, '0')
-  const minute = String(shifted.getUTCMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day}T${hour}:${minute}`
-}
-
-export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProps) {
+export function ReserveForm({
+  storeId,
+  memberPortalToken = '',
+  reservationMode = 'new',
+}: ReserveFormProps) {
+  const todayDateKeyJst = useMemo(() => formatDateKeyJst(new Date()), [])
   const [storeName, setStoreName] = useState('')
   const [menus, setMenus] = useState<MenuOption[]>([])
   const [selectedMenuIds, setSelectedMenuIds] = useState<string[]>([])
@@ -99,8 +81,6 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [slotMessage, setSlotMessage] = useState('')
-  const [cancelUrl, setCancelUrl] = useState('')
-  const [copyMessage, setCopyMessage] = useState('')
   const [instantMenuIds, setInstantMenuIds] = useState<string[]>([])
   const [slotCandidates, setSlotCandidates] = useState<SlotCandidate[]>([])
   const [selectedSlotStartIso, setSelectedSlotStartIso] = useState('')
@@ -116,17 +96,12 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
   const [petGender, setPetGender] = useState('')
   const [preferredStart, setPreferredStart] = useState('')
   const [notes, setNotes] = useState('')
-  const [qrCustomerName, setQrCustomerName] = useState('')
-  const [qrPetName, setQrPetName] = useState('')
-  const [qrPayloadText, setQrPayloadText] = useState('')
-  const [qrRawInput, setQrRawInput] = useState('')
-  const [qrMessage, setQrMessage] = useState('')
-  const [qrError, setQrError] = useState('')
-  const [qrDecoding, setQrDecoding] = useState(false)
-  const [qrLookupLoading, setQrLookupLoading] = useState(false)
   const [prefillLoading, setPrefillLoading] = useState(false)
   const [memberPortalPets, setMemberPortalPets] = useState<MemberPortalPetOption[]>([])
   const [selectedMemberPortalPetId, setSelectedMemberPortalPetId] = useState('')
+  const [recommendedMenuIds, setRecommendedMenuIds] = useState<string[]>([])
+  const [slotTargetDate, setSlotTargetDate] = useState(todayDateKeyJst)
+  const [slotWindowDays, setSlotWindowDays] = useState(7)
 
   useEffect(() => {
     let mounted = true
@@ -169,14 +144,14 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
           cache: 'no-store',
         })
         const json = (await response.json().catch(() => null)) as
-          | {
-              message?: string
-              customer?: { full_name?: string; phone_number?: string; email?: string }
-              pet?: { id?: string; name?: string; breed?: string }
-              pets?: MemberPortalPetOption[]
-              qrPayload?: string
-            }
-          | null
+            | {
+                message?: string
+                customer?: { full_name?: string; phone_number?: string; email?: string }
+                pet?: { id?: string; name?: string; breed?: string; gender?: string }
+                pets?: MemberPortalPetOption[]
+                recommendedMenuIds?: string[]
+              }
+            | null
 
         if (!mounted) return
 
@@ -189,13 +164,39 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
         setEmail(json?.customer?.email?.trim() ?? '')
         setPetName(json?.pet?.name?.trim() ?? '')
         setPetBreed(json?.pet?.breed?.trim() ?? '')
-        setQrPayloadText(json?.qrPayload?.trim() ?? '')
+        setPetGender(json?.pet?.gender?.trim() ?? '')
         setMemberPortalPets(json?.pets ?? [])
         setSelectedMemberPortalPetId(json?.pet?.id ?? json?.pets?.[0]?.id ?? '')
-        setQrMessage('会員証から顧客情報を引き継ぎました。')
+        const nextRecommendedMenuIds = (json?.recommendedMenuIds ?? []).filter(Boolean)
+        setRecommendedMenuIds(nextRecommendedMenuIds)
+        if (reservationMode === 'repeat' && nextRecommendedMenuIds.length > 0) {
+          setSelectedMenuIds(nextRecommendedMenuIds)
+          setMessage('会員証から顧客情報を引き継ぎ、前回メニューを選択しました。')
+        } else {
+          setMessage('会員証から顧客情報を引き継ぎました。')
+        }
       } catch (prefillError) {
         if (!mounted) return
-        setQrError(
+        const fallbackResponse = await fetch(`/api/public/member-portal/${memberPortalToken}`, {
+          cache: 'no-store',
+        }).catch(() => null)
+        const fallbackJson = fallbackResponse
+          ? ((await fallbackResponse.json().catch(() => null)) as
+              | {
+                  customer?: { full_name?: string }
+                  nextAppointment?: { pet_name?: string | null }
+                }
+              | null)
+          : null
+        if (fallbackResponse?.ok) {
+          const fallbackPetName = fallbackJson?.nextAppointment?.pet_name ?? ''
+          setCustomerName(fallbackJson?.customer?.full_name?.trim() ?? '')
+          setPetName(fallbackPetName.trim())
+          setMessage('会員証から顧客情報を一部引き継ぎました。')
+          setError('')
+          return
+        }
+        setError(
           prefillError instanceof Error
             ? prefillError.message
             : '会員証から顧客情報を読み込めませんでした。'
@@ -212,7 +213,7 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
     return () => {
       mounted = false
     }
-  }, [memberPortalToken])
+  }, [memberPortalToken, reservationMode])
 
   useEffect(() => {
     if (!selectedMemberPortalPetId || memberPortalPets.length === 0) return
@@ -220,9 +221,15 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
     if (!selectedPet) return
     setPetName(selectedPet.name)
     setPetBreed(selectedPet.breed)
-    setQrPayloadText(selectedPet.qrPayload)
-    setQrPetName(selectedPet.name)
+    setPetGender(selectedPet.gender?.trim() ?? '')
   }, [memberPortalPets, selectedMemberPortalPetId])
+
+  useEffect(() => {
+    if (menus.length === 0) return
+    const validMenuIdSet = new Set(menus.map((menu) => menu.id))
+    setSelectedMenuIds((prev) => prev.filter((id) => validMenuIdSet.has(id)))
+    setRecommendedMenuIds((prev) => prev.filter((id) => validMenuIdSet.has(id)))
+  }, [menus])
 
   useEffect(() => {
     if (selectedMenuIds.length === 0) {
@@ -233,11 +240,10 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
       return
     }
 
-    const instantSet = new Set(instantMenuIds)
-    const isInstantSelection = selectedMenuIds.every((id) => instantSet.has(id))
-    if (!isInstantSelection) {
+    const nextSlotMessage = getPublicSlotMessage({ selectedMenuIds, instantMenuIds })
+    if (nextSlotMessage) {
       setSlotCandidates([])
-      setSlotMessage('選択メニューは即時確定枠の対象外です。希望日時を入力して申請してください。')
+      setSlotMessage(nextSlotMessage)
       setSelectedSlotStartIso('')
       setSelectedSlotStaffId('')
       return
@@ -247,18 +253,22 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
     setSlotLoading(true)
     setSlotMessage('')
     const query = encodeURIComponent(selectedMenuIds.join(','))
+    const targetDate = encodeURIComponent(slotTargetDate)
 
     async function loadSlots() {
-      const response = await fetch(`/api/public/reserve/${storeId}/slots?menu_ids=${query}`, {
-        cache: 'no-store',
-      })
+      const response = await fetch(
+        `/api/public/reserve/${storeId}/slots?menu_ids=${query}&target_date=${targetDate}`,
+        { cache: 'no-store' }
+      )
       const json = (await response.json().catch(() => ({}))) as {
         message?: string
         slots?: SlotCandidate[]
+        config?: { days?: number }
       }
       if (!mounted) return
       setSlotCandidates(json.slots ?? [])
       setSlotMessage(json.message ?? '')
+      setSlotWindowDays(Math.max(1, Number(json.config?.days ?? 7)))
       setSelectedSlotStartIso('')
       setSelectedSlotStaffId('')
     }
@@ -270,7 +280,27 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
     return () => {
       mounted = false
     }
-  }, [instantMenuIds, selectedMenuIds, storeId])
+  }, [instantMenuIds, selectedMenuIds, slotTargetDate, storeId])
+
+  useEffect(() => {
+    const maxDate = addDaysDateKeyJst(todayDateKeyJst, Math.max(0, slotWindowDays - 1))
+    if (slotTargetDate < todayDateKeyJst || slotTargetDate > maxDate) {
+      setSlotTargetDate(todayDateKeyJst)
+    }
+  }, [slotTargetDate, slotWindowDays, todayDateKeyJst])
+
+  const maxSlotTargetDate = useMemo(
+    () => addDaysDateKeyJst(todayDateKeyJst, Math.max(0, slotWindowDays - 1)),
+    [slotWindowDays, todayDateKeyJst]
+  )
+
+  const hasSelectedRecommendedMenus = useMemo(() => {
+    if (recommendedMenuIds.length === 0) return false
+    const selectedIdSet = new Set(selectedMenuIds)
+    return recommendedMenuIds.every((menuId) => selectedIdSet.has(menuId))
+  }, [recommendedMenuIds, selectedMenuIds])
+
+  const modeLabel = reservationMode === 'repeat' ? '前回メニュー予約' : '新規予約'
 
   const totalDuration = useMemo(() => {
     return menus
@@ -284,111 +314,31 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
     )
   }
 
+  const applyRecommendedMenus = () => {
+    if (recommendedMenuIds.length === 0) return
+    setSelectedMenuIds(recommendedMenuIds)
+    setSelectedSlotStartIso('')
+    setSelectedSlotStaffId('')
+  }
+
+  const clearSelectedMenus = () => {
+    setSelectedMenuIds([])
+    setSelectedSlotStartIso('')
+    setSelectedSlotStaffId('')
+    setSlotCandidates([])
+    setSlotMessage('')
+  }
+
   const handleSlotPick = (slot: SlotCandidate) => {
     setSelectedSlotStartIso(slot.start_time)
     setSelectedSlotStaffId(slot.staff_id ?? '')
-    setPreferredStart(toJstDatetimeLocalValue(slot.start_time))
-  }
-
-  const applyQrPayload = async (raw: string) => {
-    setQrMessage('')
-    setQrError('')
-    setQrLookupLoading(true)
-
-    try {
-      const parsed = JSON.parse(raw) as QrPayload
-      const nextCustomerName = parsed.customer_name?.trim() ?? ''
-      const nextPetName = parsed.pet_name?.trim() ?? ''
-      if (!nextCustomerName || !nextPetName) {
-        throw new Error('QRデータ形式が不正です。')
-      }
-
-      setCustomerName(nextCustomerName)
-      setPetName(nextPetName)
-      setPhoneNumber(parsed.phone_number?.trim() ?? '')
-      setPetBreed(parsed.pet_breed?.trim() ?? '')
-      setQrCustomerName(nextCustomerName)
-      setQrPetName(nextPetName)
-      setQrPayloadText(raw)
-
-      const response = await fetch(`/api/public/reserve/${storeId}/qr-lookup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qrPayload: raw }),
-      })
-      const json = (await response.json().catch(() => null)) as
-        | {
-            message?: string
-            verified?: boolean
-            customer?: { full_name?: string; phone_number?: string }
-            pet?: { name?: string; breed?: string }
-          }
-        | null
-
-      if (!response.ok) {
-        throw new Error(json?.message ?? 'QR照合に失敗しました。')
-      }
-
-      setCustomerName(json?.customer?.full_name?.trim() || nextCustomerName)
-      setPetName(json?.pet?.name?.trim() || nextPetName)
-      setPhoneNumber(json?.customer?.phone_number?.trim() || parsed.phone_number?.trim() || '')
-      setPetBreed(json?.pet?.breed?.trim() || parsed.pet_breed?.trim() || '')
-      setQrMessage('QRを検証し、既存顧客候補を照合してフォームへ反映しました。')
-    } catch (scanError) {
-      setQrError(scanError instanceof Error ? scanError.message : 'QR読取に失敗しました。')
-      setQrPayloadText('')
-    } finally {
-      setQrLookupLoading(false)
-    }
-  }
-
-  const handleQrImageScan = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    setQrMessage('')
-    setQrError('')
-    setQrDecoding(true)
-    try {
-      const detectorCtor = (
-        globalThis as unknown as {
-          BarcodeDetector?: new (options?: { formats?: string[] }) => {
-            detect: (source: ImageBitmap) => Promise<Array<{ rawValue?: string }>>
-          }
-        }
-      ).BarcodeDetector
-      if (!detectorCtor) {
-        throw new Error('このブラウザはQR画像読取に未対応です。下の「QR文字列貼り付け」を使ってください。')
-      }
-      const detector = new detectorCtor({ formats: ['qr_code'] })
-      const bitmap = await createImageBitmap(file)
-      const results = await detector.detect(bitmap)
-      const raw = results[0]?.rawValue
-      if (!raw) {
-        throw new Error('QRコードを読み取れませんでした。')
-      }
-      await applyQrPayload(raw)
-    } catch (scanError) {
-      setQrError(scanError instanceof Error ? scanError.message : 'QR読取に失敗しました。')
-    } finally {
-      setQrDecoding(false)
-      event.target.value = ''
-    }
-  }
-
-  const handleQrTextApply = async () => {
-    const raw = qrRawInput.trim()
-    if (!raw) {
-      setQrError('QR文字列を入力してください。')
-      return
-    }
-    await applyQrPayload(raw)
+    setPreferredStart(toPublicJstDatetimeLocalValue(slot.start_time))
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
     setMessage('')
-    setCopyMessage('')
 
     if (selectedMenuIds.length === 0) {
       setError('施術メニューを1つ以上選択してください。')
@@ -410,16 +360,15 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
           petGender,
           preferredStart,
           notes,
-          qrPayload: qrPayloadText || null,
           menuIds: selectedMenuIds,
           memberPortalToken,
+          member_portal_token: memberPortalToken,
           preferredStaffId: selectedSlotStaffId,
         }),
       })
 
       const json = (await response.json().catch(() => ({}))) as {
         message?: string
-        cancelUrl?: string
         appointmentId?: string
         groupId?: string
         status?: string
@@ -430,29 +379,23 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
       }
 
       setSubmittedReservations((prev) => [
-        {
-          appointmentId: json.appointmentId ?? `${Date.now()}`,
-          groupId: (json.groupId ?? currentGroupId) || null,
+        buildPublicSubmittedReservationSummary({
+          appointmentId: json.appointmentId,
+          groupId: json.groupId,
+          currentGroupId,
           petName,
           preferredStart,
-          status: json.status ?? '予約申請',
-        },
+          status: json.status,
+        }),
         ...prev,
       ])
       setCurrentGroupId(json.groupId ?? currentGroupId)
       setMessage(json.message ?? '予約申請を受け付けました。')
-      setCancelUrl(json.cancelUrl ?? '')
       setPetName('')
       setPetBreed('')
       setPetGender('')
       setPreferredStart('')
       setNotes('')
-      setQrCustomerName('')
-      setQrPetName('')
-      setQrPayloadText('')
-      setQrRawInput('')
-      setQrMessage('')
-      setQrError('')
       setSelectedMenuIds([])
       setSelectedSlotStartIso('')
       setSelectedSlotStaffId('')
@@ -468,27 +411,11 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
     setPetGender('')
     setPreferredStart('')
     setNotes('')
-    setQrPetName('')
-    setQrPayloadText('')
-    setQrRawInput('')
-    setQrMessage('')
-    setQrError('')
     setSelectedMenuIds([])
     setSelectedSlotStartIso('')
     setSelectedSlotStaffId('')
     setSlotCandidates([])
     setMessage('別のペット情報を入力して続けて予約できます。')
-  }
-
-  async function handleCopyCancelUrl() {
-    if (!cancelUrl) return
-    try {
-      await navigator.clipboard.writeText(cancelUrl)
-      setCopyMessage('キャンセルURLをコピーしました。')
-    } catch {
-      setCopyMessage('キャンセルURLのコピーに失敗しました。')
-    }
-    setTimeout(() => setCopyMessage(''), 2000)
   }
 
   if (isLoading || prefillLoading) {
@@ -502,47 +429,9 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
         <p className="mt-1 text-sm text-gray-600">
           店舗: {storeName} / 送信後は「予約申請」として登録され、店舗側確認後に確定されます。
         </p>
+        <p className="mt-1 text-xs text-gray-500">予約モード: {modeLabel}</p>
 
         <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
-          <label className="block rounded border border-indigo-100 bg-indigo-50 p-3 text-sm text-indigo-900">
-            <p className="font-semibold">QRコード画像から読取</p>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleQrImageScan}
-              disabled={qrDecoding || qrLookupLoading}
-              className="mt-2 block w-full rounded border bg-white p-2 text-sm text-gray-800"
-            />
-            {qrDecoding ? <p className="mt-1 text-xs text-gray-500">QR画像を解析中...</p> : null}
-            {qrLookupLoading ? <p className="mt-1 text-xs text-gray-500">署名検証と顧客照合中...</p> : null}
-            {qrMessage ? <p className="mt-1 text-xs text-emerald-700">{qrMessage}</p> : null}
-            {qrError ? <p className="mt-1 text-xs text-red-600">{qrError}</p> : null}
-            {qrCustomerName || qrPetName ? (
-              <p className="mt-1 text-xs text-indigo-800">
-                読取結果: {qrCustomerName || '未取得'} / {qrPetName || '未取得'}
-              </p>
-            ) : null}
-            <div className="mt-2 rounded border border-indigo-200 bg-white p-2">
-              <p className="text-xs text-indigo-800">BarcodeDetector 非対応時: QR文字列を貼り付け</p>
-              <textarea
-                className="mt-1 min-h-20 w-full rounded border p-2 text-xs text-gray-800"
-                value={qrRawInput}
-                onChange={(event) => setQrRawInput(event.target.value)}
-                placeholder='{"v":2,"customer_id":"...","pet_id":"...","sig":"..."}'
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  void handleQrTextApply()
-                }}
-                disabled={qrLookupLoading}
-                className="mt-1 rounded border border-indigo-300 bg-indigo-600 px-2 py-1 text-xs font-semibold text-white disabled:opacity-70"
-              >
-                QR文字列を適用
-              </button>
-            </div>
-          </label>
-
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="text-sm text-gray-700">
               お名前 *
@@ -638,6 +527,25 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
 
           <div className="rounded border bg-gray-50 p-3">
             <p className="mb-2 text-sm font-semibold text-gray-900">施術メニュー *</p>
+            {recommendedMenuIds.length > 0 ? (
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={applyRecommendedMenus}
+                  disabled={hasSelectedRecommendedMenus}
+                  className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 disabled:opacity-60"
+                >
+                  前回メニューを選択
+                </button>
+                <button
+                  type="button"
+                  onClick={clearSelectedMenus}
+                  className="rounded border border-gray-300 bg-white px-2 py-1 text-xs font-semibold text-gray-700"
+                >
+                  メニュー選択をクリア
+                </button>
+              </div>
+            ) : null}
             <div className="space-y-2">
               {menus.map((menu) => (
                 <label key={menu.id} className="flex items-center gap-2 text-sm text-gray-700">
@@ -659,6 +567,17 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
           {selectedMenuIds.length > 0 ? (
             <div className="rounded border border-emerald-200 bg-emerald-50 p-3">
               <p className="mb-2 text-sm font-semibold text-emerald-900">空き枠候補（即時確定対象メニュー）</p>
+              <label className="mb-2 block text-xs text-emerald-900">
+                候補日
+                <input
+                  type="date"
+                  className="mt-1 block w-full rounded border border-emerald-300 bg-white p-2 text-sm text-gray-900 sm:w-64"
+                  value={slotTargetDate}
+                  min={todayDateKeyJst}
+                  max={maxSlotTargetDate}
+                  onChange={(event) => setSlotTargetDate(event.target.value)}
+                />
+              </label>
               {slotLoading ? <p className="text-xs text-emerald-800">空き枠を読み込み中...</p> : null}
               {!slotLoading && slotCandidates.length > 0 ? (
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -675,7 +594,7 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
                             : 'border-emerald-300 bg-white text-emerald-900'
                         }`}
                       >
-                        {formatSlotLabel(slot.start_time)} - {formatSlotTime(slot.end_time)}
+                        {formatPublicSlotLabel(slot.start_time)} - {formatPublicSlotTime(slot.end_time)}
                       </button>
                     )
                   })}
@@ -711,22 +630,6 @@ export function ReserveForm({ storeId, memberPortalToken = '' }: ReserveFormProp
                   </div>
                 ))}
               </div>
-            </div>
-          ) : null}
-          {cancelUrl ? (
-            <div className="rounded border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-              <p className="font-semibold">キャンセル用URL</p>
-              <p className="mt-1 break-all">{cancelUrl}</p>
-              <button
-                type="button"
-                onClick={() => {
-                  void handleCopyCancelUrl()
-                }}
-                className="mt-2 rounded border border-amber-400 bg-white px-2 py-1 text-xs font-semibold text-amber-900"
-              >
-                URLをコピー
-              </button>
-              {copyMessage ? <p className="mt-1">{copyMessage}</p> : null}
             </div>
           ) : null}
 

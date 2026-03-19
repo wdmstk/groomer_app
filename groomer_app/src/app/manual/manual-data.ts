@@ -49,7 +49,7 @@ export type ManualSectionInsight = {
 }
 
 export const manualMeta = {
-  updatedAt: '2026-03-12',
+  updatedAt: '2026-03-16',
   targetVersion: 'groomer_app 0.1.0 / Next.js 16.1.6',
 }
 
@@ -64,6 +64,15 @@ export const manualGlossary: GlossaryTerm[] = [
   { term: 'Stripe / KOMOJU', meaning: '決済サービス提供元です。Stripe は主にカード決済、KOMOJU はキャリア決済などに対応します。' },
   { term: 'Webhook', meaning: '決済サービス側の状態変化を、システムへ自動通知する仕組みです。' },
   { term: 'Checkout', meaning: '外部決済ページへ遷移して支払い情報を入力する処理です。' },
+  { term: 'status', meaning: '画面や一覧で使う状態欄です。処理の進み具合や利用可否を表し、画面ごとに意味が異なります。' },
+  { term: 'LINE連携 / line_id', meaning: '顧客がLINEと連携済みかを表す項目です。連携済みなら line_id を使って通知送信できます。' },
+  {
+    term: 'LTV / LTVランク',
+    meaning: '顧客の年間売上や来店回数から見た顧客価値の目安です。ゴールド / シルバー / ブロンズ / スタンダードで表示します。',
+  },
+  { term: 'member portal', meaning: '顧客向け会員ポータルです。会員証、来店履歴、次回予約導線を共有できます。' },
+  { term: 'waitlist / 空き枠待ち', meaning: 'キャンセル枠や空き枠が出た際に優先案内する受付状態です。' },
+  { term: 'storage policy', meaning: '容量超過時の動作方針です。block は保存停止、cleanup_orphans は孤立ファイル整理を優先します。' },
   { term: 'トークン (token)', meaning: 'URL内で使う一時的な識別子です。招待や予約キャンセルで本人確認に使います。' },
   { term: 'セッション (session)', meaning: 'ログイン状態を保持する情報です。ログアウトすると無効になります。' },
   { term: 'Cookie', meaning: 'ブラウザに保存される小さな設定情報です。アクティブ店舗などの状態保持に使います。' },
@@ -178,15 +187,16 @@ export const manualSections: ManualSection[] = [
     id: 'customers',
     title: '顧客管理',
     path: '/customers',
-    purpose: '顧客情報を登録・編集・削除します。',
+    purpose: '顧客情報を登録し、LINE連携状態・LTV・会員ポータル導線まで含めて管理します。',
     procedures: [
       '顧客一覧タブの「新規登録」から氏名、連絡先、属性情報を入力して登録します。',
-      '顧客一覧タブで登録内容を確認します。',
-      '必要に応じて編集または削除を実行します。',
+      '顧客一覧タブで登録内容、LINE連携状態、LTVランク、会員ポータル発行状態を確認します。',
+      '必要に応じて編集、空き枠待ち登録、会員ポータルURL発行を実行します。',
     ],
     cautions: [
       '氏名は必須です。',
       'タグはカンマ区切りで入力します。',
+      'LTV表示は集計反映まで少し時間差が出る場合があります。',
     ],
   },
   {
@@ -251,8 +261,8 @@ export const manualSections: ManualSection[] = [
     ],
     cautions: [
       'この画面は owner 権限のみ利用できます。',
-      'billing_status の目安: inactive=未課金、trialing=試用中、active=利用可、past_due=支払い遅延、paused=一時停止、canceled=解約済み。',
-      '試用期限切れ・past_due・canceled は要対応アラート表示になります。',
+      '課金状態は、未課金なら決済開始前、試用中なら無料利用期間中、利用可なら通常運用可能な状態です。',
+      '支払い遅延・一時停止・解約済みは利用制限や確認が必要な状態として扱います。',
       '決済反映はWebhook経由のため、反映まで時間差が出る場合があります。',
     ],
   },
@@ -295,7 +305,6 @@ export const manualSections: ManualSection[] = [
     path: '/appointments',
     purpose: '予約の作成・更新・一覧確認・カレンダー確認を行います。',
     procedures: [
-      '画面右上の「顧客予約URLをコピー」で公開予約URLを取得できます。',
       '予約一覧タブの「新規登録」から顧客、ペット、担当、日時、メニューを入力して登録します。',
       '予約一覧タブで編集、申請確定（予約申請 -> 予約済）、削除を行います。',
       'カレンダータブで日付・担当ごとの予約状況を確認します。',
@@ -312,14 +321,14 @@ export const manualSections: ManualSection[] = [
     path: '/reserve/[store_id]',
     purpose: '顧客が店舗公開URLから予約申請を送信します。',
     procedures: [
-      '店舗側で予約管理画面の「顧客予約URLをコピー」から URL を案内します。',
+      '店舗側で店舗公開URL（/reserve/{store_id}）を顧客へ案内します。',
       '顧客がフォームで氏名・希望日時・ペット情報・施術メニューを入力して送信します。',
       '送信後は予約ステータス「予約申請」で登録されます。',
       '店舗側が予約一覧で「申請を確定」を実行すると「予約済」になります。',
     ],
     cautions: [
       '施術メニューは1件以上選択が必須です。',
-      'フォーム送信後に表示されるキャンセルURLは顧客側で保管が必要です。',
+      'フォーム送信後の内容変更・キャンセルは店舗へ直接連絡してもらう運用です。',
     ],
   },
   {
@@ -628,6 +637,38 @@ export const manualSections: ManualSection[] = [
     ],
   },
   {
+    id: 'hotel',
+    title: 'ペットホテル管理',
+    path: '/hotel',
+    purpose: '時間預かりと宿泊を同じ台帳で管理し、定員・送迎・料金内訳をまとめて確認します。',
+    procedures: [
+      '一覧または週カレンダーで対象日と定員状況を確認します。',
+      '新規登録または編集で顧客、ペット、ステータス、予定/実績時刻、送迎有無、宿泊メニューを入力します。',
+      '保存後に stay_code、料金合計、定員対象項目、ワクチン期限を確認します。',
+    ],
+    cautions: [
+      'ホテル機能は対象プランかつホテルオプション有効店舗のみ利用できます。',
+      '状態欄は「予約済み / チェックイン済み / チェックアウト済み / キャンセル / 無断キャンセル」と表示されます。',
+      'counts_toward_capacity が有効な明細は定員計算に含まれます。',
+    ],
+  },
+  {
+    id: 'settings-storage',
+    title: '容量設定',
+    path: '/settings/storage',
+    purpose: '写真カルテなどの使用容量を確認し、超過時の動作と追加容量を管理します。',
+    procedures: [
+      '現在の使用量、基本上限、追加容量、使用率バーを確認します。',
+      '必要に応じて超過時の動作方針、追加容量、カスタム上限を設定して保存します。',
+      '容量不足が続く場合は追加課金を開始し、Webhook反映後に上限更新を確認します。',
+    ],
+    cautions: [
+      'この画面は owner 権限のみ利用できます。',
+      'usageWarning が表示される場合、使用量は概算または一部取得失敗の可能性があります。',
+      'cleanup_orphans を選んでも参照中ファイルは削除されませんが、整理前に関係者へ共有してください。',
+    ],
+  },
+  {
     id: 'support-tickets',
     title: '問い合わせチケット',
     path: '/support-tickets',
@@ -849,6 +890,18 @@ export const workflows: Workflow[] = [
     sectionIds: ['settings-public-reserve', 'public-reserve', 'appointments'],
   },
   {
+    id: 'flow-hotel',
+    title: 'ホテル運用フロー',
+    goal: '預かり予約の登録から定員確認、チェックアウトまでを一貫して管理します。',
+    sectionIds: ['customers', 'pets', 'hotel', 'payments'],
+  },
+  {
+    id: 'flow-storage',
+    title: '容量運用フロー',
+    goal: '写真保存容量を監視し、超過前に方針設定と追加容量手配を行います。',
+    sectionIds: ['medical-records', 'settings-storage', 'billing'],
+  },
+  {
     id: 'flow-support',
     title: '問い合わせ対応フロー',
     goal: '問い合わせ起票とコミュニケーションを記録しながら進めます。',
@@ -932,6 +985,9 @@ export const manualSectionGuides: Record<string, ManualSectionGuide> = {
     itemDetails: [
       { item: '氏名', detail: '必須項目です。検索や一覧表示の基準になります。' },
       { item: '連絡先', detail: '電話・メールなど、連絡導線として使う情報を入力します。' },
+      { item: 'LINE連携状態', detail: 'line_id の有無で連携済み/未連携を判断します。LINE送信前に確認します。' },
+      { item: 'LTVサマリー', detail: '年間売上、来店回数、平均単価、オプション利用率、LTVランクを確認できます。' },
+      { item: '会員ポータル', detail: '顧客向け会員証URLを発行し、最終利用日時も確認できます。' },
       { item: 'タグ', detail: 'カンマ区切りで管理し、再来店施策や一覧フィルタに活用します。' },
     ],
   },
@@ -963,7 +1019,7 @@ export const manualSectionGuides: Record<string, ManualSectionGuide> = {
     flow: ['利用タイミング: 課金開始、遅延対応、解約判断時。', '前提: owner 権限でログイン済み。', '次に行う操作: 履歴画面で反映監査、必要ならサポート連携。'],
     itemDetails: [
       { item: 'billing_status表示', detail: '利用可否に直結する最重要項目です。trial期限や猶予日数と合わせて確認します。' },
-      { item: 'billing_status の意味', detail: 'inactive=未課金、trialing=試用中、active=利用可、past_due=支払い遅延、paused=一時停止、canceled=解約済み。' },
+      { item: '課金状態', detail: '未課金は決済未開始、試用中は無料利用期間中、利用可は通常運用可能、支払い遅延は猶予確認が必要、一時停止は一時的な利用制限、解約済みは契約終了状態です。' },
       { item: '決済方法選択', detail: 'Stripe/KOMOJUを選び、Checkoutへ遷移して決済を開始します。' },
       { item: '運用操作ボタン', detail: '優先決済手段切替、返金依頼、期間末解約、即時解約を実行します。' },
     ],
@@ -988,7 +1044,6 @@ export const manualSectionGuides: Record<string, ManualSectionGuide> = {
   appointments: {
     flow: ['利用タイミング: 予約登録・調整・確定を行うとき。', '前提: 顧客・ペット・スタッフ・メニューが登録済み。', '次に行う操作: 当日運用、会計、カルテ記録へ連携。'],
     itemDetails: [
-      { item: '顧客予約URLをコピー', detail: '顧客向け公開予約フォームのURLを案内するときに使います。' },
       { item: '新規登録フォーム', detail: '顧客、ペット、担当、開始/終了、メニューを入力して予約作成します。' },
       { item: '申請を確定', detail: '公開予約の「予約申請」を店舗確定して「予約済」に更新します。' },
       { item: '予約ステータスの意味', detail: '予約申請=顧客申請、予約済=店舗確定、受付=来店チェック済み、施術中=施術進行中、会計待ち=施術後未会計、完了=会計完了。' },
@@ -1161,12 +1216,29 @@ export const manualSectionGuides: Record<string, ManualSectionGuide> = {
       { item: 'カテゴリ別出庫量', detail: '消費カテゴリの偏りを把握します。' },
     ],
   },
+  hotel: {
+    flow: ['利用タイミング: 預かり予約登録、当日受入、チェックアウト時。', '前提: ホテル機能が有効で、対象顧客とペットが登録済み。', '次に行う操作: 会計または次回予約へ進む。'],
+    itemDetails: [
+      { item: '状態欄', detail: '予約済みは来店前の受付待ち、チェックイン済みは預かり中、チェックアウト済みは退店処理完了、キャンセルは事前取り消し、無断キャンセルは連絡なく来店しなかった状態です。' },
+      { item: '予定/実績時刻', detail: 'planned_* は事前予定、actual_* は当日の実績です。滞在日数や台帳確認に使います。' },
+      { item: '送迎フラグ', detail: 'pickup_required / dropoff_required で送迎の要否を記録します。' },
+      { item: '定員対象', detail: 'counts_toward_capacity が有効な宿泊明細のみ定員計算へ含めます。' },
+    ],
+  },
   'settings-public-reserve': {
     flow: ['利用タイミング: 公開予約運用の調整時。', '前提: owner/admin 権限。', '次に行う操作: 公開予約フォーム挙動を確認。'],
     itemDetails: [
       { item: 'アラート閾値', detail: '競合率とスタッフ偏り率の警告ラインを設定します。' },
       { item: '公開枠ルール', detail: '公開日数、バッファ、営業時間、最小リード時間を設定します。' },
       { item: '例外日', detail: '繁忙日や休業日を公開対象から除外します。' },
+    ],
+  },
+  'settings-storage': {
+    flow: ['利用タイミング: 写真保存量の増加時、警告表示時、月次見直し時。', '前提: owner 権限で対象店舗を開いている。', '次に行う操作: 必要なら追加課金、または不要ファイル整理方針の共有。'],
+    itemDetails: [
+      { item: '現在の使用状況', detail: '対象バケット、プラン、使用量、上限、追加容量、使用率をまとめて確認します。' },
+      { item: '超過時の動作', detail: 'block は追加保存停止、cleanup_orphans は孤立ファイルの整理を先に試みる方針です。' },
+      { item: '追加容量', detail: 'extra_capacity_gb と Checkout により追加容量を申請します。決済完了後はWebhookで反映されます。' },
     ],
   },
   'support-tickets': {
@@ -1460,6 +1532,54 @@ export const manualSectionInsights: Record<string, ManualSectionInsight> = {
             focus: '繁忙日・休業日の除外。',
             usage: '誤受付防止のため事前登録。',
             decision: '混雑予定あり: 先に例外日登録。',
+          },
+        ],
+      },
+    ],
+  },
+  hotel: {
+    pageGoal: 'ペットホテルの受入状況、定員、会計前提を1画面で把握します。',
+    tabs: [
+      {
+        tab: '台帳 / 週カレンダー / 設定',
+        when: '予約登録時 / 当日受入時 / 締め前',
+        goal: '予約状況と定員への影響を見ながら受入判断します。',
+        cards: [
+          {
+            card: '滞在一覧',
+            focus: 'status、stay_code、予定/実績時刻、合計金額。',
+            usage: '当日の受入順、未チェックアウト件数、無断キャンセルを確認。',
+            decision: '定員超過懸念: 週カレンダーと明細を再確認。',
+          },
+          {
+            card: '宿泊明細',
+            focus: '宿泊メニュー、数量、単価、定員対象フラグ。',
+            usage: '時間預かりと宿泊の料金根拠、定員消費の根拠として確認。',
+            decision: '定員対象誤り: 明細設定を修正して再保存。',
+          },
+        ],
+      },
+    ],
+  },
+  'settings-storage': {
+    pageGoal: '写真保存容量を見える化し、超過前に対処します。',
+    tabs: [
+      {
+        tab: '現在の使用状況 / 超過時の動作 / 容量追加課金',
+        when: '警告表示時 / 月次レビュー時',
+        goal: '保存上限と対応方針を確認し、追加容量を手配します。',
+        cards: [
+          {
+            card: '使用率バー',
+            focus: '使用量、上限、追加容量、usageWarning。',
+            usage: '90%超なら追加容量か不要ファイル整理を優先判断。',
+            decision: '警告継続: 容量方針の見直しと関係者共有を実施。',
+          },
+          {
+            card: '超過時の動作',
+            focus: 'block / cleanup_orphans、カスタム上限。',
+            usage: '運用に合わせて保存停止か整理優先かを選択。',
+            decision: '写真保存を止められない場合: 先に追加容量を確保。',
           },
         ],
       },

@@ -2,11 +2,13 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { inventoryPageFixtures } from '@/lib/e2e/inventory-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { toNumber } from '@/lib/inventory/stock'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type PurchaseOrder = {
   id: string
@@ -35,21 +37,31 @@ type InventoryItem = {
 }
 
 export default async function InventoryPurchaseOrdersPage() {
-  const { supabase, storeId } = await createStoreScopedClient()
-  const { data: inventoryItems } = await supabase
-    .from('inventory_items')
-    .select('id, name, unit')
-    .eq('store_id', storeId)
-    .eq('is_active', true)
-    .order('name', { ascending: true })
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: inventoryPageFixtures.storeId }
+    : await createStoreScopedClient()
+  const inventoryItems = isPlaywrightE2E
+    ? inventoryPageFixtures.purchaseOrderItems
+    : (
+        await supabase!
+          .from('inventory_items')
+          .select('id, name, unit')
+          .eq('store_id', storeId)
+          .eq('is_active', true)
+          .order('name', { ascending: true })
+      ).data
 
-  const { data: orders } = await supabase
-    .from('inventory_purchase_orders')
-    .select(
-      'id, order_no, supplier_name, status, ordered_on, expected_on, total_amount, notes, inventory_purchase_order_items(id, item_name, quantity, unit_cost, notes)'
-    )
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const orders = isPlaywrightE2E
+    ? inventoryPageFixtures.purchaseOrders
+    : (
+        await supabase!
+          .from('inventory_purchase_orders')
+          .select(
+            'id, order_no, supplier_name, status, ordered_on, expected_on, total_amount, notes, inventory_purchase_order_items(id, item_name, quantity, unit_cost, notes)'
+          )
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      ).data
 
   const orderList = (orders ?? []) as PurchaseOrder[]
   const itemList = (inventoryItems ?? []) as InventoryItem[]

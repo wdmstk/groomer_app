@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { getCancelReservationTokenError } from '@/lib/public-reservations/presentation'
 
 type CancelReservationClientProps = {
   token: string
@@ -12,8 +13,9 @@ export function CancelReservationClient({ token }: CancelReservationClientProps)
   const [error, setError] = useState('')
 
   async function handleCancel() {
-    if (!token) {
-      setError('無効なURLです。')
+    const tokenError = getCancelReservationTokenError(token)
+    if (tokenError) {
+      setError(tokenError)
       return
     }
 

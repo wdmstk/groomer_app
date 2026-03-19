@@ -1,23 +1,15 @@
 import Link from 'next/link'
-import nextDynamic from 'next/dynamic'
 import { resolveCurrentStoreId } from '@/lib/supabase/store'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/Card'
+import { QuickPaymentModal } from '@/components/dashboard/QuickPaymentModal'
+import { SlotReofferPanel } from '@/components/dashboard/SlotReofferPanel'
+import { dashboardPageFixtures } from '@/lib/e2e/dashboard-page-fixtures'
 import type { Json } from '@/lib/supabase/database.types'
-
-const QuickPaymentModal = nextDynamic(
-  () => import('@/components/dashboard/QuickPaymentModal').then((mod) => mod.QuickPaymentModal)
-)
-
-const SlotReofferPanel = nextDynamic(
-  () => import('@/components/dashboard/SlotReofferPanel').then((mod) => mod.SlotReofferPanel),
-  {
-    loading: () => <div className="p-4 text-sm text-gray-500">空き枠再販を読み込み中...</div>,
-  }
-)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type DashboardPageProps = {
   searchParams?: Promise<{
@@ -639,7 +631,7 @@ function AppointmentTable({
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const resolvedSearchParams = await searchParams
-  const now = new Date()
+  const now = isPlaywrightE2E ? new Date(dashboardPageFixtures.nowIso) : new Date()
   const followupWindowDays = resolvedSearchParams?.followup_window === '30' ? 30 : 7
   const activeTab = normalizeDashboardTab(resolvedSearchParams?.tab)
   const jstNow = getJstParts(now)
@@ -655,14 +647,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const predictiveWindowStartDate = new Date(now.getTime() - predictiveWindowDays * 24 * 60 * 60 * 1000)
   const predictiveWindowStartIso = predictiveWindowStartDate.toISOString()
   const predictiveWindowStartDateKey = predictiveWindowStartDate.toISOString().slice(0, 10)
-  const needsOperationsInsights = activeTab === 'overview' || activeTab === 'operations'
-  const needsFollowupInsights = activeTab === 'overview' || activeTab === 'followups'
-  const needsFollowupDetails = activeTab === 'followups'
-  const needsReofferInsights = activeTab === 'overview' || activeTab === 'reoffers'
-  const needsReofferDetails = activeTab === 'reoffers'
 
-  const supabase = await createServerSupabaseClient()
-  const storeId = await resolveCurrentStoreId()
+  const supabase = isPlaywrightE2E ? null : await createServerSupabaseClient()
+  const storeId = isPlaywrightE2E ? dashboardPageFixtures.storeId : await resolveCurrentStoreId()
   if (!storeId) {
     return (
       <section className="space-y-4">
@@ -692,297 +679,362 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const selectFields =
     'id, customer_id, pet_id, staff_id, start_time, end_time, menu, status, notes, checked_in_at, in_service_at, payment_waiting_at, completed_at, customers(id, full_name, phone_number, email), pets(id, name, breed, gender, notes), staffs(id, full_name)'
 
-  const { data: todayAppointments } = await supabase
-    .from('appointments')
-    .select(selectFields)
-    .eq('store_id', storeId)
-    .neq('status', 'キャンセル')
-    .gte('start_time', todayStart.toISOString())
-    .lt('start_time', tomorrowStart.toISOString())
-    .order('start_time', { ascending: true })
+  const todayAppointments = isPlaywrightE2E
+    ? dashboardPageFixtures.todayAppointments
+    : (
+        await supabase!
+          .from('appointments')
+          .select(selectFields)
+          .eq('store_id', storeId)
+          .neq('status', 'キャンセル')
+          .gte('start_time', todayStart.toISOString())
+          .lt('start_time', tomorrowStart.toISOString())
+          .order('start_time', { ascending: true })
+      ).data
 
-  const { data: upcomingAppointments } = await supabase
-    .from('appointments')
-    .select(selectFields)
-    .eq('store_id', storeId)
-    .neq('status', 'キャンセル')
-    .gte('start_time', tomorrowStart.toISOString())
-    .lt('start_time', nextWeekEndExclusive.toISOString())
-    .order('start_time', { ascending: true })
+  const upcomingAppointments = isPlaywrightE2E
+    ? dashboardPageFixtures.upcomingAppointments
+    : (
+        await supabase!
+          .from('appointments')
+          .select(selectFields)
+          .eq('store_id', storeId)
+          .neq('status', 'キャンセル')
+          .gte('start_time', tomorrowStart.toISOString())
+          .lt('start_time', nextWeekEndExclusive.toISOString())
+          .order('start_time', { ascending: true })
+      ).data
 
   const allAppointments = [...(todayAppointments ?? []), ...(upcomingAppointments ?? [])] as AppointmentRow[]
   const petIds = Array.from(new Set(allAppointments.map((appointment) => appointment.pet_id))).filter(Boolean)
   const todayAppointmentIds = ((todayAppointments ?? []) as AppointmentRow[]).map((item) => item.id)
 
-  const [
-    { data: appointmentDailySummary },
-    { data: paymentDailySummary },
-    { data: visitDailySummary },
-    { data: followupDailySummaryRows },
-    { data: reofferDailySummaryRows },
-  ] =
-    await Promise.all([
-      supabase
-        .from('appointment_daily_summary_v')
-        .select(
-          'date_key, appointment_count, completed_count, active_appointment_count, requested_count, expected_sales'
-        )
-        .eq('store_id', storeId)
-        .eq('date_key', todayDateKey)
-        .maybeSingle(),
-      supabase
-        .from('payment_daily_summary_v')
-        .select('date_key, payment_count, paid_count, confirmed_sales')
-        .eq('store_id', storeId)
-        .eq('date_key', todayDateKey)
-        .maybeSingle(),
-      supabase
-        .from('visit_daily_summary_v')
-        .select('date_key, visit_count')
-        .eq('store_id', storeId)
-        .eq('date_key', todayDateKey)
-        .maybeSingle(),
-      needsFollowupInsights
-        ? supabase
-            .from('followup_daily_summary_v')
-            .select(
-              'date_key, task_count, open_count, in_progress_count, snoozed_count, resolved_booked_count, resolved_no_need_count, resolved_lost_count, due_today_count, touched_count, renotified_count'
-            )
-            .eq('store_id', storeId)
-            .gte('date_key', followupWindowStartDateKey)
-            .lte('date_key', todayDateKey)
-        : Promise.resolve({ data: [] }),
-      needsReofferInsights
-        ? supabase
-            .from('reoffer_daily_summary_v')
-            .select(
-              'date_key, total_count, accepted_count, booked_count, phone_contact_count, connected_call_count'
-            )
-            .eq('store_id', storeId)
-            .gte('date_key', followupWindowStartDateKey)
-            .lte('date_key', todayDateKey)
-        : Promise.resolve({ data: [] }),
-    ])
-
-  const { data: medicalRecords } =
-    needsOperationsInsights && petIds.length > 0
-      ? await supabase
-          .from('medical_records')
-          .select('id, pet_id, record_date, menu, skin_condition, behavior_notes, caution_notes')
+  const appointmentDailySummary = isPlaywrightE2E
+    ? dashboardPageFixtures.appointmentDailySummary
+    : (
+        await supabase!
+          .from('appointment_daily_summary_v')
+          .select(
+            'date_key, appointment_count, completed_count, active_appointment_count, requested_count, expected_sales'
+          )
           .eq('store_id', storeId)
-          .in('pet_id', petIds)
-          .order('record_date', { ascending: false })
-      : { data: [] }
+          .eq('date_key', todayDateKey)
+          .maybeSingle()
+      ).data
+  const paymentDailySummary = isPlaywrightE2E
+    ? dashboardPageFixtures.paymentDailySummary
+    : (
+        await supabase!
+          .from('payment_daily_summary_v')
+          .select('date_key, payment_count, paid_count, confirmed_sales')
+          .eq('store_id', storeId)
+          .eq('date_key', todayDateKey)
+          .maybeSingle()
+      ).data
+  const visitDailySummary = isPlaywrightE2E
+    ? dashboardPageFixtures.visitDailySummary
+    : (
+        await supabase!
+          .from('visit_daily_summary_v')
+          .select('date_key, visit_count')
+          .eq('store_id', storeId)
+          .eq('date_key', todayDateKey)
+          .maybeSingle()
+      ).data
+  const followupDailySummaryRows = isPlaywrightE2E
+    ? dashboardPageFixtures.followupDailySummaryRows
+    : (
+        await supabase!
+          .from('followup_daily_summary_v')
+          .select(
+            'date_key, task_count, open_count, in_progress_count, snoozed_count, resolved_booked_count, resolved_no_need_count, resolved_lost_count, due_today_count, touched_count, renotified_count'
+          )
+          .eq('store_id', storeId)
+          .gte('date_key', followupWindowStartDateKey)
+          .lte('date_key', todayDateKey)
+      ).data
+  const reofferDailySummaryRows = isPlaywrightE2E
+    ? dashboardPageFixtures.reofferDailySummaryRows
+    : (
+        await supabase!
+          .from('reoffer_daily_summary_v')
+          .select(
+            'date_key, total_count, accepted_count, booked_count, phone_contact_count, connected_call_count'
+          )
+          .eq('store_id', storeId)
+          .gte('date_key', followupWindowStartDateKey)
+          .lte('date_key', todayDateKey)
+      ).data
 
-  const { data: todayVisits } = await supabase
-    .from('visits')
-    .select('id')
-    .eq('store_id', storeId)
-    .gte('visit_date', todayStart.toISOString())
-    .lt('visit_date', tomorrowStart.toISOString())
+  const medicalRecords = isPlaywrightE2E
+    ? dashboardPageFixtures.medicalRecords
+    : petIds.length > 0
+      ? (
+          await supabase!
+            .from('medical_records')
+            .select('id, pet_id, record_date, menu, skin_condition, behavior_notes, caution_notes')
+            .eq('store_id', storeId)
+            .in('pet_id', petIds)
+            .order('record_date', { ascending: false })
+        ).data
+      : []
 
-  const { data: allVisits } = needsFollowupDetails
-    ? await supabase
-        .from('visits')
-        .select('customer_id, visit_date')
-        .eq('store_id', storeId)
-        .order('visit_date', { ascending: false })
-    : { data: [] }
+  const todayVisits = isPlaywrightE2E
+    ? dashboardPageFixtures.todayVisits
+    : (
+        await supabase!
+          .from('visits')
+          .select('id')
+          .eq('store_id', storeId)
+          .gte('visit_date', todayStart.toISOString())
+          .lt('visit_date', tomorrowStart.toISOString())
+      ).data
 
-  const { data: customerRows } = needsFollowupDetails
-    ? await supabase
-        .from('customers')
-        .select('id, full_name, phone_number, line_id')
-        .eq('store_id', storeId)
-    : { data: [] }
+  const allVisits = isPlaywrightE2E
+    ? dashboardPageFixtures.allVisits
+    : (
+        await supabase!
+          .from('visits')
+          .select('customer_id, visit_date')
+          .eq('store_id', storeId)
+          .order('visit_date', { ascending: false })
+      ).data
 
-  const { data: predictiveCustomerFeatures } = needsFollowupInsights
-    ? await supabase
-        .from('predictive_customer_daily_features')
-        .select(
-          'customer_id, metric_date_jst, appointments_count, completed_count, canceled_count, no_show_count, latest_start_time'
-        )
-        .eq('store_id', storeId)
-        .gte('metric_date_jst', predictiveWindowStartDateKey)
-        .lte('metric_date_jst', todayDateKey)
-    : { data: [] }
+  const customerRows = isPlaywrightE2E
+    ? dashboardPageFixtures.customerRows
+    : (
+        await supabase!
+          .from('customers')
+          .select('id, full_name, phone_number, line_id')
+          .eq('store_id', storeId)
+      ).data
 
-  const { data: predictiveStoreFeatures } = needsFollowupDetails
-    ? await supabase
-        .from('predictive_store_daily_features')
-        .select('metric_date_jst, appointments_count, no_show_count')
-        .eq('store_id', storeId)
-        .gte('metric_date_jst', followupWindowStartDateKey)
-        .lte('metric_date_jst', todayDateKey)
-    : { data: [] }
+  const predictiveCustomerFeatures = isPlaywrightE2E
+    ? dashboardPageFixtures.predictiveCustomerFeatures
+    : (
+        await supabase!
+          .from('predictive_customer_daily_features')
+          .select(
+            'customer_id, metric_date_jst, appointments_count, completed_count, canceled_count, no_show_count, latest_start_time'
+          )
+          .eq('store_id', storeId)
+          .gte('metric_date_jst', predictiveWindowStartDateKey)
+          .lte('metric_date_jst', todayDateKey)
+      ).data
 
-  const { data: delayFeatureRows } = needsOperationsInsights
-    ? await supabase
-        .from('appointments')
-        .select('start_time, checked_in_at, status')
-        .eq('store_id', storeId)
-        .gte('start_time', predictiveWindowStartIso)
-        .lt('start_time', tomorrowStart.toISOString())
-        .neq('status', 'キャンセル')
-        .neq('status', '無断キャンセル')
-    : { data: [] }
+  const predictiveStoreFeatures = isPlaywrightE2E
+    ? dashboardPageFixtures.predictiveStoreFeatures
+    : (
+        await supabase!
+          .from('predictive_store_daily_features')
+          .select('metric_date_jst, appointments_count, no_show_count')
+          .eq('store_id', storeId)
+          .gte('metric_date_jst', followupWindowStartDateKey)
+          .lte('metric_date_jst', todayDateKey)
+      ).data
 
-  const { data: storeSettings } = needsReofferDetails
-    ? await supabase
-        .from('stores')
-        .select(
-          'public_reserve_conflict_warn_threshold_percent, public_reserve_staff_bias_warn_threshold_percent'
-        )
-        .eq('id', storeId)
-        .maybeSingle()
-    : { data: null }
+  const delayFeatureRows = isPlaywrightE2E
+    ? dashboardPageFixtures.delayFeatureRows
+    : (
+        await supabase!
+          .from('appointments')
+          .select('start_time, checked_in_at, status')
+          .eq('store_id', storeId)
+          .gte('start_time', predictiveWindowStartIso)
+          .lt('start_time', tomorrowStart.toISOString())
+          .neq('status', 'キャンセル')
+          .neq('status', '無断キャンセル')
+      ).data
 
-  const { data: followupTasks } = needsFollowupDetails
-    ? await supabase
-        .from('customer_followup_tasks')
-        .select(
-          'id, status, resolved_at, due_on, recommended_at, resolution_type, assigned_user_id, customers(full_name, phone_number, line_id)'
-        )
-        .eq('store_id', storeId)
-    : { data: [] }
+  const storeSettings = isPlaywrightE2E
+    ? dashboardPageFixtures.storeSettings
+    : (
+        await supabase!
+          .from('stores')
+          .select(
+            'public_reserve_conflict_warn_threshold_percent, public_reserve_staff_bias_warn_threshold_percent'
+          )
+          .eq('id', storeId)
+          .maybeSingle()
+      ).data
 
-  const { data: followupStaffs } =
-    needsFollowupDetails || needsReofferDetails
-      ? await supabase
+  const followupTasks = isPlaywrightE2E
+    ? dashboardPageFixtures.followupTasks
+    : (
+        await supabase!
+          .from('customer_followup_tasks')
+          .select(
+            'id, status, resolved_at, due_on, recommended_at, resolution_type, assigned_user_id, customers(full_name, phone_number, line_id)'
+          )
+          .eq('store_id', storeId)
+      ).data
+
+  const followupStaffs = isPlaywrightE2E
+    ? dashboardPageFixtures.followupStaffs
+    : (
+        await supabase!
           .from('staffs')
           .select('id, user_id, full_name')
           .eq('store_id', storeId)
-      : { data: [] }
+      ).data
 
-  const { data: reofferRows } = needsReofferDetails
-    ? await supabase
-        .from('slot_reoffers')
-        .select('id, status, sent_at, accepted_at, target_staff_id')
-        .eq('store_id', storeId)
-    : { data: [] }
+  const reofferRows = isPlaywrightE2E
+    ? dashboardPageFixtures.reofferRows
+    : (
+        await supabase!
+          .from('slot_reoffers')
+          .select('id, status, sent_at, accepted_at, target_staff_id')
+          .eq('store_id', storeId)
+      ).data
 
-  const { data: reofferLogs } = needsReofferDetails
-    ? await supabase
-        .from('slot_reoffer_logs')
-        .select('slot_reoffer_id, event_type, payload, created_at')
-        .eq('store_id', storeId)
-    : { data: [] }
+  const reofferLogs = isPlaywrightE2E
+    ? dashboardPageFixtures.reofferLogs
+    : (
+        await supabase!
+          .from('slot_reoffer_logs')
+          .select('slot_reoffer_id, event_type, payload, created_at')
+          .eq('store_id', storeId)
+      ).data
 
-  const { data: serviceMenusForInstant } = needsReofferDetails
-    ? await supabase
-        .from('service_menus')
-        .select('id, name, is_active, is_instant_bookable')
-        .eq('store_id', storeId)
-        .eq('is_active', true)
-        .order('display_order', { ascending: true })
-        .order('created_at', { ascending: false })
-    : { data: [] }
+  const serviceMenusForInstant = isPlaywrightE2E
+    ? dashboardPageFixtures.serviceMenusForInstant
+    : (
+        await supabase!
+          .from('service_menus')
+          .select('id, name, is_active, is_instant_bookable')
+          .eq('store_id', storeId)
+          .eq('is_active', true)
+          .order('display_order', { ascending: true })
+          .order('created_at', { ascending: false })
+      ).data
 
-  const { data: todayPayments } = await supabase
-    .from('payments')
-    .select('id, appointment_id, total_amount, paid_at')
-    .eq('store_id', storeId)
-    .gte('paid_at', todayStart.toISOString())
-    .lt('paid_at', tomorrowStart.toISOString())
-
-  const { data: todayAppointmentPayments } =
-    todayAppointmentIds.length > 0
-      ? await supabase
+  const todayPayments = isPlaywrightE2E
+    ? dashboardPageFixtures.todayPayments
+    : (
+        await supabase!
           .from('payments')
           .select('id, appointment_id, total_amount, paid_at')
           .eq('store_id', storeId)
-          .in('appointment_id', todayAppointmentIds)
-      : { data: [] }
+          .gte('paid_at', todayStart.toISOString())
+          .lt('paid_at', tomorrowStart.toISOString())
+      ).data
 
-  const { data: todayAppointmentMenus } =
-    todayAppointmentIds.length > 0
-      ? await supabase
-          .from('appointment_menus')
-          .select('appointment_id, price, tax_rate, tax_included')
+  const todayAppointmentPayments = isPlaywrightE2E
+    ? dashboardPageFixtures.todayAppointmentPayments
+    : todayAppointmentIds.length > 0
+      ? (
+          await supabase!
+            .from('payments')
+            .select('id, appointment_id, total_amount, paid_at')
+            .eq('store_id', storeId)
+            .in('appointment_id', todayAppointmentIds)
+        ).data
+      : []
+
+  const todayAppointmentMenus = isPlaywrightE2E
+    ? dashboardPageFixtures.todayAppointmentMenus
+    : todayAppointmentIds.length > 0
+      ? (
+          await supabase!
+            .from('appointment_menus')
+            .select('appointment_id, price, tax_rate, tax_included')
+            .eq('store_id', storeId)
+            .in('appointment_id', todayAppointmentIds)
+        ).data
+      : []
+
+  const publicReservationSubmittedTodayCount = isPlaywrightE2E
+    ? dashboardPageFixtures.publicReservationSubmittedTodayCount
+    : (
+        await supabase!
+          .from('audit_logs')
+          .select('id', { count: 'exact', head: true })
           .eq('store_id', storeId)
-          .in('appointment_id', todayAppointmentIds)
-      : { data: [] }
-
-  const [
-    { count: publicReservationSubmittedTodayCount },
-    { count: publicReservationInstantConfirmedTodayCount },
-    { count: publicReservationConflictRejectedTodayCount },
-    { data: publicReservationInstantConfirmedRows },
-    { count: publicReservationSubmittedWindowCount },
-    { count: publicReservationInstantConfirmedWindowCount },
-    { count: publicReservationConflictRejectedWindowCount },
-    { data: publicReservationInstantConfirmedWindowRows },
-  ] = await Promise.all(needsReofferDetails ? [
-    supabase
-      .from('audit_logs')
-      .select('id', { count: 'exact', head: true })
-      .eq('store_id', storeId)
-      .eq('action', 'public_reservation_submitted')
-      .gte('created_at', todayStart.toISOString())
-      .lt('created_at', tomorrowStart.toISOString()),
-    supabase
-      .from('audit_logs')
-      .select('id', { count: 'exact', head: true })
-      .eq('store_id', storeId)
-      .eq('action', 'public_reservation_submitted')
-      .contains('payload', { flow: 'instant_confirmed' })
-      .gte('created_at', todayStart.toISOString())
-      .lt('created_at', tomorrowStart.toISOString()),
-    supabase
-      .from('audit_logs')
-      .select('id', { count: 'exact', head: true })
-      .eq('store_id', storeId)
-      .eq('action', 'public_reservation_conflict_rejected')
-      .gte('created_at', todayStart.toISOString())
-      .lt('created_at', tomorrowStart.toISOString()),
-    supabase
-      .from('audit_logs')
-      .select('payload')
-      .eq('store_id', storeId)
-      .eq('action', 'public_reservation_submitted')
-      .contains('payload', { flow: 'instant_confirmed' })
-      .gte('created_at', todayStart.toISOString())
-      .lt('created_at', tomorrowStart.toISOString()),
-    supabase
-      .from('audit_logs')
-      .select('id', { count: 'exact', head: true })
-      .eq('store_id', storeId)
-      .eq('action', 'public_reservation_submitted')
-      .gte('created_at', followupWindowStartIso)
-      .lt('created_at', tomorrowStart.toISOString()),
-    supabase
-      .from('audit_logs')
-      .select('id', { count: 'exact', head: true })
-      .eq('store_id', storeId)
-      .eq('action', 'public_reservation_submitted')
-      .contains('payload', { flow: 'instant_confirmed' })
-      .gte('created_at', followupWindowStartIso)
-      .lt('created_at', tomorrowStart.toISOString()),
-    supabase
-      .from('audit_logs')
-      .select('id', { count: 'exact', head: true })
-      .eq('store_id', storeId)
-      .eq('action', 'public_reservation_conflict_rejected')
-      .gte('created_at', followupWindowStartIso)
-      .lt('created_at', tomorrowStart.toISOString()),
-    supabase
-      .from('audit_logs')
-      .select('payload')
-      .eq('store_id', storeId)
-      .eq('action', 'public_reservation_submitted')
-      .contains('payload', { flow: 'instant_confirmed' })
-      .gte('created_at', followupWindowStartIso)
-      .lt('created_at', tomorrowStart.toISOString()),
-  ] : [
-    Promise.resolve({ count: 0 }),
-    Promise.resolve({ count: 0 }),
-    Promise.resolve({ count: 0 }),
-    Promise.resolve({ data: [] }),
-    Promise.resolve({ count: 0 }),
-    Promise.resolve({ count: 0 }),
-    Promise.resolve({ count: 0 }),
-    Promise.resolve({ data: [] }),
-  ])
+          .eq('action', 'public_reservation_submitted')
+          .gte('created_at', todayStart.toISOString())
+          .lt('created_at', tomorrowStart.toISOString())
+      ).count
+  const publicReservationInstantConfirmedTodayCount = isPlaywrightE2E
+    ? dashboardPageFixtures.publicReservationInstantConfirmedTodayCount
+    : (
+        await supabase!
+          .from('audit_logs')
+          .select('id', { count: 'exact', head: true })
+          .eq('store_id', storeId)
+          .eq('action', 'public_reservation_submitted')
+          .contains('payload', { flow: 'instant_confirmed' })
+          .gte('created_at', todayStart.toISOString())
+          .lt('created_at', tomorrowStart.toISOString())
+      ).count
+  const publicReservationConflictRejectedTodayCount = isPlaywrightE2E
+    ? dashboardPageFixtures.publicReservationConflictRejectedTodayCount
+    : (
+        await supabase!
+          .from('audit_logs')
+          .select('id', { count: 'exact', head: true })
+          .eq('store_id', storeId)
+          .eq('action', 'public_reservation_conflict_rejected')
+          .gte('created_at', todayStart.toISOString())
+          .lt('created_at', tomorrowStart.toISOString())
+      ).count
+  const publicReservationInstantConfirmedRows = isPlaywrightE2E
+    ? dashboardPageFixtures.publicReservationInstantConfirmedRows
+    : (
+        await supabase!
+          .from('audit_logs')
+          .select('payload')
+          .eq('store_id', storeId)
+          .eq('action', 'public_reservation_submitted')
+          .contains('payload', { flow: 'instant_confirmed' })
+          .gte('created_at', todayStart.toISOString())
+          .lt('created_at', tomorrowStart.toISOString())
+      ).data
+  const publicReservationSubmittedWindowCount = isPlaywrightE2E
+    ? dashboardPageFixtures.publicReservationSubmittedWindowCount
+    : (
+        await supabase!
+          .from('audit_logs')
+          .select('id', { count: 'exact', head: true })
+          .eq('store_id', storeId)
+          .eq('action', 'public_reservation_submitted')
+          .gte('created_at', followupWindowStartIso)
+          .lt('created_at', tomorrowStart.toISOString())
+      ).count
+  const publicReservationInstantConfirmedWindowCount = isPlaywrightE2E
+    ? dashboardPageFixtures.publicReservationInstantConfirmedWindowCount
+    : (
+        await supabase!
+          .from('audit_logs')
+          .select('id', { count: 'exact', head: true })
+          .eq('store_id', storeId)
+          .eq('action', 'public_reservation_submitted')
+          .contains('payload', { flow: 'instant_confirmed' })
+          .gte('created_at', followupWindowStartIso)
+          .lt('created_at', tomorrowStart.toISOString())
+      ).count
+  const publicReservationConflictRejectedWindowCount = isPlaywrightE2E
+    ? dashboardPageFixtures.publicReservationConflictRejectedWindowCount
+    : (
+        await supabase!
+          .from('audit_logs')
+          .select('id', { count: 'exact', head: true })
+          .eq('store_id', storeId)
+          .eq('action', 'public_reservation_conflict_rejected')
+          .gte('created_at', followupWindowStartIso)
+          .lt('created_at', tomorrowStart.toISOString())
+      ).count
+  const publicReservationInstantConfirmedWindowRows = isPlaywrightE2E
+    ? dashboardPageFixtures.publicReservationInstantConfirmedWindowRows
+    : (
+        await supabase!
+          .from('audit_logs')
+          .select('payload')
+          .eq('store_id', storeId)
+          .eq('action', 'public_reservation_submitted')
+          .contains('payload', { flow: 'instant_confirmed' })
+          .gte('created_at', followupWindowStartIso)
+          .lt('created_at', tomorrowStart.toISOString())
+      ).data
   const publicSubmittedToday = publicReservationSubmittedTodayCount ?? 0
   const publicInstantConfirmedToday = publicReservationInstantConfirmedTodayCount ?? 0
   const publicConflictRejectedToday = publicReservationConflictRejectedTodayCount ?? 0

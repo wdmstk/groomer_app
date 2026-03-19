@@ -49,25 +49,29 @@ export type DevManualSectionInsight = {
 }
 
 export const devManualMeta = {
-  updatedAt: '2026-03-12',
+  updatedAt: '2026-03-16',
   targetVersion: 'groomer_app 0.1.0 / Next.js 16.1.6',
 }
 
 export const devManualGlossary: DevGlossaryTerm[] = [
   { term: 'developer admin', meaning: 'サポート管理者。/dev 配下の管理機能へアクセスできる最上位権限です。' },
   { term: 'store_subscriptions', meaning: '店舗ごとの契約・課金状態を保持するテーブルです。' },
-  { term: 'billing_status', meaning: '課金状態。active は利用可、past_due は猶予判定対象です。' },
+  { term: 'billing_status', meaning: '課金状態です。画面では未契約、無料期間、契約中、支払い遅延、一時停止、解約済みなどの日本語表示で確認します。' },
+  { term: 'billing_cycle', meaning: '請求周期です。monthly / yearly / custom を使い分けます。' },
   { term: 'trial_days / trial_started_at', meaning: '試用日数と開始日。trial_started_at + trial_days で試用期限を判定します。' },
   { term: 'grace_days / past_due_since', meaning: '支払い遅延時の猶予日数と遅延開始日時。past_due_since + grace_days で利用可否を判定します。' },
   { term: 'preferred_provider', meaning: '優先決済手段。stripe / komoju / 未選択を保持します。' },
+  { term: 'hotel_option_enabled / notification_option_enabled', meaning: 'ホテル機能と通知強化機能の契約オプション有効化フラグです。' },
   { term: 'Webhook', meaning: '決済サービスから課金状態変更を受け取る自動通知です。' },
   { term: 'idempotency_key', meaning: '同一操作の二重実行を防ぐ識別キーです。' },
   { term: 'Cron', meaning: '定期実行ジョブ。課金同期や通知などのバックグラウンド処理を行います。' },
   { term: 'job_runs', meaning: 'Cron 実行履歴。status、trigger、error、meta を監査します。' },
+  { term: 'job status', meaning: 'Cron 実行状態です。画面では失敗、実行中、成功として表示され、失敗を最優先で確認します。' },
   { term: 'job_locks', meaning: 'Cron 多重実行防止ロック。期限切れ lock は手動解放対象です。' },
   { term: 'manual_rerun', meaning: '失敗した実行履歴を起点にした再実行トリガーです。' },
   { term: 'manual_direct', meaning: '失敗履歴に依存しない手動起動トリガーです。' },
   { term: 'support tickets', meaning: '店舗と開発側の問い合わせ管理。ステータス更新とコメント返信を行います。' },
+  { term: 'ticket status', meaning: '問い合わせの進行状態です。新規受付、対応中、追加情報待ち、解決済みなどの進み具合を表します。' },
   { term: 'RLS', meaning: 'Row Level Security。データアクセスを行単位で制御する仕組みです。' },
 ]
 
@@ -121,10 +125,10 @@ export const devManualSections: DevManualSection[] = [
     id: 'dev-billing-alerts',
     title: '課金アラート監視',
     path: '/dev/billing-alerts',
-    purpose: 'trialing / past_due / canceled と Webhook失敗を優先監視します。',
+    purpose: '無料期間の期限接近、支払い遅延、解約済みと Webhook失敗を優先監視します。',
     procedures: [
-      'アラート表で status、試用残日数、past_due_since を確認します。',
-      'trialing は残日数 7日以下を優先して対応します。',
+      'アラート表で課金状態、試用残日数、支払い遅延開始日を確認します。',
+      '無料期間は残日数 7日以下を優先して対応します。',
       'Webhook失敗行がある場合は再処理パネルで再実行します。',
     ],
     cautions: [
@@ -136,11 +140,11 @@ export const devManualSections: DevManualSection[] = [
     id: 'dev-webhook-retry',
     title: 'Webhook失敗イベント再処理',
     path: '/dev/billing-alerts（再処理パネル）',
-    purpose: 'failed の billing_webhook_events を個別再処理します。',
+    purpose: '失敗状態の billing_webhook_events を個別再処理します。',
     procedures: [
       '失敗イベント表で provider / event_type / webhook_event_id / error を確認します。',
       '対象行の「再処理」を実行します。',
-      '更新後に表を再確認し、failed が解消されたか確認します。',
+      '更新後に表を再確認し、失敗表示が解消されたか確認します。',
     ],
     cautions: [
       '再処理は1件ずつ実行し、同時多重クリックを避けてください。',
@@ -166,9 +170,9 @@ export const devManualSections: DevManualSection[] = [
     id: 'dev-cron-rerun',
     title: 'Cron再実行と直接実行',
     path: '/dev/cron（再実行エリア）',
-    purpose: 'failed 実行の再実行と manual_direct 実行を安全に行います。',
+    purpose: '失敗した実行の再実行と manual_direct 実行を安全に行います。',
     procedures: [
-      'failed 行で「再実行」を開き、理由を記入して実行します。',
+      '失敗行で「再実行」を開き、理由を記入して実行します。',
       'または手動実行カードでジョブと理由を指定し直接実行します。',
       'jobRunId を控え、選択ジョブ詳細で status と meta を追跡します。',
     ],
@@ -215,7 +219,7 @@ export const devManualSections: DevManualSection[] = [
     procedures: [
       '判定対象店舗の選定順（active_store_id → owner → admin → 先頭）を確認します。',
       'billing_status が active の場合は常に許可されることを確認します。',
-      'past_due は past_due_since + grace_days、その他は trial_started_at + trial_days で判定します。',
+      '支払い遅延中は遅延開始日から猶予日数を加味して判定し、それ以外は試用開始日と試用日数で判定します。',
     ],
     cautions: [
       '判定除外パス（/billing-required /billing /logout /dev）を把握してください。',
@@ -272,13 +276,13 @@ const devSectionGuides: Record<string, DevManualSectionGuide> = {
   'dev-billing-alerts': {
     flow: ['利用タイミング: 日次点検、月末課金期間、障害発生時。', '前提: billing_status 取得が正常。', '次に行う操作: 必要なら再処理/契約修正。'],
     itemDetails: [
-      { item: '重要行抽出', detail: 'trialing は残日数7日以下のみ表示されます。' },
-      { item: 'ステータス列', detail: 'trialing / past_due / canceled を重点監視します。' },
-      { item: 'Webhook失敗パネル', detail: 'failed イベントがある場合に再処理UIを表示します。' },
+      { item: '重要行抽出', detail: '無料期間は残日数7日以下のみ表示されます。' },
+      { item: 'ステータス列', detail: '無料期間の期限接近、支払い遅延、解約済みを重点監視します。' },
+      { item: 'Webhook失敗パネル', detail: '失敗イベントがある場合に再処理UIを表示します。' },
     ],
   },
   'dev-webhook-retry': {
-    flow: ['利用タイミング: Webhook failed 検出時。', '前提: billing_webhook_events に failed レコードあり。', '次に行う操作: 再処理後の課金状態確認。'],
+    flow: ['利用タイミング: Webhook失敗検出時。', '前提: billing_webhook_events に失敗レコードあり。', '次に行う操作: 再処理後の課金状態確認。'],
     itemDetails: [
       { item: '再処理API', detail: 'POST /api/admin/billing/webhook-events/retry を呼び出します。' },
       { item: '処理中状態', detail: '対象行ボタンは実行中表示になり多重送信を抑止します。' },
@@ -288,15 +292,15 @@ const devSectionGuides: Record<string, DevManualSectionGuide> = {
   'dev-cron-overview': {
     flow: ['利用タイミング: Cron失敗調査時。', '前提: /api/admin/cron/job-runs が利用可能。', '次に行う操作: 必要に応じ再実行/lock確認。'],
     itemDetails: [
-      { item: 'ステータスタブ', detail: 'failed / running / succeeded を即時切替します。' },
+      { item: 'ステータスタブ', detail: '失敗 / 実行中 / 成功 を即時切替します。' },
       { item: '検索条件', detail: 'job, trigger, requestedByUserId, 開始日 From/To を指定できます。' },
       { item: '選択ジョブ詳細', detail: 'status、trigger、lastError、meta、sourceJobRunId を確認できます。' },
     ],
   },
   'dev-cron-rerun': {
-    flow: ['利用タイミング: failed 復旧、または定期ジョブの緊急手動起動時。', '前提: 対象ジョブ名と実行理由が明確。', '次に行う操作: jobRunId を追跡して完了確認。'],
+    flow: ['利用タイミング: 失敗ジョブの復旧、または定期ジョブの緊急手動起動時。', '前提: 対象ジョブ名と実行理由が明確。', '次に行う操作: jobRunId を追跡して完了確認。'],
     itemDetails: [
-      { item: 'failed再実行', detail: 'sourceJobRunId を付与して rerun を起票します。' },
+      { item: '失敗ジョブの再実行', detail: '直前の失敗履歴を引き継いで再実行を起票します。' },
       { item: 'manual_direct', detail: '失敗履歴なしで直接ジョブ起動します。' },
       { item: '実行理由', detail: '監査性のため reason を必ず入力します。' },
     ],
@@ -312,7 +316,7 @@ const devSectionGuides: Record<string, DevManualSectionGuide> = {
   'dev-support-tickets': {
     flow: ['利用タイミング: 店舗問い合わせ対応時。', '前提: 対象店舗スレッド取得済み。', '次に行う操作: status更新かコメント返信。'],
     itemDetails: [
-      { item: '店舗切替', detail: 'threads API から店舗と open件数を取得して切替えます。' },
+      { item: '店舗切替', detail: 'threads API から店舗と未対応件数を取得して切替えます。' },
       { item: 'チケット更新', detail: 'PATCH /api/dev/support-tickets で status/comment を更新します。' },
       { item: '履歴表示', detail: 'イベント種別、投稿者スコープ、コメントを時系列表示します。' },
     ],
@@ -320,8 +324,8 @@ const devSectionGuides: Record<string, DevManualSectionGuide> = {
   'billing-block-logic': {
     flow: ['利用タイミング: /billing-required 遷移調査時。', '前提: 対象店舗の subscription 情報が取得可能。', '次に行う操作: 契約情報修正または決済誘導。'],
     itemDetails: [
-      { item: '許可条件', detail: 'billing_status=active は常時許可です。' },
-      { item: 'past_due条件', detail: 'past_due_since + grace_days 超過でブロックします。' },
+      { item: '許可条件', detail: '課金状態が契約中なら常時許可です。' },
+      { item: '支払い遅延条件', detail: '支払い遅延開始日から猶予日数を超えるとブロックします。' },
       { item: '試用条件', detail: 'trial_started_at + trial_days 超過でブロックします。' },
       { item: '除外パス', detail: '/billing-required /billing /logout /dev はブロック対象外です。' },
     ],
@@ -401,8 +405,8 @@ export const devSectionInsights: Record<string, DevManualSectionInsight> = {
         cards: [
           {
             card: '店舗セレクト',
-            focus: 'open件数、店舗名。',
-            usage: 'open件数が多い店舗を優先して確認。',
+            focus: '未対応件数、店舗名。',
+            usage: '未対応件数が多い店舗を優先して確認。',
             decision: '緊急がある店舗: 先に対応。',
           },
         ],
@@ -416,7 +420,7 @@ export const devSectionInsights: Record<string, DevManualSectionInsight> = {
             card: 'チケットカード',
             focus: 'priority、status、履歴、返信欄。',
             usage: '履歴確認後に status 更新、必要なら返信投稿。',
-            decision: '追加情報不足: waiting_user へ変更。',
+            decision: '追加情報不足: 追加情報待ちの状態へ更新。',
           },
         ],
       },

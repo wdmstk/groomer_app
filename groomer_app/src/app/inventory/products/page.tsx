@@ -1,15 +1,14 @@
 import Link from 'next/link'
-import nextDynamic from 'next/dynamic'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { FormModal } from '@/components/ui/FormModal'
+import { inventoryPageFixtures } from '@/lib/e2e/inventory-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
-
-const InventoryItemModal = nextDynamic(
-  () => import('@/components/inventory/InventoryItemModal').then((mod) => mod.InventoryItemModal)
-)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type Item = {
   id: string
@@ -43,26 +42,36 @@ export default async function InventoryProductsPage({ searchParams }: ProductsPa
     resolvedSearchParams?.modal === 'create' || resolvedSearchParams?.tab === 'new'
   const editId = resolvedSearchParams?.edit
   const modalCloseRedirect = `/inventory/products?tab=${activeTab}`
-  const { supabase, storeId } = await createStoreScopedClient()
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: inventoryPageFixtures.storeId }
+    : await createStoreScopedClient()
 
-  const { data: items } = await supabase
-    .from('inventory_items')
-    .select(
-      'id, name, category, unit, supplier_name, jan_code, optimal_stock, reorder_point, lead_time_days, preferred_supplier_name, minimum_order_quantity, order_lot_size, is_active, notes'
-    )
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const items = isPlaywrightE2E
+    ? inventoryPageFixtures.productItems
+    : (
+        await supabase!
+          .from('inventory_items')
+          .select(
+            'id, name, category, unit, supplier_name, jan_code, optimal_stock, reorder_point, lead_time_days, preferred_supplier_name, minimum_order_quantity, order_lot_size, is_active, notes'
+          )
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      ).data
 
-  const { data: editItem } = editId
-    ? await supabase
-        .from('inventory_items')
-        .select(
-          'id, name, category, unit, supplier_name, jan_code, optimal_stock, reorder_point, lead_time_days, preferred_supplier_name, minimum_order_quantity, order_lot_size, is_active, notes'
-        )
-        .eq('id', editId)
-        .eq('store_id', storeId)
-        .single()
-    : { data: null }
+  const editItem = isPlaywrightE2E
+    ? inventoryPageFixtures.productItems.find((item) => item.id === editId) ?? null
+    : editId
+      ? (
+          await supabase!
+            .from('inventory_items')
+            .select(
+              'id, name, category, unit, supplier_name, jan_code, optimal_stock, reorder_point, lead_time_days, preferred_supplier_name, minimum_order_quantity, order_lot_size, is_active, notes'
+            )
+            .eq('id', editId)
+            .eq('store_id', storeId)
+            .single()
+        ).data
+      : null
 
   const itemList = (items ?? []) as Item[]
   const currentEdit = (editItem as Item | null) ?? null
@@ -146,7 +155,120 @@ export default async function InventoryProductsPage({ searchParams }: ProductsPa
       </Card>
 
       {isCreateModalOpen || currentEdit ? (
-        <InventoryItemModal currentEdit={currentEdit} modalCloseRedirect={modalCloseRedirect} />
+        <FormModal
+          title={currentEdit ? '商品情報の更新' : '新規商品登録'}
+          closeRedirectTo={modalCloseRedirect}
+          description="商品情報はモーダルで入力します。"
+          reopenLabel="商品モーダルを開く"
+        >
+          <form
+            action={currentEdit ? `/api/inventory/items/${currentEdit.id}` : '/api/inventory/items'}
+            method="post"
+            className="space-y-4"
+          >
+            {currentEdit && <input type="hidden" name="_method" value="put" />}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="space-y-2 text-sm text-gray-700">
+                商品名
+                <Input name="name" required defaultValue={currentEdit?.name ?? ''} />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                カテゴリ
+                <Input name="category" defaultValue={currentEdit?.category ?? ''} />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                単位
+                <Input name="unit" defaultValue={currentEdit?.unit ?? '個'} />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                仕入先
+                <Input name="supplier_name" defaultValue={currentEdit?.supplier_name ?? ''} />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                推奨仕入先
+                <Input
+                  name="preferred_supplier_name"
+                  defaultValue={currentEdit?.preferred_supplier_name ?? ''}
+                />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                JANコード
+                <Input name="jan_code" defaultValue={currentEdit?.jan_code ?? ''} />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                適正在庫
+                <Input
+                  type="number"
+                  step="0.01"
+                  name="optimal_stock"
+                  defaultValue={String(currentEdit?.optimal_stock ?? 0)}
+                />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                発注点
+                <Input
+                  type="number"
+                  step="0.01"
+                  name="reorder_point"
+                  defaultValue={String(currentEdit?.reorder_point ?? 0)}
+                />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                リードタイム日数
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  name="lead_time_days"
+                  defaultValue={String(currentEdit?.lead_time_days ?? 0)}
+                />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                最小発注数
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  name="minimum_order_quantity"
+                  defaultValue={String(currentEdit?.minimum_order_quantity ?? 0)}
+                />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                発注ロット
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  name="order_lot_size"
+                  defaultValue={String(currentEdit?.order_lot_size ?? 0)}
+                />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                有効/無効
+                <select
+                  name="is_active"
+                  defaultValue={currentEdit?.is_active ?? true ? 'true' : 'false'}
+                  className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value="true">有効</option>
+                  <option value="false">無効</option>
+                </select>
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                備考
+                <Input name="notes" defaultValue={currentEdit?.notes ?? ''} />
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="submit">{currentEdit ? '更新する' : '登録する'}</Button>
+              {currentEdit && (
+                <Link href={modalCloseRedirect} className="text-sm text-gray-500">
+                  編集をやめる
+                </Link>
+              )}
+            </div>
+          </form>
+        </FormModal>
       ) : null}
     </section>
   )

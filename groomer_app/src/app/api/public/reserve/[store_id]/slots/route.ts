@@ -46,6 +46,19 @@ type SlotWithStaff = {
   staff_id: string
 }
 
+function isDateKey(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value)
+}
+
+function getDateKeyJst(iso: string) {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(iso))
+}
+
 export async function GET(request: Request, { params }: RouteParams) {
   const { store_id: storeId } = await params
   const requestUrl = new URL(request.url)
@@ -53,8 +66,12 @@ export async function GET(request: Request, { params }: RouteParams) {
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean)
+  const targetDate = (requestUrl.searchParams.get('target_date') ?? '').trim()
   if (menuIds.length === 0) {
     return NextResponse.json({ slots: [], message: 'メニューを選択してください。' })
+  }
+  if (targetDate && !isDateKey(targetDate)) {
+    return NextResponse.json({ slots: [], message: '候補日の形式が不正です。' }, { status: 400 })
   }
 
   try {
@@ -162,15 +179,19 @@ export async function GET(request: Request, { params }: RouteParams) {
     })
 
     const slotByStart = new Map<string, SlotWithStaff>()
+    const slotConfigForBuild = targetDate ? { ...config, maxSlots: 1000 } : config
     for (const staffId of staffIds) {
       const staffSlots = buildSlotCandidates({
         now,
         occupiedAppointments: occupiedByStaffId.get(staffId) ?? [],
         serviceDurationMinutes: totalDurationMinutes,
-        config,
+        config: slotConfigForBuild,
         blockedDateKeysJst,
       })
-      for (const slot of staffSlots) {
+      const filteredStaffSlots = targetDate
+        ? staffSlots.filter((slot) => getDateKeyJst(slot.start_time) === targetDate)
+        : staffSlots
+      for (const slot of filteredStaffSlots) {
         const nextSlot = {
           ...slot,
           staff_id: staffId,
@@ -208,7 +229,9 @@ export async function GET(request: Request, { params }: RouteParams) {
       message:
         slots.length > 0
           ? '表示枠は即時確定候補です。最終確定時に再検証されます。'
-          : '表示可能な空き枠がありません。希望日時で申請してください。',
+          : targetDate
+            ? '選択日の空き枠がありません。候補日を変更してください。'
+            : '表示可能な空き枠がありません。希望日時で申請してください。',
     })
   } catch (error) {
     if (error instanceof PublicReservationServiceError) {

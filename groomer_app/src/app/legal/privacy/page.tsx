@@ -2,15 +2,15 @@ import { LEGAL_NOTICE } from '@/app/legal/legal-notice'
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="space-y-5 text-sm leading-7 text-slate-700 sm:text-base">
-      <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">プライバシーポリシー</h1>
+    <div className="space-y-6 text-base leading-8 text-gray-900">
+      <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">プライバシーポリシー</h1>
       <p>
         {LEGAL_NOTICE.operatorName}（以下「当運営者」といいます。）は、{LEGAL_NOTICE.serviceName}
         （以下「本サービス」といいます。）における利用者情報の取扱いについて、以下のとおりプライバシーポリシーを定めます。
       </p>
 
       <section>
-        <h2 className="text-lg font-semibold text-slate-900">1. 取得する情報</h2>
+        <h2 className="text-lg font-semibold text-gray-900">1. 取得する情報</h2>
         <ul className="list-disc pl-6">
           <li>アカウント情報（メールアドレス等）</li>
           <li>店舗運用情報（予約、顧客、ペット、会計、カルテ等の入力データ）</li>
@@ -20,7 +20,7 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-slate-900">2. 利用目的</h2>
+        <h2 className="text-lg font-semibold text-gray-900">2. 利用目的</h2>
         <ul className="list-disc pl-6">
           <li>本サービスの提供、保守、改善のため</li>
           <li>本人確認、認証、不正利用防止のため</li>
@@ -31,40 +31,68 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-slate-900">3. 第三者提供</h2>
+        <h2 className="text-lg font-semibold text-gray-900">4. 第三者提供</h2>
         <p>
-          当運営者は、法令に基づく場合を除き、本人の同意なく個人情報を第三者へ提供しません。ただし、決済、クラウド運用、通知配信等の業務委託に伴い、必要な範囲で委託先へ情報を提供することがあります。
+          当運営者は、法令に基づく場合を除き、本人の同意なく個人情報を第三者へ提供しません。ただし、決済代行、クラウド提供、通知配信等の業務委託に伴い、必要な範囲で委託先へ提供する場合があります。
+        </p>
+        <p>主な委託先（2026年3月17日 時点）:</p>
+        <ul className="list-disc pl-6">
+          <li>Supabase（認証・データベース・ストレージ）</li>
+          <li>Stripe（決済）</li>
+          <li>KOMOJU（決済）</li>
+          <li>Resend（メール配信）</li>
+          <li>LINE Messaging API（通知配信）</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900">5. 委託先の管理</h2>
+        <p>個人情報の取扱いを外部委託する場合、委託先を適切に選定し、契約等により必要かつ適切な監督を行います。</p>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900">6. 外国にある第三者への提供</h2>
+        <p>
+          クラウド利用等により、外国にある事業者へ個人情報の取扱いを委託・提供する場合があります。その場合、個人情報保護法に基づき必要な情報提供・措置を実施します。
+        </p>
+        <p>対象国・提供先: 日本、米国、その他委託先が定める提供地域（詳細は個別のサービス仕様・契約条件に従います）</p>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900">7. Cookie等の利用</h2>
+        <p>当サービスは Cookie 等を使用します。</p>
+        <ul className="list-disc pl-6">
+          <li>ログイン状態の維持</li>
+          <li>利便性向上</li>
+          <li>アクセス解析（Google Analytics等を導入した場合）</li>
+        </ul>
+        <p>Cookieの無効化はブラウザ設定で可能ですが、一部機能が利用できない場合があります。</p>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900">8. 安全管理措置</h2>
+        <p>漏えい、滅失または毀損の防止その他安全管理のため、組織的・人的・物理的・技術的措置を講じます。</p>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900">9. 開示等の請求</h2>
+        <p>本人は、法令に基づき、保有個人データの利用目的通知、開示、訂正、追加、削除、利用停止、消去、第三者提供停止を請求できます。</p>
+        <p>請求窓口: {LEGAL_NOTICE.contactEmail}（補助窓口: ログイン後サポートチケット）</p>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900">10. 保存期間</h2>
+        <p>
+          個人情報は、利用目的達成に必要な期間または法令で定める期間保存し、不要となった場合は適切に削除します。アカウント情報・取引情報・ログ情報は、法令遵守、問い合わせ対応、不正利用対策に必要な範囲で保管します。
         </p>
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-slate-900">4. 安全管理</h2>
-        <p>当運営者は、不正アクセス、漏えい、改ざん、滅失を防止するため、アクセス制御、暗号化、監視、バックアップ等の合理的な安全管理措置を講じます。</p>
+        <h2 className="text-lg font-semibold text-gray-900">11. 改定</h2>
+        <p>本ポリシーは、法令改正やサービス内容の変更に応じて改定する場合があります。改定後はWebサイト上で公表し、効力発生日を明示します。</p>
       </section>
 
-      <section>
-        <h2 className="text-lg font-semibold text-slate-900">5. 保有期間</h2>
-        <p>利用者情報は、利用目的の達成に必要な期間または法令で定められた期間保有し、不要となった情報は適切な方法で削除または匿名化します。</p>
-      </section>
-
-      <section>
-        <h2 className="text-lg font-semibold text-slate-900">6. 開示等の請求</h2>
-        <p>利用者は、法令に基づき、自己情報の開示、訂正、利用停止等を請求できます。請求は下記窓口までご連絡ください。</p>
-      </section>
-
-      <section>
-        <h2 className="text-lg font-semibold text-slate-900">7. 改定</h2>
-        <p>本ポリシーは、法令改正やサービス変更に応じて改定することがあります。重要な変更は本サービス上で告知します。</p>
-      </section>
-
-      <section>
-        <h2 className="text-lg font-semibold text-slate-900">8. お問い合わせ窓口</h2>
-        <p>事業者名: {LEGAL_NOTICE.operatorName}</p>
-        <p>メールアドレス: {LEGAL_NOTICE.contactEmail}</p>
-      </section>
-
-      <p className="text-xs text-slate-500">最終更新日: {LEGAL_NOTICE.lastUpdated}</p>
+      <p className="text-sm text-gray-700">最終更新日: {LEGAL_NOTICE.lastUpdated}</p>
     </div>
   )
 }
-

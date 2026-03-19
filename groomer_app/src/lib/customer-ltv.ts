@@ -4,23 +4,27 @@ export type CustomerLtvSummaryRow = Database['public']['Views']['customer_ltv_su
 
 export function getCustomerLtvRankTone(rank: string | null | undefined) {
   switch (rank) {
-    case 'S':
+    case 'ゴールド':
       return 'bg-amber-100 text-amber-900'
-    case 'A':
-      return 'bg-sky-100 text-sky-800'
-    default:
+    case 'シルバー':
       return 'bg-slate-100 text-slate-700'
+    case 'ブロンズ':
+      return 'bg-orange-100 text-orange-900'
+    default:
+      return 'bg-sky-100 text-sky-800'
   }
 }
 
 export function getCustomerLtvRankLabel(rank: string | null | undefined) {
   switch (rank) {
-    case 'S':
-      return 'S'
-    case 'A':
-      return 'A'
+    case 'ゴールド':
+      return 'ゴールド'
+    case 'シルバー':
+      return 'シルバー'
+    case 'ブロンズ':
+      return 'ブロンズ'
     default:
-      return 'B'
+      return 'スタンダード'
   }
 }
 

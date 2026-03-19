@@ -40,6 +40,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       memberCard: {
         label: payload.memberCard.label,
         expiresAt: payload.memberCard.expiresAt,
+        rank: payload.memberCard.rank,
       },
       nextAppointment: payload.nextAppointment
         ? {

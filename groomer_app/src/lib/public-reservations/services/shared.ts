@@ -60,6 +60,8 @@ export function normalizeName(value: string) {
 
 export function normalizePublicReservationInput(body: unknown): PublicReservationInput {
   const source = asObject(body)
+  const snakeMemberPortalToken =
+    typeof source.member_portal_token === 'string' ? source.member_portal_token.trim() : ''
   return {
     customerName: typeof source.customerName === 'string' ? source.customerName.trim() : '',
     phoneNumber: typeof source.phoneNumber === 'string' ? source.phoneNumber.trim() : '',
@@ -73,7 +75,9 @@ export function normalizePublicReservationInput(body: unknown): PublicReservatio
     qrPayloadText: typeof source.qrPayload === 'string' ? source.qrPayload.trim() : '',
     menuIds: Array.isArray(source.menuIds) ? source.menuIds.map((id) => String(id)).filter(Boolean) : [],
     memberPortalToken:
-      typeof source.memberPortalToken === 'string' ? source.memberPortalToken.trim() : '',
+      typeof source.memberPortalToken === 'string'
+        ? source.memberPortalToken.trim()
+        : snakeMemberPortalToken,
     preferredStaffId:
       typeof source.preferredStaffId === 'string' ? source.preferredStaffId.trim() : '',
   }

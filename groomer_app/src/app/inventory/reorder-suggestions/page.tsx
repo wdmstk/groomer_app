@@ -2,11 +2,13 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
+import { inventoryPageFixtures } from '@/lib/e2e/inventory-page-fixtures'
 import { groupSuggestionsBySupplier, type ReorderSuggestionRow } from '@/lib/inventory/reorder'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 function toNumber(value: number | string | null | undefined) {
   const parsed = typeof value === 'number' ? value : Number(value ?? 0)
@@ -14,14 +16,20 @@ function toNumber(value: number | string | null | undefined) {
 }
 
 export default async function InventoryReorderSuggestionsPage() {
-  const { supabase, storeId } = await createStoreScopedClient()
-  const { data: suggestions } = await supabase
-    .from('inventory_reorder_suggestion_v')
-    .select(
-      'item_id, item_name, category, unit, supplier_name, current_stock, reorder_point, optimal_stock, minimum_order_quantity, order_lot_size, lead_time_days, last_inbound_unit_cost, recommended_quantity, priority_rank'
-    )
-    .eq('store_id', storeId)
-    .order('priority_rank', { ascending: true })
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: inventoryPageFixtures.storeId }
+    : await createStoreScopedClient()
+  const suggestions = isPlaywrightE2E
+    ? inventoryPageFixtures.reorderSuggestions
+    : (
+        await supabase!
+          .from('inventory_reorder_suggestion_v')
+          .select(
+            'item_id, item_name, category, unit, supplier_name, current_stock, reorder_point, optimal_stock, minimum_order_quantity, order_lot_size, lead_time_days, last_inbound_unit_cost, recommended_quantity, priority_rank'
+          )
+          .eq('store_id', storeId)
+          .order('priority_rank', { ascending: true })
+      ).data
 
   const suggestionList = (suggestions ?? []) as ReorderSuggestionRow[]
   const groupedSuggestions = Array.from(groupSuggestionsBySupplier(suggestionList).entries())

@@ -51,12 +51,45 @@ select
     else round((vm.option_visit_count::numeric / vm.visit_count::numeric) * 100, 1)
   end as option_usage_rate,
   case
-    when coalesce(vm.annual_sales, 0) >= 120000 or coalesce(vm.visit_count, 0) >= 12 then 'S'
-    when coalesce(vm.annual_sales, 0) >= 60000 or coalesce(vm.visit_count, 0) >= 6 then 'A'
-    else 'B'
+    when case
+      when coalesce(s.ltv_gold_annual_sales_threshold, 120000) > 0
+        and coalesce(s.ltv_gold_visit_count_threshold, 12) > 0 then
+        coalesce(vm.annual_sales, 0) >= coalesce(s.ltv_gold_annual_sales_threshold, 120000)
+        or coalesce(vm.visit_count, 0) >= coalesce(s.ltv_gold_visit_count_threshold, 12)
+      when coalesce(s.ltv_gold_annual_sales_threshold, 120000) > 0 then
+        coalesce(vm.annual_sales, 0) >= coalesce(s.ltv_gold_annual_sales_threshold, 120000)
+      when coalesce(s.ltv_gold_visit_count_threshold, 12) > 0 then
+        coalesce(vm.visit_count, 0) >= coalesce(s.ltv_gold_visit_count_threshold, 12)
+      else false
+    end then 'ゴールド'
+    when case
+      when coalesce(s.ltv_silver_annual_sales_threshold, 60000) > 0
+        and coalesce(s.ltv_silver_visit_count_threshold, 6) > 0 then
+        coalesce(vm.annual_sales, 0) >= coalesce(s.ltv_silver_annual_sales_threshold, 60000)
+        or coalesce(vm.visit_count, 0) >= coalesce(s.ltv_silver_visit_count_threshold, 6)
+      when coalesce(s.ltv_silver_annual_sales_threshold, 60000) > 0 then
+        coalesce(vm.annual_sales, 0) >= coalesce(s.ltv_silver_annual_sales_threshold, 60000)
+      when coalesce(s.ltv_silver_visit_count_threshold, 6) > 0 then
+        coalesce(vm.visit_count, 0) >= coalesce(s.ltv_silver_visit_count_threshold, 6)
+      else false
+    end then 'シルバー'
+    when case
+      when coalesce(s.ltv_bronze_annual_sales_threshold, 30000) > 0
+        and coalesce(s.ltv_bronze_visit_count_threshold, 3) > 0 then
+        coalesce(vm.annual_sales, 0) >= coalesce(s.ltv_bronze_annual_sales_threshold, 30000)
+        or coalesce(vm.visit_count, 0) >= coalesce(s.ltv_bronze_visit_count_threshold, 3)
+      when coalesce(s.ltv_bronze_annual_sales_threshold, 30000) > 0 then
+        coalesce(vm.annual_sales, 0) >= coalesce(s.ltv_bronze_annual_sales_threshold, 30000)
+      when coalesce(s.ltv_bronze_visit_count_threshold, 3) > 0 then
+        coalesce(vm.visit_count, 0) >= coalesce(s.ltv_bronze_visit_count_threshold, 3)
+      else false
+    end then 'ブロンズ'
+    else 'スタンダード'
   end as ltv_rank,
   vm.last_paid_at
-from visit_metrics vm;
+from visit_metrics vm
+left join public.stores s
+  on s.id = vm.store_id;
 
 comment on view public.customer_ltv_summary_v is
   '顧客別の年間売上・来店回数・平均単価・オプション利用率・LTVランクを返す動的集計View。';

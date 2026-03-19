@@ -1,10 +1,12 @@
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
+import { inventoryPageFixtures } from '@/lib/e2e/inventory-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { aggregateStockByItem, toNumber } from '@/lib/inventory/stock'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type Item = {
   id: string
@@ -24,26 +26,37 @@ type StocksPageProps = {
 export default async function InventoryStocksPage({ searchParams }: StocksPageProps) {
   const resolvedSearchParams = await searchParams
   const lowOnly = resolvedSearchParams?.low === '1'
-  const { supabase, storeId } = await createStoreScopedClient()
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: inventoryPageFixtures.storeId }
+    : await createStoreScopedClient()
 
-  const { data: items } = await supabase
-    .from('inventory_items')
-    .select('id, name, category, unit, supplier_name, optimal_stock')
-    .eq('store_id', storeId)
-    .eq('is_active', true)
-    .order('name', { ascending: true })
+  const items = isPlaywrightE2E
+    ? inventoryPageFixtures.productItems.filter((item) => item.is_active)
+    : (
+        await supabase!
+          .from('inventory_items')
+          .select('id, name, category, unit, supplier_name, optimal_stock')
+          .eq('store_id', storeId)
+          .eq('is_active', true)
+          .order('name', { ascending: true })
+      ).data
 
   const itemList = (items ?? []) as Item[]
   const itemIds = itemList.map((item) => item.id)
 
-  const { data: movementRows } =
-    itemIds.length > 0
-      ? await supabase
-          .from('inventory_movements')
-          .select('item_id, quantity_delta')
-          .eq('store_id', storeId)
-          .in('item_id', itemIds)
-      : { data: [] }
+  const movementRows = isPlaywrightE2E
+    ? inventoryPageFixtures.dashboardMovements
+        .filter((row) => itemIds.includes(row.item_id))
+        .map((row) => ({ item_id: row.item_id, quantity_delta: row.quantity_delta }))
+    : itemIds.length > 0
+      ? (
+          await supabase!
+            .from('inventory_movements')
+            .select('item_id, quantity_delta')
+            .eq('store_id', storeId)
+            .in('item_id', itemIds)
+        ).data
+      : []
 
   const stockMap = aggregateStockByItem(movementRows ?? [])
   const rows = itemList

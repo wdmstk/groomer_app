@@ -1,24 +1,18 @@
 import Link from 'next/link'
-import nextDynamic from 'next/dynamic'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { createStoreScopedClient } from '@/lib/supabase/store'
-import { ReserveUrlCopyButton } from '@/components/ui/ReserveUrlCopyButton'
+import { AppointmentCalendar } from '@/components/appointments/AppointmentCalendar'
+import { AppointmentCreateModal } from '@/components/appointments/AppointmentCreateModal'
+import { appointmentsPageFixtures } from '@/lib/e2e/appointments-page-fixtures'
 import {
-  DEFAULT_RESERVATION_PAYMENT_SETTINGS,
-  getReservationPaymentBadge,
-} from '@/lib/appointments/reservation-payment'
-
-const AppointmentCalendar = nextDynamic(
-  () => import('@/components/appointments/AppointmentCalendar').then((mod) => mod.AppointmentCalendar),
-  {
-    loading: () => <p className="text-sm text-gray-500">カレンダーを読み込み中...</p>,
-  }
-)
-
-const AppointmentCreateModal = nextDynamic(
-  () => import('@/components/appointments/AppointmentCreateModal').then((mod) => mod.AppointmentCreateModal)
-)
+  formatAppointmentDateTimeJst,
+  getAppointmentNextStatusAction,
+  getAppointmentRelatedValue,
+  getAppointmentStatusTransitionTime,
+  isAppointmentCompletedStatus,
+} from '@/lib/appointments/presentation'
+import type { DisplayDelayAlert } from '@/lib/appointments/calendar-presentation'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -65,6 +59,7 @@ type AppointmentsPageProps = {
     reoffer_end_time?: string
     reoffer_note?: string
     reoffer_id?: string
+    delay_alert_fixture?: string
   }>
 }
 
@@ -79,31 +74,6 @@ const statusOptions = [
   'キャンセル',
   '無断キャンセル',
 ]
-const statusFlowActions = {
-  予約済: { nextStatus: '受付', label: '受付開始' },
-  受付: { nextStatus: '施術中', label: '施術開始' },
-  施術中: { nextStatus: '会計待ち', label: '会計待ちへ' },
-  会計待ち: { nextStatus: '完了', label: '完了' },
-} as const
-
-function isCompletedStatus(status: string | null | undefined) {
-  return status === '来店済' || status === '完了'
-}
-
-function getNextStatusAction(status: string | null | undefined) {
-  if (!status || status === '予約申請') return null
-  return statusFlowActions[status as keyof typeof statusFlowActions] ?? null
-}
-
-function getRelatedValue<T extends Record<string, string>>(
-  relation: T | T[] | null | undefined,
-  key: keyof T
-) {
-  if (!relation) return '未登録'
-  if (Array.isArray(relation)) return relation[0]?.[key] ?? '未登録'
-  return relation[key] ?? '未登録'
-}
-
 function toDateTimeLocalValue(value: string | null | undefined) {
   if (!value) return ''
   const date = new Date(value)
@@ -157,36 +127,7 @@ function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
 }
 
-function formatDateTimeJst(value: string | null | undefined) {
-  if (!value) return '未登録'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '未登録'
-  return new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
-}
-
-function getStatusTransitionTime(
-  status: string | null | undefined,
-  appointment: {
-    checked_in_at?: string | null
-    in_service_at?: string | null
-    payment_waiting_at?: string | null
-    completed_at?: string | null
-  }
-) {
-  if (status === '受付') return { label: '受付', value: appointment.checked_in_at ?? null }
-  if (status === '施術中') return { label: '施術開始', value: appointment.in_service_at ?? null }
-  if (status === '会計待ち') return { label: '会計待ち', value: appointment.payment_waiting_at ?? null }
-  if (isCompletedStatus(status)) return { label: '完了', value: appointment.completed_at ?? null }
-  return null
-}
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 export default async function AppointmentsPage({ searchParams }: AppointmentsPageProps) {
   const resolvedSearchParams = await searchParams
@@ -208,80 +149,92 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
   const reofferEndTime = resolvedSearchParams?.reoffer_end_time
   const reofferNote = resolvedSearchParams?.reoffer_note
   const reofferId = resolvedSearchParams?.reoffer_id
+  const delayAlertFixture = resolvedSearchParams?.delay_alert_fixture
   const modalCloseRedirect = `/appointments?tab=${activeTab}`
-  const needsFormSupportData =
-    isCreateModalOpen || Boolean(editId) || Boolean(followupFromId) || Boolean(reofferCustomerId)
   const defaultDateTimeRange = getDefaultDateTimeRangeJst()
-  const { supabase, storeId } = await createStoreScopedClient()
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: appointmentsPageFixtures.storeId }
+    : await createStoreScopedClient()
 
-  const { data: appointments } = await supabase
-    .from('appointments')
-    .select(
-      'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, checked_in_at, in_service_at, payment_waiting_at, completed_at, reservation_payment_method, reservation_payment_status, customers(full_name), pets(name), staffs(full_name)'
-    )
-    .eq('store_id', storeId)
-    .order('start_time', { ascending: false })
+  const appointments = isPlaywrightE2E
+    ? appointmentsPageFixtures.appointments
+    : (
+        await supabase
+          .from('appointments')
+          .select(
+            'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, checked_in_at, in_service_at, payment_waiting_at, completed_at, customers(full_name), pets(name), staffs(full_name)'
+          )
+          .eq('store_id', storeId)
+          .order('start_time', { ascending: false })
+      ).data
 
-  const { data: customers } = needsFormSupportData
-    ? await supabase
-        .from('customers')
-        .select('id, full_name')
-        .eq('store_id', storeId)
-        .order('created_at', { ascending: false })
-    : { data: [] }
+  const customers = isPlaywrightE2E
+    ? appointmentsPageFixtures.customers
+    : (
+        await supabase
+          .from('customers')
+          .select('id, full_name')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      ).data
 
-  const { data: pets } = needsFormSupportData
-    ? await supabase
-        .from('pets')
-        .select('id, name, customer_id')
-        .eq('store_id', storeId)
-        .order('created_at', { ascending: false })
-    : { data: [] }
+  const pets = isPlaywrightE2E
+    ? appointmentsPageFixtures.pets
+    : (
+        await supabase
+          .from('pets')
+          .select('id, name, customer_id')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      ).data
 
-  const { data: staffs } = needsFormSupportData
-    ? await supabase
-        .from('staffs')
-        .select('id, full_name')
-        .eq('store_id', storeId)
-        .order('created_at', { ascending: false })
-    : { data: [] }
+  const staffs = isPlaywrightE2E
+    ? appointmentsPageFixtures.staffs
+    : (
+        await supabase
+          .from('staffs')
+          .select('id, full_name')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      ).data
 
-  const { data: editAppointment } = needsFormSupportData && editId
-    ? await supabase
-        .from('appointments')
-        .select(
-          'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, reservation_payment_method'
-        )
-        .eq('id', editId)
-        .eq('store_id', storeId)
-        .single()
-    : { data: null }
+  const editAppointment =
+    !editId || isPlaywrightE2E
+      ? null
+      : (
+          await supabase
+            .from('appointments')
+            .select(
+              'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes'
+            )
+            .eq('id', editId)
+            .eq('store_id', storeId)
+            .single()
+        ).data
 
-  const { data: menuSelections } = needsFormSupportData && editId
-    ? await supabase
-        .from('appointment_menus')
-        .select('menu_id')
-        .eq('appointment_id', editId)
-        .eq('store_id', storeId)
-    : { data: [] }
+  const menuSelections =
+    !editId
+      ? []
+      : isPlaywrightE2E
+        ? appointmentsPageFixtures.appointmentMenus.filter((menu) => menu.appointment_id === editId)
+        : (
+            await supabase
+              .from('appointment_menus')
+              .select('menu_id')
+              .eq('appointment_id', editId)
+              .eq('store_id', storeId)
+          ).data ?? []
 
-  const { data: serviceMenus } = needsFormSupportData
-    ? await supabase
-        .from('service_menus')
-        .select('id, name, price, duration, tax_rate, tax_included, is_active')
-        .eq('store_id', storeId)
-        .order('display_order', { ascending: true })
-        .order('created_at', { ascending: false })
-    : { data: [] }
-  const { data: reservationPaymentSettingsRow } = needsFormSupportData
-    ? await supabase
-        .from('store_reservation_payment_settings')
-        .select(
-          'prepayment_enabled, card_hold_enabled, cancellation_day_before_percent, cancellation_same_day_percent, cancellation_no_show_percent, no_show_charge_mode'
-        )
-        .eq('store_id', storeId)
-        .maybeSingle()
-    : { data: null }
+  const serviceMenus = isPlaywrightE2E
+    ? appointmentsPageFixtures.serviceMenus
+    : (
+        await supabase
+          .from('service_menus')
+          .select('id, name, price, duration, tax_rate, tax_included, is_active')
+          .eq('store_id', storeId)
+          .order('display_order', { ascending: true })
+          .order('created_at', { ascending: false })
+      ).data
 
   const appointmentList = appointments ?? []
   const customerNoShowCounts = appointmentList.reduce(
@@ -297,24 +250,26 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
   const petOptions: PetOption[] = pets ?? []
   const staffOptions: StaffOption[] = staffs ?? []
   const menuOptions: ServiceMenuOption[] = serviceMenus ?? []
-  const reservationPaymentSettings = {
-    ...DEFAULT_RESERVATION_PAYMENT_SETTINGS,
-    ...reservationPaymentSettingsRow,
-  }
   const defaultMenuIds = ((menuSelections ?? []) as { menu_id: string }[])
     .map((menu) => menu.menu_id?.trim())
     .filter(Boolean) as string[]
   const appointmentIds = appointmentList.map((appointment) => appointment.id)
-  const { data: appointmentMenuRows } =
-    needsFormSupportData && appointmentIds.length > 0
-      ? await supabase
-          .from('appointment_menus')
-          .select('appointment_id, menu_id')
-          .eq('store_id', storeId)
-          .in('appointment_id', appointmentIds)
-      : { data: [] as { appointment_id: string; menu_id: string }[] }
+  const appointmentMenuRows =
+    appointmentIds.length === 0
+      ? ([] as { appointment_id: string; menu_id: string }[])
+      : isPlaywrightE2E
+        ? appointmentsPageFixtures.appointmentMenus.filter((row) =>
+            appointmentIds.includes(row.appointment_id)
+          )
+        : (
+            await supabase
+              .from('appointment_menus')
+              .select('appointment_id, menu_id')
+              .eq('store_id', storeId)
+              .in('appointment_id', appointmentIds)
+          ).data ?? []
   const appointmentMenuMap = new Map<string, string[]>()
-  ;(appointmentMenuRows ?? []).forEach((row) => {
+  appointmentMenuRows.forEach((row) => {
     const list = appointmentMenuMap.get(row.appointment_id) ?? []
     list.push(row.menu_id)
     appointmentMenuMap.set(row.appointment_id, list)
@@ -333,15 +288,14 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
   }))
   const calendarAppointments = appointmentList.map((appointment) => ({
     id: appointment.id,
-    customerName: getRelatedValue(appointment.customers, 'full_name'),
-    petName: getRelatedValue(appointment.pets, 'name'),
+    customerName: getAppointmentRelatedValue(appointment.customers, 'full_name'),
+    petName: getAppointmentRelatedValue(appointment.pets, 'name'),
     staffId: appointment.staff_id,
-    staffName: getRelatedValue(appointment.staffs, 'full_name'),
+    staffName: getAppointmentRelatedValue(appointment.staffs, 'full_name'),
     startTime: appointment.start_time,
     endTime: appointment.end_time,
     menu: appointment.menu,
     status: appointment.status ?? '予約済',
-    reservation_payment_method: appointment.reservation_payment_method ?? 'none',
   }))
 
   const followupSource =
@@ -393,6 +347,13 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
     : reofferCustomerId
       ? '再販受付済みの顧客情報を引き継いで予約作成を開いています。'
     : undefined
+  const initialDelayAlert: DisplayDelayAlert | null =
+    isPlaywrightE2E && delayAlertFixture === '1'
+      ? {
+          baseEndTime: '2026-03-16T02:00:00.000Z',
+          lines: ['+15分: 2件影響 (11:15 モカ (山田 花子))'],
+        }
+      : null
 
   return (
     <section className="space-y-6">
@@ -400,7 +361,6 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold text-gray-900">予約管理</h1>
         </div>
-        <ReserveUrlCopyButton />
       </div>
 
       <div className="flex items-center gap-4 border-b">
@@ -442,39 +402,29 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
             <p className="text-sm text-gray-500">予約がまだ登録されていません。</p>
           ) : (
             <>
-              <div className="space-y-3 md:hidden">
+              <div className="space-y-3 md:hidden" data-testid="appointments-list-mobile">
                 {appointmentList.map((appointment) => (
-                  <article key={appointment.id} className="rounded border p-3 text-sm text-gray-700">
+                  <article
+                    key={appointment.id}
+                    className="rounded border p-3 text-sm text-gray-700"
+                    data-testid={`appointment-row-${appointment.id}`}
+                  >
                     <p className="font-semibold text-gray-900">
-                      {getRelatedValue(appointment.customers, 'full_name')} /{' '}
-                      {getRelatedValue(appointment.pets, 'name')}
+                      {getAppointmentRelatedValue(appointment.customers, 'full_name')} /{' '}
+                      {getAppointmentRelatedValue(appointment.pets, 'name')}
                     </p>
-                    <p>担当: {getRelatedValue(appointment.staffs, 'full_name')}</p>
-                    <p>開始: {formatDateTimeJst(appointment.start_time)}</p>
-                    <p>終了: {formatDateTimeJst(appointment.end_time)}</p>
+                    <p>担当: {getAppointmentRelatedValue(appointment.staffs, 'full_name')}</p>
+                    <p>開始: {formatAppointmentDateTimeJst(appointment.start_time)}</p>
+                    <p>終了: {formatAppointmentDateTimeJst(appointment.end_time)}</p>
                     <p>メニュー: {appointment.menu}</p>
                     <p>所要時間: {appointment.duration} 分</p>
                     <p>ステータス: {appointment.status ?? '予約済'}</p>
                     {(() => {
-                      const badge = getReservationPaymentBadge({
-                        method: appointment.reservation_payment_method,
-                        status: appointment.reservation_payment_status,
-                      })
-                      if (!badge) return null
-                      return (
-                        <p>
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${badge.className}`}>
-                            {badge.label}
-                          </span>
-                        </p>
-                      )
-                    })()}
-                    {(() => {
-                      const transition = getStatusTransitionTime(appointment.status, appointment)
+                      const transition = getAppointmentStatusTransitionTime(appointment.status, appointment)
                       if (!transition?.value) return null
                       return (
                         <p>
-                          {transition.label}: {formatDateTimeJst(transition.value)}
+                          {transition.label}: {formatAppointmentDateTimeJst(transition.value)}
                         </p>
                       )
                     })()}
@@ -488,43 +438,40 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                       </Link>
                       {appointment.status === '予約申請' ? (
                         <form action={`/api/appointments/${appointment.id}/confirm`} method="post">
-                          <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                          <Button
+                            type="submit"
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                            data-testid={`appointment-confirm-${appointment.id}`}
+                          >
                             申請を確定
                           </Button>
                         </form>
                       ) : null}
                       {(() => {
-                        const action = getNextStatusAction(appointment.status)
+                        const action = getAppointmentNextStatusAction(appointment.status)
                         if (!action) return null
                         return (
                           <form action={`/api/appointments/${appointment.id}/status`} method="post">
                             <input type="hidden" name="next_status" value={action.nextStatus} />
                             <input type="hidden" name="redirect_tab" value="list" />
-                            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
+                            <Button
+                              type="submit"
+                              className="bg-indigo-600 hover:bg-indigo-700"
+                              data-testid={`appointment-status-action-${appointment.id}`}
+                            >
                               {action.label}
                             </Button>
                           </form>
                         )
                       })()}
-                      {isCompletedStatus(appointment.status) ? (
+                      {isAppointmentCompletedStatus(appointment.status) ? (
                         <Link
                               href={`/appointments?tab=list&modal=create&followup_from=${appointment.id}`}
                               className="text-emerald-700 text-sm"
+                              data-testid={`appointment-followup-${appointment.id}`}
                             >
                           次回予約
                         </Link>
-                      ) : null}
-                      {appointment.status === '無断キャンセル' &&
-                      appointment.reservation_payment_method !== 'none' ? (
-                        <form
-                          action={`/api/appointments/${appointment.id}/reservation-payment/claim`}
-                          method="post"
-                        >
-                          <input type="hidden" name="redirect_to" value="/appointments?tab=list" />
-                          <Button type="submit" className="bg-amber-600 hover:bg-amber-700">
-                            {reservationPaymentSettings.no_show_charge_mode === 'auto' ? '請求状態を反映' : '無断キャンセル請求'}
-                          </Button>
-                        </form>
                       ) : null}
                       <form action={`/api/appointments/${appointment.id}`} method="post">
                         <input type="hidden" name="_method" value="delete" />
@@ -538,7 +485,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
               </div>
 
               <div className="hidden overflow-x-auto md:block">
-                <table className="min-w-full text-sm text-left">
+                <table className="min-w-full text-sm text-left" data-testid="appointments-list">
                   <tbody className="divide-y">
                     <tr className="text-gray-500 border-b">
                       <th className="py-2 px-2">顧客</th>
@@ -553,38 +500,30 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                       <th className="py-2 px-2">操作</th>
                     </tr>
                     {appointmentList.map((appointment) => (
-                      <tr key={appointment.id} className="text-gray-700">
+                      <tr
+                        key={appointment.id}
+                        className="text-gray-700"
+                        data-testid={`appointment-row-${appointment.id}`}
+                      >
                         <td className="py-3 px-2 font-medium text-gray-900">
-                          {getRelatedValue(appointment.customers, 'full_name')}
+                          {getAppointmentRelatedValue(appointment.customers, 'full_name')}
                         </td>
-                        <td className="py-3 px-2">{getRelatedValue(appointment.pets, 'name')}</td>
+                        <td className="py-3 px-2">{getAppointmentRelatedValue(appointment.pets, 'name')}</td>
                         <td className="py-3 px-2">
-                          {getRelatedValue(appointment.staffs, 'full_name')}
+                          {getAppointmentRelatedValue(appointment.staffs, 'full_name')}
                         </td>
-                        <td className="py-3 px-2">{formatDateTimeJst(appointment.start_time)}</td>
-                        <td className="py-3 px-2">{formatDateTimeJst(appointment.end_time)}</td>
+                        <td className="py-3 px-2">{formatAppointmentDateTimeJst(appointment.start_time)}</td>
+                        <td className="py-3 px-2">{formatAppointmentDateTimeJst(appointment.end_time)}</td>
                         <td className="py-3 px-2">{appointment.menu}</td>
                         <td className="py-3 px-2">{appointment.duration} 分</td>
                         <td className="py-3 px-2">
                           <p>{appointment.status ?? '予約済'}</p>
                           {(() => {
-                            const badge = getReservationPaymentBadge({
-                              method: appointment.reservation_payment_method,
-                              status: appointment.reservation_payment_status,
-                            })
-                            if (!badge) return null
-                            return (
-                              <p className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${badge.className}`}>
-                                {badge.label}
-                              </p>
-                            )
-                          })()}
-                          {(() => {
-                            const transition = getStatusTransitionTime(appointment.status, appointment)
+                            const transition = getAppointmentStatusTransitionTime(appointment.status, appointment)
                             if (!transition?.value) return null
                             return (
                               <p className="text-xs text-gray-500">
-                                {transition.label}: {formatDateTimeJst(transition.value)}
+                                {transition.label}: {formatAppointmentDateTimeJst(transition.value)}
                               </p>
                             )
                           })()}
@@ -600,43 +539,40 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                             </Link>
                             {appointment.status === '予約申請' ? (
                               <form action={`/api/appointments/${appointment.id}/confirm`} method="post">
-                                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                                <Button
+                                  type="submit"
+                                  className="bg-emerald-600 hover:bg-emerald-700"
+                                  data-testid={`appointment-confirm-${appointment.id}`}
+                                >
                                   申請を確定
                                 </Button>
                               </form>
                             ) : null}
                             {(() => {
-                              const action = getNextStatusAction(appointment.status)
+                              const action = getAppointmentNextStatusAction(appointment.status)
                               if (!action) return null
                               return (
                                 <form action={`/api/appointments/${appointment.id}/status`} method="post">
                                   <input type="hidden" name="next_status" value={action.nextStatus} />
                                   <input type="hidden" name="redirect_tab" value="list" />
-                                  <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
+                                  <Button
+                                    type="submit"
+                                    className="bg-indigo-600 hover:bg-indigo-700"
+                                    data-testid={`appointment-status-action-${appointment.id}`}
+                                  >
                                     {action.label}
                                   </Button>
                                 </form>
                               )
                             })()}
-                            {isCompletedStatus(appointment.status) ? (
+                            {isAppointmentCompletedStatus(appointment.status) ? (
                               <Link
                                 href={`/appointments?tab=list&modal=create&followup_from=${appointment.id}`}
                                 className="text-emerald-700 text-sm"
+                                data-testid={`appointment-followup-${appointment.id}`}
                               >
                                 次回予約
                               </Link>
-                            ) : null}
-                            {appointment.status === '無断キャンセル' &&
-                            appointment.reservation_payment_method !== 'none' ? (
-                              <form
-                                action={`/api/appointments/${appointment.id}/reservation-payment/claim`}
-                                method="post"
-                              >
-                                <input type="hidden" name="redirect_to" value="/appointments?tab=list" />
-                                <Button type="submit" className="bg-amber-600 hover:bg-amber-700">
-                                  {reservationPaymentSettings.no_show_charge_mode === 'auto' ? '請求状態を反映' : '無断キャンセル請求'}
-                                </Button>
-                              </form>
                             ) : null}
                             <form action={`/api/appointments/${appointment.id}`} method="post">
                               <input type="hidden" name="_method" value="delete" />
@@ -663,7 +599,10 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
           {appointmentList.length === 0 ? (
             <p className="text-sm text-gray-500">予約がまだ登録されていません。</p>
           ) : (
-            <AppointmentCalendar appointments={calendarAppointments} />
+            <AppointmentCalendar
+              appointments={calendarAppointments}
+              initialDelayAlert={initialDelayAlert}
+            />
           )}
         </Card>
       )}
@@ -695,7 +634,6 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
           recommendationMessage={!editAppointment ? followupRecommendationMessage : undefined}
           followupTaskId={!editAppointment ? followupTaskId : undefined}
           reofferId={!editAppointment ? reofferId : undefined}
-          reservationPaymentSettings={reservationPaymentSettings}
         />
       ) : null}
     </section>

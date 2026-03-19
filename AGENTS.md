@@ -1,8 +1,9 @@
 # AGENTS.md
-
 AI Agent Instructions for this repository
+(For GPT‑5.3‑codex implementation agents)
 
-This file provides guidance for AI coding agents (Codex, etc.) working in this repository.
+This document defines how AI coding agents must operate in this repository.
+It is written specifically for GPT‑5.3‑codex and its Subagents.
 
 ---
 
@@ -10,56 +11,68 @@ This file provides guidance for AI coding agents (Codex, etc.) working in this r
 
 This repository contains the source code for the project.
 
-Agent responsibilities:
+Implementation agents must:
 
 * Read existing code before making changes
-* Prefer modifying existing code over creating new files
+* Prefer modifying existing files over creating new ones
 * Keep changes minimal and focused
 * Maintain project structure and conventions
+* Ask questions when requirements are unclear
+* Never invent or assume missing specifications
+* Follow the design/requirements produced by GPT‑5.4 exactly
+
+GPT‑5.3‑codex must not reinterpret, redesign, or supplement specifications.
 
 ---
 
-# 2. Development Environment
+# 2. Subagent Roles (Parallel Execution Allowed)
 
-Use the following commands when working in this repository.
+GPT‑5.3‑codex may delegate work to Subagents.
+Parallel execution is allowed and encouraged when tasks are independent.
+
+## explorer_agent
+* Analyze existing code
+* Locate relevant modules
+* Understand dependencies
+* Never modify files
+
+## implementer_agent
+* Apply code changes
+* Generate minimal diffs
+* Follow GPT‑5.4 design exactly
+
+## reviewer_agent
+* Review diffs
+* Detect mistakes, regressions, or missing tests
+* Suggest corrections
+
+Subagents must communicate only through explicit outputs.
+They must not assume or infer missing context.
+
+---
+
+# 3. Development Environment
 
 Install dependencies:
-
-```
-pip install -r requirements.txt
-```
+    pip install -r requirements.txt
 
 Run tests:
-
-```
-pytest
-```
-
-Run the application:
-
-```
-python main.py
-```
+    pytest
 
 Lint code:
-
-```
-ruff check .
-```
+    ruff check .
 
 Format code:
+    ruff format .
 
-```
-ruff format .
-```
-
-Always run tests and lint before finishing a task.
+Before finishing any task:
+* Run tests
+* Run lint
+* Fix all issues
 
 ---
 
-# 3. Code Style Rules
-
-Follow these coding conventions:
+# 4. Code Style Rules
 
 * Use clear, readable Python
 * Use type hints where possible
@@ -68,105 +81,91 @@ Follow these coding conventions:
 * Do not introduce unnecessary dependencies
 
 Naming conventions:
-
 * snake_case for variables and functions
 * PascalCase for classes
 
 ---
 
-# 4. Architecture Rules
+# 5. Architecture Rules
 
-Important architectural guidelines:
-
-* Business logic should live in `/src`
-* CLI or entry points should be in `/app`
-* Tests should mirror the source structure
+* Business logic lives in /src
+* CLI or entry points live in /app
+* Tests must mirror the source structure
 * Avoid large monolithic files
 
 Preferred file size:
-
-```
-< 400 lines
-```
+    < 400 lines
 
 If larger, refactor into modules.
 
 ---
 
-# 5. Testing Policy
+# 6. Testing Policy
 
 Testing is mandatory.
 
 For every change:
-
 * Add or update unit tests
 * Ensure all tests pass
 * Do not remove existing tests unless necessary
 
 Testing framework:
-
-```
-pytest
-```
+    pytest
 
 ---
 
-# 6. Safety Rules
+# 7. Safety Rules
 
 Never:
-
 * Delete large parts of the codebase
 * Modify environment configuration without reason
 * Introduce secrets or API keys into the repository
 
 If unsure:
+* Ask for confirmation
 
-Ask for confirmation.
+For any change affecting more than 30 lines:
+* Ask for confirmation before proceeding
 
 ---
 
-# 7. Git Workflow
+# 8. Git Workflow
 
 Before committing:
-
-```
-git status
-git diff
-```
+    git status
+    git diff
 
 Commit message format:
-
-```
-type: short description
+    type: short description
 
 Examples:
-
-feat: add CSV parser
-fix: handle empty rows
-refactor: simplify validation logic
-```
+    feat: add CSV parser
+    fix: handle empty rows
+    refactor: simplify validation logic
 
 ---
 
-# 8. Task Strategy
+# 9. Task Strategy
 
 When given a task:
 
 1. Understand the existing code
 2. Create a plan
-3. Implement changes
-4. Run tests
-5. Fix issues
-6. Produce a clean commit
+3. Ask clarifying questions if anything is unclear
+4. Use Subagents as needed (parallel allowed)
+5. Implement changes
+6. Produce a minimal diff patch
+7. Run tests
+8. Fix issues
+9. Produce a clean commit
 
 Avoid large multi-purpose changes.
 
 ---
 
-# 9. Performance Guidelines
+# 10. Performance Guidelines
 
 Prefer:
-
 * simple algorithms
 * standard libraries
 * readable code
@@ -175,24 +174,40 @@ Avoid premature optimization.
 
 ---
 
-# 10. Documentation
+# 11. Documentation
 
 When adding features:
-
 * Update README if needed
 * Add docstrings to public functions
 * Explain complex logic with comments
 
 ---
 
-# 11. Interaction Guidelines
+# 12. Output Format (Mandatory)
 
-If a task is ambiguous:
+All code changes must be output as a unified diff.
 
-* Ask clarifying questions
-* Do not guess requirements
+Example:
 
-If something breaks:
+    --- a/file.py
+    +++ b/file.py
+    @@ -1,4 +1,8 @@
+    (diff content here)
 
-* Debug the root cause
-* Propose a fix
+Rules:
+* Never output full file rewrites unless explicitly requested
+* Never output code outside of a diff
+* Never modify unrelated lines
+
+---
+
+# 13. Role Separation
+
+* GPT‑5.4 handles design, requirements, and architecture
+* GPT‑5.3‑codex handles implementation only
+* Subagents assist GPT‑5.3‑codex but must not redesign anything
+* Implementation must follow GPT‑5.4 design exactly
+
+---
+
+# End of AGENTS.md

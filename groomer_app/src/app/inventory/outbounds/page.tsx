@@ -1,11 +1,13 @@
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { inventoryPageFixtures } from '@/lib/e2e/inventory-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { toNumber } from '@/lib/inventory/stock'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type Item = {
   id: string
@@ -27,21 +29,31 @@ function relatedItem(value: MovementRow['inventory_items']) {
 }
 
 export default async function InventoryOutboundsPage() {
-  const { supabase, storeId } = await createStoreScopedClient()
-  const { data: items } = await supabase
-    .from('inventory_items')
-    .select('id, name, unit')
-    .eq('store_id', storeId)
-    .eq('is_active', true)
-    .order('name', { ascending: true })
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: inventoryPageFixtures.storeId }
+    : await createStoreScopedClient()
+  const items = isPlaywrightE2E
+    ? inventoryPageFixtures.outboundItems
+    : (
+        await supabase!
+          .from('inventory_items')
+          .select('id, name, unit')
+          .eq('store_id', storeId)
+          .eq('is_active', true)
+          .order('name', { ascending: true })
+      ).data
 
-  const { data: outbounds } = await supabase
-    .from('inventory_movements')
-    .select('id, quantity_delta, reason, happened_at, inventory_items(name, unit)')
-    .eq('store_id', storeId)
-    .eq('movement_type', 'outbound')
-    .order('happened_at', { ascending: false })
-    .limit(20)
+  const outbounds = isPlaywrightE2E
+    ? inventoryPageFixtures.outboundRows
+    : (
+        await supabase!
+          .from('inventory_movements')
+          .select('id, quantity_delta, reason, happened_at, inventory_items(name, unit)')
+          .eq('store_id', storeId)
+          .eq('movement_type', 'outbound')
+          .order('happened_at', { ascending: false })
+          .limit(20)
+      ).data
 
   return (
     <section className="space-y-4">

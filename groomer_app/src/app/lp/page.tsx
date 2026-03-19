@@ -427,22 +427,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t border-slate-200 bg-white/70">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs text-slate-600 sm:px-6 lg:px-8">
-          <p>© Groomer App</p>
-          <div className="flex flex-wrap items-center gap-4">
-            <Link href="/legal/privacy" className="hover:text-sky-700 hover:underline">
-              プライバシーポリシー
-            </Link>
-            <Link href="/legal/terms" className="hover:text-sky-700 hover:underline">
-              利用規約
-            </Link>
-            <Link href="/legal/security" className="hover:text-sky-700 hover:underline">
-              セキュリティポリシー
-            </Link>
-          </div>
-        </div>
-      </footer>
     </main>
   )
 }

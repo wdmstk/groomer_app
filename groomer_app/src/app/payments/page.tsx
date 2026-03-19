@@ -1,6 +1,13 @@
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import {
+  buildPaymentAppointmentLabel,
+  formatPaymentPaidAt,
+  formatPaymentPaidState,
+  getPaymentRelatedValue,
+} from '@/lib/payments/presentation'
+import { paymentsPageFixtures } from '@/lib/e2e/payments-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { PaymentCreateModal } from '@/components/payments/PaymentCreateModal'
 
@@ -37,30 +44,7 @@ type PaymentsPageProps = {
 }
 
 const paymentMethodOptions = ['現金', 'カード', '電子マネー', 'QR決済', 'その他']
-
-function getRelatedValue<T extends Record<string, string>>(
-  relation: T | T[] | null | undefined,
-  key: keyof T
-) {
-  if (!relation) return '未登録'
-  if (Array.isArray(relation)) return relation[0]?.[key] ?? '未登録'
-  return relation[key] ?? '未登録'
-}
-
-function formatDateTimeJst(value: string | null | undefined) {
-  if (!value) return '日時未設定'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '日時未設定'
-  return new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
-}
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 export default async function PaymentsPage({ searchParams }: PaymentsPageProps) {
   const resolvedSearchParams = await searchParams
@@ -69,43 +53,66 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
     resolvedSearchParams?.modal === 'create' || resolvedSearchParams?.tab === 'new'
   const editId = resolvedSearchParams?.edit
   const prefillAppointmentId = resolvedSearchParams?.appointment_id ?? ''
-  const { supabase, storeId } = await createStoreScopedClient()
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: paymentsPageFixtures.storeId }
+    : await createStoreScopedClient()
 
-  const { data: payments } = await supabase
-    .from('payments')
-    .select(
-      'id, appointment_id, customer_id, visit_id, status, method, subtotal_amount, tax_amount, discount_amount, total_amount, paid_at, notes, customers(full_name), appointments(id)'
-    )
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const payments = isPlaywrightE2E
+    ? paymentsPageFixtures.payments
+    : (
+        await supabase
+          .from('payments')
+          .select(
+            'id, appointment_id, customer_id, visit_id, status, method, subtotal_amount, tax_amount, discount_amount, total_amount, paid_at, notes, customers(full_name), appointments(id)'
+          )
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      ).data
 
-  const { data: appointments } = await supabase
-    .from('appointments')
-    .select('id, customer_id, start_time, customers(full_name), pets(name)')
-    .eq('store_id', storeId)
-    .order('start_time', { ascending: false })
+  const appointments = isPlaywrightE2E
+    ? paymentsPageFixtures.appointments
+    : (
+        await supabase
+          .from('appointments')
+          .select('id, customer_id, start_time, customers(full_name), pets(name)')
+          .eq('store_id', storeId)
+          .order('start_time', { ascending: false })
+      ).data
 
-  const { data: appointmentMenus } = await supabase
-    .from('appointment_menus')
-    .select('appointment_id, price, tax_rate, tax_included')
-    .eq('store_id', storeId)
+  const appointmentMenus = isPlaywrightE2E
+    ? paymentsPageFixtures.appointmentMenus
+    : (
+        await supabase
+          .from('appointment_menus')
+          .select('appointment_id, price, tax_rate, tax_included')
+          .eq('store_id', storeId)
+      ).data
 
-  const { data: customers } = await supabase
-    .from('customers')
-    .select('id, full_name')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const customers = isPlaywrightE2E
+    ? paymentsPageFixtures.customers
+    : (
+        await supabase
+          .from('customers')
+          .select('id, full_name')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+      ).data
 
-  const { data: editPayment } = editId
-    ? await supabase
-        .from('payments')
-        .select(
-          'id, appointment_id, customer_id, visit_id, status, method, subtotal_amount, tax_amount, discount_amount, total_amount, paid_at, notes'
-        )
-        .eq('id', editId)
-        .eq('store_id', storeId)
-        .single()
-    : { data: null }
+  const editPayment =
+    !editId
+      ? null
+      : isPlaywrightE2E
+        ? paymentsPageFixtures.payments.find((payment) => payment.id === editId) ?? null
+        : (
+            await supabase
+              .from('payments')
+              .select(
+                'id, appointment_id, customer_id, visit_id, status, method, subtotal_amount, tax_amount, discount_amount, total_amount, paid_at, notes'
+              )
+              .eq('id', editId)
+              .eq('store_id', storeId)
+              .single()
+          ).data
 
   const paymentList = payments ?? []
   const appointmentOptions: AppointmentOption[] = appointments ?? []
@@ -133,13 +140,16 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
   })
 
   const appointmentFormOptions = appointmentOptions.map((appointment) => {
-    const date = formatDateTimeJst(appointment.start_time)
-    const customerName = getRelatedValue(appointment.customers, 'full_name')
-    const petName = getRelatedValue(appointment.pets, 'name')
     const totals = appointmentTotals.get(appointment.id) ?? { subtotal: 0, tax: 0, total: 0 }
     return {
       id: appointment.id,
-      label: `${date} / ${customerName} / ${petName}`,
+      label: buildPaymentAppointmentLabel({
+        id: appointment.id,
+        customerId: appointment.customer_id,
+        startTime: appointment.start_time,
+        customers: appointment.customers,
+        pets: appointment.pets,
+      }),
       customerId: appointment.customer_id ?? null,
       subtotal: Math.round(totals.subtotal),
       tax: Math.round(totals.tax),
@@ -193,20 +203,24 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
             <p className="text-sm text-gray-500">会計がまだ登録されていません。</p>
           ) : (
             <>
-              <div className="space-y-3 md:hidden">
+              <div className="space-y-3 md:hidden" data-testid="payments-list-mobile">
                 {paymentList.map((payment) => (
-                  <article key={payment.id} className="rounded border p-3 text-sm text-gray-700">
+                  <article
+                    key={payment.id}
+                    className="rounded border p-3 text-sm text-gray-700"
+                    data-testid={`payment-row-${payment.id}`}
+                  >
                     <p className="font-semibold text-gray-900">
-                      {getRelatedValue(payment.customers, 'full_name')}
+                      {getPaymentRelatedValue(payment.customers, 'full_name')}
                     </p>
                     <p>
                       予約:{' '}
                       {appointmentLabelById.get(payment.appointment_id) ?? payment.appointment_id}
                     </p>
                     <p>金額: {payment.total_amount.toLocaleString()} 円</p>
-                    <p>会計状態: {payment.paid_at ? '会計済' : '未会計'}</p>
+                    <p>会計状態: {formatPaymentPaidState(payment.paid_at)}</p>
                     <p>支払方法: {payment.method ?? '現金'}</p>
-                    <p>支払日時: {payment.paid_at ?? '未払い'}</p>
+                    <p>支払日時: {formatPaymentPaidAt(payment.paid_at)}</p>
                     <p>備考: {payment.notes ?? 'なし'}</p>
                     <div className="mt-2 flex items-center gap-2">
                       <Link
@@ -234,7 +248,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
               </div>
 
               <div className="hidden overflow-x-auto md:block">
-                <table className="min-w-full text-sm text-left">
+                <table className="min-w-full text-sm text-left" data-testid="payments-list">
                   <thead className="text-gray-500 border-b">
                     <tr>
                       <th className="py-2 px-2">顧客</th>
@@ -249,17 +263,21 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
                   </thead>
                   <tbody className="divide-y">
                     {paymentList.map((payment) => (
-                      <tr key={payment.id} className="text-gray-700">
+                      <tr
+                        key={payment.id}
+                        className="text-gray-700"
+                        data-testid={`payment-row-${payment.id}`}
+                      >
                         <td className="py-3 px-2 font-medium text-gray-900">
-                          {getRelatedValue(payment.customers, 'full_name')}
+                          {getPaymentRelatedValue(payment.customers, 'full_name')}
                         </td>
                         <td className="py-3 px-2">
                           {appointmentLabelById.get(payment.appointment_id) ?? payment.appointment_id}
                         </td>
                         <td className="py-3 px-2">{payment.total_amount.toLocaleString()} 円</td>
-                        <td className="py-3 px-2">{payment.paid_at ? '会計済' : '未会計'}</td>
+                        <td className="py-3 px-2">{formatPaymentPaidState(payment.paid_at)}</td>
                         <td className="py-3 px-2">{payment.method ?? '現金'}</td>
-                        <td className="py-3 px-2">{payment.paid_at ?? '未払い'}</td>
+                        <td className="py-3 px-2">{formatPaymentPaidAt(payment.paid_at)}</td>
                         <td className="py-3 px-2">{payment.notes ?? 'なし'}</td>
                         <td className="py-3 px-2">
                           <div className="flex items-center gap-2">

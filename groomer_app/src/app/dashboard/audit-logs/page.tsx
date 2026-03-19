@@ -3,10 +3,12 @@ import { Card } from '@/components/ui/Card'
 import { resolveCurrentStoreId } from '@/lib/supabase/store'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireStoreFeatureAccess } from '@/lib/feature-access'
+import { dashboardPageFixtures } from '@/lib/e2e/dashboard-page-fixtures'
 import type { Json } from '@/lib/supabase/database.types'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type AuditLogsPageProps = {
   searchParams?: Promise<{
@@ -115,8 +117,8 @@ function getActionTone(action: string) {
 
 export default async function AuditLogsPage({ searchParams }: AuditLogsPageProps) {
   const resolvedSearchParams = await searchParams
-  const supabase = await createServerSupabaseClient()
-  const storeId = await resolveCurrentStoreId()
+  const supabase = isPlaywrightE2E ? null : await createServerSupabaseClient()
+  const storeId = isPlaywrightE2E ? dashboardPageFixtures.storeId : await resolveCurrentStoreId()
 
   if (!storeId) {
     return (
@@ -129,11 +131,13 @@ export default async function AuditLogsPage({ searchParams }: AuditLogsPageProps
     )
   }
 
-  const access = await requireStoreFeatureAccess({
-    supabase,
-    storeId,
-    minimumPlan: 'pro',
-  })
+  const access = isPlaywrightE2E
+    ? dashboardPageFixtures.auditAccess
+    : await requireStoreFeatureAccess({
+        supabase,
+        storeId,
+        minimumPlan: 'pro',
+      })
   if (!access.ok) {
     return (
       <section className="space-y-4">
@@ -155,38 +159,62 @@ export default async function AuditLogsPage({ searchParams }: AuditLogsPageProps
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  let logQuery = supabase
-    .from('audit_logs')
-    .select('id, created_at, actor_user_id, entity_type, entity_id, action, before, after, payload')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
-    .range(from, to)
+  let data: AuditLogRow[] | null = null
+  let error: { message: string } | null = null
+  let count = 0
 
-  let countQuery = supabase
-    .from('audit_logs')
-    .select('id', { count: 'exact', head: true })
-    .eq('store_id', storeId)
+  if (isPlaywrightE2E) {
+    let fixtureRows = [...dashboardPageFixtures.auditLogs]
+    if (entityTypeFilter !== 'all') fixtureRows = fixtureRows.filter((row) => row.entity_type === entityTypeFilter)
+    if (actionFilter !== 'all') fixtureRows = fixtureRows.filter((row) => row.action === actionFilter)
+    if (query) {
+      fixtureRows = fixtureRows.filter(
+        (row) =>
+          row.entity_type.includes(query) ||
+          row.action.includes(query) ||
+          row.entity_id.includes(query) ||
+          row.actor_user_id?.includes(query)
+      )
+    }
+    count = fixtureRows.length
+    data = fixtureRows.slice(from, to + 1) as AuditLogRow[]
+  } else {
+    let logQuery = supabase!
+      .from('audit_logs')
+      .select('id, created_at, actor_user_id, entity_type, entity_id, action, before, after, payload')
+      .eq('store_id', storeId)
+      .order('created_at', { ascending: false })
+      .range(from, to)
 
-  if (entityTypeFilter !== 'all') {
-    logQuery = logQuery.eq('entity_type', entityTypeFilter)
-    countQuery = countQuery.eq('entity_type', entityTypeFilter)
-  }
-  if (actionFilter !== 'all') {
-    logQuery = logQuery.eq('action', actionFilter)
-    countQuery = countQuery.eq('action', actionFilter)
-  }
-  if (query) {
-    const searchClause = [
-      `entity_type.ilike.%${query}%`,
-      `action.ilike.%${query}%`,
-      `entity_id.ilike.%${query}%`,
-      `actor_user_id.ilike.%${query}%`,
-    ].join(',')
-    logQuery = logQuery.or(searchClause)
-    countQuery = countQuery.or(searchClause)
-  }
+    let countQuery = supabase!
+      .from('audit_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('store_id', storeId)
 
-  const [{ data, error }, { count }] = await Promise.all([logQuery, countQuery])
+    if (entityTypeFilter !== 'all') {
+      logQuery = logQuery.eq('entity_type', entityTypeFilter)
+      countQuery = countQuery.eq('entity_type', entityTypeFilter)
+    }
+    if (actionFilter !== 'all') {
+      logQuery = logQuery.eq('action', actionFilter)
+      countQuery = countQuery.eq('action', actionFilter)
+    }
+    if (query) {
+      const searchClause = [
+        `entity_type.ilike.%${query}%`,
+        `action.ilike.%${query}%`,
+        `entity_id.ilike.%${query}%`,
+        `actor_user_id.ilike.%${query}%`,
+      ].join(',')
+      logQuery = logQuery.or(searchClause)
+      countQuery = countQuery.or(searchClause)
+    }
+
+    const queryResults = await Promise.all([logQuery, countQuery])
+    data = (queryResults[0].data ?? []) as AuditLogRow[]
+    error = queryResults[0].error
+    count = queryResults[1].count ?? 0
+  }
 
   const rows = ((data ?? []) as AuditLogRow[]) ?? []
   const totalCount = count ?? 0

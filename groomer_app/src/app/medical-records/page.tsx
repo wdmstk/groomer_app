@@ -9,6 +9,18 @@ import {
   type MedicalRecordPhotoDraft,
   type MedicalRecordPhotoType,
 } from '@/lib/medical-records/photos'
+import {
+  buildMedicalRecordTagFilterOptions,
+  filterMedicalRecordsByAi,
+  getMedicalRecordAiStatusOptions,
+  getVisibleMedicalRecordTags,
+  type MedicalRecordAiFilterStatus,
+} from '@/lib/medical-records/tag-usage'
+import {
+  getMedicalRecordAiTagStatusLabel,
+  getMedicalRecordAiTagStatusTone,
+  type MedicalRecordAiTagStatus,
+} from '@/lib/medical-records/tags.ts'
 
 const MedicalRecordCreateModal = nextDynamic(
   () => import('@/components/medical-records/MedicalRecordCreateModal').then((mod) => mod.MedicalRecordCreateModal)
@@ -117,6 +129,8 @@ type MedicalRecordsPageProps = {
     edit?: string
     appointment_id?: string
     payment_id?: string
+    ai_tag?: string
+    ai_status?: string
   }>
 }
 
@@ -152,6 +166,38 @@ function formatDateTimeJst(value: string | null | undefined) {
   }).format(date)
 }
 
+function normalizeAiTagStatus(value: string | null | undefined): MedicalRecordAiTagStatus {
+  switch (value) {
+    case 'queued':
+    case 'processing':
+    case 'completed':
+    case 'failed':
+      return value
+    default:
+      return 'idle'
+  }
+}
+
+function buildMedicalRecordsHref(params: {
+  tab: 'list' | 'pending'
+  aiTag?: string
+  aiStatus?: string
+  modal?: string
+  edit?: string
+  appointmentId?: string
+  paymentId?: string
+}) {
+  const search = new URLSearchParams()
+  search.set('tab', params.tab)
+  if (params.aiTag) search.set('ai_tag', params.aiTag)
+  if (params.aiStatus && params.aiStatus !== 'all') search.set('ai_status', params.aiStatus)
+  if (params.modal) search.set('modal', params.modal)
+  if (params.edit) search.set('edit', params.edit)
+  if (params.appointmentId) search.set('appointment_id', params.appointmentId)
+  if (params.paymentId) search.set('payment_id', params.paymentId)
+  return `/medical-records?${search.toString()}`
+}
+
 export default async function MedicalRecordsPage({ searchParams }: MedicalRecordsPageProps) {
   const resolvedSearchParams = await searchParams
   const activeTab =
@@ -163,6 +209,12 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
   const editId = resolvedSearchParams?.edit
   const prefillAppointmentId = resolvedSearchParams?.appointment_id ?? ''
   const prefillPaymentId = resolvedSearchParams?.payment_id ?? ''
+  const selectedAiTag = resolvedSearchParams?.ai_tag?.trim() ?? ''
+  const selectedAiStatus = (
+    ['queued', 'processing', 'completed', 'failed', 'idle'].includes(resolvedSearchParams?.ai_status ?? '')
+      ? resolvedSearchParams?.ai_status
+      : 'all'
+  ) as MedicalRecordAiFilterStatus
   const needsFormSupportData =
     activeTab === 'pending' || isCreateModalOpen || Boolean(editId) || Boolean(prefillAppointmentId) || Boolean(prefillPaymentId)
   const { supabase, storeId } = await createStoreScopedClient()
@@ -251,6 +303,12 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
       staffs?: { full_name: string } | { full_name: string }[] | null
     }
   >
+  const aiTagFilterOptions = buildMedicalRecordTagFilterOptions(recordList)
+  const aiStatusOptions = getMedicalRecordAiStatusOptions(recordList)
+  const filteredRecordList = filterMedicalRecordsByAi(recordList, {
+    status: selectedAiStatus,
+    tag: selectedAiTag,
+  })
   const appointmentList = (appointments ?? []) as PendingAppointment[]
   const paymentList = (payments ?? []) as PendingPayment[]
   const petOptions: PetOption[] = pets ?? []
@@ -418,9 +476,14 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">カルテ一覧</h2>
             <div className="flex items-center gap-3">
-              <p className="text-sm text-gray-500">全 {recordList.length} 件</p>
+              <p className="text-sm text-gray-500">全 {filteredRecordList.length} 件 / 総数 {recordList.length} 件</p>
               <Link
-                href="/medical-records?tab=list&modal=create"
+                href={buildMedicalRecordsHref({
+                  tab: 'list',
+                  modal: 'create',
+                  aiTag: selectedAiTag,
+                  aiStatus: selectedAiStatus,
+                })}
                 className="inline-flex items-center rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
               >
                 新規登録
@@ -431,17 +494,105 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
             <p className="text-sm text-gray-500">カルテがまだ登録されていません。</p>
           ) : (
             <>
-              <div className="space-y-3 md:hidden">
-                {recordList.map((record) => (
-                  <article key={record.id} className="rounded border p-3 text-sm text-gray-700">
-                    <p className="font-semibold text-gray-900">
-                      {getRelatedValue(record.pets, 'name')}
+              <div className="mb-4 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-gray-900">AI解析ステータス</p>
+                  <div className="flex flex-wrap gap-2">
+                    {aiStatusOptions.map((option) => {
+                      const active = option.value === selectedAiStatus
+                      return (
+                        <Link
+                          key={option.value}
+                          href={buildMedicalRecordsHref({
+                            tab: 'list',
+                            aiTag: selectedAiTag,
+                            aiStatus: option.value,
+                          })}
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                            active ? 'bg-slate-900 text-white' : 'bg-white text-slate-700'
+                          }`}
+                        >
+                          {option.label} {option.count}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-gray-900">AIタグで絞り込み</p>
+                    {selectedAiTag ? (
+                      <Link
+                        href={buildMedicalRecordsHref({
+                          tab: 'list',
+                          aiStatus: selectedAiStatus,
+                        })}
+                        className="text-xs font-semibold text-blue-600"
+                      >
+                        タグ絞り込みを解除
+                      </Link>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {aiTagFilterOptions.length > 0 ? (
+                      aiTagFilterOptions.map((option) => {
+                        const active = option.tag === selectedAiTag
+                        return (
+                          <Link
+                            key={option.tag}
+                            href={buildMedicalRecordsHref({
+                              tab: 'list',
+                              aiTag: option.tag,
+                              aiStatus: selectedAiStatus,
+                            })}
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                              active ? 'bg-violet-700 text-white' : 'bg-white text-violet-900'
+                            }`}
+                          >
+                            {option.tag} {option.count}
+                          </Link>
+                        )
+                      })
+                    ) : (
+                      <p className="text-sm text-gray-500">AIタグ付きカルテはまだありません。</p>
+                    )}
+                  </div>
+                  {selectedAiTag || selectedAiStatus !== 'all' ? (
+                    <p className="text-xs text-slate-600">
+                      現在の条件:
+                      {selectedAiStatus !== 'all' ? ` 解析=${aiStatusOptions.find((option) => option.value === selectedAiStatus)?.label}` : ' 解析=すべて'}
+                      {selectedAiTag ? ` / タグ=${selectedAiTag}` : ''}
                     </p>
+                  ) : (
+                    <p className="text-xs text-slate-600">一覧から気になるタグを押すと、対象カルテだけに絞り込めます。</p>
+                  )}
+                </div>
+              </div>
+
+              {filteredRecordList.length === 0 ? (
+                <div className="rounded border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-600">
+                  条件に一致するカルテはありません。
+                </div>
+              ) : null}
+
+              <div className="space-y-3 md:hidden">
+                {filteredRecordList.map((record) => {
+                  const aiStatus = normalizeAiTagStatus(record.ai_tag_status)
+                  const visibleTags = getVisibleMedicalRecordTags(record.tags, 4)
+
+                  return (
+                    <article key={record.id} className="rounded border p-3 text-sm text-gray-700">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-semibold text-gray-900">{getRelatedValue(record.pets, 'name')}</p>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${getMedicalRecordAiTagStatusTone(aiStatus)}`}
+                      >
+                        {getMedicalRecordAiTagStatusLabel(aiStatus)}
+                      </span>
+                    </div>
                     <p>担当: {getRelatedValue(record.staffs, 'full_name')}</p>
-                    <p>施術日時: {record.record_date}</p>
-                    <p>メニュー: {record.menu}</p>
-                    <p>予約ID: {record.appointment_id ?? 'なし'}</p>
-                    <p>会計ID: {record.payment_id ?? 'なし'}</p>
+                    <p>施術日時: {formatDateTimeJst(record.record_date)}</p>
+                    <p>メニュー: {record.menu ?? '未登録'}</p>
                     <p>状態: {record.status === 'finalized' ? '確定' : '下書き'}</p>
                     <p>写真: {photoCountByRecordId.get(record.id) ?? 0} 枚</p>
                     <p>所要時間: {record.duration ? `${record.duration} 分` : '未登録'}</p>
@@ -449,12 +600,37 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                     <p>皮膚状態: {record.skin_condition ?? '未登録'}</p>
                     <p>問題行動: {record.behavior_notes ?? '未登録'}</p>
                     <p>注意事項: {record.caution_notes ?? '未登録'}</p>
-                    <p>AIタグ: {record.tags?.join(', ') ?? 'なし'}</p>
-                    <p>AI解析: {record.ai_tag_status ?? 'idle'}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {visibleTags.length > 0 ? (
+                        visibleTags.map((tag) => (
+                          <Link
+                            key={tag}
+                            href={buildMedicalRecordsHref({
+                              tab: 'list',
+                              aiTag: tag,
+                              aiStatus: selectedAiStatus,
+                            })}
+                            className="rounded-full bg-violet-100 px-2 py-1 text-xs font-medium text-violet-900"
+                          >
+                            {tag}
+                          </Link>
+                        ))
+                      ) : (
+                        <span className="text-xs text-gray-500">AIタグなし</span>
+                      )}
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500">
+                      最終解析: {record.ai_tag_last_analyzed_at ? formatDateTimeJst(record.ai_tag_last_analyzed_at) : '未実行'}
+                    </p>
                     <div className="mt-2 space-y-2">
                       <div className="flex items-center gap-2">
                         <Link
-                          href={`/medical-records?tab=list&edit=${record.id}`}
+                          href={buildMedicalRecordsHref({
+                            tab: 'list',
+                            edit: record.id,
+                            aiTag: selectedAiTag,
+                            aiStatus: selectedAiStatus,
+                          })}
                           className="text-blue-600 text-sm"
                         >
                           編集
@@ -468,8 +644,9 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                       </div>
                       {record.status === 'finalized' ? <MedicalRecordShareButton recordId={record.id} /> : null}
                     </div>
-                  </article>
-                ))}
+                    </article>
+                  )
+                })}
               </div>
 
               <div className="hidden overflow-x-auto md:block">
@@ -480,8 +657,6 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                       <th className="py-2 px-2">担当</th>
                       <th className="py-2 px-2">施術日時</th>
                       <th className="py-2 px-2">メニュー</th>
-                      <th className="py-2 px-2">予約ID</th>
-                      <th className="py-2 px-2">会計ID</th>
                       <th className="py-2 px-2">状態</th>
                       <th className="py-2 px-2">写真</th>
                       <th className="py-2 px-2">所要時間</th>
@@ -495,16 +670,18 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {recordList.map((record) => (
-                      <tr key={record.id} className="text-gray-700 align-top">
+                    {filteredRecordList.map((record) => {
+                      const aiStatus = normalizeAiTagStatus(record.ai_tag_status)
+                      const visibleTags = getVisibleMedicalRecordTags(record.tags)
+
+                      return (
+                        <tr key={record.id} className="text-gray-700 align-top">
                         <td className="py-3 px-2 font-medium text-gray-900">
                           {getRelatedValue(record.pets, 'name')}
                         </td>
                         <td className="py-3 px-2">{getRelatedValue(record.staffs, 'full_name')}</td>
-                        <td className="py-3 px-2">{record.record_date}</td>
-                        <td className="py-3 px-2">{record.menu}</td>
-                        <td className="py-3 px-2">{record.appointment_id ?? 'なし'}</td>
-                        <td className="py-3 px-2">{record.payment_id ?? 'なし'}</td>
+                        <td className="py-3 px-2">{formatDateTimeJst(record.record_date)}</td>
+                        <td className="py-3 px-2">{record.menu ?? '未登録'}</td>
                         <td className="py-3 px-2">{record.status === 'finalized' ? '確定' : '下書き'}</td>
                         <td className="py-3 px-2">{photoCountByRecordId.get(record.id) ?? 0} 枚</td>
                         <td className="py-3 px-2">
@@ -514,13 +691,51 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                         <td className="py-3 px-2">{record.skin_condition ?? '未登録'}</td>
                         <td className="py-3 px-2">{record.behavior_notes ?? '未登録'}</td>
                         <td className="py-3 px-2">{record.caution_notes ?? '未登録'}</td>
-                        <td className="py-3 px-2">{record.tags?.join(', ') ?? 'なし'}</td>
-                        <td className="py-3 px-2">{record.ai_tag_status ?? 'idle'}</td>
+                        <td className="py-3 px-2">
+                          <div className="flex max-w-48 flex-wrap gap-1.5">
+                            {visibleTags.length > 0 ? (
+                              visibleTags.map((tag) => (
+                                <Link
+                                  key={tag}
+                                  href={buildMedicalRecordsHref({
+                                    tab: 'list',
+                                    aiTag: tag,
+                                    aiStatus: selectedAiStatus,
+                                  })}
+                                  className="rounded-full bg-violet-100 px-2 py-1 text-xs font-medium text-violet-900"
+                                >
+                                  {tag}
+                                </Link>
+                              ))
+                            ) : (
+                              <span className="text-gray-500">なし</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="space-y-1">
+                            <span
+                              className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getMedicalRecordAiTagStatusTone(aiStatus)}`}
+                            >
+                              {getMedicalRecordAiTagStatusLabel(aiStatus)}
+                            </span>
+                            <p className="text-xs text-gray-500">
+                              {record.ai_tag_last_analyzed_at
+                                ? `最終: ${formatDateTimeJst(record.ai_tag_last_analyzed_at)}`
+                                : '最終: 未実行'}
+                            </p>
+                          </div>
+                        </td>
                         <td className="py-3 px-2">
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
                               <Link
-                                href={`/medical-records?tab=list&edit=${record.id}`}
+                                href={buildMedicalRecordsHref({
+                                  tab: 'list',
+                                  edit: record.id,
+                                  aiTag: selectedAiTag,
+                                  aiStatus: selectedAiStatus,
+                                })}
                                 className="text-blue-600 text-sm"
                               >
                                 編集
@@ -535,8 +750,9 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                             {record.status === 'finalized' ? <MedicalRecordShareButton recordId={record.id} /> : null}
                           </div>
                         </td>
-                      </tr>
-                    ))}
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

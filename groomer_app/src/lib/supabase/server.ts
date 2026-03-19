@@ -20,7 +20,11 @@ async function createCookieAdapter() {
       }[]
     ) {
       cookiesToSet.forEach(({ name, value, options }) => {
-        cookieStore.set({ name, value, ...options })
+        try {
+          cookieStore.set({ name, value, ...options })
+        } catch {
+          // Ignore when cookies are read-only (e.g. Server Components render context).
+        }
       })
     },
   }

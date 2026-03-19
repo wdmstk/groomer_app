@@ -1,9 +1,11 @@
 import { Card } from '@/components/ui/Card'
+import { inventoryPageFixtures } from '@/lib/e2e/inventory-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { toNumber } from '@/lib/inventory/stock'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type HistoryRow = {
   id: string
@@ -26,13 +28,19 @@ function movementLabel(type: HistoryRow['movement_type']) {
 }
 
 export default async function InventoryHistoryPage() {
-  const { supabase, storeId } = await createStoreScopedClient()
-  const { data } = await supabase
-    .from('inventory_movements')
-    .select('id, movement_type, quantity_delta, reason, happened_at, inventory_items(name, unit)')
-    .eq('store_id', storeId)
-    .order('happened_at', { ascending: false })
-    .limit(100)
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: inventoryPageFixtures.storeId }
+    : await createStoreScopedClient()
+  const data = isPlaywrightE2E
+    ? inventoryPageFixtures.historyRows
+    : (
+        await supabase!
+          .from('inventory_movements')
+          .select('id, movement_type, quantity_delta, reason, happened_at, inventory_items(name, unit)')
+          .eq('store_id', storeId)
+          .order('happened_at', { ascending: false })
+          .limit(100)
+      ).data
 
   const rows = (data ?? []) as HistoryRow[]
 

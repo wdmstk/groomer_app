@@ -1,11 +1,13 @@
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { inventoryPageFixtures } from '@/lib/e2e/inventory-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { aggregateStockByItem } from '@/lib/inventory/stock'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type Item = {
   id: string
@@ -28,33 +30,50 @@ function relatedItem(value: MovementRow['inventory_items']) {
 }
 
 export default async function InventoryStocktakePage() {
-  const { supabase, storeId } = await createStoreScopedClient()
-  const { data: items } = await supabase
-    .from('inventory_items')
-    .select('id, name, unit')
-    .eq('store_id', storeId)
-    .eq('is_active', true)
-    .order('name', { ascending: true })
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: inventoryPageFixtures.storeId }
+    : await createStoreScopedClient()
+  const items = isPlaywrightE2E
+    ? inventoryPageFixtures.productItems
+        .filter((item) => item.is_active)
+        .map((item) => ({ id: item.id, name: item.name, unit: item.unit }))
+    : (
+        await supabase!
+          .from('inventory_items')
+          .select('id, name, unit')
+          .eq('store_id', storeId)
+          .eq('is_active', true)
+          .order('name', { ascending: true })
+      ).data
 
   const itemList = (items ?? []) as Item[]
   const itemIds = itemList.map((item) => item.id)
-  const { data: movementRows } =
-    itemIds.length > 0
-      ? await supabase
-          .from('inventory_movements')
-          .select('item_id, quantity_delta')
-          .eq('store_id', storeId)
-          .in('item_id', itemIds)
-      : { data: [] }
+  const movementRows = isPlaywrightE2E
+    ? inventoryPageFixtures.dashboardMovements
+        .filter((row) => itemIds.includes(row.item_id))
+        .map((row) => ({ item_id: row.item_id, quantity_delta: row.quantity_delta }))
+    : itemIds.length > 0
+      ? (
+          await supabase!
+            .from('inventory_movements')
+            .select('item_id, quantity_delta')
+            .eq('store_id', storeId)
+            .in('item_id', itemIds)
+        ).data
+      : []
   const stockMap = aggregateStockByItem(movementRows ?? [])
 
-  const { data: stocktakeRows } = await supabase
-    .from('inventory_movements')
-    .select('id, item_id, quantity_delta, reason, happened_at, inventory_items(name, unit)')
-    .eq('store_id', storeId)
-    .eq('movement_type', 'stocktake_adjustment')
-    .order('happened_at', { ascending: false })
-    .limit(20)
+  const stocktakeRows = isPlaywrightE2E
+    ? inventoryPageFixtures.stocktakeRows
+    : (
+        await supabase!
+          .from('inventory_movements')
+          .select('id, item_id, quantity_delta, reason, happened_at, inventory_items(name, unit)')
+          .eq('store_id', storeId)
+          .eq('movement_type', 'stocktake_adjustment')
+          .order('happened_at', { ascending: false })
+          .limit(20)
+      ).data
 
   return (
     <section className="space-y-4">

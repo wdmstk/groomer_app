@@ -10,10 +10,14 @@
     "dev:clean": "npm run clean && next dev",
     "build": "next build",
     "start": "next start",
+    "backup:db": "bash ./scripts/backup_db.sh",
+    "backup:storage": "node ./scripts/backup_storage.mjs",
     "lint": "eslint --cache --cache-location .eslintcache src",
     "lint:changed": "node ./scripts/lint-changed.mjs",
     "lint:files": "eslint --cache --cache-location .eslintcache --quiet",
     "test": "node --import ./tests/register-alias.mjs --test",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
     "types:generate:supabase": "node ./scripts/generate-supabase-types.mjs"
   },
   "dependencies": {
@@ -28,6 +32,7 @@
     "resend": "^6.9.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -1,52 +1,63 @@
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
-import { DEFAULT_RESERVATION_PAYMENT_SETTINGS } from '@/lib/appointments/reservation-payment'
+import { settingsPageFixtures } from '@/lib/e2e/settings-page-fixtures'
+import { getSettingsManageLabel } from '@/lib/settings/presentation'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type MembershipRole = 'owner' | 'admin' | 'staff'
 
 export default async function PublicReserveSettingsPage() {
-  const { supabase, storeId } = await createStoreScopedClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: settingsPageFixtures.storeId }
+    : await createStoreScopedClient()
+  const manageState = isPlaywrightE2E
+    ? settingsPageFixtures.manageState
+    : (() => {
+        return supabase.auth.getUser().then(async ({ data: { user } }) => {
+          const membership = user
+            ? (
+                await supabase
+                  .from('store_memberships')
+                  .select('role')
+                  .eq('store_id', storeId)
+                  .eq('user_id', user.id)
+                  .eq('is_active', true)
+                  .maybeSingle()
+              ).data
+            : null
+          const currentRole = (membership?.role as MembershipRole | undefined) ?? null
+          return getSettingsManageLabel(currentRole)
+        })
+      })()
+  const resolvedManageState = await manageState
+  const canManage = resolvedManageState.canManage
 
-  const { data: membership } = user
-    ? await supabase
-        .from('store_memberships')
-        .select('role')
-        .eq('store_id', storeId)
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .maybeSingle()
-    : { data: null }
-  const currentRole = (membership?.role as MembershipRole | undefined) ?? null
-  const canManage = currentRole === 'owner' || currentRole === 'admin'
+  const storeSettings = isPlaywrightE2E
+    ? settingsPageFixtures.publicReserveSettings
+    : (
+        await supabase
+          .from('stores')
+          .select(
+            'public_reserve_conflict_warn_threshold_percent, public_reserve_staff_bias_warn_threshold_percent, public_reserve_slot_days, public_reserve_slot_interval_minutes, public_reserve_slot_buffer_minutes, public_reserve_business_start_hour_jst, public_reserve_business_end_hour_jst, public_reserve_min_lead_minutes, member_card_rank_visible, ltv_gold_annual_sales_threshold, ltv_silver_annual_sales_threshold, ltv_bronze_annual_sales_threshold, ltv_gold_visit_count_threshold, ltv_silver_visit_count_threshold, ltv_bronze_visit_count_threshold'
+          )
+          .eq('id', storeId)
+          .maybeSingle()
+      ).data
 
-  const { data: storeSettings } = await supabase
-    .from('stores')
-    .select(
-      'public_reserve_conflict_warn_threshold_percent, public_reserve_staff_bias_warn_threshold_percent, public_reserve_slot_days, public_reserve_slot_interval_minutes, public_reserve_slot_buffer_minutes, public_reserve_business_start_hour_jst, public_reserve_business_end_hour_jst, public_reserve_min_lead_minutes'
-    )
-    .eq('id', storeId)
-    .maybeSingle()
-
-  const { data: publicReserveBlockedDates } = await supabase
-    .from('store_public_reserve_blocked_dates')
-    .select('date_key')
-    .eq('store_id', storeId)
-    .eq('is_active', true)
-    .order('date_key', { ascending: true })
-  const { data: reservationPaymentSettingsRow } = await supabase
-    .from('store_reservation_payment_settings')
-    .select(
-      'prepayment_enabled, card_hold_enabled, cancellation_day_before_percent, cancellation_same_day_percent, cancellation_no_show_percent, no_show_charge_mode'
-    )
-    .eq('store_id', storeId)
-    .maybeSingle()
+  const publicReserveBlockedDates = isPlaywrightE2E
+    ? settingsPageFixtures.blockedDates
+    : (
+        await supabase
+          .from('store_public_reserve_blocked_dates')
+          .select('date_key')
+          .eq('store_id', storeId)
+          .eq('is_active', true)
+          .order('date_key', { ascending: true })
+      ).data
 
   const publicConflictWarnThreshold =
     Number(storeSettings?.public_reserve_conflict_warn_threshold_percent ?? 10) || 10
@@ -63,16 +74,21 @@ export default async function PublicReserveSettingsPage() {
     Number(storeSettings?.public_reserve_business_end_hour_jst ?? 18) || 18
   const publicReserveMinLeadMinutes =
     Number(storeSettings?.public_reserve_min_lead_minutes ?? 60) || 60
+  const memberCardRankVisible = storeSettings?.member_card_rank_visible !== false
+  const ltvGoldAnnualSalesThreshold = Number(storeSettings?.ltv_gold_annual_sales_threshold ?? 120000) || 120000
+  const ltvSilverAnnualSalesThreshold =
+    Number(storeSettings?.ltv_silver_annual_sales_threshold ?? 60000) || 60000
+  const ltvBronzeAnnualSalesThreshold =
+    Number(storeSettings?.ltv_bronze_annual_sales_threshold ?? 30000) || 30000
+  const ltvGoldVisitCountThreshold = Number(storeSettings?.ltv_gold_visit_count_threshold ?? 12) || 12
+  const ltvSilverVisitCountThreshold = Number(storeSettings?.ltv_silver_visit_count_threshold ?? 6) || 6
+  const ltvBronzeVisitCountThreshold = Number(storeSettings?.ltv_bronze_visit_count_threshold ?? 3) || 3
   const publicReserveBlockedDatesText = ((publicReserveBlockedDates ?? []) as Array<{
     date_key: string | null
   }>)
     .map((row) => row.date_key)
     .filter((value): value is string => typeof value === 'string' && value.length > 0)
     .join('\n')
-  const reservationPaymentSettings = {
-    ...DEFAULT_RESERVATION_PAYMENT_SETTINGS,
-    ...reservationPaymentSettingsRow,
-  }
 
   return (
     <section className="space-y-6">
@@ -91,7 +107,7 @@ export default async function PublicReserveSettingsPage() {
       <Card className="border border-slate-200 bg-slate-50">
         <p className="text-sm font-semibold text-gray-900">権限</p>
         <p className="mt-1 text-xs text-gray-600">
-          現在のロール: {currentRole ?? '未所属'} / 変更権限: {canManage ? 'あり（owner/admin）' : 'なし'}
+          現在のロール: {resolvedManageState.currentRole} / 変更権限: {resolvedManageState.label}
         </p>
       </Card>
 
@@ -102,101 +118,6 @@ export default async function PublicReserveSettingsPage() {
           </p>
         </Card>
       ) : null}
-
-      <details className="rounded border border-gray-200 bg-white p-3" open>
-        <summary className="cursor-pointer text-sm font-semibold text-gray-900">事前決済 / キャンセルポリシー</summary>
-        <div className="mt-3">
-          <p className="mb-3 text-xs text-gray-500">
-            予約時に事前決済またはカード仮押さえを選べるようにし、無断キャンセル時の請求運用を設定します。
-          </p>
-          <form
-            action="/api/settings/reservation-payment-settings"
-            method="post"
-            className="grid grid-cols-1 gap-3 md:grid-cols-3"
-          >
-            <label className="inline-flex items-center gap-2 rounded border p-3 text-sm text-gray-700">
-              <input type="hidden" name="prepayment_enabled" value="false" />
-              <input
-                type="checkbox"
-                name="prepayment_enabled"
-                value="true"
-                defaultChecked={reservationPaymentSettings.prepayment_enabled}
-                disabled={!canManage}
-              />
-              事前決済を有効化
-            </label>
-            <label className="inline-flex items-center gap-2 rounded border p-3 text-sm text-gray-700">
-              <input type="hidden" name="card_hold_enabled" value="false" />
-              <input
-                type="checkbox"
-                name="card_hold_enabled"
-                value="true"
-                defaultChecked={reservationPaymentSettings.card_hold_enabled}
-                disabled={!canManage}
-              />
-              カード仮押さえを有効化
-            </label>
-            <label className="text-xs text-gray-700">
-              無断キャンセル請求モード
-              <select
-                name="no_show_charge_mode"
-                defaultValue={reservationPaymentSettings.no_show_charge_mode}
-                className="mt-1 w-full rounded border p-2 text-sm"
-                disabled={!canManage}
-              >
-                <option value="manual">ワンタップ請求</option>
-                <option value="auto">自動請求</option>
-              </select>
-            </label>
-            <label className="text-xs text-gray-700">
-              前日キャンセル料（%）
-              <input
-                type="number"
-                min={0}
-                max={100}
-                name="cancellation_day_before_percent"
-                defaultValue={reservationPaymentSettings.cancellation_day_before_percent}
-                className="mt-1 w-full rounded border p-2 text-sm"
-                disabled={!canManage}
-              />
-            </label>
-            <label className="text-xs text-gray-700">
-              当日キャンセル料（%）
-              <input
-                type="number"
-                min={0}
-                max={100}
-                name="cancellation_same_day_percent"
-                defaultValue={reservationPaymentSettings.cancellation_same_day_percent}
-                className="mt-1 w-full rounded border p-2 text-sm"
-                disabled={!canManage}
-              />
-            </label>
-            <label className="text-xs text-gray-700">
-              無断キャンセル料（%）
-              <input
-                type="number"
-                min={0}
-                max={100}
-                name="cancellation_no_show_percent"
-                defaultValue={reservationPaymentSettings.cancellation_no_show_percent}
-                className="mt-1 w-full rounded border p-2 text-sm"
-                disabled={!canManage}
-              />
-            </label>
-            <div className="md:col-span-3 flex items-end">
-              <input type="hidden" name="redirect_to" value="/settings/public-reserve" />
-              <button
-                type="submit"
-                disabled={!canManage}
-                className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                事前決済設定を保存
-              </button>
-            </div>
-          </form>
-        </div>
-      </details>
 
       <details className="rounded border border-gray-200 bg-white p-3" open>
         <summary className="cursor-pointer text-sm font-semibold text-gray-900">アラート閾値</summary>
@@ -367,6 +288,131 @@ export default async function PublicReserveSettingsPage() {
             >
               例外日を保存
             </button>
+          </form>
+        </div>
+      </details>
+
+      <details className="rounded border border-gray-200 bg-white p-3" open>
+        <summary className="cursor-pointer text-sm font-semibold text-gray-900">会員証表示設定</summary>
+        <div className="mt-3">
+          <p className="mb-3 text-xs text-gray-500">会員証にランク表示を出すか、店舗ごとに切り替えます。</p>
+          <form action="/api/stores/member-card-settings" method="post" className="space-y-3">
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                name="member_card_rank_visible"
+                defaultChecked={memberCardRankVisible}
+                disabled={!canManage}
+              />
+              会員証にランクを表示する
+            </label>
+            <div>
+              <input type="hidden" name="redirect_to" value="/settings/public-reserve" />
+              <button
+                type="submit"
+                disabled={!canManage}
+                className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                会員証設定を保存
+              </button>
+            </div>
+          </form>
+        </div>
+      </details>
+
+      <details className="rounded border border-gray-200 bg-white p-3" open>
+        <summary className="cursor-pointer text-sm font-semibold text-gray-900">LTVランク初期値</summary>
+        <div className="mt-3 space-y-3">
+          <p className="text-xs text-gray-500">
+            会員ランク判定の店舗別しきい値です。ゴールド以上の順で入力してください。各ランクで `0` を入れた軸は不問になります。
+          </p>
+          <form action="/api/stores/ltv-rank-settings" method="post" className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <label className="text-xs text-gray-700">
+                ゴールド 年間売上（円）
+                <input
+                  type="number"
+                  min={0}
+                  step={1000}
+                  name="ltv_gold_annual_sales_threshold"
+                  defaultValue={ltvGoldAnnualSalesThreshold}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+              <label className="text-xs text-gray-700">
+                シルバー 年間売上（円）
+                <input
+                  type="number"
+                  min={0}
+                  step={1000}
+                  name="ltv_silver_annual_sales_threshold"
+                  defaultValue={ltvSilverAnnualSalesThreshold}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+              <label className="text-xs text-gray-700">
+                ブロンズ 年間売上（円）
+                <input
+                  type="number"
+                  min={0}
+                  step={1000}
+                  name="ltv_bronze_annual_sales_threshold"
+                  defaultValue={ltvBronzeAnnualSalesThreshold}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <label className="text-xs text-gray-700">
+                ゴールド 来店回数（回/年）
+                <input
+                  type="number"
+                  min={0}
+                  max={365}
+                  name="ltv_gold_visit_count_threshold"
+                  defaultValue={ltvGoldVisitCountThreshold}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+              <label className="text-xs text-gray-700">
+                シルバー 来店回数（回/年）
+                <input
+                  type="number"
+                  min={0}
+                  max={365}
+                  name="ltv_silver_visit_count_threshold"
+                  defaultValue={ltvSilverVisitCountThreshold}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+              <label className="text-xs text-gray-700">
+                ブロンズ 来店回数（回/年）
+                <input
+                  type="number"
+                  min={0}
+                  max={365}
+                  name="ltv_bronze_visit_count_threshold"
+                  defaultValue={ltvBronzeVisitCountThreshold}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+            </div>
+            <div>
+              <input type="hidden" name="redirect_to" value="/settings/public-reserve" />
+              <button
+                type="submit"
+                disabled={!canManage}
+                className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                LTVランク初期値を保存
+              </button>
+            </div>
           </form>
         </div>
       </details>

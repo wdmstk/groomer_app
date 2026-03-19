@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/Card'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { requireStoreFeatureAccess } from '@/lib/feature-access'
 import { isHotelFeatureEnabledForStore } from '@/lib/hotel/feature-gate'
+import { hotelPageFixtures } from '@/lib/e2e/hotel-page-fixtures'
 
 const HotelStaysManager = nextDynamic(
   () => import('@/components/hotel/HotelStaysManager').then((mod) => mod.HotelStaysManager),
@@ -17,6 +18,7 @@ const HotelStaysManager = nextDynamic(
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 type RelatedName = { id: string; full_name?: string | null; name?: string | null; customer_id?: string | null }
 type ChargeRow = {
@@ -87,17 +89,23 @@ type HotelMenuItemRow = {
 }
 
 export default async function HotelPage() {
-  const { supabase, storeId } = await createStoreScopedClient()
-  const access = await requireStoreFeatureAccess({
-    supabase,
-    storeId,
-    minimumPlan: 'standard',
-    requiredOption: 'hotel',
-  })
-  const hotelEnabled = isHotelFeatureEnabledForStore(storeId)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { supabase, storeId } = isPlaywrightE2E
+    ? { supabase: null, storeId: hotelPageFixtures.storeId }
+    : await createStoreScopedClient()
+  const access = isPlaywrightE2E
+    ? hotelPageFixtures.access
+    : await requireStoreFeatureAccess({
+        supabase,
+        storeId,
+        minimumPlan: 'standard',
+        requiredOption: 'hotel',
+      })
+  const hotelEnabled = isPlaywrightE2E ? true : isHotelFeatureEnabledForStore(storeId)
+  const user = isPlaywrightE2E
+    ? hotelPageFixtures.user
+    : (
+        await supabase.auth.getUser()
+      ).data.user
 
   if (!user) {
     return (
@@ -110,64 +118,85 @@ export default async function HotelPage() {
     )
   }
 
-  const [
-    { data: membership },
-    { data: stays },
-    { data: charges },
-    { data: stayItems },
-    { data: customers },
-    { data: pets },
-    { data: menuItems },
-    { data: hotelSettings },
-  ] = await Promise.all([
-    supabase
-      .from('store_memberships')
-      .select('role')
-      .eq('store_id', storeId)
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .maybeSingle(),
-    supabase
-      .from('hotel_stays')
-      .select(
-        'id, stay_code, status, customer_id, pet_id, planned_check_in_at, planned_check_out_at, actual_check_in_at, actual_check_out_at, nights, pickup_required, dropoff_required, vaccine_expires_on, total_amount_jpy, notes'
-      )
-      .eq('store_id', storeId)
-      .order('planned_check_in_at', { ascending: false })
-      .limit(200),
-    supabase
-      .from('hotel_charges')
-      .select('id, stay_id, charge_type, label, quantity, unit_amount_jpy, line_amount_jpy')
-      .eq('store_id', storeId)
-      .order('created_at', { ascending: true }),
-    supabase
-      .from('hotel_stay_items')
-      .select(
-        'id, stay_id, menu_item_id, item_type, label_snapshot, billing_unit_snapshot, quantity, unit_price_snapshot, line_amount_jpy, counts_toward_capacity, sort_order, notes'
-      )
-      .eq('store_id', storeId)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: true }),
-    supabase.from('customers').select('id, full_name').eq('store_id', storeId).order('full_name', { ascending: true }),
-    supabase
-      .from('pets')
-      .select('id, name, customer_id')
-      .eq('store_id', storeId)
-      .order('name', { ascending: true }),
-    supabase
-      .from('hotel_menu_items')
-      .select(
-        'id, name, item_type, billing_unit, duration_minutes, default_quantity, price, tax_rate, tax_included, counts_toward_capacity, is_active, display_order, notes'
-      )
-      .eq('store_id', storeId)
-      .order('display_order', { ascending: true })
-      .order('created_at', { ascending: true }),
-    supabase
-      .from('hotel_settings')
-      .select('id, store_id, max_concurrent_pets, calendar_open_hour, calendar_close_hour')
-      .eq('store_id', storeId)
-      .maybeSingle(),
-  ])
+  const membership = isPlaywrightE2E
+    ? hotelPageFixtures.membership
+    : (
+        await supabase!
+          .from('store_memberships')
+          .select('role')
+          .eq('store_id', storeId)
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .maybeSingle()
+      ).data
+  const stays = isPlaywrightE2E
+    ? hotelPageFixtures.stays
+    : (
+        await supabase!
+          .from('hotel_stays')
+          .select(
+            'id, stay_code, status, customer_id, pet_id, planned_check_in_at, planned_check_out_at, actual_check_in_at, actual_check_out_at, nights, pickup_required, dropoff_required, vaccine_expires_on, total_amount_jpy, notes'
+          )
+          .eq('store_id', storeId)
+          .order('planned_check_in_at', { ascending: false })
+          .limit(200)
+      ).data
+  const charges = isPlaywrightE2E
+    ? []
+    : (
+        await supabase!
+          .from('hotel_charges')
+          .select('id, stay_id, charge_type, label, quantity, unit_amount_jpy, line_amount_jpy')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: true })
+      ).data
+  const stayItems = isPlaywrightE2E
+    ? hotelPageFixtures.stayItems
+    : (
+        await supabase!
+          .from('hotel_stay_items')
+          .select(
+            'id, stay_id, menu_item_id, item_type, label_snapshot, billing_unit_snapshot, quantity, unit_price_snapshot, line_amount_jpy, counts_toward_capacity, sort_order, notes'
+          )
+          .eq('store_id', storeId)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: true })
+      ).data
+  const customers = isPlaywrightE2E
+    ? hotelPageFixtures.customers
+    : (
+        await supabase!.from('customers').select('id, full_name').eq('store_id', storeId).order('full_name', { ascending: true })
+      ).data
+  const pets = isPlaywrightE2E
+    ? hotelPageFixtures.pets
+    : (
+        await supabase!
+          .from('pets')
+          .select('id, name, customer_id')
+          .eq('store_id', storeId)
+          .order('name', { ascending: true })
+      ).data
+  const menuItems = isPlaywrightE2E
+    ? hotelPageFixtures.menuItems
+    : (
+        await supabase!
+          .from('hotel_menu_items')
+          .select(
+            'id, name, item_type, billing_unit, duration_minutes, default_quantity, price, tax_rate, tax_included, counts_toward_capacity, is_active, display_order, notes'
+          )
+          .eq('store_id', storeId)
+          .order('display_order', { ascending: true })
+          .order('created_at', { ascending: true })
+      ).data
+  const hotelSettings = isPlaywrightE2E
+    ? hotelPageFixtures.settings
+    : (
+        await supabase!
+          .from('hotel_settings')
+          .select('id, store_id, max_concurrent_pets, calendar_open_hour, calendar_close_hour')
+          .eq('store_id', storeId)
+          .maybeSingle()
+      ).data
 
   const role = membership?.role ?? null
   if (!role) {

@@ -4,6 +4,14 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { DragEvent, MouseEvent } from 'react'
 import { useMemo, useRef, useState } from 'react'
+import {
+  formatCalendarConflictJst,
+  formatCalendarTimeJst,
+  isRequestedAppointmentStatus,
+  parseCalendarDelayAlertPayload,
+  type DelayAlertPayload,
+  type DisplayDelayAlert,
+} from '@/lib/appointments/calendar-presentation'
 import { APPOINTMENT_METRIC_EVENTS } from '@/lib/appointments/metrics'
 
 type CalendarAppointment = {
@@ -20,6 +28,7 @@ type CalendarAppointment = {
 
 type AppointmentCalendarProps = {
   appointments: CalendarAppointment[]
+  initialDelayAlert?: DisplayDelayAlert | null
 }
 
 type CalendarMode = 'month' | 'week' | 'day'
@@ -59,27 +68,6 @@ type DraggedPayload = {
   fallbackStaffId: string
 }
 
-type DelayAlertPayload = {
-  baseEndTime?: string | null
-  scenarios?: Array<{
-    offsetMin?: number
-    impactedCount?: number
-    impacts?: Array<{
-      appointmentId?: string
-      startTime?: string | null
-      endTime?: string | null
-      customerName?: string
-      petName?: string
-      overlapMin?: number
-    }>
-  }>
-}
-
-type DisplayDelayAlert = {
-  baseEndTime: string
-  lines: string[]
-}
-
 function getJstParts(date: Date) {
   const shifted = new Date(date.getTime() + JST_OFFSET_MS)
   return {
@@ -99,6 +87,16 @@ function createDateFromJst(year: number, month: number, day: number, hour = 0, m
 function addDaysJst(date: Date, days: number) {
   const p = getJstParts(date)
   return createDateFromJst(p.year, p.month, p.day + days, p.hour, p.minute)
+}
+
+function readDelayAlertFromSessionStorage() {
+  if (typeof window === 'undefined') return null
+  const raw = window.sessionStorage.getItem('appointment_delay_alert')
+  const parsed = parseCalendarDelayAlertPayload(raw)
+  if (parsed) {
+    window.sessionStorage.removeItem('appointment_delay_alert')
+  }
+  return parsed
 }
 
 function startOfJstDay(date: Date) {
@@ -130,10 +128,6 @@ function formatJstDate(value: Date) {
 function getMinutesFromJstDayStart(date: Date) {
   const p = getJstParts(date)
   return p.hour * 60 + p.minute
-}
-
-function isRequestedStatus(status: string) {
-  return status === '予約申請'
 }
 
 function getTimelinePlacement(item: NormalizedAppointment) {
@@ -208,57 +202,6 @@ function roundTo15(minute: number) {
   return Math.max(0, Math.min(24 * 60 - 15, Math.round(minute / 15) * 15))
 }
 
-function formatConflictJst(value: string | null | undefined) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  return new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
-}
-
-function formatDelayAlertLineJst(value: string | null | undefined) {
-  if (!value) return '--:--'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '--:--'
-  return new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
-}
-
-function parseDelayAlertPayload(raw: string | null): DisplayDelayAlert | null {
-  if (!raw) return null
-  try {
-    const parsed = JSON.parse(raw) as DelayAlertPayload
-    const baseEndTime = parsed.baseEndTime
-    const scenarios = parsed.scenarios ?? []
-    if (!baseEndTime || scenarios.length === 0) return null
-
-    const lines = scenarios
-      .filter((scenario) => (scenario.impactedCount ?? 0) > 0)
-      .map((scenario) => {
-        const firstImpact = scenario.impacts?.[0]
-        const firstLabel = firstImpact
-          ? `${formatDelayAlertLineJst(firstImpact.startTime)} ${firstImpact.petName ?? '未登録'} (${firstImpact.customerName ?? '未登録'})`
-          : '影響先未取得'
-        return `+${scenario.offsetMin ?? 0}分: ${scenario.impactedCount ?? 0}件影響 (${firstLabel})`
-      })
-
-    if (lines.length === 0) return null
-    return { baseEndTime, lines }
-  } catch {
-    return null
-  }
-}
-
 function sendMoveMetric(elapsedMs: number, succeeded: boolean) {
   const payload = {
     event_type: APPOINTMENT_METRIC_EVENTS.sameDayMoveResponse,
@@ -284,7 +227,7 @@ function sendMoveMetric(elapsedMs: number, succeeded: boolean) {
   })
 }
 
-export function AppointmentCalendar({ appointments }: AppointmentCalendarProps) {
+export function AppointmentCalendar({ appointments, initialDelayAlert = null }: AppointmentCalendarProps) {
   const router = useRouter()
   const ignoreClickUntilRef = useRef(0)
   const [calendarAppointments, setCalendarAppointments] = useState(appointments)
@@ -292,15 +235,7 @@ export function AppointmentCalendar({ appointments }: AppointmentCalendarProps) 
   const [cursor, setCursor] = useState<Date>(new Date())
   const [dragError, setDragError] = useState('')
   const [delayAlert, setDelayAlert] = useState<DisplayDelayAlert | null>(() =>
-    {
-      if (typeof window === 'undefined') return null
-      const raw = window.sessionStorage.getItem('appointment_delay_alert')
-      const parsed = parseDelayAlertPayload(raw)
-      if (parsed) {
-        window.sessionStorage.removeItem('appointment_delay_alert')
-      }
-      return parsed
-    }
+    initialDelayAlert ?? readDelayAlertFromSessionStorage()
   )
   const [draggingAppointmentId, setDraggingAppointmentId] = useState<string | null>(null)
 
@@ -348,7 +283,7 @@ export function AppointmentCalendar({ appointments }: AppointmentCalendarProps) 
   }, [normalized])
 
   const getItemColorClass = (item: NormalizedAppointment, modeType: 'light' | 'block') => {
-    if (isRequestedStatus(item.status)) {
+    if (isRequestedAppointmentStatus(item.status)) {
       return modeType === 'light'
         ? 'bg-amber-100 text-amber-900'
         : 'border-amber-300 bg-amber-100 text-amber-900'
@@ -507,7 +442,7 @@ export function AppointmentCalendar({ appointments }: AppointmentCalendarProps) 
         )
       )
       setDragError('')
-      setDelayAlert(parseDelayAlertPayload(JSON.stringify(responsePayload?.delay_alert ?? null)))
+      setDelayAlert(parseCalendarDelayAlertPayload(JSON.stringify(responsePayload?.delay_alert ?? null)))
       sendMoveMetric(processingMs, true)
       return
     }
@@ -518,7 +453,7 @@ export function AppointmentCalendar({ appointments }: AppointmentCalendarProps) 
       const conflict = errorPayload?.conflict
       setDragError(
         `${errorPayload?.message ?? '時間が重複するため移動できません。'} ` +
-          `衝突: ${formatConflictJst(conflict?.startTime)} - ${formatConflictJst(conflict?.endTime)}`
+          `衝突: ${formatCalendarConflictJst(conflict?.startTime)} - ${formatCalendarConflictJst(conflict?.endTime)}`
       )
     } else {
       setDragError(errorPayload?.message ?? '移動に失敗しました。')
@@ -530,7 +465,7 @@ export function AppointmentCalendar({ appointments }: AppointmentCalendarProps) 
       {delayAlert ? (
         <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           <p className="font-semibold">
-            遅延影響アラート: 終了予定 {formatConflictJst(delayAlert.baseEndTime)} 以降
+            遅延影響アラート: 終了予定 {formatCalendarConflictJst(delayAlert.baseEndTime)} 以降
           </p>
           <p>{delayAlert.lines.join(' / ')}</p>
         </div>
@@ -745,7 +680,7 @@ export function AppointmentCalendar({ appointments }: AppointmentCalendarProps) 
                           onDragEnd={handleDragEnd}
                         >
                           <p className="font-semibold">
-                            {formatJstTime(item.startTime)}-{formatJstTime(item.endTime)}
+                            {formatCalendarTimeJst(item.startTime)}-{formatCalendarTimeJst(item.endTime)}
                           </p>
                           <p>{item.petName}</p>
                           <p className="text-blue-700">{item.staffName}</p>

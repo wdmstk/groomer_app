@@ -22,12 +22,11 @@ export type StoreStorageQuotaState = {
   planCode: AppPlan
   policy: StorageLimitPolicy
   usageBytes: number
-  usageUnavailable: boolean
-  usageFetchError: string | null
   baseLimitBytes: number
   extraCapacityBytes: number
   customLimitBytes: number | null
   totalLimitBytes: number
+  usageWarning: string | null
 }
 
 const GB = 1024 * 1024 * 1024
@@ -37,6 +36,13 @@ export const PLAN_STORAGE_LIMIT_BYTES: Record<AppPlan, number> = {
   light: 5 * GB,
   standard: 10 * GB,
   pro: 20 * GB,
+}
+
+export function buildStorageQuotaWarningMessage(error: unknown) {
+  const message = error instanceof Error ? error.message.trim() : ''
+  return message
+    ? `使用量の取得に失敗したため、暫定値を表示しています: ${message}`
+    : '使用量の取得に失敗したため、暫定値を表示しています。'
 }
 
 function toSafeInt(value: unknown, fallback = 0) {
@@ -131,43 +137,36 @@ export function formatBytesToJa(bytes: number) {
 export async function fetchStoreStorageQuotaState(params: {
   storeId: string
   bucket: string
-  allowPartialUsageFailure?: boolean
+  allowUsageFetchFailure?: boolean
 }) {
   const admin = createAdminSupabaseClient()
-  const objectListingPromise = fetchStoreStorageObjects({ storeId: params.storeId, bucket: params.bucket })
-  const safeObjectListingPromise = (
-    params.allowPartialUsageFailure
-      ? Promise.race([
-          objectListingPromise,
-          new Promise<StorageObjectRow[]>((_, reject) => {
-            setTimeout(() => reject(new Error('ストレージ集計がタイムアウトしました')), 5000)
-          }),
-        ])
-      : objectListingPromise
-  )
-  const [{ data: sub }, { data: policyRow }, objectsResult] = await Promise.all([
+  const objectsPromise = params.allowUsageFetchFailure
+    ? fetchStoreStorageObjects({ storeId: params.storeId, bucket: params.bucket })
+        .then((objects) => ({ objects, usageWarning: null as string | null }))
+        .catch((error: unknown) => ({
+          objects: [] as StorageObjectRow[],
+          usageWarning: buildStorageQuotaWarningMessage(error),
+        }))
+    : fetchStoreStorageObjects({ storeId: params.storeId, bucket: params.bucket }).then((objects) => ({
+        objects,
+        usageWarning: null as string | null,
+      }))
+
+  const [{ data: sub }, { data: policyRow }, { objects, usageWarning }] = await Promise.all([
     admin.from('store_subscriptions').select('plan_code').eq('store_id', params.storeId).maybeSingle(),
     admin
       .from('store_storage_policies')
       .select('store_id, policy, extra_capacity_gb, custom_limit_mb')
       .eq('store_id', params.storeId)
       .maybeSingle(),
-    safeObjectListingPromise
-      .then((rows) => ({ rows, error: null as string | null }))
-      .catch((error: unknown) => {
-        if (!params.allowPartialUsageFailure) throw error
-        return {
-          rows: [] as StorageObjectRow[],
-          error: error instanceof Error ? error.message : '容量の取得に失敗しました',
-        }
-      }),
+    objectsPromise,
   ])
 
   const planCode = normalizePlanCode(sub?.plan_code)
   const policy = (policyRow?.policy ?? 'block') as StorageLimitPolicy
   const extraCapacityGb = toSafeInt(policyRow?.extra_capacity_gb, 0)
   const customLimitMb = typeof policyRow?.custom_limit_mb === 'number' ? toSafeInt(policyRow.custom_limit_mb) : null
-  const usageBytes = objectsResult.rows.reduce((sum, row) => sum + parseObjectSize(row), 0)
+  const usageBytes = objects.reduce((sum, row) => sum + parseObjectSize(row), 0)
   const baseLimitBytes = PLAN_STORAGE_LIMIT_BYTES[planCode]
   const extraCapacityBytes = extraCapacityGb * GB
   const customLimitBytes = customLimitMb !== null ? customLimitMb * MB : null
@@ -178,12 +177,11 @@ export async function fetchStoreStorageQuotaState(params: {
     planCode,
     policy,
     usageBytes,
-    usageUnavailable: objectsResult.error !== null,
-    usageFetchError: objectsResult.error,
     baseLimitBytes,
     extraCapacityBytes,
     customLimitBytes,
     totalLimitBytes,
+    usageWarning,
   } satisfies StoreStorageQuotaState
 }
 
