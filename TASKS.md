@@ -526,6 +526,11 @@ Completed tasks should be marked:
 - PR作成: `feat(ai-pro-plus): add advanced health insights and monthly reports`
 - レビュー手順: 性能計測、誤検知時UI、レポート再生成動線を確認
 - main へのマージ手順: 段階リリース設定後に merge
+- 進捗:
+  - [x] `medical_record_ai_pro_plus_health_insights` / `store_ai_monthly_reports` 追加SQLを作成
+  - [x] AI Pro+解析API（`/api/medical-records/[record_id]/ai-pro-plus`）を追加
+  - [x] AI Pro+月次レポートAPI（`/api/ai-reports/monthly`）を追加
+  - [x] カルテ一覧に AI Pro+気づき表示と解析実行ボタンを追加（pro_plusのみ）
 
 #### タスク9: AI Pro+課金オプション追加（¥2,480）
 - タスク名: AI Pro+課金オプション追加
