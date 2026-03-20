@@ -63,6 +63,8 @@ begin
     'medical_records',
     'medical_record_photos',
     'medical_record_videos',
+    'medical_record_ai_assist_jobs',
+    'medical_record_ai_assist_results',
     'medical_record_ai_pro_insights',
     'medical_record_ai_pro_plus_health_insights',
     'store_ai_monthly_reports',
