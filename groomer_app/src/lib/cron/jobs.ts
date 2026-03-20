@@ -8,6 +8,7 @@ import { runScanStorageOrphansJob } from '@/lib/cron/services/scan-storage-orpha
 import { runHotelVaccineAlertsJob } from '@/lib/cron/services/hotel-vaccine-alerts'
 import { runNextVisitSuggestionsJob } from '@/lib/cron/services/next-visit-suggestions'
 import { runMedicalRecordAiTagsJob } from '@/lib/cron/services/medical-record-ai-tags'
+import { runMedicalRecordAiAssistJobs } from '@/lib/cron/services/medical-record-ai-assist'
 
 export const ALLOWED_CRON_JOB_NAMES = [
   'billing-status-sync',
@@ -17,6 +18,7 @@ export const ALLOWED_CRON_JOB_NAMES = [
   'remind-appointments',
   'next-visit-suggestions',
   'medical-record-ai-tags',
+  'medical-record-ai-assist',
   'hotel-vaccine-alerts',
   'purge-member-portal-access-logs',
   'scan-storage-orphans',
@@ -44,6 +46,8 @@ export async function runCronJobByName(jobName: CronJobName) {
       return runNextVisitSuggestionsJob()
     case 'medical-record-ai-tags':
       return runMedicalRecordAiTagsJob()
+    case 'medical-record-ai-assist':
+      return runMedicalRecordAiAssistJobs()
     case 'hotel-vaccine-alerts':
       return runHotelVaccineAlertsJob()
     case 'purge-member-portal-access-logs':

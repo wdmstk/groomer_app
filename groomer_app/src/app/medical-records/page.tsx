@@ -28,6 +28,7 @@ import {
 } from '@/lib/medical-records/tags.ts'
 import { parseAiPlanCode } from '@/lib/billing/pricing'
 import { hasAiProAccess } from '@/lib/medical-records/ai-pro'
+import { hasAiAssistAccess } from '@/lib/medical-records/ai-assist'
 import { hasAiProPlusAccess } from '@/lib/medical-records/ai-pro-plus'
 
 const MedicalRecordCreateModal = nextDynamic(
@@ -332,6 +333,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
     .eq('store_id', storeId)
     .maybeSingle()
   const aiPlanCode = parseAiPlanCode((subscriptionRow as { ai_plan_code?: string | null } | null)?.ai_plan_code ?? 'none')
+  const aiAssistEnabled = hasAiAssistAccess(aiPlanCode)
   const aiProEnabled = hasAiProAccess(aiPlanCode)
   const aiProPlusEnabled = hasAiProPlusAccess(aiPlanCode)
 
@@ -1360,6 +1362,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
           photoEntries={editPhotoEntries}
           videoEntries={editVideoEntries}
           galleryEntries={galleryEntries}
+          aiAssistEnabled={aiAssistEnabled}
         />
       ) : null}
     </section>

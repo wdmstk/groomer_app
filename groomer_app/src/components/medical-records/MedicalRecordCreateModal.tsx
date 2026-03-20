@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { useCallback, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useDismissibleModal } from '@/hooks/useDismissibleModal'
@@ -101,6 +101,7 @@ type MedicalRecordCreateModalProps = {
   photoEntries?: MedicalRecordPhotoDraft[]
   videoEntries?: MedicalRecordVideoDraft[]
   galleryEntries?: GalleryEntry[]
+  aiAssistEnabled?: boolean
 }
 
 function toDateTimeLocalValue(value: string | null | undefined) {
@@ -166,6 +167,7 @@ export function MedicalRecordCreateModal({
   photoEntries = [],
   videoEntries = [],
   galleryEntries = [],
+  aiAssistEnabled = false,
 }: MedicalRecordCreateModalProps) {
   const router = useRouter()
   const [open, setOpen] = useState(true)
@@ -191,6 +193,12 @@ export function MedicalRecordCreateModal({
   const [aiTagSource, setAiTagSource] = useState(editRecord?.ai_tag_source ?? '')
   const [aiTagLoading, setAiTagLoading] = useState(false)
   const [aiTagMessage, setAiTagMessage] = useState('')
+  const [aiAssistStatus, setAiAssistStatus] = useState<'idle' | 'queued' | 'processing' | 'completed' | 'failed'>('idle')
+  const [aiAssistLoading, setAiAssistLoading] = useState(false)
+  const [aiAssistMessage, setAiAssistMessage] = useState('')
+  const [aiAssistError, setAiAssistError] = useState('')
+  const [aiAssistGeneratedTags, setAiAssistGeneratedTags] = useState<string[]>([])
+  const [aiAssistGeneratedText, setAiAssistGeneratedText] = useState('')
   const [shareUrl, setShareUrl] = useState('')
   const [shareLoading, setShareLoading] = useState(false)
   const [shareError, setShareError] = useState('')
@@ -432,6 +440,71 @@ export function MedicalRecordCreateModal({
       setAiTagLoading(false)
     }
   }
+
+  const refreshAiAssistStatus = useCallback(async () => {
+    const targetRecordId = savedRecordId || editRecord?.id
+    if (!targetRecordId || !aiAssistEnabled) return
+
+    try {
+      const response = await fetch(`/api/medical-records/${targetRecordId}/ai-assist`, {
+        method: 'GET',
+      })
+      const payload = (await response.json().catch(() => null)) as
+        | {
+            job?: { status?: string | null; error_message?: string | null } | null
+            result?: { generated_tags?: string[] | null; generated_record_text?: string | null } | null
+          }
+        | null
+      if (!response.ok) {
+        throw new Error('AI Assist状態の取得に失敗しました。')
+      }
+      const jobStatus = payload?.job?.status
+      if (jobStatus === 'queued' || jobStatus === 'processing' || jobStatus === 'completed' || jobStatus === 'failed') {
+        setAiAssistStatus(jobStatus)
+      } else {
+        setAiAssistStatus('idle')
+      }
+      setAiAssistError(payload?.job?.error_message ?? '')
+      setAiAssistGeneratedTags(Array.isArray(payload?.result?.generated_tags) ? payload?.result?.generated_tags : [])
+      setAiAssistGeneratedText(payload?.result?.generated_record_text ?? '')
+    } catch (error) {
+      setAiAssistError(error instanceof Error ? error.message : 'AI Assist状態の取得に失敗しました。')
+    }
+  }, [aiAssistEnabled, editRecord?.id, savedRecordId])
+
+  const handleRunAiAssist = async (action: 'queue' | 'retry') => {
+    const targetRecordId = savedRecordId || editRecord?.id
+    if (!targetRecordId) return
+    setAiAssistLoading(true)
+    setAiAssistError('')
+    setAiAssistMessage('')
+    try {
+      const response = await fetch(`/api/medical-records/${targetRecordId}/ai-assist`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: action === 'retry' ? 'retry' : 'queue',
+        }),
+      })
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null
+      if (!response.ok) {
+        throw new Error(payload?.message ?? 'AI Assist解析の受付に失敗しました。')
+      }
+      setAiAssistStatus('queued')
+      setAiAssistMessage(payload?.message ?? 'AI Assist解析を受け付けました。')
+      await refreshAiAssistStatus()
+    } catch (error) {
+      setAiAssistError(error instanceof Error ? error.message : 'AI Assist解析の受付に失敗しました。')
+    } finally {
+      setAiAssistLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void refreshAiAssistStatus()
+  }, [refreshAiAssistStatus])
 
   const handleSendLineShare = async () => {
     if (!savedRecordId) return
@@ -749,6 +822,65 @@ export function MedicalRecordCreateModal({
                     {aiTagMessage ? <p className="text-xs text-emerald-700">{aiTagMessage}</p> : null}
                     {aiTagError ? <p className="text-xs text-red-600">{aiTagError}</p> : null}
                   </div>
+
+                  {aiAssistEnabled ? (
+                    <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h4 className="text-sm font-semibold text-amber-950">AI Assist</h4>
+                          <p className="text-xs text-amber-900">
+                            自動タグ・カルテ文章・ショート動画生成を非同期で実行します（既存入力は上書きしません）。
+                          </p>
+                        </div>
+                        <span className="inline-flex w-fit rounded-full bg-white px-2 py-1 text-xs font-semibold text-amber-900">
+                          {aiAssistStatus === 'queued'
+                            ? '解析待ち'
+                            : aiAssistStatus === 'processing'
+                              ? '解析中'
+                              : aiAssistStatus === 'completed'
+                                ? '解析済み'
+                                : aiAssistStatus === 'failed'
+                                  ? '解析失敗'
+                                  : '未実行'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          onClick={() => handleRunAiAssist(aiAssistStatus === 'failed' ? 'retry' : 'queue')}
+                          disabled={aiAssistLoading || !(savedRecordId || editRecord?.id)}
+                          className="min-h-11 bg-amber-600 text-sm hover:bg-amber-700"
+                        >
+                          {aiAssistLoading ? '受付中...' : aiAssistStatus === 'failed' ? 'AI Assistを再解析' : 'AI Assistを実行'}
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => void refreshAiAssistStatus()}
+                          disabled={aiAssistLoading || !(savedRecordId || editRecord?.id)}
+                          className="min-h-11 bg-white text-sm text-amber-900 hover:bg-amber-100"
+                        >
+                          状態を更新
+                        </Button>
+                        {!(savedRecordId || editRecord?.id) ? (
+                          <p className="text-xs text-amber-700">カルテ保存後にAI Assistを開始できます。</p>
+                        ) : null}
+                      </div>
+                      {aiAssistGeneratedTags.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {aiAssistGeneratedTags.map((tag) => (
+                            <span key={tag} className="rounded-full bg-white px-2 py-1 text-xs font-medium text-amber-900">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                      {aiAssistGeneratedText ? (
+                        <p className="rounded border border-amber-200 bg-white p-2 text-xs text-amber-900">{aiAssistGeneratedText}</p>
+                      ) : null}
+                      {aiAssistMessage ? <p className="text-xs text-emerald-700">{aiAssistMessage}</p> : null}
+                      {aiAssistError ? <p className="text-xs text-red-600">{aiAssistError}</p> : null}
+                    </div>
+                  ) : null}
 
                   <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <div>
