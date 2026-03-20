@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
+const isDevelopment = process.env.NODE_ENV !== 'production'
 const supabaseHostname = (() => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!supabaseUrl) return null
@@ -14,7 +15,7 @@ const supabaseHostname = (() => {
   }
 })()
 
-const cspReportOnly = [
+const cspReportOnlyDirectives = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
@@ -23,9 +24,13 @@ const cspReportOnly = [
   "font-src 'self' data: https:",
   "style-src 'self' 'unsafe-inline' https:",
   "script-src 'self' 'unsafe-inline' https:",
-  "connect-src 'self' https:",
-  "report-uri /api/security/csp-report",
-].join('; ')
+  isDevelopment
+    ? "connect-src 'self' https: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*"
+    : "connect-src 'self' https:",
+  ...(isDevelopment ? [] : ["report-uri /api/security/csp-report"]),
+]
+
+const cspReportOnly = cspReportOnlyDirectives.join('; ')
 
 const nextConfig: NextConfig = {
   turbopack: {

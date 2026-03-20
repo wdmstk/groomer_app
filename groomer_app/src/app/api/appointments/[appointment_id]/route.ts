@@ -16,7 +16,7 @@ type RouteParams = {
 }
 
 const appointmentAuditSelect =
-  'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes'
+  'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, reservation_payment_method, reservation_payment_status, reservation_payment_paid_at, reservation_payment_authorized_at'
 
 
 export async function GET(_request: Request, { params }: RouteParams) {
@@ -25,7 +25,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
   const { data, error } = await supabase
     .from('appointments')
     .select(
-      'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes'
+      'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, reservation_payment_method, reservation_payment_status, reservation_payment_paid_at, reservation_payment_authorized_at'
     )
     .eq('id', appointment_id)
     .eq('store_id', storeId)

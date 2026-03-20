@@ -34,6 +34,7 @@ export type AppointmentWriteInput = {
   groupId?: string | null
   status: string | null
   notes: string | null
+  reservationPaymentMethod?: string | null
 }
 
 export function toUtcIsoFromJstInput(value: string | null | undefined) {

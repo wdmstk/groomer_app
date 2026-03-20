@@ -6,6 +6,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { countActiveOwnerStores } from '@/lib/billing/db'
 import {
   amountForPlanWithStoreCountAndOptions,
+  parseAiPlanCode,
   parseBillingCycle,
 } from '@/lib/billing/pricing'
 
@@ -27,6 +28,7 @@ export async function POST(request: Request) {
   const notificationOptionEnabled =
     (formData.get('notification_option_enabled')?.toString() ?? 'false') === 'true'
   const targetOption = formData.get('option')?.toString() ?? ''
+  const aiPlanCode = parseAiPlanCode(formData.get('ai_plan_code')?.toString() ?? 'none')
   const state = await fetchStorePlanOptionState({
     supabase: asStorePlanOptionsClient(guard.supabase),
     storeId: guard.storeId,
@@ -51,6 +53,7 @@ export async function POST(request: Request) {
     )
   }
 
+  const currentAiPlanCode = parseAiPlanCode(state.aiPlanCode)
   const nextHotelOptionEnabled =
     targetOption === 'hotel'
       ? hotelOptionEnabled && optionContractAllowed
@@ -59,6 +62,7 @@ export async function POST(request: Request) {
     targetOption === 'notification'
       ? notificationOptionEnabled && optionContractAllowed
       : state.notificationOptionEnabled && optionContractAllowed
+  const nextAiPlanCode = targetOption === 'ai_plan' ? aiPlanCode : currentAiPlanCode
   const billingCycle = parseBillingCycle(subscriptionRow?.billing_cycle)
   const ownerActiveStoreCount = await countActiveOwnerStores(guard.user.id)
   const nextAmountJpy = amountForPlanWithStoreCountAndOptions(
@@ -68,6 +72,7 @@ export async function POST(request: Request) {
     {
       hotelOptionEnabled: nextHotelOptionEnabled,
       notificationOptionEnabled: nextNotificationOptionEnabled,
+      aiPlanCode: nextAiPlanCode,
     }
   )
 
@@ -78,6 +83,12 @@ export async function POST(request: Request) {
           amount_jpy: nextAmountJpy,
           updated_at: new Date().toISOString(),
         }
+      : targetOption === 'ai_plan'
+        ? {
+            ai_plan_code: nextAiPlanCode,
+            amount_jpy: nextAmountJpy,
+            updated_at: new Date().toISOString(),
+          }
       : {
           hotel_option_enabled: nextHotelOptionEnabled,
           amount_jpy: nextAmountJpy,
@@ -100,6 +111,10 @@ export async function POST(request: Request) {
       ? notificationOptionEnabled
         ? '通知強化オプションを有効化しました。'
         : '通知強化オプションを無効化しました。'
+      : targetOption === 'ai_plan'
+        ? nextAiPlanCode === 'none'
+          ? 'AIプランを無効化しました。'
+          : `AIプランを${nextAiPlanCode === 'assist' ? 'Assist' : nextAiPlanCode === 'pro' ? 'Pro' : 'Pro+'}に変更しました。`
       : hotelOptionEnabled
         ? 'ホテルオプションを有効化しました。'
         : 'ホテルオプションを無効化しました。'

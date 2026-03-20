@@ -167,6 +167,7 @@ function optionMetadata(options: SubscriptionOptionPricingInput) {
   return {
     hotel_option_enabled: options.hotelOptionEnabled ? 'true' : 'false',
     notification_option_enabled: options.notificationOptionEnabled ? 'true' : 'false',
+    ai_plan_code: options.aiPlanCode ?? 'none',
   }
 }
 

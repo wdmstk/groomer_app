@@ -1,9 +1,12 @@
 import Link from 'next/link'
+import nextDynamic from 'next/dynamic'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { FormModal } from '@/components/ui/FormModal'
 import { createStoreScopedClient } from '@/lib/supabase/store'
+
+const VisitCreateModal = nextDynamic(
+  () => import('@/components/visits/VisitCreateModal').then((mod) => mod.VisitCreateModal)
+)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -31,24 +34,6 @@ type VisitsPageProps = {
 }
 
 type ActiveTab = 'list' | 'revisit' | 'followup' | 'cycle' | 'quality'
-
-function toDateTimeLocalValue(value: string | null | undefined) {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  const parts = new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(date)
-
-  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return `${map.year}-${map.month}-${map.day}T${map.hour}:${map.minute}`
-}
 
 function formatDateTimeJst(value: string | null | undefined) {
   if (!value) return '未登録'
@@ -136,66 +121,90 @@ export default async function VisitsPage({ searchParams }: VisitsPageProps) {
     activeTab === 'list' &&
     (resolvedSearchParams?.modal === 'create' || resolvedSearchParams?.tab === 'new')
   const editId = resolvedSearchParams?.edit
+  const needsListData = activeTab === 'list' || isCreateModalOpen || Boolean(editId)
+  const needsRevisitInsights = activeTab === 'revisit'
+  const needsFollowupInsights = activeTab === 'followup'
+  const needsCycleInsights = activeTab === 'cycle'
+  const needsQualityInsights = activeTab === 'quality'
+  const needsCustomerDirectory = needsListData || needsRevisitInsights || needsCycleInsights
+  const needsPetDirectory = needsRevisitInsights
   const modalCloseRedirect = `/visits?tab=${activeTab}`
   const now = new Date()
   const nowMs = now.getTime()
   const nowIso = now.toISOString()
   const { supabase, storeId } = await createStoreScopedClient()
 
-  const { data: visits } = await supabase
-    .from('visits')
-    .select(
-      'id, customer_id, appointment_id, staff_id, visit_date, menu, total_amount, notes, customers(full_name), appointments(id, pets(name)), staffs(full_name), visit_menus(menu_name, price, duration)'
-    )
-    .eq('store_id', storeId)
-    .order('visit_date', { ascending: false })
+  const { data: visits } =
+    needsListData || needsCycleInsights
+      ? await supabase
+          .from('visits')
+          .select(
+            'id, customer_id, appointment_id, staff_id, visit_date, menu, total_amount, notes, customers(full_name), appointments(id, pets(name)), staffs(full_name), visit_menus(menu_name, price, duration)'
+          )
+          .eq('store_id', storeId)
+          .order('visit_date', { ascending: false })
+      : { data: [] }
 
-  const { data: customers } = await supabase
-    .from('customers')
-    .select('id, full_name')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const { data: customers } = needsCustomerDirectory
+    ? await supabase
+        .from('customers')
+        .select('id, full_name')
+        .eq('store_id', storeId)
+        .order('created_at', { ascending: false })
+    : { data: [] }
 
-  const { data: appointments } = await supabase
-    .from('appointments')
-    .select('id')
-    .eq('store_id', storeId)
-    .order('start_time', { ascending: false })
+  const { data: appointments } = needsListData
+    ? await supabase
+        .from('appointments')
+        .select('id')
+        .eq('store_id', storeId)
+        .order('start_time', { ascending: false })
+    : { data: [] }
 
-  const { data: staffs } = await supabase
-    .from('staffs')
-    .select('id, user_id, full_name')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
+  const { data: staffs } = needsListData || needsFollowupInsights
+    ? await supabase
+        .from('staffs')
+        .select('id, user_id, full_name')
+        .eq('store_id', storeId)
+        .order('created_at', { ascending: false })
+    : { data: [] }
 
-  const { data: pets } = await supabase
-    .from('pets')
-    .select('id, name')
-    .eq('store_id', storeId)
+  const { data: pets } = needsPetDirectory
+    ? await supabase
+        .from('pets')
+        .select('id, name')
+        .eq('store_id', storeId)
+    : { data: [] }
 
   const thirtyDaysAgo = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString()
 
   const [{ data: revisitRows }, { data: followupTasks }, { data: qualityAppointments }] =
     await Promise.all([
-      supabase
-        .from('completed_appointment_revisit_source_v')
-        .select('appointment_id, customer_id, pet_id, start_time, has_next_booking, is_revisit_leak')
-        .eq('store_id', storeId)
-        .gte('start_time', thirtyDaysAgo),
-      supabase
-        .from('customer_followup_tasks')
-        .select('id, status, assigned_user_id, recommended_at, resolved_at')
-        .eq('store_id', storeId)
-        .gte('recommended_at', thirtyDaysAgo),
-      supabase
-        .from('appointments')
-        .select('id, start_time, checked_in_at, status')
-        .eq('store_id', storeId)
-        .gte('start_time', thirtyDaysAgo)
-        .not('start_time', 'is', null),
+      needsRevisitInsights
+        ? supabase
+            .from('completed_appointment_revisit_source_v')
+            .select('appointment_id, customer_id, pet_id, start_time, has_next_booking, is_revisit_leak')
+            .eq('store_id', storeId)
+            .gte('start_time', thirtyDaysAgo)
+        : Promise.resolve({ data: [] }),
+      needsFollowupInsights
+        ? supabase
+            .from('customer_followup_tasks')
+            .select('id, status, assigned_user_id, recommended_at, resolved_at')
+            .eq('store_id', storeId)
+            .gte('recommended_at', thirtyDaysAgo)
+        : Promise.resolve({ data: [] }),
+      needsQualityInsights
+        ? supabase
+            .from('appointments')
+            .select('id, start_time, checked_in_at, status')
+            .eq('store_id', storeId)
+            .gte('start_time', thirtyDaysAgo)
+            .not('start_time', 'is', null)
+        : Promise.resolve({ data: [] }),
     ])
 
-  const { data: editVisit } = editId
+  const { data: editVisit } = needsListData && editId
     ? await supabase
         .from('visits')
         .select(
@@ -709,117 +718,13 @@ export default async function VisitsPage({ searchParams }: VisitsPageProps) {
       ) : null}
 
       {isCreateModalOpen || editVisit ? (
-        <FormModal
-          title={editVisit ? '来店履歴の更新' : '新規来店登録'}
-          closeRedirectTo={modalCloseRedirect}
-          description="来店履歴はモーダルで入力します。"
-          reopenLabel="来店モーダルを開く"
-        >
-          <form
-            action={editVisit ? `/api/visits/${editVisit.id}` : '/api/visits'}
-            method="post"
-            className="space-y-4"
-          >
-            {editVisit && <input type="hidden" name="_method" value="put" />}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label className="space-y-2 text-sm text-gray-700">
-                顧客
-                <select
-                  name="customer_id"
-                  required
-                  defaultValue={editVisit?.customer_id ?? ''}
-                  className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400 outline-none"
-                >
-                  <option value="" disabled>
-                    選択してください
-                  </option>
-                  {customerOptions.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.full_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="space-y-2 text-sm text-gray-700">
-                予約ID (任意)
-                <select
-                  name="appointment_id"
-                  defaultValue={editVisit?.appointment_id ?? ''}
-                  className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400 outline-none"
-                >
-                  <option value="">予約なし</option>
-                  {appointmentOptions.map((appointment) => (
-                    <option key={appointment.id} value={appointment.id}>
-                      {appointment.id}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="space-y-2 text-sm text-gray-700">
-                担当スタッフ
-                <select
-                  name="staff_id"
-                  required
-                  defaultValue={editVisit?.staff_id ?? ''}
-                  className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400 outline-none"
-                >
-                  <option value="" disabled>
-                    選択してください
-                  </option>
-                  {staffOptions.map((staff) => (
-                    <option key={staff.id} value={staff.id}>
-                      {staff.full_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="space-y-2 text-sm text-gray-700">
-                来店日時
-                <Input
-                  type="datetime-local"
-                  name="visit_date"
-                  required
-                  defaultValue={toDateTimeLocalValue(editVisit?.visit_date)}
-                />
-              </label>
-              <label className="space-y-2 text-sm text-gray-700">
-                施術メニュー
-                <Input
-                  name="menu"
-                  required
-                  defaultValue={editVisit?.menu ?? ''}
-                  placeholder="シャンプー + カット"
-                />
-              </label>
-              <label className="space-y-2 text-sm text-gray-700">
-                合計金額
-                <Input
-                  type="number"
-                  name="total_amount"
-                  required
-                  defaultValue={editVisit?.total_amount?.toString() ?? ''}
-                  placeholder="8500"
-                />
-              </label>
-              <label className="space-y-2 text-sm text-gray-700 md:col-span-2">
-                備考
-                <Input
-                  name="notes"
-                  defaultValue={editVisit?.notes ?? ''}
-                  placeholder="連絡事項など"
-                />
-              </label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button type="submit">{editVisit ? '更新する' : '登録する'}</Button>
-              {editVisit && (
-                <Link href={modalCloseRedirect} className="text-sm text-gray-500">
-                  編集をやめる
-                </Link>
-              )}
-            </div>
-          </form>
-        </FormModal>
+        <VisitCreateModal
+          editVisit={editVisit}
+          customerOptions={customerOptions}
+          appointmentOptions={appointmentOptions}
+          staffOptions={staffOptions}
+          modalCloseRedirect={modalCloseRedirect}
+        />
       ) : null}
     </section>
   )

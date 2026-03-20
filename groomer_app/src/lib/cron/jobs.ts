@@ -6,6 +6,8 @@ import { runNotificationUsageBillingJob } from '@/lib/cron/services/notification
 import { runPurgeMemberPortalAccessLogsJob } from '@/lib/cron/services/purge-member-portal-access-logs'
 import { runScanStorageOrphansJob } from '@/lib/cron/services/scan-storage-orphans'
 import { runHotelVaccineAlertsJob } from '@/lib/cron/services/hotel-vaccine-alerts'
+import { runNextVisitSuggestionsJob } from '@/lib/cron/services/next-visit-suggestions'
+import { runMedicalRecordAiTagsJob } from '@/lib/cron/services/medical-record-ai-tags'
 
 export const ALLOWED_CRON_JOB_NAMES = [
   'billing-status-sync',
@@ -13,6 +15,8 @@ export const ALLOWED_CRON_JOB_NAMES = [
   'billing-reminders',
   'notification-usage-billing',
   'remind-appointments',
+  'next-visit-suggestions',
+  'medical-record-ai-tags',
   'hotel-vaccine-alerts',
   'purge-member-portal-access-logs',
   'scan-storage-orphans',
@@ -36,6 +40,10 @@ export async function runCronJobByName(jobName: CronJobName) {
       return runNotificationUsageBillingJob()
     case 'remind-appointments':
       return runAppointmentRemindersJob()
+    case 'next-visit-suggestions':
+      return runNextVisitSuggestionsJob()
+    case 'medical-record-ai-tags':
+      return runMedicalRecordAiTagsJob()
     case 'hotel-vaccine-alerts':
       return runHotelVaccineAlertsJob()
     case 'purge-member-portal-access-logs':

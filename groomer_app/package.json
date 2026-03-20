@@ -6,6 +6,7 @@
   "scripts": {
     "clean": "powershell -Command \"if (Test-Path .next) { Remove-Item .next -Recurse -Force }\"",
     "dev": "next dev",
+    "dev:webpack": "next dev --webpack",
     "dev:clean": "npm run clean && next dev",
     "build": "next build",
     "start": "next start",

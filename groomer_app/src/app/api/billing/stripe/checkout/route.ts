@@ -12,14 +12,38 @@ import {
 import { requireOwnerStoreMembership } from '@/lib/auth/store-owner'
 import {
   amountForPlanWithStoreCountAndOptions,
+  parseAiPlanCode,
   parseBillingCycle,
   parsePlanCode,
 } from '@/lib/billing/pricing'
 import { canPurchaseOptionsByPlan } from '@/lib/subscription-plan'
 import { asObject } from '@/lib/object-utils'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/lib/supabase/database.types'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+
+type StoreSubscriptionReader = Pick<SupabaseClient<Database>, 'from'>
+
+async function fetchSubscriptionOptionsWithAiFallback(
+  supabase: StoreSubscriptionReader,
+  storeId: string
+) {
+  const withAi = await supabase
+    .from('store_subscriptions')
+    .select('hotel_option_enabled, notification_option_enabled, ai_plan_code')
+    .eq('store_id', storeId)
+    .maybeSingle()
+  if (!withAi.error) return withAi.data
+
+  const fallback = await supabase
+    .from('store_subscriptions')
+    .select('hotel_option_enabled, notification_option_enabled')
+    .eq('store_id', storeId)
+    .maybeSingle()
+  return fallback.data
+}
 
 export async function POST(request: Request) {
   try {
@@ -50,20 +74,20 @@ export async function POST(request: Request) {
     const returnUrlRaw = typeof body.return_url === 'string' ? body.return_url : ''
     const planCode = parsePlanCode(body.plan_code)
     const billingCycle = parseBillingCycle(body.billing_cycle)
-    const { data: subscriptionRow, error: subscriptionError } = await guard.supabase
-      .from('store_subscriptions')
-      .select('hotel_option_enabled, notification_option_enabled')
-      .eq('store_id', storeId)
-      .maybeSingle()
-    if (subscriptionError) {
-      return NextResponse.json({ message: subscriptionError.message }, { status: 500 })
-    }
+    const subscriptionRow = await fetchSubscriptionOptionsWithAiFallback(guard.supabase, storeId)
     const optionContractAllowed = canPurchaseOptionsByPlan(planCode)
     const options = {
       hotelOptionEnabled:
         optionContractAllowed && subscriptionRow?.hotel_option_enabled === true,
       notificationOptionEnabled:
         optionContractAllowed && subscriptionRow?.notification_option_enabled === true,
+      aiPlanCode:
+        optionContractAllowed
+          ? parseAiPlanCode(
+              (subscriptionRow as (typeof subscriptionRow & { ai_plan_code?: string | null }) | null)?.ai_plan_code ??
+                'none'
+            )
+          : 'none',
     }
     const ownerActiveStoreCount = await countActiveOwnerStores(user.id)
     const useAdditionalStorePricing = ownerActiveStoreCount > 1

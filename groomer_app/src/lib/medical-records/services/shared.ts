@@ -1,6 +1,7 @@
 import type { createStoreScopedClient } from '@/lib/supabase/store'
 import type { MedicalRecordPhotoDraft } from '@/lib/medical-records/photos'
 import { getMedicalRecordPhotoBucket } from '@/lib/medical-records/photos'
+import { parseMedicalRecordTags, type MedicalRecordAiTagStatus } from '@/lib/medical-records/tags'
 import type { MedicalRecordVideoDraft } from '@/lib/medical-records/videos'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { Database } from '@/lib/supabase/database.types'
@@ -32,8 +33,16 @@ export type MedicalRecordWriteInput = {
   skinCondition: string | null
   behaviorNotes: string | null
   cautionNotes: string | null
+  tags: string[] | null
   photoDrafts: MedicalRecordPhotoDraft[]
   videoDrafts: MedicalRecordVideoDraft[]
+}
+
+export type MedicalRecordAiState = {
+  aiTagStatus: MedicalRecordAiTagStatus
+  aiTagError: string | null
+  aiTagLastAnalyzedAt: string | null
+  aiTagSource: string | null
 }
 
 export function normalizeStatus(value: string | null | undefined): RecordStatus {
@@ -46,6 +55,10 @@ export function validateMedicalRecordWriteInput(input: MedicalRecordWriteInput) 
   if (!input.appointmentId) throw new MedicalRecordServiceError('予約の選択は必須です。')
   if (!input.recordDate) throw new MedicalRecordServiceError('施術日時は必須です。')
   if (!input.menu) throw new MedicalRecordServiceError('施術メニューは必須です。')
+}
+
+export function normalizeMedicalRecordTagsInput(value: string | string[] | null | undefined) {
+  return parseMedicalRecordTags(value)
 }
 
 export async function resolvePaymentLink(
