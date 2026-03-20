@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test.describe('設定画面', () => {
   test('通知設定の既定値補正と権限表示を確認できる', async ({ page }) => {
-    await page.goto('/settings/notifications')
+    await page.goto('/settings?tab=notifications')
 
     await expect(page.getByRole('heading', { name: '通知設定' })).toBeVisible()
     await expect(page.getByText('現在のロール: admin / 変更権限: あり（owner/admin）')).toBeVisible()
@@ -17,7 +17,7 @@ test.describe('設定画面', () => {
   })
 
   test('公開予約設定の初期値と除外日を確認できる', async ({ page }) => {
-    await page.goto('/settings/public-reserve')
+    await page.goto('/settings?tab=public-reserve')
 
     await expect(page.getByRole('heading', { name: '公開予約設定' })).toBeVisible()
     await expect(page.getByText('現在のロール: admin / 変更権限: あり（owner/admin）')).toBeVisible()
@@ -31,7 +31,7 @@ test.describe('設定画面', () => {
   })
 
   test('容量設定の使用量警告と保存フォーム初期値を確認できる', async ({ page }) => {
-    await page.goto('/settings/storage')
+    await page.goto('/settings?tab=storage')
 
     await expect(page.getByRole('heading', { name: '容量設定' })).toBeVisible()
     await expect(page.getByText('使用量の取得に失敗したため、暫定値を表示しています: Bad Gateway')).toBeVisible()

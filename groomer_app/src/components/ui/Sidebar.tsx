@@ -66,10 +66,7 @@ const storeNavSections: NavSection[] = [
     title: 'メイン',
     links: [
       { href: '/dashboard', label: 'ダッシュボード' },
-      { href: '/dashboard/appointments-kpi', label: 'KPIレポート' },
-      { href: '/dashboard/notification-logs', label: '通知ログ' },
-      { href: '/dashboard/audit-logs', label: '監査ログ' },
-      { href: '/manual', label: 'ユーザーマニュアル' },
+      { href: '/ops/today', label: 'モバイル当日運用' },
     ],
   },
   {
@@ -77,11 +74,10 @@ const storeNavSections: NavSection[] = [
     links: [
       { href: '/customers', label: '顧客管理' },
       { href: '/pets', label: 'ペット管理' },
-      { href: '/appointments', label: '予約管理' },
-      { href: '/hotel', label: 'ペットホテル管理' },
-      { href: '/ops/today', label: 'モバイル当日運用' },
       { href: '/service-menus', label: '施術メニュー管理' },
+      { href: '/appointments', label: '予約管理' },
       { href: '/medical-records', label: 'ペットカルテ管理' },
+      { href: '/hotel', label: 'ペットホテル管理' },
       { href: '/visits', label: '来店履歴' },
     ],
   },
@@ -93,16 +89,26 @@ const storeNavSections: NavSection[] = [
     ],
   },
   {
-    title: '店舗設定',
+    title: '運用分析',
     links: [
-      { href: '/settings/public-reserve', label: '公開予約設定', ownerOrAdminOnly: true },
-      { href: '/settings/notifications', label: '通知設定', ownerOrAdminOnly: true },
-      { href: '/settings/storage', label: '容量設定', ownerOnly: true },
-      { href: '/dashboard/setup-store', label: '新しい店舗を追加', ownerOnly: true },
+      { href: '/dashboard/appointments-kpi', label: 'KPIレポート' },
+      { href: '/dashboard/notification-logs', label: '通知ログ' },
+      { href: '/dashboard/audit-logs', label: '監査ログ' },
+    ],
+  },
+  {
+    title: '店舗管理',
+    links: [
+      { href: '/settings', label: '店舗設定', ownerOrAdminOnly: true, matchStartsWith: true },
+      { href: '/billing', label: '決済管理', ownerOnly: true, matchStartsWith: true },
       { href: '/staffs', label: 'スタッフ管理' },
+    ],
+  },
+  {
+    title: 'その他',
+    links: [
+      { href: '/manual', label: 'ユーザーマニュアル' },
       { href: '/support-tickets', label: '問い合わせ' },
-      { href: '/billing', label: 'サブスク課金', ownerOnly: true },
-      { href: '/billing/history', label: '課金履歴', ownerOnly: true },
     ],
   },
 ]
@@ -317,7 +323,10 @@ export function Sidebar() {
     <nav className="space-y-2">
       {activeNavSections.map((section) => (
         <div key={section.title} className="pt-1">
-          <p className="mb-1 px-2 text-xs font-semibold tracking-wide text-gray-500">{section.title}</p>
+          <div className="mb-1 flex items-center gap-2 px-2">
+            <p className="shrink-0 text-xs font-semibold tracking-wide text-gray-500">{section.title}</p>
+            <span className="h-px flex-1 bg-gray-200" aria-hidden="true" />
+          </div>
           <div className="space-y-1">
             {section.links.map((link) => {
               if (link.ownerOnly && activeRole !== 'owner') {

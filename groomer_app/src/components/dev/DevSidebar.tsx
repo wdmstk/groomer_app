@@ -43,39 +43,57 @@ export function DevSidebar() {
 
   const roleLabel = 'root'
 
+  const renderCategoryTitle = (title: string) => (
+    <div className="mb-1 flex items-center gap-2 px-2">
+      <p className="shrink-0 text-xs font-semibold tracking-wide text-gray-500">{title}</p>
+      <span className="h-px flex-1 bg-gray-200" aria-hidden="true" />
+    </div>
+  )
+
   const renderNavLinks = (onNavigate?: () => void) => (
     <nav className="space-y-2">
-      {navLinks.map((link) => {
-        const isActive = link.href === '/dev'
-          ? pathname === link.href
-          : pathname === link.href || pathname.startsWith(`${link.href}/`)
-        return (
+      <div className="pt-1">
+        {renderCategoryTitle('開発メニュー')}
+        <div className="space-y-1">
+          {navLinks.map((link) => {
+            const isActive = link.href === '/dev'
+              ? pathname === link.href
+              : pathname === link.href || pathname.startsWith(`${link.href}/`)
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={onNavigate}
+                className={`block rounded p-2 text-sm transition-colors ${
+                  isActive ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {link.label}
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="pt-1">
+        {renderCategoryTitle('アカウント')}
+        <div className="space-y-1">
           <Link
-            key={link.href}
-            href={link.href}
+            href="/dashboard"
             onClick={onNavigate}
-            className={`block rounded p-2 text-sm transition-colors ${
-              isActive ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
-            }`}
+            className="block rounded p-2 text-sm text-gray-700 transition-colors hover:bg-gray-100"
           >
-            {link.label}
+            通常画面へ戻る
           </Link>
-        )
-      })}
-      <Link
-        href="/dashboard"
-        onClick={onNavigate}
-        className="block rounded p-2 text-sm text-gray-700 transition-colors hover:bg-gray-100"
-      >
-        通常画面へ戻る
-      </Link>
-      <Link
-        href="/logout"
-        onClick={onNavigate}
-        className="block rounded p-2 text-sm text-red-600 transition-colors hover:bg-red-50"
-      >
-        ログアウト
-      </Link>
+          <Link
+            href="/logout"
+            onClick={onNavigate}
+            className="block rounded p-2 text-sm text-red-600 transition-colors hover:bg-red-50"
+          >
+            ログアウト
+          </Link>
+        </div>
+      </div>
     </nav>
   )
 
