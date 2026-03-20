@@ -495,6 +495,11 @@ Completed tasks should be marked:
 - PR作成: `feat(ai-pro): add behavior and estimate predictions`
 - レビュー手順: プランゲート、推論結果のnull耐性、既存カルテ保存との整合確認
 - main へのマージ手順: QAチェックリスト完了後に merge
+- 進捗:
+  - [x] `medical_record_ai_pro_insights` 追加SQLを作成
+  - [x] AI Pro分析API（`/api/medical-records/[record_id]/ai-pro`）を追加
+  - [x] カルテ一覧に AI Pro提案表示と解析実行ボタンを追加（pro/pro_plusのみ）
+  - [x] AI Pro推論ロジックの単体テストを追加
 
 #### タスク7: AI Pro課金オプション追加（¥1,980）
 - タスク名: AI Pro課金オプション追加

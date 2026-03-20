@@ -63,6 +63,7 @@ begin
     'medical_records',
     'medical_record_photos',
     'medical_record_videos',
+    'medical_record_ai_pro_insights',
     'medical_record_share_links',
     'member_portal_links'
   ]

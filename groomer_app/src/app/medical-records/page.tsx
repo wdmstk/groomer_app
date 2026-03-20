@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { MedicalRecordShareButton } from '@/components/medical-records/MedicalRecordShareButton'
 import { MedicalRecordVideoLineShareButton } from '@/components/medical-records/MedicalRecordVideoLineShareButton'
+import { MedicalRecordAiProAnalyzeButton } from '@/components/medical-records/MedicalRecordAiProAnalyzeButton'
 import {
   createSignedPhotoUrlMap,
   type MedicalRecordPhotoDraft,
@@ -24,6 +25,8 @@ import {
   getMedicalRecordAiTagStatusTone,
   type MedicalRecordAiTagStatus,
 } from '@/lib/medical-records/tags.ts'
+import { parseAiPlanCode } from '@/lib/billing/pricing'
+import { hasAiProAccess } from '@/lib/medical-records/ai-pro'
 
 const MedicalRecordCreateModal = nextDynamic(
   () => import('@/components/medical-records/MedicalRecordCreateModal').then((mod) => mod.MedicalRecordCreateModal)
@@ -185,6 +188,19 @@ type MixedMediaEntry =
       sourceType: 'uploaded' | 'ai_generated' | null
     }
 
+type AiProInsightRow = {
+  medical_record_id: string
+  model_tier: 'pro' | 'pro_plus' | null
+  personality_traits: string[] | null
+  behavior_score: number | null
+  cooperation_score: number | null
+  stress_score: number | null
+  estimated_next_duration_min: number | null
+  matting_risk: 'low' | 'medium' | 'high' | null
+  surcharge_risk: 'low' | 'medium' | 'high' | null
+  analyzed_at: string | null
+}
+
 type MedicalRecordsPageProps = {
   searchParams?: Promise<{
     tab?: string
@@ -249,6 +265,13 @@ function normalizeAiTagStatus(value: string | null | undefined): MedicalRecordAi
   }
 }
 
+function riskLabel(value: 'low' | 'medium' | 'high' | null | undefined) {
+  if (value === 'high') return '高'
+  if (value === 'medium') return '中'
+  if (value === 'low') return '低'
+  return '未算出'
+}
+
 function buildMedicalRecordsHref(params: {
   tab: 'list' | 'pending'
   aiTag?: string
@@ -289,6 +312,13 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
   const needsFormSupportData =
     activeTab === 'pending' || isCreateModalOpen || Boolean(editId) || Boolean(prefillAppointmentId) || Boolean(prefillPaymentId)
   const { supabase, storeId } = await createStoreScopedClient()
+  const { data: subscriptionRow } = await supabase
+    .from('store_subscriptions')
+    .select('ai_plan_code')
+    .eq('store_id', storeId)
+    .maybeSingle()
+  const aiPlanCode = parseAiPlanCode((subscriptionRow as { ai_plan_code?: string | null } | null)?.ai_plan_code ?? 'none')
+  const aiProEnabled = hasAiProAccess(aiPlanCode)
 
   const { data: medicalRecords } = await supabase
     .from('medical_records')
@@ -444,6 +474,16 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
   const modalCloseRedirect = `/medical-records?tab=${activeTab}`
 
   const recordIds = recordList.map((record) => record.id)
+  const { data: aiProInsights } =
+    aiProEnabled && recordIds.length > 0
+      ? await supabase
+          .from('medical_record_ai_pro_insights' as never)
+          .select(
+            'medical_record_id, model_tier, personality_traits, behavior_score, cooperation_score, stress_score, estimated_next_duration_min, matting_risk, surcharge_risk, analyzed_at'
+          )
+          .eq('store_id', storeId)
+          .in('medical_record_id', recordIds)
+      : { data: [] }
   const currentGalleryPetId = defaultPetId
 
   const { data: recordPhotoCounts } =
@@ -589,6 +629,11 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
   const videoCountByRecordId = new Map<string, number>()
   ;((recordVideoCounts ?? []) as RecordVideoCountRow[]).forEach((row) => {
     videoCountByRecordId.set(row.medical_record_id, (videoCountByRecordId.get(row.medical_record_id) ?? 0) + 1)
+  })
+  const aiProInsightByRecordId = new Map<string, AiProInsightRow>()
+  ;((aiProInsights ?? []) as AiProInsightRow[]).forEach((insight) => {
+    if (!insight.medical_record_id) return
+    aiProInsightByRecordId.set(insight.medical_record_id, insight)
   })
 
   const mixedMediaEntries: MixedMediaEntry[] = [
@@ -780,6 +825,19 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                     <p>皮膚状態: {record.skin_condition ?? '未登録'}</p>
                     <p>問題行動: {record.behavior_notes ?? '未登録'}</p>
                     <p>注意事項: {record.caution_notes ?? '未登録'}</p>
+                    {aiProEnabled ? (
+                      <div className="mt-1 rounded border border-indigo-100 bg-indigo-50 px-2 py-1 text-xs text-indigo-900">
+                        {(() => {
+                          const insight = aiProInsightByRecordId.get(record.id)
+                          if (!insight) return 'AI Pro提案: 未解析'
+                          const nextDuration =
+                            typeof insight.estimated_next_duration_min === 'number' && Number.isFinite(insight.estimated_next_duration_min)
+                              ? `${insight.estimated_next_duration_min}分`
+                              : '未算出'
+                          return `AI Pro提案: 次回 ${nextDuration} / 毛玉 ${riskLabel(insight.matting_risk)} / 追加料金 ${riskLabel(insight.surcharge_risk)}`
+                        })()}
+                      </div>
+                    ) : null}
                     <div className="mt-2 flex flex-wrap gap-2">
                       {visibleTags.length > 0 ? (
                         visibleTags.map((tag) => (
@@ -821,6 +879,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                             削除
                           </Button>
                         </form>
+                        {aiProEnabled ? <MedicalRecordAiProAnalyzeButton recordId={record.id} /> : null}
                       </div>
                       {record.status === 'finalized' ? <MedicalRecordShareButton recordId={record.id} /> : null}
                     </div>
@@ -846,6 +905,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                       <th className="py-2 px-2">注意事項</th>
                       <th className="py-2 px-2">AIタグ</th>
                       <th className="py-2 px-2">AI解析</th>
+                      {aiProEnabled ? <th className="py-2 px-2">AI Pro提案</th> : null}
                       <th className="py-2 px-2">操作</th>
                     </tr>
                   </thead>
@@ -911,6 +971,24 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                             </p>
                           </div>
                         </td>
+                        {aiProEnabled ? (
+                          <td className="py-3 px-2">
+                            {(() => {
+                              const insight = aiProInsightByRecordId.get(record.id)
+                              if (!insight) {
+                                return <span className="text-xs text-gray-500">未解析</span>
+                              }
+                              const traits = (insight.personality_traits ?? []).slice(0, 2).join(' / ')
+                              return (
+                                <div className="space-y-1 text-xs">
+                                  <p>次回: {insight.estimated_next_duration_min ? `${insight.estimated_next_duration_min}分` : '未算出'}</p>
+                                  <p>毛玉: {riskLabel(insight.matting_risk)} / 追加: {riskLabel(insight.surcharge_risk)}</p>
+                                  <p>性格: {traits || '未算出'}</p>
+                                </div>
+                              )
+                            })()}
+                          </td>
+                        ) : null}
                         <td className="py-3 px-2">
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
@@ -931,6 +1009,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                                   削除
                                 </Button>
                               </form>
+                              {aiProEnabled ? <MedicalRecordAiProAnalyzeButton recordId={record.id} /> : null}
                             </div>
                             {record.status === 'finalized' ? <MedicalRecordShareButton recordId={record.id} /> : null}
                           </div>
