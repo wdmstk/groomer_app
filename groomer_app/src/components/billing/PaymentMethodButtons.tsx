@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { normalizePlanCode, type AppPlan } from '@/lib/subscription-plan'
 import {
   amountForPlanWithStoreCountAndOptions,
+  parseAiPlanCode,
   parseBillingCycle,
+  type AiPlanCode,
   type BillingCycle,
 } from '@/lib/billing/pricing'
 
@@ -14,6 +16,7 @@ type PaymentMethodButtonsProps = {
   defaultBillingCycle?: string | null
   hotelOptionEnabled?: boolean
   notificationOptionEnabled?: boolean
+  aiPlanCode?: AiPlanCode
   ownerActiveStoreCount?: number
 }
 
@@ -22,6 +25,7 @@ export function PaymentMethodButtons({
   defaultBillingCycle,
   hotelOptionEnabled = false,
   notificationOptionEnabled = false,
+  aiPlanCode = 'none',
   ownerActiveStoreCount = 1,
 }: PaymentMethodButtonsProps) {
   const [isLoading, setIsLoading] = useState<Provider | null>(null)
@@ -37,6 +41,7 @@ export function PaymentMethodButtons({
     {
       hotelOptionEnabled,
       notificationOptionEnabled,
+      aiPlanCode,
     }
   )
 
@@ -53,6 +58,7 @@ export function PaymentMethodButtons({
           return_url: `${window.location.origin}/billing/success?provider=${provider}`,
           plan_code: planCode,
           billing_cycle: billingCycle,
+          ai_plan_code: parseAiPlanCode(aiPlanCode),
         }),
       })
       const json = (await response.json().catch(() => ({}))) as {

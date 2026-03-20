@@ -1,9 +1,11 @@
 import { canPurchaseOptionsByPlan, normalizePlanCode, type AppPlan } from '@/lib/subscription-plan'
 
 export type BillingCycle = 'monthly' | 'yearly'
+export type AiPlanCode = 'none' | 'assist' | 'pro' | 'pro_plus'
 export type SubscriptionOptionPricingInput = {
   hotelOptionEnabled?: boolean
   notificationOptionEnabled?: boolean
+  aiPlanCode?: AiPlanCode
 }
 
 export const ADDITIONAL_STORE_RATE = 0.8
@@ -39,6 +41,28 @@ export const APP_PLAN_PRICING: Record<AppPlan, Record<BillingCycle, number>> = {
   },
 }
 
+export const AI_PLAN_PRICING: Record<Exclude<AiPlanCode, 'none'>, Record<BillingCycle, number>> = {
+  assist: {
+    monthly: 1280,
+    yearly: 15360,
+  },
+  pro: {
+    monthly: 1980,
+    yearly: 23760,
+  },
+  pro_plus: {
+    monthly: 2480,
+    yearly: 29760,
+  },
+}
+
+export function parseAiPlanCode(value: unknown): AiPlanCode {
+  if (value === 'assist') return 'assist'
+  if (value === 'pro') return 'pro'
+  if (value === 'pro_plus') return 'pro_plus'
+  return 'none'
+}
+
 export function parsePlanCode(value: unknown): AppPlan {
   if (typeof value !== 'string') return 'light'
   return normalizePlanCode(value)
@@ -68,6 +92,10 @@ export function amountForOptions(
   }
   if (options.notificationOptionEnabled) {
     total += APP_OPTION_PRICING.notification[cycle]
+  }
+  const aiPlanCode = parseAiPlanCode(options.aiPlanCode)
+  if (aiPlanCode !== 'none') {
+    total += AI_PLAN_PRICING[aiPlanCode][cycle]
   }
   return total
 }
@@ -118,6 +146,10 @@ function optionEnvSuffix(options: SubscriptionOptionPricingInput): string {
   }
   if (options.notificationOptionEnabled) {
     suffixes.push('NOTIFICATION')
+  }
+  const aiPlanCode = parseAiPlanCode(options.aiPlanCode)
+  if (aiPlanCode !== 'none') {
+    suffixes.push(`AI_${aiPlanCode.toUpperCase()}`)
   }
   return suffixes.length > 0 ? `_${suffixes.join('_')}` : ''
 }
