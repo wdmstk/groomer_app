@@ -6,7 +6,7 @@ import { AppointmentServiceError } from '@/lib/appointments/services/shared'
 import { toOptionalString } from '@/lib/followups/shared'
 
 const appointmentAuditSelect =
-  'id, group_id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes'
+  'id, group_id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, reservation_payment_method, reservation_payment_status, reservation_payment_paid_at, reservation_payment_authorized_at'
 
 function requestPrefersJson(request: Request) {
   const accept = request.headers.get('accept') ?? ''
@@ -18,7 +18,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('appointments')
     .select(
-      'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, customers(full_name), pets(name), staffs(full_name)'
+      'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, reservation_payment_method, reservation_payment_status, reservation_payment_paid_at, reservation_payment_authorized_at, customers(full_name), pets(name), staffs(full_name)'
     )
     .eq('store_id', storeId)
     .order('start_time', { ascending: false })

@@ -1,8 +1,5 @@
+import nextDynamic from 'next/dynamic'
 import { Card } from '@/components/ui/Card'
-import { PaymentMethodButtons } from '@/components/billing/PaymentMethodButtons'
-import { BillingOperationsPanel } from '@/components/billing/BillingOperationsPanel'
-import { SetupAssistanceCheckoutButton } from '@/components/billing/SetupAssistanceCheckoutButton'
-import { StorageAddonCheckoutPanel } from '@/components/billing/StorageAddonCheckoutPanel'
 import { requireOwnerStoreMembership } from '@/lib/auth/store-owner'
 import Link from 'next/link'
 import {
@@ -24,6 +21,25 @@ import {
   parseBillingCycle,
   STORAGE_ADDON_UNIT_GB,
 } from '@/lib/billing/pricing'
+
+const PaymentMethodButtons = nextDynamic(
+  () => import('@/components/billing/PaymentMethodButtons').then((mod) => mod.PaymentMethodButtons)
+)
+
+const BillingOperationsPanel = nextDynamic(
+  () => import('@/components/billing/BillingOperationsPanel').then((mod) => mod.BillingOperationsPanel),
+  {
+    loading: () => <p className="text-sm text-gray-500">課金操作を読み込み中...</p>,
+  }
+)
+
+const SetupAssistanceCheckoutButton = nextDynamic(
+  () => import('@/components/billing/SetupAssistanceCheckoutButton').then((mod) => mod.SetupAssistanceCheckoutButton)
+)
+
+const StorageAddonCheckoutPanel = nextDynamic(
+  () => import('@/components/billing/StorageAddonCheckoutPanel').then((mod) => mod.StorageAddonCheckoutPanel)
+)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0

@@ -7,6 +7,7 @@ import {
   MedicalRecordServiceError,
   type MedicalRecordSupabaseClient,
   type MedicalRecordWriteInput,
+  normalizeMedicalRecordTagsInput,
   normalizeStatus,
   resolvePaymentLink,
   syncMedicalRecordPhotos,
@@ -42,6 +43,7 @@ export function normalizeCreateMedicalRecordInput(formData: FormData): CreateMed
     skinCondition: toOptionalString(formData.get('skin_condition')),
     behaviorNotes: toOptionalString(formData.get('behavior_notes')),
     cautionNotes: toOptionalString(formData.get('caution_notes')),
+    tags: normalizeMedicalRecordTagsInput(formData.get('tags')?.toString() ?? null),
     photoDrafts: parseMedicalRecordPhotoDrafts(toOptionalString(formData.get('photo_payload'))),
     videoDrafts: parseMedicalRecordVideoDrafts(toOptionalString(formData.get('video_payload'))),
   }
@@ -116,6 +118,7 @@ export async function createMedicalRecord(params: {
     behavior_notes: input.behaviorNotes,
     photos: input.photoDrafts.map((photo) => photo.storagePath),
     caution_notes: input.cautionNotes,
+    tags: input.tags,
   }
 
   const { data: createdRecord, error } = await supabase

@@ -28,6 +28,38 @@ type ApiResponse = {
   message?: string
 }
 
+let cachedSupportTickets: TicketRow[] | null = null
+let inflightSupportTicketsPromise: Promise<TicketRow[] | null> | null = null
+
+async function fetchSupportTickets() {
+  if (cachedSupportTickets) {
+    return cachedSupportTickets
+  }
+  if (inflightSupportTicketsPromise) {
+    return inflightSupportTicketsPromise
+  }
+
+  inflightSupportTicketsPromise = fetch('/api/support-tickets', { cache: 'no-store' })
+    .then(async (response) => {
+      const payload = (await response.json().catch(() => null)) as ApiResponse | null
+      if (!response.ok) {
+        throw new Error(payload?.message ?? 'チケットの読み込みに失敗しました。')
+      }
+      cachedSupportTickets = payload?.tickets ?? []
+      return cachedSupportTickets
+    })
+    .finally(() => {
+      inflightSupportTicketsPromise = null
+    })
+
+  return inflightSupportTicketsPromise
+}
+
+function clearSupportTicketsCache() {
+  cachedSupportTickets = null
+  inflightSupportTicketsPromise = null
+}
+
 const STATUS_LABELS: Record<string, string> = {
   open: '未対応',
   in_progress: '対応中',
@@ -92,31 +124,30 @@ export function OwnerSupportTickets() {
   async function loadTickets() {
     setLoading(true)
     setError('')
-    const response = await fetch('/api/support-tickets', { cache: 'no-store' })
-    const payload = (await response.json().catch(() => null)) as ApiResponse | null
-    if (!response.ok) {
-      setError(payload?.message ?? 'チケットの読み込みに失敗しました。')
+    try {
+      const ticketsPayload = await fetchSupportTickets()
+      setTickets(ticketsPayload ?? [])
       setLoading(false)
-      return
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'チケットの読み込みに失敗しました。')
+      setLoading(false)
     }
-    setTickets(payload?.tickets ?? [])
-    setLoading(false)
   }
 
   useEffect(() => {
     let cancelled = false
 
     async function loadInitialTickets() {
-      const response = await fetch('/api/support-tickets', { cache: 'no-store' })
-      const payload = (await response.json().catch(() => null)) as ApiResponse | null
-      if (cancelled) return
-      if (!response.ok) {
-        setError(payload?.message ?? 'チケットの読み込みに失敗しました。')
+      try {
+        const ticketsPayload = await fetchSupportTickets()
+        if (cancelled) return
+        setTickets(ticketsPayload ?? [])
         setLoading(false)
-        return
+      } catch (error) {
+        if (cancelled) return
+        setError(error instanceof Error ? error.message : 'チケットの読み込みに失敗しました。')
+        setLoading(false)
       }
-      setTickets(payload?.tickets ?? [])
-      setLoading(false)
     }
 
     void loadInitialTickets()
@@ -143,6 +174,7 @@ export function OwnerSupportTickets() {
     }
     setForm((current) => ({ ...current, subject: '', description: '' }))
     setMessage('チケットを起票しました。')
+    clearSupportTicketsCache()
     await loadTickets()
     setSaving(false)
   }
@@ -168,6 +200,7 @@ export function OwnerSupportTickets() {
     }
     setCommentByTicketId((current) => ({ ...current, [ticketId]: '' }))
     setMessage('コメントを投稿しました。')
+    clearSupportTicketsCache()
     await loadTickets()
   }
 

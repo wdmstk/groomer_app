@@ -21,7 +21,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('pets')
     .select(
-      'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, qr_code_url, qr_payload, customers(full_name)'
+      'id, name, customer_id, breed, coat_volume, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, qr_code_url, qr_payload, customers(full_name)'
     )
     .eq('store_id', storeId)
     .order('created_at', { ascending: false })
@@ -69,6 +69,11 @@ export async function POST(request: Request) {
         ? body.breed
         : null
       : formData?.get('breed')?.toString() || null,
+    coat_volume: isJson
+      ? typeof body?.coat_volume === 'string'
+        ? body.coat_volume
+        : null
+      : formData?.get('coat_volume')?.toString() || null,
     gender: isJson
       ? typeof body?.gender === 'string'
         ? body.gender

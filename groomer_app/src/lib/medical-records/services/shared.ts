@@ -1,7 +1,12 @@
 import type { createStoreScopedClient } from '@/lib/supabase/store'
 import type { MedicalRecordPhotoDraft } from '@/lib/medical-records/photos'
 import { getMedicalRecordPhotoBucket } from '@/lib/medical-records/photos'
+import { parseMedicalRecordTags, type MedicalRecordAiTagStatus } from '@/lib/medical-records/tags'
 import type { MedicalRecordVideoDraft } from '@/lib/medical-records/videos'
+import {
+  buildMedicalRecordVideoThumbnailPath,
+  getMedicalRecordVideoBucket,
+} from '@/lib/medical-records/videos'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { Database } from '@/lib/supabase/database.types'
 
@@ -32,8 +37,16 @@ export type MedicalRecordWriteInput = {
   skinCondition: string | null
   behaviorNotes: string | null
   cautionNotes: string | null
+  tags: string[] | null
   photoDrafts: MedicalRecordPhotoDraft[]
   videoDrafts: MedicalRecordVideoDraft[]
+}
+
+export type MedicalRecordAiState = {
+  aiTagStatus: MedicalRecordAiTagStatus
+  aiTagError: string | null
+  aiTagLastAnalyzedAt: string | null
+  aiTagSource: string | null
 }
 
 export function normalizeStatus(value: string | null | undefined): RecordStatus {
@@ -46,6 +59,10 @@ export function validateMedicalRecordWriteInput(input: MedicalRecordWriteInput) 
   if (!input.appointmentId) throw new MedicalRecordServiceError('予約の選択は必須です。')
   if (!input.recordDate) throw new MedicalRecordServiceError('施術日時は必須です。')
   if (!input.menu) throw new MedicalRecordServiceError('施術メニューは必須です。')
+}
+
+export function normalizeMedicalRecordTagsInput(value: string | string[] | null | undefined) {
+  return parseMedicalRecordTags(value)
 }
 
 export async function resolvePaymentLink(
@@ -194,13 +211,34 @@ export async function syncMedicalRecordVideos(
 
   if (videos.length === 0) return
 
+  const VIDEO_STORAGE_BUCKET = getMedicalRecordVideoBucket()
+  const resolvedThumbnails = await Promise.all(
+    videos.map(async (video) => {
+      if (video.thumbnailPath) {
+        return video.thumbnailPath
+      }
+      const generatedPath = buildMedicalRecordVideoThumbnailPath({
+        storeId,
+        medicalRecordId: recordId,
+        sourcePath: video.storagePath,
+      })
+      const { error: copyError } = await supabase.storage
+        .from(VIDEO_STORAGE_BUCKET)
+        .copy(video.storagePath, generatedPath)
+      if (copyError) {
+        return null
+      }
+      return generatedPath
+    })
+  )
+
   const videoRows = videos.map((video, index) => ({
     store_id: storeId,
     medical_record_id: recordId,
     pet_id: petId,
     appointment_id: appointmentId,
     storage_path: video.storagePath,
-    thumbnail_path: video.thumbnailPath ?? null,
+    thumbnail_path: resolvedThumbnails[index] ?? null,
     line_short_path: video.lineShortPath ?? null,
     duration_sec: video.durationSec,
     size_bytes: video.sizeBytes ?? 0,

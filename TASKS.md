@@ -431,8 +431,8 @@ Completed tasks should be marked:
   - [x] カルテ一覧のメディア件数を「写真 + 動画」表示へ拡張
   - [x] 最新メディア（写真・動画）混在セクションを一覧タブに追加
   - [x] カルテモーダルに「施術動画を撮る」ボタンを追加（写真2ボタンは維持）
-  - [ ] 動画サムネイル生成ジョブとの接続
-  - [ ] 混在一覧のE2Eテスト追加
+  - [x] 動画サムネイル生成ジョブとの接続
+  - [x] 混在一覧のE2Eテスト追加
 
 #### タスク3: LINE短尺動画生成（10-20秒）と容量連動
 - タスク名: LINE短尺動画生成と容量連動
@@ -464,6 +464,11 @@ Completed tasks should be marked:
 - PR作成: `feat(ai-assist): add async assist inference pipeline`
 - レビュー手順: キュー再実行、タイムアウト、再試行上限、監査ログを確認
 - main へのマージ手順: ステージング負荷試験通過後に merge
+- 進捗:
+  - [ ] `ai_jobs` / `ai_results` 相当のジョブテーブル追加
+  - [ ] Assist推論ワーカー（サムネ/タグ/カルテ文/ショート動画）実装
+  - [ ] ジョブ投入API・進捗取得API・再試行制御を追加
+  - [ ] Assist結果のUI反映（既存手入力優先）を実装
 
 #### タスク5: AI Assist課金オプション追加（¥1,280）
 - タスク名: AI Assist課金オプション追加
@@ -495,6 +500,11 @@ Completed tasks should be marked:
 - PR作成: `feat(ai-pro): add behavior and estimate predictions`
 - レビュー手順: プランゲート、推論結果のnull耐性、既存カルテ保存との整合確認
 - main へのマージ手順: QAチェックリスト完了後に merge
+- 進捗:
+  - [x] `medical_record_ai_pro_insights` 追加SQLを作成
+  - [x] AI Pro分析API（`/api/medical-records/[record_id]/ai-pro`）を追加
+  - [x] カルテ一覧に AI Pro提案表示と解析実行ボタンを追加（pro/pro_plusのみ）
+  - [x] AI Pro推論ロジックの単体テストを追加
 
 #### タスク7: AI Pro課金オプション追加（¥1,980）
 - タスク名: AI Pro課金オプション追加
@@ -507,6 +517,11 @@ Completed tasks should be marked:
 - PR作成: `feat(ai-pro): add ai pro option and upgrade flow`
 - レビュー手順: アップ/ダウングレード文言、課金履歴表示、監査ログ確認
 - main へのマージ手順: Billingレビュー承認後に merge
+- 進捗:
+  - [x] 課金ページのAIプラン切替UIで Pro 選択導線を有効化
+  - [x] `/api/billing/options` で Pro への切替保存を実装
+  - [x] 決済checkout連携の価格ID分岐で Pro を反映
+  - [x] 契約状態表示（現在のAIプラン）に Pro を反映
 
 ### Phase 4: AI Pro+（branch: `feature/ai-pro-plus`）
 
@@ -521,6 +536,11 @@ Completed tasks should be marked:
 - PR作成: `feat(ai-pro-plus): add advanced health insights and monthly reports`
 - レビュー手順: 性能計測、誤検知時UI、レポート再生成動線を確認
 - main へのマージ手順: 段階リリース設定後に merge
+- 進捗:
+  - [x] `medical_record_ai_pro_plus_health_insights` / `store_ai_monthly_reports` 追加SQLを作成
+  - [x] AI Pro+解析API（`/api/medical-records/[record_id]/ai-pro-plus`）を追加
+  - [x] AI Pro+月次レポートAPI（`/api/ai-reports/monthly`）を追加
+  - [x] カルテ一覧に AI Pro+気づき表示と解析実行ボタンを追加（pro_plusのみ）
 
 #### タスク9: AI Pro+課金オプション追加（¥2,480）
 - タスク名: AI Pro+課金オプション追加
@@ -533,6 +553,11 @@ Completed tasks should be marked:
 - PR作成: `feat(ai-pro-plus): add ai pro plus option on billing`
 - レビュー手順: 明細整合、UI表示崩れ、既存オプション回帰の確認
 - main へのマージ手順: 監視アラート設定完了後に merge
+- 進捗:
+  - [x] 課金ページのAIプラン切替UIで Pro+ 選択導線を有効化
+  - [x] `/api/billing/options` で Pro+ への切替保存を実装
+  - [x] 決済checkout連携の価格ID分岐で Pro+ を反映
+  - [x] 契約状態表示（現在のAIプラン）に Pro+ を反映
 
 ### フェーズ横断の共通完了条件
 - 既存の写真カルテ作成/編集/共有が回帰していない

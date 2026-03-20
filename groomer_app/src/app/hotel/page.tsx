@@ -1,9 +1,20 @@
+import nextDynamic from 'next/dynamic'
 import { Card } from '@/components/ui/Card'
 import { createStoreScopedClient } from '@/lib/supabase/store'
-import { HotelStaysManager } from '@/components/hotel/HotelStaysManager'
 import { requireStoreFeatureAccess } from '@/lib/feature-access'
 import { isHotelFeatureEnabledForStore } from '@/lib/hotel/feature-gate'
 import { hotelPageFixtures } from '@/lib/e2e/hotel-page-fixtures'
+
+const HotelStaysManager = nextDynamic(
+  () => import('@/components/hotel/HotelStaysManager').then((mod) => mod.HotelStaysManager),
+  {
+    loading: () => (
+      <Card>
+        <p className="text-sm text-gray-500">ホテル台帳を読み込み中...</p>
+      </Card>
+    ),
+  }
+)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
