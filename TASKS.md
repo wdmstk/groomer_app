@@ -476,6 +476,11 @@ Completed tasks should be marked:
 - PR作成: `feat(ai-assist): add ai assist option to billing page`
 - レビュー手順: 金額表示、状態遷移、既存ホテル/通知切替の回帰確認
 - main へのマージ手順: 請求シミュレーション結果確認後に merge
+- 進捗:
+  - [x] `store_subscriptions.ai_plan_code` 追加SQLを作成
+  - [x] 課金ページに AI Assist / Pro / Pro+ 切替UIを追加
+  - [x] `/api/billing/options` で AIプラン変更を受け付け
+  - [x] 決済checkout連携の価格ID分岐（AIプラン込み）を追加
 
 ### Phase 3: AI Pro（branch: `feature/ai-pro`）
 

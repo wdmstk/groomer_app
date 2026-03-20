@@ -20,6 +20,7 @@ import {
   amountForPlan,
   amountForPlanWithStoreCount,
   amountForStorageAddonUnits,
+  parseAiPlanCode,
   parseBillingCycle,
   STORAGE_ADDON_UNIT_GB,
 } from '@/lib/billing/pricing'
@@ -44,6 +45,36 @@ type BillingPageProps = {
   }>
 }
 
+async function fetchStoreSubscriptionWithAiFallback(admin: ReturnType<typeof createAdminSupabaseClient>, storeId: string) {
+  const withAi = await admin
+    .from('store_subscriptions')
+    .select(
+      'plan_code, hotel_option_enabled, notification_option_enabled, ai_plan_code, billing_cycle, billing_status, preferred_provider, amount_jpy, trial_started_at, trial_days, grace_days, past_due_since, current_period_end, next_billing_date'
+    )
+    .eq('store_id', storeId)
+    .maybeSingle()
+
+  if (!withAi.error) {
+    return withAi.data
+  }
+
+  const fallback = await admin
+    .from('store_subscriptions')
+    .select(
+      'plan_code, hotel_option_enabled, notification_option_enabled, billing_cycle, billing_status, preferred_provider, amount_jpy, trial_started_at, trial_days, grace_days, past_due_since, current_period_end, next_billing_date'
+    )
+    .eq('store_id', storeId)
+    .maybeSingle()
+  return fallback.data
+}
+
+function aiPlanLabel(value: string) {
+  if (value === 'assist') return 'AI Assist'
+  if (value === 'pro') return 'AI Pro'
+  if (value === 'pro_plus') return 'AI Pro+'
+  return '未契約'
+}
+
 export default async function BillingPage({ searchParams }: BillingPageProps) {
   const params = await searchParams
   const guard = isPlaywrightE2E ? billingPageFixtures.guard : await requireOwnerStoreMembership()
@@ -65,15 +96,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
     : await countActiveOwnerStores(user.id)
   const storeSubscription = isPlaywrightE2E
     ? billingPageFixtures.storeSubscription
-    : (
-        await admin
-          .from('store_subscriptions')
-          .select(
-            'plan_code, hotel_option_enabled, notification_option_enabled, billing_cycle, billing_status, preferred_provider, amount_jpy, trial_started_at, trial_days, grace_days, past_due_since, current_period_end, next_billing_date'
-          )
-          .eq('store_id', storeId)
-          .maybeSingle()
-      ).data
+    : await fetchStoreSubscriptionWithAiFallback(admin, storeId)
   const billingSubscriptions = isPlaywrightE2E
     ? billingPageFixtures.billingSubscriptions
     : (
@@ -119,6 +142,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   const canPurchaseOptions = canPurchaseOptionsByPlan(normalizedPlanCode)
   const hotelOptionEnabled = storeSubscription?.hotel_option_enabled === true
   const notificationOptionEnabled = storeSubscription?.notification_option_enabled === true
+  const aiPlanCode = parseAiPlanCode(
+    (storeSubscription as (typeof storeSubscription & { ai_plan_code?: string | null }) | null)?.ai_plan_code ?? 'none'
+  )
   const baseAmountJpy = amountForPlan(normalizedPlanCode, billingCycle)
   const discountedBaseAmountJpy = amountForPlanWithStoreCount(
     normalizedPlanCode,
@@ -129,6 +155,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   const optionAmountJpy = amountForOptions(normalizedPlanCode, billingCycle, {
     hotelOptionEnabled,
     notificationOptionEnabled,
+    aiPlanCode,
   })
   const coreBilledAmountJpy = discountedBaseAmountJpy + optionAmountJpy
   const storageSubscription = (billingSubscriptions ?? []).find(
@@ -192,6 +219,10 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
               <span className="text-gray-500">請求周期</span>
               <span className="font-medium text-gray-900">{billingCycleLabel}</span>
+            </p>
+            <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
+              <span className="text-gray-500">AIプラン</span>
+              <span className="font-medium text-gray-900">{aiPlanLabel(aiPlanCode)}</span>
             </p>
             <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
               <span className="text-gray-500">基本+オプション請求額</span>
@@ -353,6 +384,57 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
               </button>
             </form>
           </div>
+          <div className="rounded-lg border p-3 xl:col-span-2">
+            <div className="flex items-center justify-between gap-4">
+              <p className="font-semibold text-gray-900">AIプラン</p>
+              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${aiPlanCode === 'none' ? 'bg-gray-100 text-gray-600' : 'bg-emerald-100 text-emerald-700'}`}>
+                {aiPlanLabel(aiPlanCode)}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">プラン変更は即時または次回請求タイミングで反映されます。</p>
+            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
+              <form action="/api/billing/options" method="post">
+                <input type="hidden" name="option" value="ai_plan" />
+                <input type="hidden" name="ai_plan_code" value="none" />
+                <button
+                  type="submit"
+                  className="w-full rounded border px-3 py-1.5 text-xs font-semibold text-gray-700"
+                >
+                  無効化
+                </button>
+              </form>
+              <form action="/api/billing/options" method="post">
+                <input type="hidden" name="option" value="ai_plan" />
+                <input type="hidden" name="ai_plan_code" value="assist" />
+                <button
+                  type="submit"
+                  className="w-full rounded border px-3 py-1.5 text-xs font-semibold text-gray-700"
+                >
+                  Assist (1,280円)
+                </button>
+              </form>
+              <form action="/api/billing/options" method="post">
+                <input type="hidden" name="option" value="ai_plan" />
+                <input type="hidden" name="ai_plan_code" value="pro" />
+                <button
+                  type="submit"
+                  className="w-full rounded border px-3 py-1.5 text-xs font-semibold text-gray-700"
+                >
+                  Pro (1,980円)
+                </button>
+              </form>
+              <form action="/api/billing/options" method="post">
+                <input type="hidden" name="option" value="ai_plan" />
+                <input type="hidden" name="ai_plan_code" value="pro_plus" />
+                <button
+                  type="submit"
+                  className="w-full rounded border px-3 py-1.5 text-xs font-semibold text-gray-700"
+                >
+                  Pro+ (2,480円)
+                </button>
+              </form>
+            </div>
+          </div>
           {!canPurchaseOptions ? (
             <p className="text-xs text-amber-700">
               ライトプランではオプション契約はできません。スタンダード以上へ変更してください。
@@ -394,6 +476,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
               defaultBillingCycle={storeSubscription?.billing_cycle ?? 'monthly'}
               hotelOptionEnabled={hotelOptionEnabled}
               notificationOptionEnabled={notificationOptionEnabled}
+              aiPlanCode={aiPlanCode}
               ownerActiveStoreCount={ownerActiveStoreCount}
             />
           </div>
