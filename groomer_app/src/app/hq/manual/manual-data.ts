@@ -49,8 +49,8 @@ export type HqManualSectionInsight = {
 }
 
 export const hqManualMeta = {
-  updatedAt: '2026-03-16',
-  targetVersion: 'groomer_app 0.1.0 / HQ Phase 1',
+  updatedAt: '2026-03-21',
+  targetVersion: 'groomer_app 0.0.1 / HQ Phase 1',
 }
 
 export const hqManualGlossary: HqGlossaryTerm[] = [
@@ -80,7 +80,6 @@ export const hqManualGlossary: HqGlossaryTerm[] = [
   { term: 'approved_by_user_ids', meaning: '承認を実行したユーザーID配列です。' },
   { term: 'actor_scope', meaning: '監査ログの操作主体。HQ操作では `hq` が記録されます。' },
   { term: 'entity_type', meaning: '監査対象の種別。配信監査では `hq_menu_template_delivery` を使用します。' },
-  { term: 'plan_code=pro', meaning: '本部機能を使うための最低プラン条件です。' },
 ]
 
 export const hqManualSections: HqManualSection[] = [
@@ -96,7 +95,7 @@ export const hqManualSections: HqManualSection[] = [
     ],
     cautions: [
       'staff は本部機能を利用できません。',
-      'pro 未満のプランでは /hq 配下に入れません。',
+      '本部機能はロール（owner/admin/staff）で制御され、staff はアクセスできません。',
     ],
   },
   {
@@ -254,7 +253,7 @@ const hqSectionGuides: Record<string, HqManualSectionGuide> = {
     itemDetails: [
       { item: 'ロール境界', detail: 'owner/admin は閲覧可能、staff は本部アクセス不可です。' },
       { item: 'Capability', detail: '画面/APIともに hq_view / hq_template_request / hq_template_approve を基準に判定します。' },
-      { item: 'プラン境界', detail: '本部機能は pro プラン以上で利用可能です。' },
+      { item: 'プラン境界', detail: '現行実装では本部機能の可否はプランではなくロールと Capability で判定します。' },
     ],
   },
   'hq-dashboard': {

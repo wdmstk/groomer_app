@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 
 type PlanKey = 'light' | 'standard' | 'pro'
@@ -37,6 +38,13 @@ type AdditionalOptionRow = {
   price: string
   target: string
   detail: string
+}
+
+type AiFeatureCard = {
+  plan: string
+  catchcopy: string
+  actions: string[]
+  output: string
 }
 
 const PLAN_CARDS: PlanCard[] = [
@@ -92,7 +100,12 @@ const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
   { feature: '顧客管理', light: '○', standard: '○', pro: '○' },
   { feature: '多頭飼い管理', light: '○', standard: '○', pro: '○' },
   { feature: '写真カルテ', light: '○', standard: '○', pro: '○' },
+  { feature: '動画カルテ（写真+動画タイムライン）', light: '○', standard: '○', pro: '○' },
   { feature: '当日運用（スマホ完結）', light: '○', standard: '○', pro: '○' },
+  { feature: 'AI Assist（オプション）', light: '○', standard: '○', pro: '○' },
+  { feature: 'AI Pro（オプション）', light: '○', standard: '○', pro: '○' },
+  { feature: 'AI Pro+（オプション）', light: '○', standard: '○', pro: '○' },
+  { feature: 'ペットホテル予約機能（オプション）', light: '-', standard: '○', pro: '○' },
   { feature: '在庫管理', light: '-', standard: '○', pro: '○' },
   { feature: '通知ログ', light: '-', standard: '○', pro: '○' },
   { feature: '空き枠再販（半自動）', light: '-', standard: '○', pro: '○' },
@@ -105,6 +118,7 @@ const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
 
 const COMPETITOR_ROWS: CompetitorRow[] = [
   { axis: '写真カルテの時系列管理', service: '◎', companyA: '△', companyB: '△' },
+  { axis: '動画カルテ×AI一体運用', service: '◎', companyA: '△', companyB: '×' },
   { axis: '空き枠再販（半自動運用）', service: '◎', companyA: '△', companyB: '×' },
   { axis: 'LINE通知', service: '◎', companyA: '○', companyB: '△' },
   { axis: '当日運用のスマホ完結', service: '◎', companyA: '△', companyB: '○' },
@@ -126,6 +140,24 @@ const STORAGE_ADDON_EXAMPLES = [
 ]
 
 const ADDITIONAL_OPTION_ROWS: AdditionalOptionRow[] = [
+  {
+    option: 'AI Assist',
+    price: '1,280円/月',
+    target: '全プラン',
+    detail: '自動サムネ・タグ・カルテ文・ショート動画生成',
+  },
+  {
+    option: 'AI Pro',
+    price: '1,980円/月',
+    target: '全プラン',
+    detail: 'AI Assist＋ 性格/行動分析、施術時間・追加料金の予測提案',
+  },
+  {
+    option: 'AI Pro+',
+    price: '2,480円/月',
+    target: '全プラン',
+    detail: 'AI Pro＋ 健康異常の気づき、月次レポート、教育ハイライト生成',
+  },
   {
     option: 'ペットホテル予約機能',
     price: '1,500円/月',
@@ -152,6 +184,27 @@ const ADDITIONAL_OPTION_ROWS: AdditionalOptionRow[] = [
   },
 ]
 
+const AI_FEATURE_CARDS: AiFeatureCard[] = [
+  {
+    plan: 'AI Assist',
+    catchcopy: '記録を速く、抜け漏れを減らす',
+    actions: ['自動サムネイル生成', 'AIタグ付け', 'カルテ文の下書き生成', 'ショート動画生成'],
+    output: 'スタッフの記録時間を短縮し、共有しやすいカルテを作成',
+  },
+  {
+    plan: 'AI Pro',
+    catchcopy: '次回提案の精度を高める',
+    actions: ['性格/行動分析', '施術時間の予測提案', '毛玉リスクの提案', '追加料金リスクの提案'],
+    output: '提案値をもとに、説明しやすい見積り・提案を実現',
+  },
+  {
+    plan: 'AI Pro+',
+    catchcopy: '継続改善と教育に活かす',
+    actions: ['健康異常の気づき表示', '月次レポート生成', '教育用ハイライト生成'],
+    output: '店舗全体の運用品質を可視化し、改善サイクルを回しやすくする',
+  },
+]
+
 function planCardClass(planId: PlanKey): string {
   if (planId === 'pro') return 'border-slate-900 bg-slate-900 text-white shadow-xl'
   if (planId === 'standard') return 'border-sky-200 bg-white text-slate-900 shadow-lg'
@@ -167,14 +220,127 @@ export default function LandingPage() {
             ペットサロン向け業務SaaS
           </p>
           <h1 className="text-3xl font-bold leading-tight sm:text-5xl">
-            スマホで回る。すぐ使える。
+            写真だけで終わらない。
             <br className="hidden sm:block" />
-            現場に合わせた3プラン
+            動画カルテ×AIで、提案までつながる
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
-            最安ではなく、ペットサロン業務に必要な機能をまとめて提供。写真カルテ、空き枠再販、LINE通知、当日運用まで一体で使えます。
+            最安ではなく、ペットサロン業務に必要な機能をまとめて提供。写真+動画カルテ、空き枠再販、LINE通知、AI Assist/Pro/Pro+による提案支援、当日運用まで一体で使えます。
           </p>
         </header>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-lg sm:p-6">
+          <h2 className="text-xl font-bold sm:text-2xl">カルテ＋AIでできること</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            動画カルテを土台に、AIが「記録」「予測」「改善」を段階的に支援します。AI結果は提案として扱い、手入力運用も併用できます。
+          </p>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            {AI_FEATURE_CARDS.map((item) => (
+              <article key={item.plan} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold tracking-wide text-sky-700">{item.plan}</p>
+                <h3 className="mt-1 text-base font-bold text-slate-900">{item.catchcopy}</h3>
+                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700">
+                  {item.actions.map((action) => (
+                    <li key={action}>{action}</li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-xs font-medium text-slate-600">{item.output}</p>
+              </article>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-slate-500">
+            ※ AIの分析は業務支援のための提案です。医療判断を行うものではありません。
+          </p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 lg:px-8">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold sm:text-2xl">カルテ＋AIを支える実運用画面</h2>
+          <p className="mt-1 text-sm text-slate-600">カルテ画面とAI運用画面を中心に、実際の操作画面で確認できます。</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <Image
+                src="/lp/medical-records-list.png"
+                alt="カルテ一覧の実画面"
+                width={640}
+                height={360}
+                className="h-40 w-full object-cover object-top"
+              />
+            </div>
+            <h3 className="mt-3 text-base font-bold text-slate-900">カルテ一覧（写真＋動画）</h3>
+            <p className="mt-1 text-sm text-slate-700">施術記録を一覧化し、次回来店時の確認と引き継ぎをスムーズにします。</p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <Image
+                src="/lp/medical-records-ai-filter.png"
+                alt="カルテのAI解析絞り込み画面"
+                width={640}
+                height={360}
+                className="h-40 w-full object-cover object-top"
+              />
+            </div>
+            <h3 className="mt-3 text-base font-bold text-slate-900">AI解析ステータス管理</h3>
+            <p className="mt-1 text-sm text-slate-700">AIタグや解析状態で絞り込み、要確認カルテを優先して確認できます。</p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <Image
+                src="/lp/medical-records-modal.png"
+                alt="カルテ新規作成モーダルの実画面"
+                width={640}
+                height={360}
+                className="h-40 w-full object-cover object-top"
+              />
+            </div>
+            <h3 className="mt-3 text-base font-bold text-slate-900">カルテ作成（動画導線あり）</h3>
+            <p className="mt-1 text-sm text-slate-700">施術前・施術後・施術動画の3導線を1画面で扱い、記録漏れを減らします。</p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <Image
+                src="/lp/billing-ai-plan.png"
+                alt="AIプラン切替を含む課金管理画面"
+                width={640}
+                height={360}
+                className="h-40 w-full object-cover object-top"
+              />
+            </div>
+            <h3 className="mt-3 text-base font-bold text-slate-900">AIプラン運用</h3>
+            <p className="mt-1 text-sm text-slate-700">AI Assist/Pro/Pro+の契約状態を確認し、店舗運用に合わせて切替できます。</p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-1">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <Image
+                src="/lp/dashboard-followups.png"
+                alt="再来店フォローと予兆一覧の管理画面"
+                width={640}
+                height={360}
+                className="h-40 w-full object-cover object-top"
+              />
+            </div>
+            <h3 className="mt-3 text-base font-bold text-slate-900">再来店フォローと予兆</h3>
+            <p className="mt-1 text-sm text-slate-700">AIで優先顧客と対応状況を一覧化し、見落としを減らす運用を支援します。</p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-3">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <Image
+                src="/lp/hotel-list.png"
+                alt="ペットホテル台帳の一覧画面"
+                width={1280}
+                height={360}
+                className="h-40 w-full object-cover object-top"
+              />
+            </div>
+            <h3 className="mt-3 text-base font-bold text-slate-900">ホテル連携運用</h3>
+            <p className="mt-1 text-sm text-slate-700">ホテル台帳とも連携し、カルテ・予約・会計を分断せずに店舗全体で運用できます。</p>
+          </article>
+        </div>
       </section>
 
       <section className="mx-auto grid max-w-6xl gap-4 px-4 pb-12 sm:grid-cols-3 sm:px-6 lg:px-8">
@@ -247,7 +413,7 @@ export default function LandingPage() {
               </tbody>
             </table>
           </div>
-          <p className="mt-3 text-xs text-slate-500">※ ペットホテル予約機能と通知強化は、スタンダード/プロで利用できます。</p>
+          <p className="mt-3 text-xs text-slate-500">※ AIプランは全プランで追加可能です。ペットホテル予約機能と通知強化は、スタンダード/プロで利用できます。</p>
         </div>
       </section>
 
@@ -277,6 +443,7 @@ export default function LandingPage() {
             </table>
           </div>
           <p className="mt-3 text-sm font-medium text-sky-700">スタンダードが最も選ばれています。</p>
+          <p className="mt-1 text-xs text-slate-500">※「オプション」表記の機能は別料金で追加できます。</p>
         </div>
       </section>
 
@@ -364,6 +531,8 @@ export default function LandingPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:p-6">
           <h2 className="mb-4 text-xl font-bold sm:text-2xl">業務特化で選ばれる理由</h2>
           <ul className="list-disc space-y-3 pl-5 text-sm text-slate-700">
+            <li>写真と動画を同じカルテ時系列で管理でき、引き継ぎの解像度を上げやすい</li>
+            <li>AI Assist/Pro/Pro+で、タグ付け・要点整理・提案づくりを段階的に強化できる</li>
             <li>写真カルテを時系列で管理でき、次回来店時の引き継ぎがしやすい</li>
             <li>空き枠再販（半自動）でキャンセル枠の機会損失を減らせる</li>
             <li>LINE通知を業務に組み込み、連絡の抜け漏れを抑えやすい</li>
@@ -415,7 +584,9 @@ export default function LandingPage() {
       <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 lg:px-8">
         <div className="rounded-2xl border border-slate-900 bg-slate-900 p-6 text-white sm:p-10">
           <h2 className="text-2xl font-bold sm:text-3xl">まずは現場で使って確認してください</h2>
-          <p className="mt-3 text-sm text-slate-200 sm:text-base">導入のしやすさと現場フィットを、無料期間でそのまま確認できます。</p>
+          <p className="mt-3 text-sm text-slate-200 sm:text-base">
+            導入のしやすさと現場フィットを、無料期間でそのまま確認できます。動画カルテとAI提案の使い勝手まで、実運用でお試しください。
+          </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href="/signup" className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-200">
               まずは30日無料で試す
