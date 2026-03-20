@@ -11,7 +11,7 @@ import {
   type MedicalRecordPhotoDraft,
   type MedicalRecordPhotoType,
 } from '@/lib/medical-records/photos'
-import { createSignedVideoUrlMap } from '@/lib/medical-records/videos'
+import { createSignedVideoUrlMap, type MedicalRecordVideoDraft } from '@/lib/medical-records/videos'
 import {
   buildMedicalRecordTagFilterOptions,
   filterMedicalRecordsByAi,
@@ -111,6 +111,20 @@ type RecordPhotoRow = {
 
 type RecordPhotoCountRow = {
   medical_record_id: string
+}
+
+type RecordVideoRow = {
+  id: string
+  medical_record_id: string
+  storage_path: string
+  thumbnail_path: string | null
+  line_short_path: string | null
+  duration_sec: number | null
+  size_bytes: number | null
+  source_type: 'uploaded' | 'ai_generated' | null
+  comment: string | null
+  sort_order: number
+  taken_at: string | null
 }
 
 type RecordVideoCountRow = {
@@ -461,6 +475,19 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
           .order('created_at', { ascending: true })
       : { data: [] }
 
+  const { data: editRecordVideos } =
+    editRecord
+      ? await supabase
+          .from('medical_record_videos' as never)
+          .select(
+            'id, medical_record_id, storage_path, thumbnail_path, line_short_path, duration_sec, size_bytes, source_type, comment, sort_order, taken_at'
+          )
+          .eq('store_id', storeId)
+          .eq('medical_record_id', editRecord.id)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: true })
+      : { data: [] }
+
   const { data: galleryPhotos } =
     currentGalleryPetId
       ? await supabase
@@ -501,7 +528,17 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
 
   const recentVideoRows = (recentVideos ?? []) as RecentMediaVideoRow[]
   const recentVideoPreviewPaths = recentVideoRows.map((video) => video.thumbnail_path || video.storage_path)
-  const signedVideoUrlMap = await createSignedVideoUrlMap(supabase, recentVideoPreviewPaths, 60 * 60)
+  const signedVideoUrlMap = await createSignedVideoUrlMap(
+    supabase,
+    [
+      ...recentVideoPreviewPaths,
+      ...((editRecordVideos ?? []) as RecordVideoRow[]).map((video) => video.storage_path),
+      ...((editRecordVideos ?? []) as RecordVideoRow[])
+        .map((video) => video.thumbnail_path)
+        .filter((path): path is string => Boolean(path)),
+    ],
+    60 * 60
+  )
 
   const photoEntriesByRecordId = new Map<string, MedicalRecordPhotoDraft[]>()
   ;((editRecordPhotos ?? []) as RecordPhotoRow[]).forEach((photo) => {
@@ -532,6 +569,19 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
   })
 
   const editPhotoEntries = editRecord ? photoEntriesByRecordId.get(editRecord.id) ?? [] : []
+  const editVideoEntries: MedicalRecordVideoDraft[] = ((editRecordVideos ?? []) as RecordVideoRow[]).map((video, index) => ({
+    id: video.id,
+    storagePath: video.storage_path,
+    thumbnailPath: video.thumbnail_path,
+    lineShortPath: video.line_short_path,
+    durationSec: video.duration_sec,
+    sizeBytes: video.size_bytes,
+    sourceType: video.source_type === 'ai_generated' ? 'ai_generated' : 'uploaded',
+    comment: video.comment ?? '',
+    sortOrder: video.sort_order ?? index,
+    takenAt: video.taken_at,
+    signedUrl: signedVideoUrlMap.get(video.storage_path) ?? null,
+  }))
   const photoCountByRecordId = new Map<string, number>()
   ;((recordPhotoCounts ?? []) as RecordPhotoCountRow[]).forEach((row) => {
     photoCountByRecordId.set(row.medical_record_id, (photoCountByRecordId.get(row.medical_record_id) ?? 0) + 1)
@@ -799,7 +849,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                       <th className="py-2 px-2">操作</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
+                  <tbody className="divide-y" suppressHydrationWarning>
                     {filteredRecordList.map((record) => {
                       const aiStatus = normalizeAiTagStatus(record.ai_tag_status)
                       const visibleTags = getVisibleMedicalRecordTags(record.tags)
@@ -1172,6 +1222,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
           defaultStatus={defaultStatus}
           closeRedirectTo={modalCloseRedirect}
           photoEntries={editPhotoEntries}
+          videoEntries={editVideoEntries}
           galleryEntries={galleryEntries}
         />
       ) : null}

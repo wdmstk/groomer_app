@@ -1,6 +1,7 @@
 import type { createStoreScopedClient } from '@/lib/supabase/store'
 import type { MedicalRecordPhotoDraft } from '@/lib/medical-records/photos'
 import { getMedicalRecordPhotoBucket } from '@/lib/medical-records/photos'
+import type { MedicalRecordVideoDraft } from '@/lib/medical-records/videos'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { Database } from '@/lib/supabase/database.types'
 
@@ -32,6 +33,7 @@ export type MedicalRecordWriteInput = {
   behaviorNotes: string | null
   cautionNotes: string | null
   photoDrafts: MedicalRecordPhotoDraft[]
+  videoDrafts: MedicalRecordVideoDraft[]
 }
 
 export function normalizeStatus(value: string | null | undefined): RecordStatus {
@@ -165,6 +167,50 @@ export async function syncMedicalRecordPhotos(
   )
 
   const { error: insertError } = await supabase.from('medical_record_photos').insert(photoRows)
+
+  if (insertError) {
+    throw new MedicalRecordServiceError(insertError.message, 500)
+  }
+}
+
+export async function syncMedicalRecordVideos(
+  supabase: MedicalRecordSupabaseClient,
+  storeId: string,
+  recordId: string,
+  petId: string,
+  appointmentId: string,
+  recordDate: string,
+  videos: MedicalRecordVideoDraft[]
+) {
+  const { error: deleteError } = await supabase
+    .from('medical_record_videos' as never)
+    .delete()
+    .eq('medical_record_id', recordId)
+    .eq('store_id', storeId)
+
+  if (deleteError) {
+    throw new MedicalRecordServiceError(deleteError.message, 500)
+  }
+
+  if (videos.length === 0) return
+
+  const videoRows = videos.map((video, index) => ({
+    store_id: storeId,
+    medical_record_id: recordId,
+    pet_id: petId,
+    appointment_id: appointmentId,
+    storage_path: video.storagePath,
+    thumbnail_path: video.thumbnailPath ?? null,
+    line_short_path: video.lineShortPath ?? null,
+    duration_sec: video.durationSec,
+    size_bytes: video.sizeBytes ?? 0,
+    source_type: video.sourceType,
+    comment: video.comment || null,
+    sort_order: index,
+    taken_at: video.takenAt ?? recordDate,
+  }))
+
+  const { error: insertError } = await supabase.from('medical_record_videos' as never).insert(videoRows as never)
 
   if (insertError) {
     throw new MedicalRecordServiceError(insertError.message, 500)

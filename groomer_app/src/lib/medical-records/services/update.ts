@@ -1,6 +1,7 @@
 import {
   parseMedicalRecordPhotoDrafts,
 } from '@/lib/medical-records/photos'
+import { parseMedicalRecordVideoDrafts } from '@/lib/medical-records/videos'
 import {
   assertMedicalRecordStoreConsistency,
   listMedicalRecordStoragePaths,
@@ -11,6 +12,7 @@ import {
   removeStorageObjects,
   resolvePaymentLink,
   syncMedicalRecordPhotos,
+  syncMedicalRecordVideos,
   validateMedicalRecordWriteInput,
 } from '@/lib/medical-records/services/shared'
 import type { Database } from '@/lib/supabase/database.types'
@@ -58,6 +60,7 @@ export function normalizeUpdateMedicalRecordJsonInput(body: unknown): UpdateMedi
     behaviorNotes: toOptionalString(normalized?.behavior_notes),
     cautionNotes: toOptionalString(normalized?.caution_notes),
     photoDrafts: parseMedicalRecordPhotoDrafts(toOptionalString(normalized?.photo_payload)),
+    videoDrafts: parseMedicalRecordVideoDrafts(toOptionalString(normalized?.video_payload)),
   }
 }
 
@@ -87,6 +90,7 @@ export function normalizeUpdateMedicalRecordFormInput(formData: FormData): Updat
     behaviorNotes: toOptionalFormString(formData.get('behavior_notes')),
     cautionNotes: toOptionalFormString(formData.get('caution_notes')),
     photoDrafts: parseMedicalRecordPhotoDrafts(toOptionalFormString(formData.get('photo_payload'))),
+    videoDrafts: parseMedicalRecordVideoDrafts(toOptionalFormString(formData.get('video_payload'))),
   }
 }
 
@@ -187,6 +191,16 @@ export async function updateMedicalRecord(params: {
     input.appointmentId!,
     input.recordDate!,
     input.photoDrafts
+  )
+
+  await syncMedicalRecordVideos(
+    supabase,
+    storeId,
+    recordId,
+    input.petId!,
+    input.appointmentId!,
+    input.recordDate!,
+    input.videoDrafts
   )
 
   const nextStoragePaths = input.photoDrafts.map((photo) => photo.storagePath)
