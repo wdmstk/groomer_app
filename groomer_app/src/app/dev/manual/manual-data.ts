@@ -49,8 +49,8 @@ export type DevManualSectionInsight = {
 }
 
 export const devManualMeta = {
-  updatedAt: '2026-03-16',
-  targetVersion: 'groomer_app 0.1.0 / Next.js 16.1.6',
+  updatedAt: '2026-03-21',
+  targetVersion: 'groomer_app 0.0.1 / Next.js 16.1.6',
 }
 
 export const devManualGlossary: DevGlossaryTerm[] = [
@@ -98,7 +98,7 @@ export const devManualSections: DevManualSection[] = [
     purpose: '管理者向け機能への導線を一元確認します。',
     procedures: [
       '開発者管理ページ一覧を開きます。',
-      '目的に応じて サブスク課金管理 / 課金アラート / サポートチケット / Cron 監視 / 管理者マニュアルへ移動します。',
+      '目的に応じて サブスク課金管理 / 課金アラート / 店舗チャット（サポートチケット） / Cron 監視 / 管理者マニュアルへ移動します。',
       '作業完了後は通常画面へ戻るかログアウトします。',
     ],
     cautions: [
