@@ -3,6 +3,10 @@ import type { MedicalRecordPhotoDraft } from '@/lib/medical-records/photos'
 import { getMedicalRecordPhotoBucket } from '@/lib/medical-records/photos'
 import { parseMedicalRecordTags, type MedicalRecordAiTagStatus } from '@/lib/medical-records/tags'
 import type { MedicalRecordVideoDraft } from '@/lib/medical-records/videos'
+import {
+  buildMedicalRecordVideoThumbnailPath,
+  getMedicalRecordVideoBucket,
+} from '@/lib/medical-records/videos'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { Database } from '@/lib/supabase/database.types'
 
@@ -207,13 +211,34 @@ export async function syncMedicalRecordVideos(
 
   if (videos.length === 0) return
 
+  const VIDEO_STORAGE_BUCKET = getMedicalRecordVideoBucket()
+  const resolvedThumbnails = await Promise.all(
+    videos.map(async (video) => {
+      if (video.thumbnailPath) {
+        return video.thumbnailPath
+      }
+      const generatedPath = buildMedicalRecordVideoThumbnailPath({
+        storeId,
+        medicalRecordId: recordId,
+        sourcePath: video.storagePath,
+      })
+      const { error: copyError } = await supabase.storage
+        .from(VIDEO_STORAGE_BUCKET)
+        .copy(video.storagePath, generatedPath)
+      if (copyError) {
+        return null
+      }
+      return generatedPath
+    })
+  )
+
   const videoRows = videos.map((video, index) => ({
     store_id: storeId,
     medical_record_id: recordId,
     pet_id: petId,
     appointment_id: appointmentId,
     storage_path: video.storagePath,
-    thumbnail_path: video.thumbnailPath ?? null,
+    thumbnail_path: resolvedThumbnails[index] ?? null,
     line_short_path: video.lineShortPath ?? null,
     duration_sec: video.durationSec,
     size_bytes: video.sizeBytes ?? 0,

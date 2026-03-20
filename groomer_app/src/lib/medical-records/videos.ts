@@ -79,6 +79,16 @@ export function buildMedicalRecordLineShortVideoPath(params: {
   return `${params.storeId}/medical-records/${params.medicalRecordId}/line-short/${Date.now()}-${crypto.randomUUID()}.${ext}`
 }
 
+export function buildMedicalRecordVideoThumbnailPath(params: {
+  storeId: string
+  medicalRecordId: string
+  sourcePath: string
+}) {
+  const extRaw = params.sourcePath.split('.').pop()?.toLowerCase() ?? 'jpg'
+  const ext = extRaw.replace(/[^a-z0-9]/g, '') || 'jpg'
+  return `${params.storeId}/medical-records/${params.medicalRecordId}/thumbnail/${Date.now()}-${crypto.randomUUID()}.${ext}`
+}
+
 export function parseMedicalRecordVideoDrafts(value: string | null | undefined) {
   if (!value) return [] as MedicalRecordVideoDraft[]
 

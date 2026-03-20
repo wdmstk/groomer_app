@@ -17,6 +17,7 @@ import type {
   MedicalRecordPhotoType,
 } from '@/lib/medical-records/photos'
 import type { MedicalRecordVideoDraft } from '@/lib/medical-records/videos'
+import { MedicalRecordVideoThumbnailButton } from '@/components/medical-records/MedicalRecordVideoThumbnailButton'
 
 type PetOption = {
   id: string
@@ -949,6 +950,12 @@ export function MedicalRecordCreateModal({
                             >
                               動画を削除
                             </button>
+                            {video.id ? (
+                              <MedicalRecordVideoThumbnailButton
+                                videoId={video.id}
+                                hasThumbnail={Boolean(video.thumbnailPath)}
+                              />
+                            ) : null}
                           </div>
                         </div>
                       ))}
