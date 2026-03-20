@@ -62,6 +62,7 @@ begin
     'payments',
     'medical_records',
     'medical_record_photos',
+    'medical_record_videos',
     'medical_record_share_links',
     'member_portal_links'
   ]

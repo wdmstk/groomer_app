@@ -7,6 +7,7 @@ import {
   formatBytesToJa,
 } from '@/lib/storage-quota'
 import { getMedicalRecordPhotoBucket } from '@/lib/medical-records/photos'
+import { getMedicalRecordVideoBucket } from '@/lib/medical-records/videos'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -35,12 +36,14 @@ export default async function StorageSettingsPage({ searchParams }: PageProps) {
     )
   }
 
-  const bucket = getMedicalRecordPhotoBucket()
+  const photoBucket = getMedicalRecordPhotoBucket()
+  const videoBucket = getMedicalRecordVideoBucket()
+  const buckets = Array.from(new Set([photoBucket, videoBucket]))
   const quota = isPlaywrightE2E
     ? settingsPageFixtures.storageQuota
     : await fetchStoreStorageQuotaState({
         storeId: guard.storeId,
-        bucket,
+        buckets,
         allowUsageFetchFailure: true,
       })
   const usagePercent = quota.totalLimitBytes > 0 ? Math.min(100, (quota.usageBytes / quota.totalLimitBytes) * 100) : 0
@@ -72,7 +75,7 @@ export default async function StorageSettingsPage({ searchParams }: PageProps) {
       <Card>
         <h2 className="text-lg font-semibold text-gray-900">現在の使用状況</h2>
         <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-gray-700 md:grid-cols-2">
-          <p>対象バケット: {bucket}</p>
+          <p>対象バケット: {buckets.join(', ')}</p>
           <p>プラン: {quota.planCode}</p>
           <p>使用量: {formatBytesToJa(quota.usageBytes)}</p>
           <p>上限: {formatBytesToJa(quota.totalLimitBytes)}</p>

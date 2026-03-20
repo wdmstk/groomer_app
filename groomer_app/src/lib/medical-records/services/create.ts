@@ -1,6 +1,7 @@
 import {
   parseMedicalRecordPhotoDrafts,
 } from '@/lib/medical-records/photos'
+import { parseMedicalRecordVideoDrafts } from '@/lib/medical-records/videos'
 import {
   assertMedicalRecordStoreConsistency,
   MedicalRecordServiceError,
@@ -10,6 +11,7 @@ import {
   normalizeStatus,
   resolvePaymentLink,
   syncMedicalRecordPhotos,
+  syncMedicalRecordVideos,
   validateMedicalRecordWriteInput,
 } from '@/lib/medical-records/services/shared'
 import type { Database } from '@/lib/supabase/database.types'
@@ -43,6 +45,7 @@ export function normalizeCreateMedicalRecordInput(formData: FormData): CreateMed
     cautionNotes: toOptionalString(formData.get('caution_notes')),
     tags: normalizeMedicalRecordTagsInput(formData.get('tags')?.toString() ?? null),
     photoDrafts: parseMedicalRecordPhotoDrafts(toOptionalString(formData.get('photo_payload'))),
+    videoDrafts: parseMedicalRecordVideoDrafts(toOptionalString(formData.get('video_payload'))),
   }
 }
 
@@ -136,6 +139,16 @@ export async function createMedicalRecord(params: {
     input.appointmentId!,
     input.recordDate!,
     input.photoDrafts
+  )
+
+  await syncMedicalRecordVideos(
+    supabase,
+    storeId,
+    createdRecord.id,
+    input.petId!,
+    input.appointmentId!,
+    input.recordDate!,
+    input.videoDrafts
   )
 
   return { id: createdRecord.id }

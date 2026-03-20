@@ -16,6 +16,7 @@ import type {
   MedicalRecordPhotoDraft,
   MedicalRecordPhotoType,
 } from '@/lib/medical-records/photos'
+import type { MedicalRecordVideoDraft } from '@/lib/medical-records/videos'
 
 type PetOption = {
   id: string
@@ -97,6 +98,7 @@ type MedicalRecordCreateModalProps = {
   defaultStatus?: 'draft' | 'finalized'
   closeRedirectTo?: string
   photoEntries?: MedicalRecordPhotoDraft[]
+  videoEntries?: MedicalRecordVideoDraft[]
   galleryEntries?: GalleryEntry[]
 }
 
@@ -161,6 +163,7 @@ export function MedicalRecordCreateModal({
   defaultStatus = 'draft',
   closeRedirectTo = '/medical-records?tab=list',
   photoEntries = [],
+  videoEntries = [],
   galleryEntries = [],
 }: MedicalRecordCreateModalProps) {
   const router = useRouter()
@@ -169,8 +172,11 @@ export function MedicalRecordCreateModal({
   const [recordDate, setRecordDate] = useState(toDateTimeLocalValue(defaultRecordDate))
   const [photos, setPhotos] = useState<MedicalRecordPhotoDraft[]>(photoEntries)
   const [tagInput, setTagInput] = useState((editRecord?.tags ?? []).join(', '))
+  const [videos, setVideos] = useState<MedicalRecordVideoDraft[]>(videoEntries)
   const [uploading, setUploading] = useState(false)
+  const [videoUploading, setVideoUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [videoUploadError, setVideoUploadError] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [saveMessage, setSaveMessage] = useState('')
@@ -192,6 +198,7 @@ export function MedicalRecordCreateModal({
   const [lineMessage, setLineMessage] = useState('')
   const beforeInputRef = useRef<HTMLInputElement | null>(null)
   const afterInputRef = useRef<HTMLInputElement | null>(null)
+  const videoInputRef = useRef<HTMLInputElement | null>(null)
 
   const handleClose = useCallback(() => {
     if (closeRedirectTo) {
@@ -313,6 +320,59 @@ export function MedicalRecordCreateModal({
       setSaveError(error instanceof Error ? error.message : 'カルテの保存に失敗しました。')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleUploadVideos = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    if (!petId || !recordDate) {
+      setVideoUploadError('動画アップロード前にペットと施術日時を入力してください。')
+      event.target.value = ''
+      return
+    }
+
+    setVideoUploading(true)
+    setVideoUploadError('')
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('petId', petId)
+        formData.append('recordDate', new Date(recordDate).toISOString())
+        const response = await fetch('/api/upload/video', {
+          method: 'POST',
+          body: formData,
+        })
+        const payload = (await response.json().catch(() => null)) as
+          | { storagePath?: string; signedUrl?: string | null; error?: string }
+          | null
+        if (!response.ok || !payload?.storagePath) {
+          throw new Error(payload?.error ?? '動画アップロードに失敗しました。')
+        }
+
+        setVideos((prev) => [
+          ...prev,
+          {
+            storagePath: payload.storagePath,
+            thumbnailPath: null,
+            lineShortPath: null,
+            durationSec: null,
+            sizeBytes: file.size,
+            sourceType: 'uploaded',
+            comment: '',
+            sortOrder: prev.length,
+            takenAt: new Date(recordDate).toISOString(),
+            signedUrl: payload.signedUrl ?? null,
+          },
+        ])
+      }
+    } catch (error) {
+      setVideoUploadError(error instanceof Error ? error.message : '動画アップロードに失敗しました。')
+    } finally {
+      setVideoUploading(false)
+      event.target.value = ''
     }
   }
 
@@ -473,6 +533,24 @@ export function MedicalRecordCreateModal({
                     comment: photo.comment,
                     sortOrder: index,
                     takenAt: photo.takenAt,
+                  }))
+                )}
+              />
+              <input
+                type="hidden"
+                name="video_payload"
+                value={JSON.stringify(
+                  videos.map((video, index) => ({
+                    id: video.id,
+                    storagePath: video.storagePath,
+                    thumbnailPath: video.thumbnailPath,
+                    lineShortPath: video.lineShortPath,
+                    durationSec: video.durationSec,
+                    sizeBytes: video.sizeBytes,
+                    sourceType: video.sourceType,
+                    comment: video.comment,
+                    sortOrder: index,
+                    takenAt: video.takenAt,
                   }))
                 )}
               />
@@ -694,6 +772,16 @@ export function MedicalRecordCreateModal({
                         {uploading ? 'アップロード中...' : '施術後を撮る'}
                       </Button>
                     </div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-1">
+                      <Button
+                        type="button"
+                        onClick={() => videoInputRef.current?.click()}
+                        disabled={videoUploading}
+                        className="min-h-11 bg-indigo-600 text-sm hover:bg-indigo-700"
+                      >
+                        {videoUploading ? 'アップロード中...' : '施術動画を撮る'}
+                      </Button>
+                    </div>
                   </div>
                   <input
                     ref={beforeInputRef}
@@ -715,10 +803,21 @@ export function MedicalRecordCreateModal({
                     disabled={uploading}
                     className="hidden"
                   />
+                  <input
+                    ref={videoInputRef}
+                    type="file"
+                    accept="video/*"
+                    capture="environment"
+                    multiple
+                    onChange={handleUploadVideos}
+                    disabled={videoUploading}
+                    className="hidden"
+                  />
                   {!petId || !recordDate ? (
                     <p className="text-xs text-amber-700">写真アップロードにはペットと施術日時の入力が必要です。</p>
                   ) : null}
                   {uploadError ? <p className="text-xs text-red-600">{uploadError}</p> : null}
+                  {videoUploadError ? <p className="text-xs text-red-600">{videoUploadError}</p> : null}
                   {photos.length > 0 ? (
                     <div className="space-y-3">
                       {photos.map((photo, index) => (
@@ -811,6 +910,51 @@ export function MedicalRecordCreateModal({
                     </div>
                   ) : (
                     <p className="text-xs text-gray-500">写真はまだ登録されていません。</p>
+                  )}
+
+                  {videos.length > 0 ? (
+                    <div className="space-y-2 border-t pt-3">
+                      <p className="text-xs font-semibold text-gray-900">登録済み動画</p>
+                      {videos.map((video, index) => (
+                        <div key={`${video.storagePath}-${index}`} className="rounded border p-3">
+                          <div className="space-y-2 text-xs text-gray-700">
+                            <p>動画 {index + 1}</p>
+                            {video.signedUrl ? (
+                              <video src={video.signedUrl} controls preload="metadata" className="w-full rounded" />
+                            ) : (
+                              <p className="text-gray-500">プレビューなし</p>
+                            )}
+                            <label className="space-y-1 text-xs text-gray-700 block">
+                              コメント
+                              <textarea
+                                value={video.comment}
+                                onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
+                                  setVideos((prev) =>
+                                    prev.map((current, currentIndex) =>
+                                      currentIndex === index
+                                        ? { ...current, comment: event.target.value, sortOrder: currentIndex }
+                                        : current
+                                    )
+                                  )
+                                }
+                                rows={2}
+                                className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-400"
+                                placeholder="動画メモを入力"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setVideos((prev) => prev.filter((_, currentIndex) => currentIndex !== index))}
+                              className="rounded border px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                            >
+                              動画を削除
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500">動画はまだ登録されていません。</p>
                   )}
                 </section>
 
