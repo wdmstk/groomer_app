@@ -7,6 +7,7 @@ import { createStoreScopedClient } from '@/lib/supabase/store'
 import { MedicalRecordShareButton } from '@/components/medical-records/MedicalRecordShareButton'
 import { MedicalRecordVideoLineShareButton } from '@/components/medical-records/MedicalRecordVideoLineShareButton'
 import { MedicalRecordAiProAnalyzeButton } from '@/components/medical-records/MedicalRecordAiProAnalyzeButton'
+import { MedicalRecordAiProPlusAnalyzeButton } from '@/components/medical-records/MedicalRecordAiProPlusAnalyzeButton'
 import {
   createSignedPhotoUrlMap,
   type MedicalRecordPhotoDraft,
@@ -27,6 +28,7 @@ import {
 } from '@/lib/medical-records/tags.ts'
 import { parseAiPlanCode } from '@/lib/billing/pricing'
 import { hasAiProAccess } from '@/lib/medical-records/ai-pro'
+import { hasAiProPlusAccess } from '@/lib/medical-records/ai-pro-plus'
 
 const MedicalRecordCreateModal = nextDynamic(
   () => import('@/components/medical-records/MedicalRecordCreateModal').then((mod) => mod.MedicalRecordCreateModal)
@@ -201,6 +203,18 @@ type AiProInsightRow = {
   analyzed_at: string | null
 }
 
+type AiProPlusHealthInsightRow = {
+  medical_record_id: string
+  gait_risk: 'low' | 'medium' | 'high' | null
+  skin_risk: 'low' | 'medium' | 'high' | null
+  tremor_risk: 'low' | 'medium' | 'high' | null
+  respiration_risk: 'low' | 'medium' | 'high' | null
+  stress_level: 'low' | 'medium' | 'high' | null
+  fatigue_level: 'low' | 'medium' | 'high' | null
+  summary: string | null
+  analyzed_at: string | null
+}
+
 type MedicalRecordsPageProps = {
   searchParams?: Promise<{
     tab?: string
@@ -319,6 +333,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
     .maybeSingle()
   const aiPlanCode = parseAiPlanCode((subscriptionRow as { ai_plan_code?: string | null } | null)?.ai_plan_code ?? 'none')
   const aiProEnabled = hasAiProAccess(aiPlanCode)
+  const aiProPlusEnabled = hasAiProPlusAccess(aiPlanCode)
 
   const { data: medicalRecords } = await supabase
     .from('medical_records')
@@ -484,6 +499,16 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
           .eq('store_id', storeId)
           .in('medical_record_id', recordIds)
       : { data: [] }
+  const { data: aiProPlusHealthInsights } =
+    aiProPlusEnabled && recordIds.length > 0
+      ? await supabase
+          .from('medical_record_ai_pro_plus_health_insights' as never)
+          .select(
+            'medical_record_id, gait_risk, skin_risk, tremor_risk, respiration_risk, stress_level, fatigue_level, summary, analyzed_at'
+          )
+          .eq('store_id', storeId)
+          .in('medical_record_id', recordIds)
+      : { data: [] }
   const currentGalleryPetId = defaultPetId
 
   const { data: recordPhotoCounts } =
@@ -634,6 +659,11 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
   ;((aiProInsights ?? []) as AiProInsightRow[]).forEach((insight) => {
     if (!insight.medical_record_id) return
     aiProInsightByRecordId.set(insight.medical_record_id, insight)
+  })
+  const aiProPlusInsightByRecordId = new Map<string, AiProPlusHealthInsightRow>()
+  ;((aiProPlusHealthInsights ?? []) as AiProPlusHealthInsightRow[]).forEach((insight) => {
+    if (!insight.medical_record_id) return
+    aiProPlusInsightByRecordId.set(insight.medical_record_id, insight)
   })
 
   const mixedMediaEntries: MixedMediaEntry[] = [
@@ -838,6 +868,15 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                         })()}
                       </div>
                     ) : null}
+                    {aiProPlusEnabled ? (
+                      <div className="mt-1 rounded border border-rose-100 bg-rose-50 px-2 py-1 text-xs text-rose-900">
+                        {(() => {
+                          const insight = aiProPlusInsightByRecordId.get(record.id)
+                          if (!insight) return 'AI Pro+気づき: 未解析'
+                          return `AI Pro+気づき: 歩行 ${riskLabel(insight.gait_risk)} / 皮膚 ${riskLabel(insight.skin_risk)} / 震え ${riskLabel(insight.tremor_risk)}`
+                        })()}
+                      </div>
+                    ) : null}
                     <div className="mt-2 flex flex-wrap gap-2">
                       {visibleTags.length > 0 ? (
                         visibleTags.map((tag) => (
@@ -880,6 +919,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                           </Button>
                         </form>
                         {aiProEnabled ? <MedicalRecordAiProAnalyzeButton recordId={record.id} /> : null}
+                        {aiProPlusEnabled ? <MedicalRecordAiProPlusAnalyzeButton recordId={record.id} /> : null}
                       </div>
                       {record.status === 'finalized' ? <MedicalRecordShareButton recordId={record.id} /> : null}
                     </div>
@@ -906,6 +946,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                       <th className="py-2 px-2">AIタグ</th>
                       <th className="py-2 px-2">AI解析</th>
                       {aiProEnabled ? <th className="py-2 px-2">AI Pro提案</th> : null}
+                      {aiProPlusEnabled ? <th className="py-2 px-2">AI Pro+気づき</th> : null}
                       <th className="py-2 px-2">操作</th>
                     </tr>
                   </thead>
@@ -989,6 +1030,21 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                             })()}
                           </td>
                         ) : null}
+                        {aiProPlusEnabled ? (
+                          <td className="py-3 px-2">
+                            {(() => {
+                              const insight = aiProPlusInsightByRecordId.get(record.id)
+                              if (!insight) return <span className="text-xs text-gray-500">未解析</span>
+                              return (
+                                <div className="space-y-1 text-xs">
+                                  <p>歩行: {riskLabel(insight.gait_risk)} / 呼吸: {riskLabel(insight.respiration_risk)}</p>
+                                  <p>皮膚: {riskLabel(insight.skin_risk)} / 震え: {riskLabel(insight.tremor_risk)}</p>
+                                  <p>ストレス: {riskLabel(insight.stress_level)} / 疲労: {riskLabel(insight.fatigue_level)}</p>
+                                </div>
+                              )
+                            })()}
+                          </td>
+                        ) : null}
                         <td className="py-3 px-2">
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
@@ -1010,6 +1066,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                                 </Button>
                               </form>
                               {aiProEnabled ? <MedicalRecordAiProAnalyzeButton recordId={record.id} /> : null}
+                              {aiProPlusEnabled ? <MedicalRecordAiProPlusAnalyzeButton recordId={record.id} /> : null}
                             </div>
                             {record.status === 'finalized' ? <MedicalRecordShareButton recordId={record.id} /> : null}
                           </div>
