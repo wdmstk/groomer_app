@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 
 type RawSearchParams = Record<string, string | string[] | undefined>
 
-type LegacySetupStorePageProps = {
+type LegacySettingsPageProps = {
   searchParams?: Promise<RawSearchParams>
 }
 
@@ -11,7 +11,7 @@ function firstParam(value: string | string[] | undefined) {
   return value
 }
 
-export default async function LegacyDashboardSetupStorePage({ searchParams }: LegacySetupStorePageProps) {
+export default async function LegacySetupStoreSettingsPage({ searchParams }: LegacySettingsPageProps) {
   const params = (await searchParams) ?? {}
   const query = new URLSearchParams()
   Object.entries(params).forEach(([key, value]) => {

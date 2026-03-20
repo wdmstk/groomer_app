@@ -49,15 +49,16 @@ export type ManualSectionInsight = {
 }
 
 export const manualMeta = {
-  updatedAt: '2026-03-16',
-  targetVersion: 'groomer_app 0.1.0 / Next.js 16.1.6',
+  updatedAt: '2026-03-21',
+  targetVersion: 'groomer_app 0.0.1 / Next.js 16.1.6',
 }
 
 export const manualGlossary: GlossaryTerm[] = [
   { term: 'owner / admin / staff', meaning: '店舗の操作権限です。owner が最上位で、admin、staff の順に権限が制限されます。' },
   { term: 'ダッシュボード', meaning: '当日の予約件数や売上見込みなど、運用状況をまとめて確認する画面です。' },
   { term: 'タブ', meaning: '同じ画面内で表示内容を切り替える見出し（例: 新規登録 / 一覧）です。' },
-  { term: 'サブスク課金', meaning: '月額など継続請求の契約管理です。決済方法の設定や状態確認を行います。' },
+  { term: '決済管理', meaning: '月額など継続請求の契約管理です。決済方法の設定や状態確認を行います。' },
+  { term: '決済履歴', meaning: '課金状態の変更履歴、Webhook受信履歴、Checkout起動履歴を確認する画面です。' },
   { term: 'billing_status', meaning: '課金状態を表す項目です。active は利用可能、状態により利用制限が発生します。' },
   { term: 'trial / trial_days', meaning: '試用期間とその日数です。期限を超えると課金状態に応じて利用制限されます。' },
   { term: 'past_due / grace_days', meaning: '支払い遅延状態と猶予日数です。猶予を過ぎると利用停止対象になります。' },
@@ -115,7 +116,7 @@ export const manualSections: ManualSection[] = [
   {
     id: 'setup-store',
     title: '店舗セットアップ',
-    path: '/dashboard/setup-store',
+    path: '/settings?tab=setup-store',
     purpose: '初回利用時に店舗を新規作成します。',
     procedures: [
       '店舗未所属状態でダッシュボードを開きます。',
@@ -250,11 +251,11 @@ export const manualSections: ManualSection[] = [
   },
   {
     id: 'billing',
-    title: 'サブスク課金',
-    path: '/billing',
+    title: '決済管理',
+    path: '/billing?tab=management',
     purpose: '店舗の課金状態確認、決済開始、決済手段切替、返金/解約操作を行います。',
     procedures: [
-      'owner 権限でサブスク課金ページを開き、現在の billing_status・試用終了予定・past_due猶予を確認します。',
+      'owner 権限で決済管理ページを開き、現在の billing_status・試用終了予定・past_due猶予を確認します。',
       '「決済方法の選択」で Stripe（クレカ）または KOMOJU（キャリア決済）を選択し、Checkout を開始します。',
       '必要に応じて運用操作（優先決済手段切替 / refund_request / cancel_at_period_end / cancel_immediately）を実行します。',
       'プロバイダ別ステータスと最近のオペレーション履歴を確認します。',
@@ -268,11 +269,11 @@ export const manualSections: ManualSection[] = [
   },
   {
     id: 'billing-history',
-    title: '課金履歴',
-    path: '/billing/history',
+    title: '決済履歴',
+    path: '/billing?tab=history',
     purpose: '課金状態の変更履歴、Webhook受信履歴、Checkout起動履歴を監査します。',
     procedures: [
-      '課金履歴ページを開き、ステータス変更履歴（from/to/source/reason）を確認します。',
+      '決済履歴ページを開き、ステータス変更履歴（from/to/source/reason）を確認します。',
       'Webhook受信履歴で event_type・status・error を確認し、障害時は status=error の行を起点に provider・event_id・created_at を控えます。',
       'ステータス変更履歴で同時刻帯の source=webhook を確認し、Webhook受信後に billing_status が更新されたかを照合します。',
       'Checkout起動履歴で idempotency_key と session 状態を確認します。',
@@ -624,7 +625,7 @@ export const manualSections: ManualSection[] = [
   {
     id: 'settings-public-reserve',
     title: '公開予約設定',
-    path: '/settings/public-reserve',
+    path: '/settings?tab=public-reserve',
     purpose: '公開予約の枠ルール・閾値・例外日を店舗ごとに設定します。',
     procedures: [
       '競合率/偏り率の警告閾値を設定します。',
@@ -655,7 +656,7 @@ export const manualSections: ManualSection[] = [
   {
     id: 'settings-storage',
     title: '容量設定',
-    path: '/settings/storage',
+    path: '/settings?tab=storage',
     purpose: '写真カルテなどの使用容量を確認し、超過時の動作と追加容量を管理します。',
     procedures: [
       '現在の使用量、基本上限、追加容量、使用率バーを確認します。',
