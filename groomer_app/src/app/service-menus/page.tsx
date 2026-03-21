@@ -57,11 +57,12 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: serviceMenusPageFixtures.storeId }
     : await createStoreScopedClient()
+  const db = supabase as NonNullable<typeof supabase>
 
   const menus = isPlaywrightE2E
     ? serviceMenusPageFixtures.menus
     : (
-        await supabase
+        await db
           .from('service_menus')
           .select(
             'id, name, category, price, duration, tax_rate, tax_included, is_active, is_instant_bookable, display_order, notes'
@@ -77,7 +78,7 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
       : isPlaywrightE2E
         ? serviceMenusPageFixtures.menus.find((menu) => menu.id === editId) ?? null
         : (
-            await supabase
+            await db
               .from('service_menus')
               .select(
                 'id, name, category, price, duration, tax_rate, tax_included, is_active, is_instant_bookable, display_order, notes'
@@ -94,7 +95,7 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
   const completedAppointments = isPlaywrightE2E
     ? serviceMenusPageFixtures.completedAppointments
     : (
-        await supabase
+        await db
           .from('appointments')
           .select('menu, duration')
           .eq('store_id', storeId)

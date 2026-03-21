@@ -1,6 +1,18 @@
 import type { Database } from '@/lib/supabase/database.types'
 
 export type CustomerLtvSummaryRow = Database['public']['Views']['customer_ltv_summary_v']['Row']
+export type CustomerLtvSummaryReader = {
+  from: (table: 'customer_ltv_summary_v') => {
+    select: (columns: string) => {
+      eq: (column: string, value: string) => {
+        order: (
+          column: string,
+          options?: { ascending?: boolean | undefined }
+        ) => Promise<{ data: CustomerLtvSummaryRow[] | null; error: { message: string } | null }>
+      }
+    }
+  }
+}
 
 export function getCustomerLtvRankTone(rank: string | null | undefined) {
   switch (rank) {
@@ -29,18 +41,7 @@ export function getCustomerLtvRankLabel(rank: string | null | undefined) {
 }
 
 export async function fetchCustomerLtvSummaries(params: {
-  supabase: {
-    from: (table: 'customer_ltv_summary_v') => {
-      select: (columns: string) => {
-        eq: (column: string, value: string) => {
-          order: (
-            column: string,
-            options?: { ascending?: boolean | undefined }
-          ) => Promise<{ data: CustomerLtvSummaryRow[] | null; error: { message: string } | null }>
-        }
-      }
-    }
-  }
+  supabase: CustomerLtvSummaryReader
   storeId: string
 }) {
   const { data, error } = await params.supabase

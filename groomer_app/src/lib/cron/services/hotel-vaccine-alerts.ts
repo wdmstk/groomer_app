@@ -58,13 +58,14 @@ export async function runHotelVaccineAlertsJob() {
   const storeIds = Array.from(new Set(stayRows.map((row) => row.store_id)))
   const { data: subscriptionRows } = await admin
     .from('store_subscriptions')
-    .select('store_id, plan_code, hotel_option_enabled')
+    .select('store_id, plan_code, hotel_option_effective, hotel_option_enabled')
     .in('store_id', storeIds)
   const hotelOptionByStoreId = new Map(
     (subscriptionRows ?? []).map((row) => {
       const planCode = normalizePlanCode((row.plan_code as string | null) ?? 'light')
       const enabled =
-        canPurchaseOptionsByPlan(planCode) && (row.hotel_option_enabled as boolean | null) === true
+        canPurchaseOptionsByPlan(planCode) &&
+        ((row.hotel_option_effective as boolean | null) ?? (row.hotel_option_enabled as boolean | null) ?? false) === true
       return [row.store_id as string, enabled]
     })
   )

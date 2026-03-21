@@ -330,12 +330,17 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
   const { supabase, storeId } = await createStoreScopedClient()
   const { data: subscriptionRow } = await supabase
     .from('store_subscriptions')
-    .select('ai_plan_code')
+    .select('ai_plan_code_effective, ai_plan_code')
     .eq('store_id', storeId)
     .maybeSingle()
   const aiPlanCode = isPlaywrightE2E
     ? 'pro_plus'
-    : parseAiPlanCode((subscriptionRow as { ai_plan_code?: string | null } | null)?.ai_plan_code ?? 'none')
+    : parseAiPlanCode(
+        (subscriptionRow as { ai_plan_code_effective?: string | null; ai_plan_code?: string | null } | null)
+          ?.ai_plan_code_effective ??
+          (subscriptionRow as { ai_plan_code?: string | null } | null)?.ai_plan_code ??
+          'none'
+      )
   const aiAssistEnabled = hasAiAssistAccess(aiPlanCode)
   const aiProEnabled = hasAiProAccess(aiPlanCode)
   const aiProPlusEnabled = hasAiProPlusAccess(aiPlanCode)
@@ -1424,6 +1429,8 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
           videoEntries={editVideoEntries}
           galleryEntries={galleryEntries}
           aiAssistEnabled={aiAssistEnabled}
+          aiProEnabled={aiProEnabled}
+          aiProPlusEnabled={aiProPlusEnabled}
         />
       ) : null}
     </section>

@@ -45,6 +45,7 @@ export default async function NotificationSettingsPage({ searchParams }: PagePro
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: settingsPageFixtures.storeId }
     : await createStoreScopedClient()
+  const db = supabase as NonNullable<typeof supabase>
   const access = isPlaywrightE2E
     ? settingsPageFixtures.notificationAccess
     : await requireStoreFeatureAccess({
@@ -69,10 +70,10 @@ export default async function NotificationSettingsPage({ searchParams }: PagePro
   const manageState = isPlaywrightE2E
     ? settingsPageFixtures.manageState
     : (() => {
-        return supabase.auth.getUser().then(async ({ data: { user } }) => {
+        return db.auth.getUser().then(async ({ data: { user } }) => {
           const membership = user
             ? (
-                await supabase
+                await db
                   .from('store_memberships')
                   .select('role')
                   .eq('store_id', storeId)
@@ -91,7 +92,7 @@ export default async function NotificationSettingsPage({ searchParams }: PagePro
   const settingsRow = isPlaywrightE2E
     ? settingsPageFixtures.notificationSettings
     : (
-        await supabase
+        await db
           .from('store_notification_settings')
           .select(
             'reminder_line_enabled, reminder_email_enabled, reminder_day_before_enabled, reminder_same_day_enabled, reminder_day_before_send_hour_jst, reminder_same_day_send_hour_jst, followup_line_enabled, followup_days, slot_reoffer_line_enabled, monthly_message_limit, monthly_message_limit_with_option, over_limit_behavior'

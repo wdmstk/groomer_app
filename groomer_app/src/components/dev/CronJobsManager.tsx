@@ -61,6 +61,37 @@ const JOB_NAMES = [
   'scan-storage-orphans',
 ] as const
 
+type MedicalRecordAiVideoDashboardResponse = {
+  monitoring: {
+    failedLastHour: number
+    totalLastHour: number
+    failedRateLastHour: number
+    failedAlertThreshold: number
+    alertTriggered: boolean
+    failedLast24h: number
+    totalLast24h: number
+    failedRateLast24h: number
+  }
+  latestVideoJobs: Array<{
+    id: string
+    tier: string
+    status: string
+    provider: string | null
+    attempts: number
+    createdAt: string
+    completedAt: string | null
+    errorMessage: string | null
+  }>
+  latestJobRuns: Array<{
+    id: string
+    status: string
+    trigger: string
+    startedAt: string
+    finishedAt: string | null
+    lastError: string | null
+  }>
+}
+
 const STATUS_TABS: Array<{ value: JobRunStatus; label: string }> = [
   { value: 'failed', label: '失敗' },
   { value: 'running', label: '実行中' },
@@ -139,6 +170,9 @@ export function CronJobsManager() {
   const [locks, setLocks] = useState<JobLocksResponse['items']>([])
   const [locksError, setLocksError] = useState('')
   const [isLocksLoading, setIsLocksLoading] = useState(true)
+  const [videoDashboard, setVideoDashboard] = useState<MedicalRecordAiVideoDashboardResponse | null>(null)
+  const [videoDashboardError, setVideoDashboardError] = useState('')
+  const [isVideoDashboardLoading, setIsVideoDashboardLoading] = useState(true)
   const [isPending, startTransition] = useTransition()
   const expiredLocks = locks.filter((lock) => isExpired(lock.expiresAt))
 
@@ -241,6 +275,32 @@ export function CronJobsManager() {
     }
   }
 
+  async function loadMedicalRecordAiVideoDashboard() {
+    setIsVideoDashboardLoading(true)
+    setVideoDashboardError('')
+    try {
+      const response = await fetch('/api/admin/cron/medical-record-ai-video/dashboard?limit=20', {
+        cache: 'no-store',
+      })
+      const data = (await response.json()) as MedicalRecordAiVideoDashboardResponse | { message?: string }
+      if (!response.ok) {
+        setVideoDashboardError(
+          data && 'message' in data
+            ? data.message ?? '動画AIダッシュボードの取得に失敗しました。'
+            : '動画AIダッシュボードの取得に失敗しました。'
+        )
+        setVideoDashboard(null)
+        return
+      }
+      setVideoDashboard(data as MedicalRecordAiVideoDashboardResponse)
+    } catch (error) {
+      setVideoDashboardError(error instanceof Error ? error.message : '動画AIダッシュボードの取得に失敗しました。')
+      setVideoDashboard(null)
+    } finally {
+      setIsVideoDashboardLoading(false)
+    }
+  }
+
   function releaseLock(lock: JobLockItem) {
     setPendingId(`lock:${lock.jobRunId}`)
     setLocksError('')
@@ -281,6 +341,10 @@ export function CronJobsManager() {
 
   useEffect(() => {
     void loadJobLocks()
+  }, [])
+
+  useEffect(() => {
+    void loadMedicalRecordAiVideoDashboard()
   }, [])
 
   function openRerunForm(item: JobRunItem) {
@@ -524,6 +588,133 @@ export function CronJobsManager() {
             </button>
           </div>
         </div>
+      </Card>
+
+      <Card>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">動画AIジョブ監視</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              `job_runs` と `medical_record_ai_video_jobs` の最新状態をまとめて確認します。
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadMedicalRecordAiVideoDashboard()}
+            className="rounded border px-3 py-2 text-sm font-semibold text-gray-700"
+          >
+            監視データ再読込
+          </button>
+        </div>
+
+        {videoDashboardError ? <p className="mb-3 text-sm text-red-700">{videoDashboardError}</p> : null}
+
+        {isVideoDashboardLoading ? (
+          <p className="text-sm text-gray-600">読み込み中です。</p>
+        ) : !videoDashboard ? (
+          <p className="text-sm text-gray-600">動画AI監視データはありません。</p>
+        ) : (
+          <div className="space-y-4">
+            {videoDashboard.monitoring.alertTriggered ? (
+              <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+                直近1時間の failed が {videoDashboard.monitoring.failedLastHour} 件で、
+                閾値 {videoDashboard.monitoring.failedAlertThreshold} 件を超過しています。実行ログと provider 側障害を確認してください。
+              </div>
+            ) : (
+              <div className="rounded border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                直近1時間の failed は閾値内です（{videoDashboard.monitoring.failedLastHour}/
+                {videoDashboard.monitoring.failedAlertThreshold}）。
+              </div>
+            )}
+
+            <div className="grid gap-3 md:grid-cols-4">
+              <div
+                className={`rounded border px-3 py-2 ${
+                  videoDashboard.monitoring.alertTriggered ? 'border-red-300 bg-red-50' : 'bg-white'
+                }`}
+              >
+                <p className="text-xs text-gray-500">1時間 failed</p>
+                <p
+                  className={`text-lg font-semibold ${
+                    videoDashboard.monitoring.alertTriggered ? 'text-red-700' : 'text-gray-900'
+                  }`}
+                >
+                  {videoDashboard.monitoring.failedLastHour}/{videoDashboard.monitoring.totalLastHour}
+                </p>
+              </div>
+              <div className="rounded border bg-white px-3 py-2">
+                <p className="text-xs text-gray-500">1時間 failed率</p>
+                <p className="text-lg font-semibold text-gray-900">{videoDashboard.monitoring.failedRateLastHour}%</p>
+              </div>
+              <div className="rounded border bg-white px-3 py-2">
+                <p className="text-xs text-gray-500">24時間 failed</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {videoDashboard.monitoring.failedLast24h}/{videoDashboard.monitoring.totalLast24h}
+                </p>
+              </div>
+              <div className="rounded border bg-white px-3 py-2">
+                <p className="text-xs text-gray-500">24時間 failed率</p>
+                <p className="text-lg font-semibold text-gray-900">{videoDashboard.monitoring.failedRateLast24h}%</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="overflow-x-auto rounded border">
+                <div className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-900">
+                  最新 medical_record_ai_video_jobs
+                </div>
+                <table className="min-w-full text-left text-xs">
+                  <thead className="border-b text-gray-500">
+                    <tr>
+                      <th className="px-2 py-2">tier</th>
+                      <th className="px-2 py-2">status</th>
+                      <th className="px-2 py-2">provider</th>
+                      <th className="px-2 py-2">attempts</th>
+                      <th className="px-2 py-2">created</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {videoDashboard.latestVideoJobs.map((row) => (
+                      <tr key={row.id} className="text-gray-700">
+                        <td className="px-2 py-2">{row.tier}</td>
+                        <td className="px-2 py-2">{row.status}</td>
+                        <td className="px-2 py-2">{row.provider ?? '-'}</td>
+                        <td className="px-2 py-2">{row.attempts}</td>
+                        <td className="px-2 py-2">{formatDateTime(row.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="overflow-x-auto rounded border">
+                <div className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-900">
+                  最新 job_runs（medical-record-ai-video）
+                </div>
+                <table className="min-w-full text-left text-xs">
+                  <thead className="border-b text-gray-500">
+                    <tr>
+                      <th className="px-2 py-2">status</th>
+                      <th className="px-2 py-2">trigger</th>
+                      <th className="px-2 py-2">started</th>
+                      <th className="px-2 py-2">finished</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {videoDashboard.latestJobRuns.map((row) => (
+                      <tr key={row.id} className="text-gray-700">
+                        <td className="px-2 py-2">{row.status}</td>
+                        <td className="px-2 py-2">{row.trigger}</td>
+                        <td className="px-2 py-2">{formatDateTime(row.startedAt)}</td>
+                        <td className="px-2 py-2">{formatDateTime(row.finishedAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
 
       <Card>

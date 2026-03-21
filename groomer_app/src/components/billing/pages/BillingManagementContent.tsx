@@ -65,7 +65,7 @@ async function fetchStoreSubscriptionWithAiFallback(admin: ReturnType<typeof cre
   const withAi = await admin
     .from('store_subscriptions')
     .select(
-      'plan_code, hotel_option_enabled, notification_option_enabled, ai_plan_code, billing_cycle, billing_status, preferred_provider, amount_jpy, trial_started_at, trial_days, grace_days, past_due_since, current_period_end, next_billing_date'
+      'plan_code, hotel_option_requested, hotel_option_effective, hotel_option_enabled, notification_option_requested, notification_option_effective, notification_option_enabled, ai_plan_code_requested, ai_plan_code_effective, ai_plan_code, billing_cycle, billing_status, preferred_provider, amount_jpy, trial_started_at, trial_days, grace_days, past_due_since, current_period_end, next_billing_date'
     )
     .eq('store_id', storeId)
     .maybeSingle()
@@ -107,16 +107,17 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
 
   const { storeId, user } = guard
   const admin = isPlaywrightE2E ? null : createAdminSupabaseClient()
+  const adminClient = admin as NonNullable<typeof admin>
   const ownerActiveStoreCount = isPlaywrightE2E
     ? billingPageFixtures.ownerActiveStoreCount
     : await countActiveOwnerStores(user.id)
   const storeSubscription = isPlaywrightE2E
     ? billingPageFixtures.storeSubscription
-    : await fetchStoreSubscriptionWithAiFallback(admin, storeId)
+    : await fetchStoreSubscriptionWithAiFallback(adminClient, storeId)
   const billingSubscriptions = isPlaywrightE2E
     ? billingPageFixtures.billingSubscriptions
     : (
-        await admin
+        await adminClient
           .from('billing_subscriptions')
           .select('provider, status, provider_subscription_id, subscription_scope, storage_addon_units, current_period_end, updated_at')
           .eq('store_id', storeId)
@@ -125,7 +126,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   const operations = isPlaywrightE2E
     ? billingPageFixtures.operations
     : (
-        await admin
+        await adminClient
           .from('billing_operations')
           .select('created_at, provider, operation_type, amount_jpy, reason, status, result_message')
           .eq('store_id', storeId)
@@ -135,7 +136,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   const storagePolicy = isPlaywrightE2E
     ? billingPageFixtures.storagePolicy
     : (
-        await admin
+        await adminClient
           .from('store_storage_policies')
           .select('extra_capacity_gb')
           .eq('store_id', storeId)
@@ -156,11 +157,38 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   const normalizedPlanCode = normalizePlanCode(storeSubscription?.plan_code ?? 'light')
   const billingCycle = parseBillingCycle(storeSubscription?.billing_cycle)
   const canPurchaseOptions = canPurchaseOptionsByPlan(normalizedPlanCode)
-  const hotelOptionEnabled = storeSubscription?.hotel_option_enabled === true
-  const notificationOptionEnabled = storeSubscription?.notification_option_enabled === true
-  const aiPlanCode = parseAiPlanCode(
-    (storeSubscription as (typeof storeSubscription & { ai_plan_code?: string | null }) | null)?.ai_plan_code ?? 'none'
+  const hotelOptionEffective =
+    ((storeSubscription as (typeof storeSubscription & { hotel_option_effective?: boolean | null }) | null)
+      ?.hotel_option_effective ??
+      storeSubscription?.hotel_option_enabled ??
+      false) === true
+  const hotelOptionRequested =
+    ((storeSubscription as (typeof storeSubscription & { hotel_option_requested?: boolean | null }) | null)
+      ?.hotel_option_requested ??
+      hotelOptionEffective) === true
+  const notificationOptionEffective =
+    ((storeSubscription as (typeof storeSubscription & { notification_option_effective?: boolean | null }) | null)
+      ?.notification_option_effective ??
+      storeSubscription?.notification_option_enabled ??
+      false) === true
+  const notificationOptionRequested =
+    ((storeSubscription as (typeof storeSubscription & { notification_option_requested?: boolean | null }) | null)
+      ?.notification_option_requested ??
+      notificationOptionEffective) === true
+  const aiPlanEffective = parseAiPlanCode(
+    (storeSubscription as (typeof storeSubscription & { ai_plan_code_effective?: string | null; ai_plan_code?: string | null }) | null)
+      ?.ai_plan_code_effective ??
+      (storeSubscription as (typeof storeSubscription & { ai_plan_code?: string | null }) | null)?.ai_plan_code ??
+      'none'
   )
+  const aiPlanRequested = parseAiPlanCode(
+    (storeSubscription as (typeof storeSubscription & { ai_plan_code_requested?: string | null }) | null)
+      ?.ai_plan_code_requested ??
+      aiPlanEffective
+  )
+  const hotelOptionPending = hotelOptionRequested !== hotelOptionEffective
+  const notificationOptionPending = notificationOptionRequested !== notificationOptionEffective
+  const aiPlanPending = aiPlanRequested !== aiPlanEffective
   const baseAmountJpy = amountForPlan(normalizedPlanCode, billingCycle)
   const discountedBaseAmountJpy = amountForPlanWithStoreCount(
     normalizedPlanCode,
@@ -169,9 +197,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   )
   const baseDiscountJpy = Math.max(0, baseAmountJpy - discountedBaseAmountJpy)
   const optionAmountJpy = amountForOptions(normalizedPlanCode, billingCycle, {
-    hotelOptionEnabled,
-    notificationOptionEnabled,
-    aiPlanCode,
+    hotelOptionEnabled: hotelOptionEffective,
+    notificationOptionEnabled: notificationOptionEffective,
+    aiPlanCode: aiPlanEffective,
   })
   const coreBilledAmountJpy = discountedBaseAmountJpy + optionAmountJpy
   const storageSubscription = (billingSubscriptions ?? []).find(
@@ -238,7 +266,10 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             </p>
             <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
               <span className="text-gray-500">AIプラン</span>
-              <span className="font-medium text-gray-900">{aiPlanLabel(aiPlanCode)}</span>
+              <span className="font-medium text-gray-900">
+                {aiPlanLabel(aiPlanEffective)}
+                {aiPlanPending ? `（申込中: ${aiPlanLabel(aiPlanRequested)}）` : ''}
+              </span>
             </p>
             <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
               <span className="text-gray-500">基本+オプション請求額</span>
@@ -359,55 +390,70 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           <div className="rounded-lg border p-3">
             <div className="flex items-center justify-between gap-4">
               <p className="font-semibold text-gray-900">{optionLabel('hotel')}</p>
-              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${hotelOptionEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
-                {hotelOptionEnabled ? '有効' : '未契約'}
+              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${hotelOptionEffective ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                {hotelOptionEffective ? '有効' : '未契約'}
               </span>
             </div>
+            {hotelOptionPending ? (
+              <p className="mt-1 text-xs text-amber-700">
+                申込中: {hotelOptionRequested ? '有効化' : '無効化'}（支払い確定後に反映）
+              </p>
+            ) : null}
             <p className="mt-1 text-xs text-gray-500">対象: スタンダード / プロ</p>
             <form action="/api/billing/options" method="post" className="mt-2">
               <input type="hidden" name="option" value="hotel" />
-              <input type="hidden" name="hotel_option_enabled" value={hotelOptionEnabled ? 'false' : 'true'} />
+              <input type="hidden" name="hotel_option_enabled" value={hotelOptionRequested ? 'false' : 'true'} />
               <button
                 type="submit"
                 disabled={!canPurchaseOptions}
                 className="rounded border px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {hotelOptionEnabled ? '無効化する' : '有効化する'}
+                {hotelOptionRequested ? '無効化を申込む' : '有効化を申込む'}
               </button>
             </form>
           </div>
           <div className="rounded-lg border p-3">
             <div className="flex items-center justify-between gap-4">
               <p className="font-semibold text-gray-900">{optionLabel('notification')}</p>
-              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${notificationOptionEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
-                {notificationOptionEnabled ? '有効' : '未契約'}
+              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${notificationOptionEffective ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                {notificationOptionEffective ? '有効' : '未契約'}
               </span>
             </div>
+            {notificationOptionPending ? (
+              <p className="mt-1 text-xs text-amber-700">
+                申込中: {notificationOptionRequested ? '有効化' : '無効化'}（支払い確定後に反映）
+              </p>
+            ) : null}
             <p className="mt-1 text-xs text-gray-500">対象: スタンダード / プロ</p>
             <form action="/api/billing/options" method="post" className="mt-2">
               <input type="hidden" name="option" value="notification" />
               <input
                 type="hidden"
                 name="notification_option_enabled"
-                value={notificationOptionEnabled ? 'false' : 'true'}
+                value={notificationOptionRequested ? 'false' : 'true'}
               />
               <button
                 type="submit"
                 disabled={!canPurchaseOptions}
                 className="rounded border px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {notificationOptionEnabled ? '無効化する' : '有効化する'}
+                {notificationOptionRequested ? '無効化を申込む' : '有効化を申込む'}
               </button>
             </form>
           </div>
           <div className="rounded-lg border p-3 xl:col-span-2">
             <div className="flex items-center justify-between gap-4">
               <p className="font-semibold text-gray-900">AIプラン</p>
-              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${aiPlanCode === 'none' ? 'bg-gray-100 text-gray-600' : 'bg-emerald-100 text-emerald-700'}`}>
-                {aiPlanLabel(aiPlanCode)}
+              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${aiPlanEffective === 'none' ? 'bg-gray-100 text-gray-600' : 'bg-emerald-100 text-emerald-700'}`}>
+                {aiPlanLabel(aiPlanEffective)}
               </span>
             </div>
-            <p className="mt-1 text-xs text-gray-500">プラン変更は即時または次回請求タイミングで反映されます。</p>
+            {aiPlanPending ? (
+              <p className="mt-1 text-xs text-amber-700">
+                申込中: {aiPlanLabel(aiPlanRequested)}（支払い確定後に反映）
+              </p>
+            ) : null}
+            <p className="mt-1 text-xs text-gray-500">プラン変更は申込後、支払い確定時に有効化されます。</p>
             <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
               <form action="/api/billing/options" method="post">
                 <input type="hidden" name="option" value="ai_plan" />
@@ -490,9 +536,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             <PaymentMethodButtons
               defaultPlanCode={storeSubscription?.plan_code ?? 'light'}
               defaultBillingCycle={storeSubscription?.billing_cycle ?? 'monthly'}
-              hotelOptionEnabled={hotelOptionEnabled}
-              notificationOptionEnabled={notificationOptionEnabled}
-              aiPlanCode={aiPlanCode}
+              hotelOptionEnabled={hotelOptionRequested}
+              notificationOptionEnabled={notificationOptionRequested}
+              aiPlanCode={aiPlanRequested}
               ownerActiveStoreCount={ownerActiveStoreCount}
             />
           </div>

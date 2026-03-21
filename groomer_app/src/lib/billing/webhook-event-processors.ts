@@ -1,4 +1,5 @@
 import {
+  applyRequestedOptionEntitlements,
   hasBillingOperation,
   insertBillingOperation,
   markCheckoutSessionCompleted,
@@ -186,6 +187,7 @@ export async function processStripeBillingEvent(event: StripeWebhookEvent) {
               source: 'webhook',
               reason: event.type,
             })
+            await applyRequestedOptionEntitlements({ storeId: row.store_id })
           }
         }
       }
@@ -228,6 +230,7 @@ export async function processStripeBillingEvent(event: StripeWebhookEvent) {
           source: 'webhook',
           reason: event.type,
         })
+        await applyRequestedOptionEntitlements({ storeId: row.store_id })
       }
     }
   }
@@ -363,6 +366,7 @@ export async function processKomojuBillingEvent(event: KomojuWebhookEvent) {
           source: 'webhook',
           reason: event.type,
         })
+        await applyRequestedOptionEntitlements({ storeId: row.store_id })
       }
     }
   }

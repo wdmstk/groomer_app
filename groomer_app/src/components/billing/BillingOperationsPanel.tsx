@@ -52,6 +52,24 @@ export function BillingOperationsPanel({ preferredProvider }: BillingOperationsP
     setError('')
     setMessage('')
     try {
+      if (action === 'cancel_immediately') {
+        const confirmed = window.confirm(
+          '即時解約を実行すると、契約が直ちにキャンセル状態となり、日割返金は行われません。実行しますか？'
+        )
+        if (!confirmed) {
+          setIsLoading(false)
+          return
+        }
+      }
+      if (action === 'cancel_at_period_end') {
+        const confirmed = window.confirm(
+          '期間終了時解約を設定します。次回更新日以降の自動課金が停止されます。実行しますか？'
+        )
+        if (!confirmed) {
+          setIsLoading(false)
+          return
+        }
+      }
       const response = await fetch('/api/billing/subscription/actions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -110,6 +128,9 @@ export function BillingOperationsPanel({ preferredProvider }: BillingOperationsP
 
       <div className="rounded border bg-gray-50 p-3">
         <p className="mb-2 text-sm font-semibold text-gray-900">返金 / 解約オペレーション補助</p>
+        <p className="mb-2 text-xs text-gray-600">
+          解約実行前に、請求停止タイミング（即時/期間終了時）と返金有無を必ず確認してください。
+        </p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm text-gray-700">
             決済手段

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { fetchCustomerLtvSummaries } from '@/lib/customer-ltv'
+import type { CustomerLtvSummaryReader } from '@/lib/customer-ltv'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
 export async function GET() {
@@ -7,7 +8,7 @@ export async function GET() {
 
   try {
     const rows = await fetchCustomerLtvSummaries({
-      supabase,
+      supabase: supabase as unknown as CustomerLtvSummaryReader,
       storeId,
     })
     return NextResponse.json(rows)

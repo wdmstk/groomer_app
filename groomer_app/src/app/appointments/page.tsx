@@ -155,11 +155,12 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: appointmentsPageFixtures.storeId }
     : await createStoreScopedClient()
+  const db = supabase as NonNullable<typeof supabase>
 
   const appointments = isPlaywrightE2E
     ? appointmentsPageFixtures.appointments
     : (
-        await supabase
+        await db
           .from('appointments')
           .select(
             'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, checked_in_at, in_service_at, payment_waiting_at, completed_at, customers(full_name), pets(name), staffs(full_name)'
@@ -171,7 +172,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
   const customers = isPlaywrightE2E
     ? appointmentsPageFixtures.customers
     : (
-        await supabase
+        await db
           .from('customers')
           .select('id, full_name')
           .eq('store_id', storeId)
@@ -181,7 +182,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
   const pets = isPlaywrightE2E
     ? appointmentsPageFixtures.pets
     : (
-        await supabase
+        await db
           .from('pets')
           .select('id, name, customer_id')
           .eq('store_id', storeId)
@@ -191,7 +192,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
   const staffs = isPlaywrightE2E
     ? appointmentsPageFixtures.staffs
     : (
-        await supabase
+        await db
           .from('staffs')
           .select('id, full_name')
           .eq('store_id', storeId)
@@ -202,7 +203,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
     !editId || isPlaywrightE2E
       ? null
       : (
-          await supabase
+          await db
             .from('appointments')
             .select(
               'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes'
@@ -218,7 +219,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
       : isPlaywrightE2E
         ? appointmentsPageFixtures.appointmentMenus.filter((menu) => menu.appointment_id === editId)
         : (
-            await supabase
+            await db
               .from('appointment_menus')
               .select('menu_id')
               .eq('appointment_id', editId)
@@ -228,7 +229,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
   const serviceMenus = isPlaywrightE2E
     ? appointmentsPageFixtures.serviceMenus
     : (
-        await supabase
+        await db
           .from('service_menus')
           .select('id, name, price, duration, tax_rate, tax_included, is_active')
           .eq('store_id', storeId)
@@ -246,10 +247,10 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
     },
     {} as Record<string, number>
   )
-  const customerOptions: CustomerOption[] = customers ?? []
-  const petOptions: PetOption[] = pets ?? []
-  const staffOptions: StaffOption[] = staffs ?? []
-  const menuOptions: ServiceMenuOption[] = serviceMenus ?? []
+  const customerOptions: CustomerOption[] = Array.from(customers ?? [])
+  const petOptions: PetOption[] = Array.from(pets ?? [])
+  const staffOptions: StaffOption[] = Array.from(staffs ?? [])
+  const menuOptions: ServiceMenuOption[] = Array.from(serviceMenus ?? [])
   const defaultMenuIds = ((menuSelections ?? []) as { menu_id: string }[])
     .map((menu) => menu.menu_id?.trim())
     .filter(Boolean) as string[]
@@ -262,7 +263,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
             appointmentIds.includes(row.appointment_id)
           )
         : (
-            await supabase
+            await db
               .from('appointment_menus')
               .select('appointment_id, menu_id')
               .eq('store_id', storeId)

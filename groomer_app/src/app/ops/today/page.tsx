@@ -99,12 +99,13 @@ export default async function OpsTodayPage() {
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: opsPageFixtures.storeId }
     : await createStoreScopedClient()
+  const db = supabase as NonNullable<typeof supabase>
   const { startIso, endIso, nowMs } = getTodayRangeJst()
 
   const data = isPlaywrightE2E
     ? opsPageFixtures.appointments
     : (
-        await supabase
+        await db
           .from('appointments')
           .select(
             'id, customer_id, pet_id, staff_id, start_time, end_time, menu, status, notes, checked_in_at, in_service_at, payment_waiting_at, completed_at, customers(id, full_name, line_id), pets(name), staffs(full_name)'
@@ -124,7 +125,7 @@ export default async function OpsTodayPage() {
     ? [opsPageFixtures.payments, opsPageFixtures.medicalRecords]
     : await Promise.all([
         appointmentIds.length > 0
-          ? supabase
+          ? db
               .from('payments')
               .select('appointment_id, paid_at')
               .eq('store_id', storeId)
@@ -132,7 +133,7 @@ export default async function OpsTodayPage() {
               .then((result) => result.data ?? [])
           : Promise.resolve([] as PaymentRow[]),
         appointmentIds.length > 0
-          ? supabase
+          ? db
               .from('medical_records')
               .select('appointment_id')
               .eq('store_id', storeId)
@@ -154,7 +155,7 @@ export default async function OpsTodayPage() {
   const revertedCount = isPlaywrightE2E
     ? opsPageFixtures.revertedCount
     : (
-        await supabase
+        await db
           .from('audit_logs')
           .select('id', { count: 'exact', head: true })
           .eq('store_id', storeId)

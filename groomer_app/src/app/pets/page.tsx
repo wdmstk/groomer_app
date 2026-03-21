@@ -58,44 +58,41 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: petsPageFixtures.storeId }
     : await createStoreScopedClient()
+  const db = supabase as NonNullable<typeof supabase>
 
   const petsSelectWithQr =
     'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, qr_code_url, qr_payload, customers(full_name)'
   const petsSelectBase =
     'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, customers(full_name)'
-  const petsData = isPlaywrightE2E
+  const resolvedPetsData = isPlaywrightE2E
     ? petsPageFixtures.pets
-    : (() => {
-        return supabase
+    : await (async () => {
+        const petsQuery = await db
           .from('pets')
           .select(petsSelectWithQr)
           .eq('store_id', storeId)
           .order('created_at', { ascending: false })
+        if (petsQuery.error && petsQuery.error.message.includes('qr_code_url')) {
+          const fallback = await db
+            .from('pets')
+            .select(petsSelectBase)
+            .eq('store_id', storeId)
+            .order('created_at', { ascending: false })
+          return (
+            fallback.data?.map((row) => ({
+              ...row,
+              qr_code_url: null,
+              qr_payload: null,
+            })) ?? []
+          )
+        }
+        return petsQuery.data ?? []
       })()
-
-  const resolvedPetsData = isPlaywrightE2E
-    ? petsData
-    : await petsData.then((petsQuery) =>
-        petsQuery.error && petsQuery.error.message.includes('qr_code_url')
-          ? supabase
-              .from('pets')
-              .select(petsSelectBase)
-              .eq('store_id', storeId)
-              .order('created_at', { ascending: false })
-              .then((response) =>
-                response.data?.map((row) => ({
-                  ...row,
-                  qr_code_url: null,
-                  qr_payload: null,
-                })) ?? []
-              )
-          : petsQuery.data ?? []
-      )
 
   const customers = isPlaywrightE2E
     ? petsPageFixtures.customers
     : (
-        await supabase
+        await db
           .from('customers')
           .select('id, full_name')
           .eq('store_id', storeId)
@@ -104,7 +101,7 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
 
   let editPetData: PetRow | null = null
   if (editId && !isPlaywrightE2E) {
-    const editWithQr = await supabase
+    const editWithQr = await db
       .from('pets')
       .select(
         'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, qr_code_url, qr_payload'
@@ -114,7 +111,7 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
       .single()
 
     if (editWithQr.error && editWithQr.error.message.includes('qr_code_url')) {
-      const editBase = await supabase
+      const editBase = await db
         .from('pets')
         .select(
           'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes'
@@ -138,7 +135,7 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
   }
 
   const petList = (resolvedPetsData ?? []) as PetRow[]
-  const customerOptions: CustomerOption[] = customers ?? []
+  const customerOptions: CustomerOption[] = (customers ?? []) as CustomerOption[]
 
   return (
     <section className="space-y-6">

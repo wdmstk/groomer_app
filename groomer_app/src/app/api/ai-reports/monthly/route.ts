@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { parseAiPlanCode } from '@/lib/billing/pricing'
 import { hasAiProPlusAccess } from '@/lib/medical-records/ai-pro-plus'
+import { createLlmAdapter } from '@/lib/ai/llm-adapter'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
 function monthRangeJst(target: Date) {
@@ -36,15 +37,21 @@ export async function GET(request: Request) {
   return NextResponse.json({ report: data ?? null })
 }
 
-export async function POST(_request: Request) {
+export async function POST() {
   const { supabase, storeId } = await createStoreScopedClient()
+  const llm = createLlmAdapter()
 
   const { data: subscription } = await supabase
     .from('store_subscriptions')
-    .select('ai_plan_code')
+    .select('ai_plan_code_effective, ai_plan_code')
     .eq('store_id', storeId)
     .maybeSingle()
-  const aiPlanCode = parseAiPlanCode((subscription as { ai_plan_code?: string | null } | null)?.ai_plan_code ?? 'none')
+  const aiPlanCode = parseAiPlanCode(
+    (subscription as { ai_plan_code_effective?: string | null; ai_plan_code?: string | null } | null)
+      ?.ai_plan_code_effective ??
+      (subscription as { ai_plan_code?: string | null } | null)?.ai_plan_code ??
+      'none'
+  )
   if (!hasAiProPlusAccess(aiPlanCode)) {
     return NextResponse.json({ message: 'AI Pro+の契約が必要です。' }, { status: 403 })
   }
@@ -89,16 +96,23 @@ export async function POST(_request: Request) {
           ).toFixed(2)
         )
       : 0
-  const summary =
-    rows.length === 0
-      ? '今月のPro+解析データはまだありません。'
-      : `今月は${rows.length}件を解析し、高リスク気づきは${highAlerts}件でした。教育ハイライト動画は${generatedHighlightCount ?? 0}本です。`
+  const generated = await llm.proPlus({
+    aiPlanCode,
+    month: month.reportMonth,
+    analyzedRecords: rows.length,
+    highAlertRecords: highAlerts,
+    highlightVideos: generatedHighlightCount ?? 0,
+  })
+  const summary = generated.summary
 
   const metrics = {
     analyzedRecords: rows.length,
     highAlertRecords: highAlerts,
     generatedHighlightVideos: generatedHighlightCount ?? 0,
     averageConfidence: avgConfidence,
+    summaryProvider: generated.provider,
+    summaryEstimatedCostJpy: generated.billing?.estimatedCostJpy ?? null,
+    summaryTokens: generated.billing?.totalTokens ?? null,
   }
 
   const now = new Date().toISOString()
@@ -127,4 +141,3 @@ export async function POST(_request: Request) {
     report: data,
   })
 }
-

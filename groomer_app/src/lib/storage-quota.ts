@@ -110,14 +110,19 @@ async function fetchReferencedMedicalMediaPaths(storeId: string) {
   const [{ data: rows1, error: error1 }, { data: rows2, error: error2 }, videoResult] = await Promise.all([
     admin.from('medical_record_photos').select('storage_path').eq('store_id', storeId),
     admin.from('medical_records').select('photos').eq('store_id', storeId),
-    admin
-      .from('medical_record_videos' as never)
-      .select('storage_path, thumbnail_path, line_short_path')
-      .eq('store_id', storeId)
-      .catch(() => ({
-        data: [] as unknown[],
-        error: null,
-      })),
+    (async () => {
+      try {
+        return await admin
+          .from('medical_record_videos' as never)
+          .select('storage_path, thumbnail_path, line_short_path')
+          .eq('store_id', storeId)
+      } catch {
+        return {
+          data: [] as unknown[],
+          error: null,
+        }
+      }
+    })(),
   ])
 
   if (error1) throw new Error(error1.message)

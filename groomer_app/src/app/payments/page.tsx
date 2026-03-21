@@ -29,6 +29,23 @@ type AppointmentMenuSummary = {
   tax_included: boolean | null
 }
 
+type PaymentRow = {
+  id: string
+  appointment_id: string
+  customer_id: string | null
+  visit_id: string | null
+  status: string
+  method: string
+  subtotal_amount: number
+  tax_amount: number
+  discount_amount: number
+  total_amount: number
+  paid_at: string | null
+  notes: string | null
+  customers?: { full_name: string } | { full_name: string }[] | null
+  appointments?: { id: string } | { id: string }[] | null
+}
+
 type CustomerOption = {
   id: string
   full_name: string
@@ -56,11 +73,12 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: paymentsPageFixtures.storeId }
     : await createStoreScopedClient()
+  const db = supabase as NonNullable<typeof supabase>
 
   const payments = isPlaywrightE2E
     ? paymentsPageFixtures.payments
     : (
-        await supabase
+        await db
           .from('payments')
           .select(
             'id, appointment_id, customer_id, visit_id, status, method, subtotal_amount, tax_amount, discount_amount, total_amount, paid_at, notes, customers(full_name), appointments(id)'
@@ -72,7 +90,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
   const appointments = isPlaywrightE2E
     ? paymentsPageFixtures.appointments
     : (
-        await supabase
+        await db
           .from('appointments')
           .select('id, customer_id, start_time, customers(full_name), pets(name)')
           .eq('store_id', storeId)
@@ -82,7 +100,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
   const appointmentMenus = isPlaywrightE2E
     ? paymentsPageFixtures.appointmentMenus
     : (
-        await supabase
+        await db
           .from('appointment_menus')
           .select('appointment_id, price, tax_rate, tax_included')
           .eq('store_id', storeId)
@@ -91,7 +109,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
   const customers = isPlaywrightE2E
     ? paymentsPageFixtures.customers
     : (
-        await supabase
+        await db
           .from('customers')
           .select('id, full_name')
           .eq('store_id', storeId)
@@ -104,7 +122,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
       : isPlaywrightE2E
         ? paymentsPageFixtures.payments.find((payment) => payment.id === editId) ?? null
         : (
-            await supabase
+            await db
               .from('payments')
               .select(
                 'id, appointment_id, customer_id, visit_id, status, method, subtotal_amount, tax_amount, discount_amount, total_amount, paid_at, notes'
@@ -114,9 +132,9 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
               .single()
           ).data
 
-  const paymentList = payments ?? []
-  const appointmentOptions: AppointmentOption[] = appointments ?? []
-  const customerOptions: CustomerOption[] = customers ?? []
+  const paymentList: PaymentRow[] = ((payments ?? []) as PaymentRow[])
+  const appointmentOptions: AppointmentOption[] = ((appointments ?? []) as AppointmentOption[])
+  const customerOptions: CustomerOption[] = ((customers ?? []) as CustomerOption[])
   const customerNameById = Object.fromEntries(
     customerOptions.map((customer) => [customer.id, customer.full_name])
   )

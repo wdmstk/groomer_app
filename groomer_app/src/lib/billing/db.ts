@@ -1,7 +1,7 @@
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { BillingCustomerRow, BillingProvider, BillingStatus, BillingSubscriptionRow } from './types'
 import type { AppPlan } from '@/lib/subscription-plan'
-import type { BillingCycle } from './pricing'
+import { parseAiPlanCode, type BillingCycle } from './pricing'
 import type { Database, Json } from '@/lib/supabase/database.types'
 
 function toJson(value: unknown): Json {
@@ -268,6 +268,65 @@ export async function updateStoreSubscriptionStatus(params: {
       reason: params.reason ?? 'update_store_subscription_status',
     })
   }
+}
+
+export async function applyRequestedOptionEntitlements(params: { storeId: string }) {
+  const admin = createAdminSupabaseClient()
+  const { data, error } = await admin
+    .from('store_subscriptions' as never)
+    .select(
+      'ai_plan_code_requested, ai_plan_code_effective, hotel_option_requested, hotel_option_effective, notification_option_requested, notification_option_effective, ai_plan_code, hotel_option_enabled, notification_option_enabled'
+    )
+    .eq('store_id', params.storeId)
+    .maybeSingle()
+
+  if (error) {
+    if (error.message.includes('column') && error.message.includes('_requested')) {
+      return { applied: false as const, reason: 'columns_not_ready' as const }
+    }
+    throw new Error(error.message)
+  }
+
+  const row = (data ?? null) as {
+    ai_plan_code_requested?: string | null
+    hotel_option_requested?: boolean | null
+    notification_option_requested?: boolean | null
+    ai_plan_code?: string | null
+    hotel_option_enabled?: boolean | null
+    notification_option_enabled?: boolean | null
+  } | null
+
+  if (!row) {
+    return { applied: false as const, reason: 'subscription_not_found' as const }
+  }
+
+  const aiPlanEffective = parseAiPlanCode(row.ai_plan_code_requested ?? row.ai_plan_code ?? 'none')
+  const hotelOptionEffective = (row.hotel_option_requested ?? row.hotel_option_enabled ?? false) === true
+  const notificationOptionEffective =
+    (row.notification_option_requested ?? row.notification_option_enabled ?? false) === true
+
+  const { error: updateError } = await admin
+    .from('store_subscriptions' as never)
+    .update({
+      ai_plan_code_effective: aiPlanEffective,
+      hotel_option_effective: hotelOptionEffective,
+      notification_option_effective: notificationOptionEffective,
+      // 互換期間は既存列も同期して旧ゲートロジックを壊さない
+      ai_plan_code: aiPlanEffective,
+      hotel_option_enabled: hotelOptionEffective,
+      notification_option_enabled: notificationOptionEffective,
+      updated_at: new Date().toISOString(),
+    } as never)
+    .eq('store_id', params.storeId)
+
+  if (updateError) {
+    if (updateError.message.includes('column') && updateError.message.includes('_effective')) {
+      return { applied: false as const, reason: 'columns_not_ready' as const }
+    }
+    throw new Error(updateError.message)
+  }
+
+  return { applied: true as const }
 }
 
 export async function insertBillingWebhookEvent(params: {

@@ -18,6 +18,7 @@ import type {
 } from '@/lib/medical-records/photos'
 import type { MedicalRecordVideoDraft } from '@/lib/medical-records/videos'
 import { MedicalRecordVideoThumbnailButton } from '@/components/medical-records/MedicalRecordVideoThumbnailButton'
+import { MedicalRecordVideoAiActions } from '@/components/medical-records/MedicalRecordVideoAiActions'
 
 type PetOption = {
   id: string
@@ -102,6 +103,8 @@ type MedicalRecordCreateModalProps = {
   videoEntries?: MedicalRecordVideoDraft[]
   galleryEntries?: GalleryEntry[]
   aiAssistEnabled?: boolean
+  aiProEnabled?: boolean
+  aiProPlusEnabled?: boolean
 }
 
 function toDateTimeLocalValue(value: string | null | undefined) {
@@ -168,6 +171,8 @@ export function MedicalRecordCreateModal({
   videoEntries = [],
   galleryEntries = [],
   aiAssistEnabled = false,
+  aiProEnabled = false,
+  aiProPlusEnabled = false,
 }: MedicalRecordCreateModalProps) {
   const router = useRouter()
   const [open, setOpen] = useState(true)
@@ -360,11 +365,12 @@ export function MedicalRecordCreateModal({
         if (!response.ok || !payload?.storagePath) {
           throw new Error(payload?.error ?? '動画アップロードに失敗しました。')
         }
+        const storagePath = payload.storagePath
 
         setVideos((prev) => [
           ...prev,
           {
-            storagePath: payload.storagePath,
+            storagePath,
             thumbnailPath: null,
             lineShortPath: null,
             durationSec: null,
@@ -1083,10 +1089,18 @@ export function MedicalRecordCreateModal({
                               動画を削除
                             </button>
                             {video.id ? (
-                              <MedicalRecordVideoThumbnailButton
-                                videoId={video.id}
-                                hasThumbnail={Boolean(video.thumbnailPath)}
-                              />
+                              <div className="space-y-2">
+                                <MedicalRecordVideoThumbnailButton
+                                  videoId={video.id}
+                                  hasThumbnail={Boolean(video.thumbnailPath)}
+                                />
+                                <MedicalRecordVideoAiActions
+                                  videoId={video.id}
+                                  aiAssistEnabled={aiAssistEnabled}
+                                  aiProEnabled={aiProEnabled}
+                                  aiProPlusEnabled={aiProPlusEnabled}
+                                />
+                              </div>
                             ) : null}
                           </div>
                         </div>

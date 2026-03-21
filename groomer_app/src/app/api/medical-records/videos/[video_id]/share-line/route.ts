@@ -20,7 +20,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const { data: videoRow, error: videoError } = await supabase
+  const { data: rawVideoRow, error: videoError } = await supabase
     .from('medical_record_videos' as never)
     .select(
       'id, medical_record_id, storage_path, thumbnail_path, line_short_path, duration_sec, medical_records(id, appointment_id, status)'
@@ -31,6 +31,26 @@ export async function POST(_request: Request, { params }: RouteParams) {
   if (videoError) {
     return NextResponse.json({ message: videoError.message }, { status: 500 })
   }
+  const videoRow = rawVideoRow as {
+    id: string
+    medical_record_id: string
+    storage_path: string
+    thumbnail_path: string | null
+    line_short_path: string | null
+    duration_sec: number | null
+    medical_records:
+      | {
+          id: string
+          appointment_id: string | null
+          status: string | null
+        }
+      | Array<{
+          id: string
+          appointment_id: string | null
+          status: string | null
+        }>
+      | null
+  } | null
   if (!videoRow) {
     return NextResponse.json({ message: '対象動画が見つかりません。' }, { status: 404 })
   }

@@ -21,6 +21,7 @@ type StoreNotificationSettingsRow = {
 type StoreSubscriptionRow = {
   store_id: string
   preferred_provider: 'stripe' | 'komoju' | null
+  notification_option_effective: boolean | null
   notification_option_enabled: boolean | null
 }
 
@@ -110,7 +111,7 @@ export async function runNotificationUsageBillingJob(params?: {
       .in('store_id', storeIds),
     admin
       .from('store_subscriptions')
-      .select('store_id, preferred_provider, notification_option_enabled')
+      .select('store_id, preferred_provider, notification_option_effective, notification_option_enabled')
       .in('store_id', storeIds),
   ])
 
@@ -123,7 +124,10 @@ export async function runNotificationUsageBillingJob(params?: {
   const notificationOptionByStore = new Map<string, boolean>()
   for (const row of (subscriptionRows ?? []) as StoreSubscriptionRow[]) {
     providerByStore.set(row.store_id, row.preferred_provider === 'komoju' ? 'komoju' : 'stripe')
-    notificationOptionByStore.set(row.store_id, row.notification_option_enabled === true)
+    notificationOptionByStore.set(
+      row.store_id,
+      (row.notification_option_effective ?? row.notification_option_enabled ?? false) === true
+    )
   }
 
   let billedStores = 0

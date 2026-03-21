@@ -9,6 +9,7 @@ import {
   fetchCustomerLtvSummaries,
   getCustomerLtvRankLabel,
   getCustomerLtvRankTone,
+  type CustomerLtvSummaryReader,
   type CustomerLtvSummaryRow,
 } from '@/lib/customer-ltv'
 import { CustomerMemberPortalControls } from '@/components/customers/CustomerMemberPortalControls'
@@ -114,11 +115,12 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: customersPageFixtures.storeId }
     : await createStoreScopedClient()
+  const db = supabase as NonNullable<typeof supabase>
   const adminSupabase = !isPlaywrightE2E && needsListSupportData ? createAdminSupabaseClient() : null
   const data = isPlaywrightE2E
     ? customersPageFixtures.customers
     : (
-        await supabase
+        await db
           .from('customers')
           .select('id, full_name, phone_number, email, address, line_id, how_to_know, tags')
           .eq('store_id', storeId)
@@ -127,7 +129,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   const customers = (data as Customer[]) ?? []
   const { data: petRows } =
     isWaitlistModalOpen && !isPlaywrightE2E
-      ? await supabase
+      ? await db
           .from('pets')
           .select('id, name, customer_id')
           .eq('store_id', storeId)
@@ -135,7 +137,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
       : { data: [] }
   const { data: staffRows } =
     isWaitlistModalOpen && !isPlaywrightE2E
-      ? await supabase
+      ? await db
           .from('staffs')
           .select('id, full_name')
           .eq('store_id', storeId)
@@ -145,7 +147,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
     ? isPlaywrightE2E
       ? customersPageFixtures.appointments
       : (
-          await supabase
+          await db
             .from('appointments')
             .select('customer_id')
             .eq('store_id', storeId)
@@ -153,7 +155,9 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
         ).data ?? []
     : []
   const customerLtvRows =
-    needsListSupportData && !isPlaywrightE2E ? await fetchCustomerLtvSummaries({ supabase, storeId }) : []
+    needsListSupportData && !isPlaywrightE2E
+      ? await fetchCustomerLtvSummaries({ supabase: db as unknown as CustomerLtvSummaryReader, storeId })
+      : []
   const { data: memberPortalRows } =
     needsListSupportData && adminSupabase
       ? await adminSupabase
@@ -167,7 +171,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
       : { data: isPlaywrightE2E ? customersPageFixtures.memberPortalLinks : [] }
   const editCustomer = needsListSupportData && editId && !isPlaywrightE2E
     ? (
-        (await supabase
+        (await db
           .from('customers')
           .select('id, full_name, phone_number, email, address, line_id, how_to_know, tags')
           .eq('id', editId)

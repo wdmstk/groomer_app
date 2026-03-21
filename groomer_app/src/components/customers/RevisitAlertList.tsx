@@ -303,6 +303,7 @@ export function RevisitAlertList() {
     customerName: string
     lastVisitAt: string
     recommendedAt: string
+    recommendationReason: string
   }) => {
     const text = renderNextVisitSuggestionLineTemplate({
       customerName: row.customerName,

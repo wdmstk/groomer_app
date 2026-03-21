@@ -29,10 +29,11 @@ export default async function BillingHistoryPage() {
 
   const { storeId } = guard
   const admin = isPlaywrightE2E ? null : createAdminSupabaseClient()
+  const adminClient = admin as NonNullable<typeof admin>
   const statusHistory = isPlaywrightE2E
     ? billingPageFixtures.statusHistory
     : (
-        await admin
+        await adminClient
           .from('billing_status_history')
           .select(
             'created_at, provider, from_status, to_status, source, reason, provider_subscription_id'
@@ -44,7 +45,7 @@ export default async function BillingHistoryPage() {
   const webhookEvents = isPlaywrightE2E
     ? billingPageFixtures.webhookEvents
     : (
-        await admin
+        await adminClient
           .from('billing_webhook_events')
           .select('id, created_at, provider, event_type, event_id, status, error_message')
           .eq('store_id', storeId)
@@ -54,7 +55,7 @@ export default async function BillingHistoryPage() {
   const checkoutSessions = isPlaywrightE2E
     ? billingPageFixtures.checkoutSessions
     : (
-        await admin
+        await adminClient
           .from('billing_checkout_sessions')
           .select('created_at, provider, idempotency_key, checkout_session_id, status, expires_at')
           .eq('store_id', storeId)
@@ -64,7 +65,7 @@ export default async function BillingHistoryPage() {
   const usageMonthly = isPlaywrightE2E
     ? billingPageFixtures.usageMonthly
     : (
-        await admin
+        await adminClient
           .from('notification_usage_billing_monthly')
           .select(
             'month_jst, counted_sent_messages, applied_limit, billable_messages, unit_price_jpy, amount_jpy, option_enabled, calculated_at'
@@ -76,7 +77,7 @@ export default async function BillingHistoryPage() {
   const operations = isPlaywrightE2E
     ? billingPageFixtures.operations
     : (
-        await admin
+        await adminClient
           .from('billing_operations')
           .select('created_at, provider, operation_type, amount_jpy, status, reason, result_message')
           .eq('store_id', storeId)

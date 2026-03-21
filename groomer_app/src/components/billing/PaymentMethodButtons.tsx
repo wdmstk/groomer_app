@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { normalizePlanCode, type AppPlan } from '@/lib/subscription-plan'
 import {
   amountForPlanWithStoreCountAndOptions,
@@ -30,6 +31,7 @@ export function PaymentMethodButtons({
 }: PaymentMethodButtonsProps) {
   const [isLoading, setIsLoading] = useState<Provider | null>(null)
   const [error, setError] = useState('')
+  const [legalAgreed, setLegalAgreed] = useState(false)
   const [planCode, setPlanCode] = useState<AppPlan>(normalizePlanCode(defaultPlanCode))
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(
     parseBillingCycle(defaultBillingCycle)
@@ -47,6 +49,10 @@ export function PaymentMethodButtons({
 
   async function startCheckout(provider: Provider) {
     setError('')
+    if (!legalAgreed) {
+      setError('決済前に、利用規約・プライバシーポリシー・特定商取引法表記への同意が必要です。')
+      return
+    }
     setIsLoading(provider)
     try {
       const endpoint =
@@ -115,7 +121,7 @@ export function PaymentMethodButtons({
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
-            disabled={isLoading !== null}
+            disabled={isLoading !== null || !legalAgreed}
             onClick={() => startCheckout('stripe')}
             className="inline-flex items-center justify-center rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
           >
@@ -123,7 +129,7 @@ export function PaymentMethodButtons({
           </button>
           <button
             type="button"
-            disabled={isLoading !== null}
+            disabled={isLoading !== null || !legalAgreed}
             onClick={() => startCheckout('komoju')}
             className="inline-flex items-center justify-center rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
           >
@@ -131,6 +137,31 @@ export function PaymentMethodButtons({
           </button>
         </div>
       </div>
+      <label className="block rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+        <span className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            checked={legalAgreed}
+            onChange={(event) => setLegalAgreed(event.target.checked)}
+            className="mt-0.5 h-4 w-4"
+          />
+          <span>
+            決済を実行すると、
+            <Link href="/legal/terms" className="text-blue-700 hover:underline">
+              利用規約
+            </Link>
+            ・
+            <Link href="/legal/privacy" className="text-blue-700 hover:underline">
+              プライバシーポリシー
+            </Link>
+            ・
+            <Link href="/legal/tokusho" className="text-blue-700 hover:underline">
+              特定商取引法に基づく表記
+            </Link>
+            に同意したものとみなされます。
+          </span>
+        </span>
+      </label>
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </div>
   )
