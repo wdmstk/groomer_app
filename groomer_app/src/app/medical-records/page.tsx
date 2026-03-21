@@ -623,6 +623,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
   const signedUrlMap = await createSignedPhotoUrlMap(
     supabase,
     [
+      ...((recentPhotos ?? []) as RecentMediaPhotoRow[]).map((photo) => photo.storage_path),
       ...((editRecordPhotos ?? []) as RecordPhotoRow[]).map((photo) => photo.storage_path),
       ...((galleryPhotos ?? []) as GalleryPhotoRow[]).map((photo) => photo.storage_path),
     ],
