@@ -1,8 +1,12 @@
 import { createKomojuSubscription, createStripeSubscription } from '@/lib/billing/providers'
-import { upsertBillingSubscription, updateStoreSubscriptionStatus } from '@/lib/billing/db'
+import {
+  applyRequestedOptionEntitlements,
+  upsertBillingSubscription,
+  updateStoreSubscriptionStatus,
+} from '@/lib/billing/db'
 import { amountForSubscription, parseBillingCycle, parsePlanCode } from '@/lib/billing/pricing'
-import { canPurchaseOptionsByPlan } from '@/lib/subscription-plan'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { resolveTrialRolloverBillingOptions } from '@/lib/cron/services/billing-trial-rollover-core'
 
 type ExpiredTrialRow = {
   store_id: string
@@ -12,7 +16,14 @@ type ExpiredTrialRow = {
   plan_code: string | null
   billing_cycle: string | null
   amount_jpy: number | null
+  ai_plan_code_requested: string | null
+  ai_plan_code_effective: string | null
+  ai_plan_code: string | null
+  hotel_option_requested: boolean | null
+  hotel_option_effective: boolean | null
   hotel_option_enabled: boolean | null
+  notification_option_requested: boolean | null
+  notification_option_effective: boolean | null
   notification_option_enabled: boolean | null
 }
 
@@ -37,7 +48,7 @@ export async function runBillingTrialRolloverJob() {
   const { data, error } = await admin
     .from('store_subscriptions')
     .select(
-      'store_id, trial_started_at, trial_days, preferred_provider, plan_code, billing_cycle, amount_jpy, hotel_option_enabled, notification_option_enabled'
+      'store_id, trial_started_at, trial_days, preferred_provider, plan_code, billing_cycle, amount_jpy, ai_plan_code_requested, ai_plan_code_effective, ai_plan_code, hotel_option_requested, hotel_option_effective, hotel_option_enabled, notification_option_requested, notification_option_effective, notification_option_enabled'
     )
     .eq('billing_status', 'trialing')
 
@@ -79,12 +90,7 @@ export async function runBillingTrialRolloverJob() {
       const billingCustomer = customer as BillingCustomerRow
       const plan = parsePlanCode(row.plan_code)
       const billingCycle = parseBillingCycle(row.billing_cycle)
-      const options = {
-        hotelOptionEnabled:
-          canPurchaseOptionsByPlan(plan) && (row.hotel_option_enabled ?? false) === true,
-        notificationOptionEnabled:
-          canPurchaseOptionsByPlan(plan) && (row.notification_option_enabled ?? false) === true,
-      }
+      const options = resolveTrialRolloverBillingOptions(row)
       const baseAmountJpy = amountForSubscription(plan, billingCycle, options)
       const useAdditionalStorePricing =
         typeof row.amount_jpy === 'number' && row.amount_jpy > 0 && row.amount_jpy < baseAmountJpy
@@ -116,6 +122,7 @@ export async function runBillingTrialRolloverJob() {
           source: 'cron',
           reason: 'trial_rollover_auto_charge',
         })
+        await applyRequestedOptionEntitlements({ storeId: row.store_id })
       } else {
         const komojuSub = await createKomojuSubscription({
           customerId: billingCustomer.provider_customer_id,
@@ -140,6 +147,7 @@ export async function runBillingTrialRolloverJob() {
           source: 'cron',
           reason: 'trial_rollover_auto_charge',
         })
+        await applyRequestedOptionEntitlements({ storeId: row.store_id })
       }
       activated += 1
       activatedStoreIds.add(row.store_id)

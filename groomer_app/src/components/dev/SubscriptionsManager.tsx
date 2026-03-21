@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { normalizePlanCode, planLabel } from '@/lib/subscription-plan'
+import { parseAiPlanCode } from '@/lib/billing/pricing'
 
 type StoreRow = {
   id: string
@@ -15,7 +16,14 @@ type StoreRow = {
 type SubscriptionRow = {
   store_id: string
   plan_code: string
+  ai_plan_code_requested: string | null
+  ai_plan_code_effective: string | null
+  ai_plan_code: string | null
+  hotel_option_requested: boolean | null
+  hotel_option_effective: boolean | null
   hotel_option_enabled: boolean | null
+  notification_option_requested: boolean | null
+  notification_option_effective: boolean | null
   notification_option_enabled: boolean | null
   billing_status: 'inactive' | 'trialing' | 'active' | 'past_due' | 'paused' | 'canceled'
   billing_cycle: 'monthly' | 'yearly' | 'custom'
@@ -84,6 +92,13 @@ function trialSummary(subscription: SubscriptionRow | undefined) {
   return { trialDays, trialStart, trialEnd }
 }
 
+function aiPlanLabel(value: string) {
+  if (value === 'assist') return 'Assist'
+  if (value === 'pro') return 'Pro'
+  if (value === 'pro_plus') return 'Pro+'
+  return 'なし'
+}
+
 function StoreSubscriptionForm({
   store,
   subscription,
@@ -93,6 +108,25 @@ function StoreSubscriptionForm({
 }) {
   const { trialDays, trialStart, trialEnd } = trialSummary(subscription)
   const graceDays = Math.max(0, subscription?.grace_days ?? 3)
+  const hotelOptionRequested =
+    (subscription?.hotel_option_requested ??
+      subscription?.hotel_option_effective ??
+      subscription?.hotel_option_enabled ??
+      false) === true
+  const notificationOptionRequested =
+    (subscription?.notification_option_requested ??
+      subscription?.notification_option_effective ??
+      subscription?.notification_option_enabled ??
+      false) === true
+  const aiPlanRequested = parseAiPlanCode(
+    subscription?.ai_plan_code_requested ??
+      subscription?.ai_plan_code_effective ??
+      subscription?.ai_plan_code ??
+      'none'
+  )
+  const aiPlanEffective = parseAiPlanCode(
+    subscription?.ai_plan_code_effective ?? subscription?.ai_plan_code ?? 'none'
+  )
 
   return (
     <Card>
@@ -106,6 +140,9 @@ function StoreSubscriptionForm({
         </p>
         <p className="text-xs text-gray-500">
           支払い遅延の猶予: {graceDays} 日 / 支払い遅延開始: {toDateInput(subscription?.past_due_since ?? null) || '-'}
+        </p>
+        <p className="text-xs text-gray-500">
+          AIプラン: 有効 {aiPlanLabel(aiPlanEffective)} / 申込 {aiPlanLabel(aiPlanRequested)}
         </p>
       </div>
 
@@ -181,25 +218,39 @@ function StoreSubscriptionForm({
         </label>
 
         <label className="inline-flex items-center gap-2 rounded border p-3 text-sm text-gray-700">
-          <input type="hidden" name="hotel_option_enabled" value="false" />
+          <input type="hidden" name="hotel_option_requested" value="false" />
           <input
             type="checkbox"
-            name="hotel_option_enabled"
+            name="hotel_option_requested"
             value="true"
-            defaultChecked={subscription?.hotel_option_enabled === true}
+            defaultChecked={hotelOptionRequested}
           />
-          ホテルオプションを有効にする
+          ホテルオプション申込を有効にする
         </label>
 
         <label className="inline-flex items-center gap-2 rounded border p-3 text-sm text-gray-700">
-          <input type="hidden" name="notification_option_enabled" value="false" />
+          <input type="hidden" name="notification_option_requested" value="false" />
           <input
             type="checkbox"
-            name="notification_option_enabled"
+            name="notification_option_requested"
             value="true"
-            defaultChecked={subscription?.notification_option_enabled === true}
+            defaultChecked={notificationOptionRequested}
           />
-          通知強化オプションを有効にする
+          通知強化オプション申込を有効にする
+        </label>
+
+        <label className="space-y-1 text-sm text-gray-700">
+          AIプラン申込
+          <select
+            name="ai_plan_code_requested"
+            defaultValue={aiPlanRequested}
+            className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            <option value="none">なし</option>
+            <option value="assist">Assist</option>
+            <option value="pro">Pro</option>
+            <option value="pro_plus">Pro+</option>
+          </select>
         </label>
 
         <label className="space-y-1 text-sm text-gray-700">
@@ -321,6 +372,7 @@ export function SubscriptionsManager({
                   <th className="px-2 py-2">課金ステータス</th>
                   <th className="px-2 py-2">決済手段</th>
                   <th className="px-2 py-2">プラン</th>
+                  <th className="px-2 py-2">AI申込/有効</th>
                   <th className="px-2 py-2">月額(円)</th>
                   <th className="px-2 py-2">ホテルOP</th>
                   <th className="px-2 py-2">通知OP</th>
@@ -332,6 +384,25 @@ export function SubscriptionsManager({
                   const subscription = subscriptionByStoreId.get(store.id)
                   const { trialEnd } = trialSummary(subscription)
                   const isActiveRow = selectedStore?.id === store.id
+                  const rowAiRequested = parseAiPlanCode(
+                    subscription?.ai_plan_code_requested ??
+                      subscription?.ai_plan_code_effective ??
+                      subscription?.ai_plan_code ??
+                      'none'
+                  )
+                  const rowAiEffective = parseAiPlanCode(
+                    subscription?.ai_plan_code_effective ?? subscription?.ai_plan_code ?? 'none'
+                  )
+                  const rowHotelRequested =
+                    (subscription?.hotel_option_requested ??
+                      subscription?.hotel_option_effective ??
+                      subscription?.hotel_option_enabled ??
+                      false) === true
+                  const rowNotificationRequested =
+                    (subscription?.notification_option_requested ??
+                      subscription?.notification_option_effective ??
+                      subscription?.notification_option_enabled ??
+                      false) === true
                   return (
                     <tr
                       key={store.id}
@@ -358,9 +429,12 @@ export function SubscriptionsManager({
                       <td className="px-2 py-3">
                         {planLabel(normalizePlanCode(subscription?.plan_code ?? 'light'))}
                       </td>
+                      <td className="px-2 py-3">
+                        {aiPlanLabel(rowAiRequested)} / {aiPlanLabel(rowAiEffective)}
+                      </td>
                       <td className="px-2 py-3">{(subscription?.amount_jpy ?? 0).toLocaleString()}</td>
-                      <td className="px-2 py-3">{subscription?.hotel_option_enabled ? '有効' : '無効'}</td>
-                      <td className="px-2 py-3">{subscription?.notification_option_enabled ? '有効' : '無効'}</td>
+                      <td className="px-2 py-3">{rowHotelRequested ? '申込ON' : '申込OFF'}</td>
+                      <td className="px-2 py-3">{rowNotificationRequested ? '申込ON' : '申込OFF'}</td>
                       <td className="px-2 py-3">{trialEnd}</td>
                     </tr>
                   )

@@ -164,6 +164,19 @@ Completed tasks should be marked:
   - [x] テスト
   - [ ] PR作成
 
+## AIタグ解析ジョブのRLS修正
+- ブランチ: `fix/medical-record-ai-tag-jobs-rls`
+- 概要: AIタグの「AIタグを解析」実行時に `medical_record_ai_tag_jobs` insert が RLS で拒否される問題を解消する
+- 影響範囲: DB(RLS) / AIタグ解析受付API
+- リスク: RLS条件の誤設定による他店舗データアクセス、既存ジョブ更新系への影響
+- 完了条件: `medical_record_ai_tag_jobs` に store scope の select/insert/update/delete policy が定義され、解析受付時のRLSエラーが解消されている
+- 進捗:
+  - [x] 原因調査（RLS policy未定義を確認）
+  - [x] DB修正SQL追加
+  - [ ] Supabase SQL Editor 反映
+  - [ ] 動作確認
+  - [ ] PR作成
+
 ## 顧客LTV分析
 - ブランチ: `feature/customer-ltv`
 - 概要: 既存の visits / payments を集計して年間売上、来店回数、平均単価、オプション利用率、LTVランクを可視化する
@@ -731,4 +744,21 @@ Completed tasks should be marked:
   - [x] プライバシーポリシー文面の具体化
   - [x] 特商法文面の具体化
   - [x] legal CHANGELOG更新
+  - [x] lint/test 実行
+
+## dev課金操作の安全運用化（2026-03-22）
+- ブランチ: `feature/dev-billing-safe-ops`
+- 概要: devサブスク管理を requested/effective 前提の請求フローへ揃え、誤課金・未課金有効化・状態不整合を防ぐ
+- 完了条件:
+  - `/dev/subscriptions` でオプション/AIプランを legacy `*_enabled` 直更新しない
+  - dev更新APIは `hotel_option_requested / notification_option_requested / ai_plan_code_requested` を更新し、移行未適用時は明示エラーにする
+  - `billing-trial-rollover` の料金計算を requested/effective + AIプラン考慮に揃える
+  - 課金確定後に requested -> effective を反映する経路（webhook/cron）の安全性を強化
+  - 関連テストを追加または更新し、回帰観点を固定する
+- 進捗:
+  - [x] ブランチ作成
+  - [x] TASKS追記
+  - [x] devサブスク管理UI/APIの安全化
+  - [x] trial rollover課金計算の整合化
+  - [x] 回帰テスト整備
   - [x] lint/test 実行

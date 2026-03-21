@@ -21,7 +21,14 @@ type StoreRow = {
 type SubscriptionRow = {
   store_id: string
   plan_code: string
+  ai_plan_code_requested: string | null
+  ai_plan_code_effective: string | null
+  ai_plan_code: string | null
+  hotel_option_requested: boolean | null
+  hotel_option_effective: boolean | null
   hotel_option_enabled: boolean | null
+  notification_option_requested: boolean | null
+  notification_option_effective: boolean | null
   notification_option_enabled: boolean | null
   billing_status: 'inactive' | 'trialing' | 'active' | 'past_due' | 'paused' | 'canceled'
   billing_cycle: 'monthly' | 'yearly' | 'custom'
@@ -84,7 +91,7 @@ export default async function DevSubscriptionsPage({ searchParams }: PageProps) 
     await Promise.all([
       admin.from('stores').select('id, name, is_active').order('created_at', { ascending: true }),
       admin.from('store_subscriptions').select(
-        'store_id, plan_code, hotel_option_enabled, notification_option_enabled, billing_status, billing_cycle, preferred_provider, amount_jpy, current_period_start, current_period_end, next_billing_date, trial_days, trial_started_at, grace_days, past_due_since, notes'
+        'store_id, plan_code, ai_plan_code_requested, ai_plan_code_effective, ai_plan_code, hotel_option_requested, hotel_option_effective, hotel_option_enabled, notification_option_requested, notification_option_effective, notification_option_enabled, billing_status, billing_cycle, preferred_provider, amount_jpy, current_period_start, current_period_end, next_billing_date, trial_days, trial_started_at, grace_days, past_due_since, notes'
       ),
     ])
 

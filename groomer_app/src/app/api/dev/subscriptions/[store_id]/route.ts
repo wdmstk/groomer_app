@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { requireDeveloperAdmin } from '@/lib/auth/developer-admin'
 import { canPurchaseOptionsByPlan, normalizePlanCode } from '@/lib/subscription-plan'
+import { parseAiPlanCode } from '@/lib/billing/pricing'
 
 type RouteParams = {
   params: Promise<{
@@ -94,17 +95,32 @@ export async function POST(request: Request, { params }: RouteParams) {
   const graceDaysRaw = formData.get('grace_days')?.toString().trim() ?? '3'
   const trialStartedAtRaw = formData.get('trial_started_at')?.toString() ?? ''
   const preferredProvider = formData.get('preferred_provider')?.toString().trim() ?? ''
-  const hotelOptionEnabledRaw = formData.get('hotel_option_enabled')?.toString() ?? 'false'
-  const notificationOptionEnabledRaw = formData.get('notification_option_enabled')?.toString() ?? 'false'
+  const hotelOptionRequestedRaw =
+    formData.get('hotel_option_requested')?.toString() ??
+    formData.get('hotel_option_enabled')?.toString() ??
+    'false'
+  const notificationOptionRequestedRaw =
+    formData.get('notification_option_requested')?.toString() ??
+    formData.get('notification_option_enabled')?.toString() ??
+    'false'
+  const aiPlanRequestedRaw =
+    formData.get('ai_plan_code_requested')?.toString() ??
+    formData.get('ai_plan_code')?.toString() ??
+    'none'
 
   if (!rawPlanCode) {
     return redirectWithMessage(request, 'プランは必須です。')
   }
   const planCode = normalizePlanCode(rawPlanCode)
-  const hotelOptionEnabled = hotelOptionEnabledRaw === 'true' || hotelOptionEnabledRaw === 'on'
-  const notificationOptionEnabled =
-    notificationOptionEnabledRaw === 'true' || notificationOptionEnabledRaw === 'on'
-  if ((hotelOptionEnabled || notificationOptionEnabled) && !canPurchaseOptionsByPlan(planCode)) {
+  const optionContractAllowed = canPurchaseOptionsByPlan(planCode)
+  const hotelOptionRequested =
+    (hotelOptionRequestedRaw === 'true' || hotelOptionRequestedRaw === 'on') && optionContractAllowed
+  const notificationOptionRequested =
+    (notificationOptionRequestedRaw === 'true' || notificationOptionRequestedRaw === 'on') &&
+    optionContractAllowed
+  const aiPlanRequested = optionContractAllowed ? parseAiPlanCode(aiPlanRequestedRaw) : 'none'
+
+  if ((hotelOptionRequested || notificationOptionRequested) && !optionContractAllowed) {
     return redirectWithMessage(
       request,
       'オプション契約はスタンダード以上のプランでのみ有効化できます。'
@@ -155,8 +171,9 @@ export async function POST(request: Request, { params }: RouteParams) {
   const payload = {
     store_id: storeId,
     plan_code: planCode,
-    hotel_option_enabled: hotelOptionEnabled && canPurchaseOptionsByPlan(planCode),
-    notification_option_enabled: notificationOptionEnabled && canPurchaseOptionsByPlan(planCode),
+    hotel_option_requested: hotelOptionRequested,
+    notification_option_requested: notificationOptionRequested,
+    ai_plan_code_requested: aiPlanRequested,
     billing_status: billingStatus,
     billing_cycle: billingCycle,
     amount_jpy: amountJpy,
@@ -176,6 +193,12 @@ export async function POST(request: Request, { params }: RouteParams) {
     .upsert(payload, { onConflict: 'store_id' })
 
   if (upsertError) {
+    if (upsertError.message.includes('column') && upsertError.message.includes('_requested')) {
+      return redirectWithMessage(
+        request,
+        'requested/effective列のDBマイグレーション未適用です。supabase_store_subscriptions_option_entitlements.sql を先に適用してください。'
+      )
+    }
     return redirectWithMessage(request, `更新に失敗しました: ${upsertError.message}`)
   }
 
