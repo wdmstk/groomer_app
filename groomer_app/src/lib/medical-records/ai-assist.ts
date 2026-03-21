@@ -104,7 +104,7 @@ async function copyLineShortVideo(params: {
 }) {
   const { admin, storeId, medicalRecordId } = params
   const VIDEO_STORAGE_BUCKET = getMedicalRecordVideoBucket()
-  const { data: sourceVideo } = await admin
+  const { data: sourceVideoRaw } = await admin
     .from('medical_record_videos' as never)
     .select('id, pet_id, appointment_id, storage_path, duration_sec, sort_order, taken_at')
     .eq('store_id', storeId)
@@ -113,6 +113,15 @@ async function copyLineShortVideo(params: {
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
+  const sourceVideo = sourceVideoRaw as {
+    id: string
+    pet_id: string | null
+    appointment_id: string | null
+    storage_path: string | null
+    duration_sec: number | null
+    sort_order: number | null
+    taken_at: string | null
+  } | null
 
   if (!sourceVideo?.storage_path) {
     return { generatedVideoId: null as string | null, generatedStoragePath: null as string | null }
@@ -131,7 +140,7 @@ async function copyLineShortVideo(params: {
     return { generatedVideoId: null, generatedStoragePath: null }
   }
 
-  const { data: inserted } = await admin
+  const { data: insertedRaw } = await admin
     .from('medical_record_videos' as never)
     .insert({
       store_id: storeId,
@@ -152,6 +161,7 @@ async function copyLineShortVideo(params: {
     } as never)
     .select('id')
     .single()
+  const inserted = insertedRaw as { id: string } | null
 
   return {
     generatedVideoId: (inserted?.id as string | undefined) ?? null,

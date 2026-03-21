@@ -632,3 +632,102 @@ Completed tasks should be marked:
 - 進捗:
   - [x] 影響確認
   - [x] manual-data修正
+
+## AI動画段階実装（2026-03-21）
+- ブランチ: `feature/ai-video-tiered-rollout`
+- 概要: Assist / Pro / Pro+ の境界を守りつつ、動画機能を段階導入する
+- 完了条件:
+  - Assist: 動画AI非使用で短尺化・テロップ・要約・LINE最適化ジョブを実装
+  - Pro: Vision LLM相当の工程推定・協力度/ストレス・文章下書きジョブを実装
+  - Pro+: GPT-4o Vision相当の健康気づきと動画AIハイライトジョブを実装
+  - プランゲートを共通化し、Pro+以外で動画AIが呼ばれない
+  - カルテ画面の動画タブにプラン別操作を追加し、既存導線を破壊しない
+- 進捗:
+  - [x] Step 1: 既存コード解析（動画アップロード/プラン判定/UI/ジョブ）
+  - [x] Step 2: Assist軽量動画ジョブ基盤実装
+  - [x] Step 3: Pro工程推定ジョブ基盤実装
+  - [x] Step 4: Pro+動画AI/健康気づきジョブ基盤実装
+  - [x] Step 5: 動画タブUIのプラン別操作追加
+  - [x] Step 6: lint/testと差分確認
+  - [x] Step 7: LLM/動画AI adapter の外部API切替基盤（envでmock/external切替）を追加
+  - [x] Step 8: `.env` サンプルと開発者向け設定手順（Runbook/Manual）を追記
+  - [ ] Step 9: ステージングで実API疎通確認（Assist/Pro/Pro+の課金・失敗時挙動）
+    - [x] Step 9-1: 検証マトリクス/確認SQL/記録観点を Runbook に追加
+    - [ ] Step 9-2: ステージング実行（mock→openai→external動画AI）と結果記録
+  - [x] Step 10: adapter 安全化（timeout/retry）を実装
+  - [x] Step 11: 課金ログ基盤（provider/billing情報を result_payload/metrics に保存）を実装
+  - [x] Step 12: 差分検証（lint/build）を実施
+  - [x] Step 13: 運用監視整備（failed閾値アラート / dashboard SQL固定化 / lint warning解消 / PR差分整理）
+    - [x] Step 13-1: failed閾値アラート（1時間で5件超）を実装
+    - [x] Step 13-2: `job_runs` + `medical_record_ai_video_jobs` のダッシュボードSQLをRunbookへ固定化
+    - [x] Step 13-3: lint warning（`_request`未使用）を解消
+    - [x] Step 13-4: TASKS更新とPR用差分整理
+  - [x] Step 14: Step 9-2 実行支援（staging実行コマンド/結果記録テンプレート）を整備
+    - [x] Step 14-1: Runbookにステージング実行コマンドを追記
+    - [x] Step 14-2: 実行結果記録テンプレートを追加
+  - [x] Step 15: `/dev/cron` 可視化強化（job_runs + medical_record_ai_video_jobs 監視カード）を追加
+  - [x] Step 16: `/dev/cron` 監視カードに failed 閾値超過アラート表示を追加
+  - [x] Step 17: PR提出向け最終整理（RunbookへPRテンプレ/確認観点/スクショ項目）を追加
+
+## オプション課金確定ゲート整備（2026-03-22）
+- ブランチ: `feature/billing-option-entitlement-gate`
+- 概要: AI / ホテル / 通知強化を「申込即時有効」ではなく「支払い確定後有効」に統一する
+- 完了条件:
+  - `requested`（申込状態）と `effective`（利用可状態）を分離
+  - `/api/billing/options` は `requested` のみ更新
+  - webhook 成功イベントで `effective` を更新
+  - AI / ホテル / 通知強化の利用ゲートは `effective` を参照
+  - Billing UI に「申込中 / 有効」の状態表示を追加
+  - 既存店舗は後方互換で安全に移行できる
+- 進捗:
+  - [x] Step 1: 現状調査（AI/ホテル/通知強化が即時有効化される経路）を確認
+  - [x] Step 2: DB拡張設計（requested/effective列、移行方針）を確定
+    - `store_subscriptions` に `ai_plan_code_requested / ai_plan_code_effective` を追加（`none|assist|pro|pro_plus`）
+    - `store_subscriptions` に `hotel_option_requested / hotel_option_effective` を追加（boolean）
+    - `store_subscriptions` に `notification_option_requested / notification_option_effective` を追加（boolean）
+    - 初期移行は既存値を `requested` と `effective` の両方へ backfill（既存挙動を維持）
+    - 互換期間は既存列を残し、アプリ側は `effective` 優先・既存列fallbackで段階移行
+  - [x] Step 3: `/api/billing/options` を申込状態更新へ変更
+    - `hotel_option_requested / notification_option_requested / ai_plan_code_requested` のみ更新
+    - `amount_jpy` の即時更新を停止（支払い確定前の見かけ上アップグレードを防止）
+    - 未マイグレーション環境は `_requested` 列不足を明示エラーで通知
+  - [x] Step 4: webhook連動で有効化状態を更新
+    - Stripe/KOMOJU の成功イベントで `applyRequestedOptionEntitlements` を実行
+    - `requested -> effective` 反映時に既存列（`ai_plan_code` / `hotel_option_enabled` / `notification_option_enabled`）も同期
+    - `supabase_store_subscriptions_option_entitlements.sql` を追加（列追加+backfill+制約）
+  - [x] Step 5: 機能ゲート（AI/ホテル/通知強化）を effective 参照に統一
+    - AI API（record/video/月次レポート）とカルテ画面のAI表示判定を `ai_plan_code_effective` 優先へ変更
+    - `store-plan-options` を `hotel_option_effective / notification_option_effective / ai_plan_code_effective` 優先に更新
+    - ホテル通知ジョブと通知従量課金ジョブを `*_option_effective` 優先へ変更（旧列fallback維持）
+  - [x] Step 6: Billing UI 表示（申込中/有効）を追加
+    - 決済管理画面で `effective`（有効）と `requested`（申込中）を分離表示
+    - ホテル/通知/AI それぞれに pending 表示（申込中の有効化/無効化）を追加
+    - 決済開始時のオプション計算は `requested` を利用するよう調整
+  - [x] Step 7: lint/build と回帰確認
+    - `npm run lint` 成功
+    - `npm run build` 成功
+  - [x] Step 8: Runbook / Manual / TASKS 更新とPR差分整理
+    - Runbook に `supabase_store_subscriptions_option_entitlements.sql` 追加と requested/effective 運用方針を追記
+    - TASKS を Step 8 まで更新し、PR作成前の差分整理状態に移行
+
+## 法務・規約コンプライアンス是正（2026-03-22）
+- ブランチ: `feature/legal-compliance-hardening`
+- 概要: 規約同意取得・課金条件明示・解約導線明示・法務文書具体化を行い、国内SaaS実務レベルの説明責任を補強する
+- 完了条件:
+  - 新規登録で規約/プライバシー/特商法への同意を必須化
+  - 決済前に法務リンクと同意導線を表示
+  - LPに無料トライアルから自動課金までの条件を明示
+  - 利用規約に予約トラブル責任分界、写真/動画権利、外部依存免責、異議申立てを追記
+  - プライバシーポリシーに保存期間の具体値と退会後削除方針を追記
+  - 特商法表記に解約方法の画面導線と返金例外を追記
+  - `docs/legal/CHANGELOG.md` を更新
+- 進捗:
+  - [x] ブランチ作成
+  - [x] 新規登録の同意取得UI実装
+  - [x] 課金前同意導線実装
+  - [x] LP課金条件表示の明確化
+  - [x] 規約文面の具体化
+  - [x] プライバシーポリシー文面の具体化
+  - [x] 特商法文面の具体化
+  - [x] legal CHANGELOG更新
+  - [x] lint/test 実行

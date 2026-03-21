@@ -30,7 +30,9 @@ export type StorePlanOptionState = {
 async function fetchSubscriptionRow(supabase: SupabaseLike, storeId: string) {
   const withOption = await supabase
     .from('store_subscriptions')
-    .select('plan_code, hotel_option_enabled, notification_option_enabled, ai_plan_code')
+    .select(
+      'plan_code, hotel_option_enabled, notification_option_enabled, ai_plan_code, hotel_option_effective, notification_option_effective, ai_plan_code_effective'
+    )
     .eq('store_id', storeId)
     .maybeSingle()
 
@@ -76,13 +78,36 @@ export async function fetchStorePlanOptionState(params: {
   return {
     planCode,
     hotelOptionEnabled:
-      optionContractAllowed && (subscriptionRow?.hotel_option_enabled ?? false) === true,
+      optionContractAllowed &&
+      (
+        (subscriptionRow as (StoreSubscriptionRow & { hotel_option_effective?: boolean | null }) | null)
+          ?.hotel_option_effective ??
+          subscriptionRow?.hotel_option_enabled ??
+          false
+      ) === true,
     notificationOptionEnabled: optionContractAllowed
       ? // Prefer subscription contract state and keep settings row as backward-compat fallback.
-        (subscriptionRow?.notification_option_enabled ?? notificationRow?.notification_option_enabled ?? false) === true
+        (
+          (subscriptionRow as (StoreSubscriptionRow & { notification_option_effective?: boolean | null }) | null)
+            ?.notification_option_effective ??
+            subscriptionRow?.notification_option_enabled ??
+            notificationRow?.notification_option_enabled ??
+            false
+        ) === true
       : false,
     aiPlanCode: optionContractAllowed
-      ? parseAiPlanCode((subscriptionRow as StoreSubscriptionRow & { ai_plan_code?: string | null } | null)?.ai_plan_code ?? 'none')
+      ? parseAiPlanCode(
+          (
+            subscriptionRow as
+              | (StoreSubscriptionRow & {
+                  ai_plan_code?: string | null
+                  ai_plan_code_effective?: string | null
+                })
+              | null
+          )?.ai_plan_code_effective ??
+            (subscriptionRow as StoreSubscriptionRow & { ai_plan_code?: string | null } | null)?.ai_plan_code ??
+            'none'
+        )
       : 'none',
   }
 }

@@ -58,7 +58,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       .maybeSingle(),
     supabase
       .from('store_subscriptions')
-      .select('ai_plan_code')
+      .select('ai_plan_code_effective, ai_plan_code')
       .eq('store_id', storeId)
       .maybeSingle(),
   ])
@@ -69,7 +69,12 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json({ message: '対象カルテが見つかりません。' }, { status: 404 })
   }
 
-  const aiPlanCode = parseAiPlanCode((subscription as { ai_plan_code?: string | null } | null)?.ai_plan_code ?? 'none')
+  const aiPlanCode = parseAiPlanCode(
+    (subscription as { ai_plan_code_effective?: string | null; ai_plan_code?: string | null } | null)
+      ?.ai_plan_code_effective ??
+      (subscription as { ai_plan_code?: string | null } | null)?.ai_plan_code ??
+      'none'
+  )
   if (!hasAiAssistAccess(aiPlanCode)) {
     return NextResponse.json({ message: 'AI Assist以上の契約が必要です。' }, { status: 403 })
   }
@@ -95,4 +100,3 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json({ message }, { status: 500 })
   }
 }
-

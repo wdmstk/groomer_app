@@ -88,7 +88,7 @@ type AppointmentCreateModalProps = {
     status?: string
     notes?: string
   }
-  reservationPaymentSettings: ReservationPaymentSettings
+  reservationPaymentSettings?: ReservationPaymentSettings
   recommendationMessage?: string
   customerNoShowCounts?: Record<string, number>
   followupTaskId?: string

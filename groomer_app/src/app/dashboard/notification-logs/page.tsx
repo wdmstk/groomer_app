@@ -129,7 +129,7 @@ export default async function NotificationLogsPage({ searchParams }: Notificatio
     if (channelFilter !== 'all') fixtureRows = fixtureRows.filter((row) => row.channel === channelFilter)
     if (statusFilter !== 'all') fixtureRows = fixtureRows.filter((row) => row.status === statusFilter)
     if (query) {
-      const customerIds = dashboardPageFixtures.notificationQueryCustomerIds.map((row) => row.id)
+      const customerIds = dashboardPageFixtures.notificationQueryCustomerIds.map((row): string => row.id)
       fixtureRows = fixtureRows.filter(
         (row) =>
           row.subject?.includes(query) ||
@@ -141,7 +141,7 @@ export default async function NotificationLogsPage({ searchParams }: Notificatio
     count = fixtureRows.length
     data = fixtureRows.slice(from, to + 1) as NotificationLogRow[]
     failureRows = fixtureRows
-      .filter((row) => row.status === 'failed' || row.status === 'canceled')
+      .filter((row) => ['failed', 'canceled'].includes(String(row.status)))
       .map((row) => ({
         status: row.status,
         notification_type: row.notification_type,

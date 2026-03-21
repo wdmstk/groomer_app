@@ -3,12 +3,7 @@ import { requireOwnerStoreMembership } from '@/lib/auth/store-owner'
 import { canPurchaseOptionsByPlan } from '@/lib/subscription-plan'
 import { asStorePlanOptionsClient, fetchStorePlanOptionState } from '@/lib/store-plan-options'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { countActiveOwnerStores } from '@/lib/billing/db'
-import {
-  amountForPlanWithStoreCountAndOptions,
-  parseAiPlanCode,
-  parseBillingCycle,
-} from '@/lib/billing/pricing'
+import { parseAiPlanCode } from '@/lib/billing/pricing'
 
 function redirectWithMessage(request: Request, key: 'message' | 'error', value: string) {
   const url = new URL('/billing', request.url)
@@ -34,15 +29,6 @@ export async function POST(request: Request) {
     storeId: guard.storeId,
   })
   const admin = createAdminSupabaseClient()
-  const { data: subscriptionRow, error: subscriptionError } = await admin
-    .from('store_subscriptions')
-    .select('billing_cycle')
-    .eq('store_id', guard.storeId)
-    .maybeSingle()
-
-  if (subscriptionError) {
-    return redirectWithMessage(request, 'error', subscriptionError.message)
-  }
 
   const optionContractAllowed = canPurchaseOptionsByPlan(state.planCode)
   if (!optionContractAllowed && (hotelOptionEnabled || notificationOptionEnabled)) {
@@ -54,53 +40,43 @@ export async function POST(request: Request) {
   }
 
   const currentAiPlanCode = parseAiPlanCode(state.aiPlanCode)
-  const nextHotelOptionEnabled =
-    targetOption === 'hotel'
-      ? hotelOptionEnabled && optionContractAllowed
-      : state.hotelOptionEnabled && optionContractAllowed
-  const nextNotificationOptionEnabled =
-    targetOption === 'notification'
-      ? notificationOptionEnabled && optionContractAllowed
-      : state.notificationOptionEnabled && optionContractAllowed
-  const nextAiPlanCode = targetOption === 'ai_plan' ? aiPlanCode : currentAiPlanCode
-  const billingCycle = parseBillingCycle(subscriptionRow?.billing_cycle)
-  const ownerActiveStoreCount = await countActiveOwnerStores(guard.user.id)
-  const nextAmountJpy = amountForPlanWithStoreCountAndOptions(
-    state.planCode,
-    billingCycle,
-    ownerActiveStoreCount,
-    {
-      hotelOptionEnabled: nextHotelOptionEnabled,
-      notificationOptionEnabled: nextNotificationOptionEnabled,
-      aiPlanCode: nextAiPlanCode,
-    }
-  )
+  const nextHotelOptionRequested = targetOption === 'hotel'
+    ? hotelOptionEnabled && optionContractAllowed
+    : state.hotelOptionEnabled && optionContractAllowed
+  const nextNotificationOptionRequested = targetOption === 'notification'
+    ? notificationOptionEnabled && optionContractAllowed
+    : state.notificationOptionEnabled && optionContractAllowed
+  const nextAiPlanCodeRequested = targetOption === 'ai_plan' ? aiPlanCode : currentAiPlanCode
 
   const updatePayload =
     targetOption === 'notification'
       ? {
-          notification_option_enabled: nextNotificationOptionEnabled,
-          amount_jpy: nextAmountJpy,
+          notification_option_requested: nextNotificationOptionRequested,
           updated_at: new Date().toISOString(),
         }
       : targetOption === 'ai_plan'
         ? {
-            ai_plan_code: nextAiPlanCode,
-            amount_jpy: nextAmountJpy,
+            ai_plan_code_requested: nextAiPlanCodeRequested,
             updated_at: new Date().toISOString(),
           }
       : {
-          hotel_option_enabled: nextHotelOptionEnabled,
-          amount_jpy: nextAmountJpy,
+          hotel_option_requested: nextHotelOptionRequested,
           updated_at: new Date().toISOString(),
         }
 
   const { error } = await admin
-    .from('store_subscriptions')
-    .update(updatePayload)
+    .from('store_subscriptions' as never)
+    .update(updatePayload as never)
     .eq('store_id', guard.storeId)
 
   if (error) {
+    if (error.message.includes('column') && error.message.includes('_requested')) {
+      return redirectWithMessage(
+        request,
+        'error',
+        '課金ゲート移行用のDBマイグレーションが未適用です。requested/effective列を先に適用してください。'
+      )
+    }
     return redirectWithMessage(request, 'error', error.message)
   }
 
@@ -109,14 +85,14 @@ export async function POST(request: Request) {
     'message',
     targetOption === 'notification'
       ? notificationOptionEnabled
-        ? '通知強化オプションを有効化しました。'
-        : '通知強化オプションを無効化しました。'
+        ? '通知強化オプションの申込を受け付けました。支払い確定後に有効化されます。'
+        : '通知強化オプションの無効化申込を受け付けました。'
       : targetOption === 'ai_plan'
-        ? nextAiPlanCode === 'none'
-          ? 'AIプランを無効化しました。'
-          : `AIプランを${nextAiPlanCode === 'assist' ? 'Assist' : nextAiPlanCode === 'pro' ? 'Pro' : 'Pro+'}に変更しました。`
+        ? nextAiPlanCodeRequested === 'none'
+          ? 'AIプランの無効化申込を受け付けました。'
+          : `AIプランを${nextAiPlanCodeRequested === 'assist' ? 'Assist' : nextAiPlanCodeRequested === 'pro' ? 'Pro' : 'Pro+'}へ変更する申込を受け付けました。支払い確定後に有効化されます。`
       : hotelOptionEnabled
-        ? 'ホテルオプションを有効化しました。'
-        : 'ホテルオプションを無効化しました。'
+        ? 'ホテルオプションの申込を受け付けました。支払い確定後に有効化されます。'
+        : 'ホテルオプションの無効化申込を受け付けました。'
   )
 }

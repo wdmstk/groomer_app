@@ -10,11 +10,18 @@ function SignupForm() {
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [legalAgreed, setLegalAgreed] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
+    setError('')
+
+    if (!legalAgreed) {
+      setError('利用規約・プライバシーポリシー・特定商取引法表記への同意が必要です。')
+      return
+    }
 
     const inviteToken = searchParams.get('invite')
     const { data, error } = await supabase.auth.signUp({
@@ -66,11 +73,40 @@ function SignupForm() {
             className="w-full rounded border p-2"
           />
 
+          <label className="block rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+            <span className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={legalAgreed}
+                onChange={(e) => setLegalAgreed(e.target.checked)}
+                className="mt-0.5 h-4 w-4"
+                required
+              />
+              <span>
+                <span className="font-semibold">【必須】</span>
+                {' '}
+                <Link href="/legal/terms" className="text-blue-700 hover:underline">
+                  利用規約
+                </Link>
+                ・
+                <Link href="/legal/privacy" className="text-blue-700 hover:underline">
+                  プライバシーポリシー
+                </Link>
+                ・
+                <Link href="/legal/tokusho" className="text-blue-700 hover:underline">
+                  特定商取引法に基づく表記
+                </Link>
+                に同意します。
+              </span>
+            </span>
+          </label>
+
           {error && <p className="text-red-500">{error}</p>}
           {success && <p className="text-green-600">{success}</p>}
 
           <button
             type="submit"
+            disabled={!legalAgreed}
             className="w-full rounded bg-green-600 p-2 text-white"
           >
             登録する

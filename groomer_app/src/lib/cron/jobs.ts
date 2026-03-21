@@ -9,6 +9,7 @@ import { runHotelVaccineAlertsJob } from '@/lib/cron/services/hotel-vaccine-aler
 import { runNextVisitSuggestionsJob } from '@/lib/cron/services/next-visit-suggestions'
 import { runMedicalRecordAiTagsJob } from '@/lib/cron/services/medical-record-ai-tags'
 import { runMedicalRecordAiAssistJobs } from '@/lib/cron/services/medical-record-ai-assist'
+import { runMedicalRecordAiVideoPipeline } from '@/lib/cron/services/medical-record-ai-video'
 
 export const ALLOWED_CRON_JOB_NAMES = [
   'billing-status-sync',
@@ -19,6 +20,7 @@ export const ALLOWED_CRON_JOB_NAMES = [
   'next-visit-suggestions',
   'medical-record-ai-tags',
   'medical-record-ai-assist',
+  'medical-record-ai-video',
   'hotel-vaccine-alerts',
   'purge-member-portal-access-logs',
   'scan-storage-orphans',
@@ -48,6 +50,8 @@ export async function runCronJobByName(jobName: CronJobName) {
       return runMedicalRecordAiTagsJob()
     case 'medical-record-ai-assist':
       return runMedicalRecordAiAssistJobs()
+    case 'medical-record-ai-video':
+      return runMedicalRecordAiVideoPipeline()
     case 'hotel-vaccine-alerts':
       return runHotelVaccineAlertsJob()
     case 'purge-member-portal-access-logs':

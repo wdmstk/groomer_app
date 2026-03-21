@@ -32,6 +32,25 @@
 - `privacy-policy.md`
   - 問い合わせ・開示等請求窓口に「メール + サポートチケット運用」を追記
 
+## 2026-03-22
+- `terms-of-service.md`
+  - 予約/施術トラブルの責任分界を追記
+  - 写真/動画データの権利帰属と必要範囲利用許諾を追記
+  - 外部サービス障害時の責任限定を追記
+  - 利用制限時の異議申立て導線を追記
+- `privacy-policy.md`
+  - Cookie運用状況（第三者解析ツール未導入）を明記
+  - 保存期間をデータ種別ごとに具体化
+  - 退会後データ削除方針と削除依頼窓口を追記
+- `tokushoho.md`
+  - 解約方法を画面導線（`/billing`）で具体化
+  - 返金例外条件と返金申請期限を追記
+- 公開ページ反映
+  - `src/app/legal/terms/page.tsx`
+  - `src/app/legal/privacy/page.tsx`
+  - `src/app/legal/tokusho/page.tsx`
+  - `src/app/legal/legal-notice.ts`
+
 ## 運用ルール
 - 法務文書変更時は、必ず本ファイルへ日付付きで追記する
 - 公開ページ（`src/app/legal/*`）へ反映した場合は、その旨も追記する

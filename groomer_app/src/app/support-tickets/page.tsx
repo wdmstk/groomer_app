@@ -27,7 +27,7 @@ export default async function SupportTicketsPage() {
       <section className="space-y-4">
         <h1 className="text-2xl font-semibold text-gray-900">問い合わせチケット</h1>
         <Card>
-          <p className="text-sm text-red-700">{auth.message}</p>
+          <p className="text-sm text-red-700">{'message' in auth ? auth.message : 'アクセスできません。'}</p>
         </Card>
       </section>
     )

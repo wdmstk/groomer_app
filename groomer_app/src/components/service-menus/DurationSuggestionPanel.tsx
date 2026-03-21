@@ -36,7 +36,14 @@ export function DurationSuggestionPanel() {
           | null
 
         if (!response.ok) {
-          throw new Error('message' in (payload ?? {}) ? payload?.message ?? '推奨候補の取得に失敗しました。' : '推奨候補の取得に失敗しました。')
+          const message =
+            payload &&
+            typeof payload === 'object' &&
+            'message' in payload &&
+            typeof payload.message === 'string'
+              ? payload.message
+              : '推奨候補の取得に失敗しました。'
+          throw new Error(message)
         }
 
         if (mounted) {

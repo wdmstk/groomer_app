@@ -578,6 +578,15 @@ export default function LandingPage() {
             <li>乗り換えサポート（データ移行）</li>
             <li>紹介制度（紹介者1ヶ月無料）</li>
           </ul>
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-slate-700">
+            <p>
+              無料トライアル終了日の翌日 0:00（日本時間）に、選択プランの料金で自動課金されます。
+              継続を希望しない場合は、終了日前日 23:59 までに解約手続を完了してください。
+            </p>
+            <p className="mt-2">
+              請求は初回決済日を起算日とする契約日基準（毎月同日 / 毎年同日）です。
+            </p>
+          </div>
         </div>
       </section>
 
@@ -595,6 +604,22 @@ export default function LandingPage() {
               初期設定を代行してすぐに運用開始
             </Link>
           </div>
+          <p className="mt-4 text-xs text-slate-300">
+            お申し込み前に
+            {' '}
+            <Link href="/legal/terms" className="underline hover:text-white">
+              利用規約
+            </Link>
+            ・
+            <Link href="/legal/privacy" className="underline hover:text-white">
+              プライバシーポリシー
+            </Link>
+            ・
+            <Link href="/legal/tokusho" className="underline hover:text-white">
+              特定商取引法に基づく表記
+            </Link>
+            をご確認ください。
+          </p>
         </div>
       </section>
 

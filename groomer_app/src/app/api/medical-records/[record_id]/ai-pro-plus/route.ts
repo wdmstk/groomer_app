@@ -45,10 +45,15 @@ export async function POST(_request: Request, { params }: RouteParams) {
 
   const { data: subscription } = await supabase
     .from('store_subscriptions')
-    .select('ai_plan_code')
+    .select('ai_plan_code_effective, ai_plan_code')
     .eq('store_id', storeId)
     .maybeSingle()
-  const aiPlanCode = parseAiPlanCode((subscription as { ai_plan_code?: string | null } | null)?.ai_plan_code ?? 'none')
+  const aiPlanCode = parseAiPlanCode(
+    (subscription as { ai_plan_code_effective?: string | null; ai_plan_code?: string | null } | null)
+      ?.ai_plan_code_effective ??
+      (subscription as { ai_plan_code?: string | null } | null)?.ai_plan_code ??
+      'none'
+  )
   if (!hasAiProPlusAccess(aiPlanCode)) {
     return NextResponse.json({ message: 'AI Pro+の契約が必要です。' }, { status: 403 })
   }
@@ -66,7 +71,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
     return NextResponse.json({ message: 'カルテが見つかりません。' }, { status: 404 })
   }
 
-  const { data: sourceVideo } = await supabase
+  const { data: rawSourceVideo } = await supabase
     .from('medical_record_videos' as never)
     .select('id, storage_path, duration_sec, taken_at, sort_order')
     .eq('medical_record_id', record.id)
@@ -75,6 +80,13 @@ export async function POST(_request: Request, { params }: RouteParams) {
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
+  const sourceVideo = rawSourceVideo as {
+    id: string
+    storage_path: string
+    duration_sec: number | null
+    taken_at: string | null
+    sort_order: number | null
+  } | null
 
   const insight = deriveMedicalRecordAiProPlusHealthInsight({
     aiPlanCode,
@@ -100,7 +112,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
       .copy(sourceVideo.storage_path, highlightPath)
 
     if (!copyError) {
-      const { data: insertedHighlight } = await supabase
+      const { data: insertedHighlightRaw } = await supabase
         .from('medical_record_videos' as never)
         .insert({
           store_id: storeId,
@@ -121,8 +133,9 @@ export async function POST(_request: Request, { params }: RouteParams) {
         } as never)
         .select('id')
         .single()
+      const insertedHighlight = insertedHighlightRaw as { id?: string | null } | null
       if (insertedHighlight?.id) {
-        highlightVideoId = insertedHighlight.id as string
+        highlightVideoId = insertedHighlight.id
         generatedHighlight = true
       }
     }
@@ -161,4 +174,3 @@ export async function POST(_request: Request, { params }: RouteParams) {
     insight: data,
   })
 }
-

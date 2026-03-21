@@ -14,13 +14,14 @@ export default async function PublicReserveSettingsPage() {
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: settingsPageFixtures.storeId }
     : await createStoreScopedClient()
+  const db = supabase as NonNullable<typeof supabase>
   const manageState = isPlaywrightE2E
     ? settingsPageFixtures.manageState
     : (() => {
-        return supabase.auth.getUser().then(async ({ data: { user } }) => {
+        return db.auth.getUser().then(async ({ data: { user } }) => {
           const membership = user
             ? (
-                await supabase
+                await db
                   .from('store_memberships')
                   .select('role')
                   .eq('store_id', storeId)
@@ -39,7 +40,7 @@ export default async function PublicReserveSettingsPage() {
   const storeSettings = isPlaywrightE2E
     ? settingsPageFixtures.publicReserveSettings
     : (
-        await supabase
+        await db
           .from('stores')
           .select(
             'public_reserve_conflict_warn_threshold_percent, public_reserve_staff_bias_warn_threshold_percent, public_reserve_slot_days, public_reserve_slot_interval_minutes, public_reserve_slot_buffer_minutes, public_reserve_business_start_hour_jst, public_reserve_business_end_hour_jst, public_reserve_min_lead_minutes, member_card_rank_visible, ltv_gold_annual_sales_threshold, ltv_silver_annual_sales_threshold, ltv_bronze_annual_sales_threshold, ltv_gold_visit_count_threshold, ltv_silver_visit_count_threshold, ltv_bronze_visit_count_threshold'
@@ -51,7 +52,7 @@ export default async function PublicReserveSettingsPage() {
   const publicReserveBlockedDates = isPlaywrightE2E
     ? settingsPageFixtures.blockedDates
     : (
-        await supabase
+        await db
           .from('store_public_reserve_blocked_dates')
           .select('date_key')
           .eq('store_id', storeId)

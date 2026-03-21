@@ -64,8 +64,10 @@ export default function PrivacyPolicyPage() {
         <ul className="list-disc pl-6">
           <li>ログイン状態の維持</li>
           <li>利便性向上</li>
-          <li>アクセス解析（Google Analytics等を導入した場合）</li>
+          <li>不正利用対策のためのアクセス制御</li>
         </ul>
+        <p>2026年3月22日時点で、Google Analytics等の第三者アクセス解析ツールは導入していません。</p>
+        <p>導入時は、取得項目・利用目的・オプトアウト方法を本ポリシーへ追記します。</p>
         <p>Cookieの無効化はブラウザ設定で可能ですが、一部機能が利用できない場合があります。</p>
       </section>
 
@@ -83,12 +85,28 @@ export default function PrivacyPolicyPage() {
       <section>
         <h2 className="text-lg font-semibold text-gray-900">10. 保存期間</h2>
         <p>
-          個人情報は、利用目的達成に必要な期間または法令で定める期間保存し、不要となった場合は適切に削除します。アカウント情報・取引情報・ログ情報は、法令遵守、問い合わせ対応、不正利用対策に必要な範囲で保管します。
+          個人情報は、利用目的達成に必要な期間または法令で定める期間保存し、不要となった場合は適切に削除します。
         </p>
+        <ul className="list-disc pl-6">
+          <li>アカウント情報: 契約期間中および退会後90日間</li>
+          <li>予約・顧客・ペット・カルテ情報: 契約期間中および退会後90日間</li>
+          <li>請求・取引情報: 法令上必要な期間（原則7年）</li>
+          <li>アクセスログ・監査ログ: 12か月</li>
+          <li>バックアップデータ: 30日で世代更新</li>
+        </ul>
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-gray-900">11. 改定</h2>
+        <h2 className="text-lg font-semibold text-gray-900">11. 退会後のデータ取扱い</h2>
+        <p>
+          退会後、運用データは原則90日以内に削除します。バックアップ上のデータは次回世代更新時（最長30日）に削除されます。
+          法令上保存義務がある情報は当該期間保存し、期間満了後に削除または匿名化します。
+        </p>
+        <p>削除依頼は {LEGAL_NOTICE.contactEmail} またはログイン後サポートチケットから受け付けます。</p>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900">12. 改定</h2>
         <p>本ポリシーは、法令改正やサービス内容の変更に応じて改定する場合があります。改定後はWebサイト上で公表し、効力発生日を明示します。</p>
       </section>
 

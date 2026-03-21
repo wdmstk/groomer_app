@@ -57,22 +57,21 @@ export function parsePositiveInteger(value: unknown, fallback = 1) {
   return fallback
 }
 
-export function parseSelectedStayItems(value: unknown) {
+export function parseSelectedStayItems(value: unknown): SelectedStayItemInput[] {
   if (!Array.isArray(value)) return [] as SelectedStayItemInput[]
-
-  return value
-    .map((item) => {
-      const row = asObjectOrNull(item)
-      if (!row) return null
-      const menuItemId = typeof row.menu_item_id === 'string' ? row.menu_item_id.trim() : ''
-      if (!menuItemId) return null
-      return {
-        menu_item_id: menuItemId,
-        quantity: parsePositiveInteger(row.quantity, 1),
-        notes: typeof row.notes === 'string' && row.notes.trim().length > 0 ? row.notes.trim() : null,
-      } satisfies SelectedStayItemInput
+  const rows: SelectedStayItemInput[] = []
+  value.forEach((item) => {
+    const row = asObjectOrNull(item)
+    if (!row) return
+    const menuItemId = typeof row.menu_item_id === 'string' ? row.menu_item_id.trim() : ''
+    if (!menuItemId) return
+    rows.push({
+      menu_item_id: menuItemId,
+      quantity: parsePositiveInteger(row.quantity, 1),
+      notes: typeof row.notes === 'string' && row.notes.trim().length > 0 ? row.notes.trim() : null,
     })
-    .filter((item): item is SelectedStayItemInput => Boolean(item))
+  })
+  return rows
 }
 
 export function buildStayItemSnapshots(params: {

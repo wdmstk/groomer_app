@@ -32,7 +32,9 @@ async function fetchSubscriptionOptionsWithAiFallback(
 ) {
   const withAi = await supabase
     .from('store_subscriptions')
-    .select('hotel_option_enabled, notification_option_enabled, ai_plan_code')
+    .select(
+      'hotel_option_requested, hotel_option_enabled, notification_option_requested, notification_option_enabled, ai_plan_code_requested, ai_plan_code'
+    )
     .eq('store_id', storeId)
     .maybeSingle()
   if (!withAi.error) return withAi.data
@@ -75,18 +77,25 @@ export async function POST(request: Request) {
     const planCode = parsePlanCode(body.plan_code)
     const billingCycle = parseBillingCycle(body.billing_cycle)
     const subscriptionRow = await fetchSubscriptionOptionsWithAiFallback(guard.supabase, storeId)
+    const subscriptionOptions = subscriptionRow as {
+      hotel_option_requested?: boolean | null
+      hotel_option_enabled?: boolean | null
+      notification_option_requested?: boolean | null
+      notification_option_enabled?: boolean | null
+      ai_plan_code_requested?: string | null
+      ai_plan_code?: string | null
+    } | null
     const optionContractAllowed = canPurchaseOptionsByPlan(planCode)
     const options = {
       hotelOptionEnabled:
-        optionContractAllowed && subscriptionRow?.hotel_option_enabled === true,
+        optionContractAllowed &&
+        ((subscriptionOptions?.hotel_option_requested ?? subscriptionOptions?.hotel_option_enabled ?? false) === true),
       notificationOptionEnabled:
-        optionContractAllowed && subscriptionRow?.notification_option_enabled === true,
+        optionContractAllowed &&
+        ((subscriptionOptions?.notification_option_requested ?? subscriptionOptions?.notification_option_enabled ?? false) === true),
       aiPlanCode:
         optionContractAllowed
-          ? parseAiPlanCode(
-              (subscriptionRow as (typeof subscriptionRow & { ai_plan_code?: string | null }) | null)?.ai_plan_code ??
-                'none'
-            )
+          ? parseAiPlanCode(subscriptionOptions?.ai_plan_code_requested ?? subscriptionOptions?.ai_plan_code ?? 'none')
           : 'none',
     }
     const ownerActiveStoreCount = await countActiveOwnerStores(user.id)

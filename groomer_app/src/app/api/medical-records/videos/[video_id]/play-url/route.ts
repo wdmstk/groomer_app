@@ -17,7 +17,7 @@ export async function GET(request: Request, { params }: RouteParams) {
   const expiresInRaw = Number(searchParams.get('expires_in') ?? '3600')
   const expiresIn = Number.isFinite(expiresInRaw) ? Math.min(60 * 60 * 6, Math.max(60, Math.floor(expiresInRaw))) : 3600
 
-  const { data: row, error } = await supabase
+  const { data: rawRow, error } = await supabase
     .from('medical_record_videos' as never)
     .select('id, storage_path')
     .eq('id', video_id)
@@ -27,6 +27,7 @@ export async function GET(request: Request, { params }: RouteParams) {
   if (error) {
     return NextResponse.json({ message: error.message }, { status: 500 })
   }
+  const row = rawRow as { id: string; storage_path: string } | null
   if (!row?.storage_path) {
     return NextResponse.json({ message: 'Video not found.' }, { status: 404 })
   }

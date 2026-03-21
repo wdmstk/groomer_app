@@ -47,19 +47,20 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: staffsPageFixtures.storeId }
     : await createStoreScopedClient()
+  const db = supabase as NonNullable<typeof supabase>
   const planState = isPlaywrightE2E
     ? { planCode: 'light', hotelOptionEnabled: false, notificationOptionEnabled: false }
     : await fetchStorePlanOptionState({
-        supabase: asStorePlanOptionsClient(supabase),
+        supabase: asStorePlanOptionsClient(db),
         storeId,
       })
   const isStandardOrHigher = isPlaywrightE2E ? false : isPlanAtLeast(planState.planCode, 'standard')
   const isLightPlan = isPlaywrightE2E ? staffsPageFixtures.isLightPlan : !isStandardOrHigher
-  const currentUser = isPlaywrightE2E ? { id: 'user-001' } : (await supabase.auth.getUser()).data.user
+  const currentUser = isPlaywrightE2E ? { id: 'user-001' } : (await db.auth.getUser()).data.user
   const data = isPlaywrightE2E
     ? staffsPageFixtures.staffs
     : (
-        await supabase
+        await db
           .from('staffs')
           .select('id, full_name, email, user_id')
           .eq('store_id', storeId)
@@ -71,7 +72,7 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
     ? staffsPageFixtures.memberships[0]
     : currentUser
       ? (
-          await supabase
+          await db
             .from('store_memberships')
             .select('id, user_id, role')
             .eq('store_id', storeId)
@@ -115,7 +116,7 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
       : isPlaywrightE2E
         ? staffsPageFixtures.staffs.find((staff) => staff.id === editId) ?? null
         : (
-            await supabase
+            await db
               .from('staffs')
               .select('id, full_name, email, user_id')
               .eq('id', editId)

@@ -17,7 +17,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
   const { video_id } = await params
   const { supabase, storeId } = await createStoreScopedClient()
 
-  const { data: row, error } = await supabase
+  const { data: rawRow, error } = await supabase
     .from('medical_record_videos' as never)
     .select('id, medical_record_id, storage_path, thumbnail_path')
     .eq('id', video_id)
@@ -27,6 +27,12 @@ export async function POST(_request: Request, { params }: RouteParams) {
   if (error) {
     return NextResponse.json({ message: error.message }, { status: 500 })
   }
+  const row = rawRow as {
+    id: string
+    medical_record_id: string
+    storage_path: string
+    thumbnail_path: string | null
+  } | null
   if (!row?.storage_path) {
     return NextResponse.json({ message: 'Video not found.' }, { status: 404 })
   }
@@ -72,4 +78,3 @@ export async function POST(_request: Request, { params }: RouteParams) {
     reused: false,
   })
 }
-

@@ -104,7 +104,7 @@ export default async function HotelPage() {
   const user = isPlaywrightE2E
     ? hotelPageFixtures.user
     : (
-        await supabase.auth.getUser()
+        await supabase!.auth.getUser()
       ).data.user
 
   if (!user) {
