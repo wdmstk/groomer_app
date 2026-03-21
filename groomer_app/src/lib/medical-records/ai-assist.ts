@@ -187,17 +187,25 @@ async function markJobFailed(params: {
     .eq('id', jobId)
 }
 
-export async function runMedicalRecordAiAssistJob(params?: { limit?: number }) {
+export async function runMedicalRecordAiAssistJob(params?: { limit?: number; jobId?: string }) {
   const admin = createAdminSupabaseClient()
   const limit = Math.min(Math.max(params?.limit ?? 10, 1), 50)
 
-  const { data: jobs, error } = await admin
+  let query = admin
     .from('medical_record_ai_assist_jobs' as never)
     .select('*')
     .eq('status', 'queued')
-    .order('queued_at', { ascending: true })
-    .order('created_at', { ascending: true })
-    .limit(limit)
+
+  if (params?.jobId) {
+    query = query.eq('id', params.jobId)
+  } else {
+    query = query
+      .order('queued_at', { ascending: true })
+      .order('created_at', { ascending: true })
+      .limit(limit)
+  }
+
+  const { data: jobs, error } = await query
   if (error) throw new Error(error.message)
 
   const summary = {

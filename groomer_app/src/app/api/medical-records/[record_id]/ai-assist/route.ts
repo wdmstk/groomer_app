@@ -3,6 +3,7 @@ import { createStoreScopedClient } from '@/lib/supabase/store'
 import {
   enqueueMedicalRecordAiAssistJob,
   hasAiAssistAccess,
+  runMedicalRecordAiAssistJob,
 } from '@/lib/medical-records/ai-assist'
 import { parseAiPlanCode } from '@/lib/billing/pricing'
 
@@ -91,6 +92,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       source: force ? 'retry' : 'manual',
       force,
     })
+    await runMedicalRecordAiAssistJob({ jobId: job.id, limit: 1 })
     return NextResponse.json({
       job,
       message: force ? 'AI Assist再解析を受け付けました。' : 'AI Assist解析を受け付けました。',
