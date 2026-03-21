@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createStoreScopedClient } from '@/lib/supabase/store'
-import { enqueueMedicalRecordAiTagJob } from '@/lib/medical-records/ai-tags'
+import { enqueueMedicalRecordAiTagJob, runMedicalRecordAiTagJob } from '@/lib/medical-records/ai-tags'
 import { parseMedicalRecordAiJobPayload } from '@/lib/medical-records/tags'
 
 type RouteParams = {
@@ -43,6 +43,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       source: force ? 'retry' : 'manual',
       force,
     })
+    await runMedicalRecordAiTagJob({ jobId: job.id, limit: 1 })
 
     return NextResponse.json({
       job,
