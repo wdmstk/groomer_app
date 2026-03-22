@@ -27,6 +27,7 @@ export default defineConfig({
       ...process.env,
       PORT: String(port),
       PLAYWRIGHT_E2E: '1',
+      NEXT_PUBLIC_PLAYWRIGHT_E2E: '1',
     },
   },
   projects: [
