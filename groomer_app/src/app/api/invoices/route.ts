@@ -58,6 +58,9 @@ export async function POST(request: Request) {
     if (inputValidationMessage) {
       return NextResponse.json({ message: inputValidationMessage }, { status: 400 })
     }
+    if (!customerId) {
+      return NextResponse.json({ message: 'customer_id is required.' }, { status: 400 })
+    }
 
     const lineDrafts: InvoiceLineDraft[] = []
 
