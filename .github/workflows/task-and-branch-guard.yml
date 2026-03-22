@@ -1,0 +1,58 @@
+name: Task And Branch Guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate branch name and TASKS.md update
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+
+          branch="${HEAD_REF:-${GITHUB_REF_NAME}}"
+          echo "Checking branch: ${branch}"
+
+          # Required format:
+          # <type>/<task-id>-<short-description>
+          # Example: feat/TASK-102-ai-video-tagging
+          if [[ ! "${branch}" =~ ^[a-z0-9-]+/[A-Z]+-[0-9]+-[a-z0-9][a-z0-9-]*$ ]]; then
+            echo "Invalid branch name: ${branch}"
+            echo "Expected format: <type>/<TASK-ID>-<short-description>"
+            echo "Example: feat/TASK-102-ai-video-tagging"
+            exit 1
+          fi
+
+          if [[ -n "${BASE_REF}" ]]; then
+            git fetch --no-tags origin "${BASE_REF}:${BASE_REF}"
+            diff_base="origin/${BASE_REF}"
+          else
+            diff_base="$(git rev-parse HEAD~1)"
+          fi
+
+          changed_files="$(git diff --name-only "${diff_base}"...HEAD)"
+          echo "Changed files:"
+          echo "${changed_files}"
+
+          if [[ -z "${changed_files}" ]]; then
+            echo "No changed files detected. Skip TASKS.md check."
+            exit 0
+          fi
+
+          if ! grep -qx 'TASKS.md' <<< "${changed_files}"; then
+            echo "TASKS.md must be updated in the same pull request."
+            exit 1
+          fi
+
+          echo "Branch format and TASKS.md checks passed."
