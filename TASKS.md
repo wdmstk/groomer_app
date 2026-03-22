@@ -109,6 +109,21 @@ Completed tasks should be marked:
 
 # TASKS
 
+## appointments更新後にPOSTが/appointmentsへ転送される不具合修正
+- Task ID: `TASK-402`
+- ブランチ: `fix/TASK-402-appointments-post-redirect`
+- ステータス: `done`
+- 概要: 予約更新/作成後の redirect が `307` となり `POST /appointments` が発生して `Failed to find Server Action` エラーになる問題を解消する
+- 影響範囲: 予約API redirect 動作
+- リスク: redirect status の変更により画面遷移タイミングが変わる可能性
+- 完了条件: 予約作成/更新/削除フォーム送信後に `303` で `GET /appointments` へ遷移し、`POST /appointments` が発生しない
+- 進捗:
+  - [x] ブランチ作成・タスク登録
+  - [x] 原因調査（POST後 redirect が 307 で method 維持を確認）
+  - [x] API redirect status 修正
+  - [x] テスト/lint 実行
+  - [ ] PR作成（必要時）
+
 ## 統合会計（Invoice方式）
 - Task ID: `TASK-401`
 - ブランチ: `feat/TASK-401-unified-invoice-checkout`
