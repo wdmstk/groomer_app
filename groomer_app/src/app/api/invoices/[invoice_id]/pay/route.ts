@@ -75,6 +75,9 @@ export async function POST(request: Request, { params }: RouteParams) {
     })
 
     if (payable.ok && payable.reused) {
+      if (!existingPayment?.id) {
+        return NextResponse.json({ message: 'Invoice is already paid.' }, { status: 409 })
+      }
       return NextResponse.json({ ok: true, payment_id: existingPayment.id, reused: true })
     }
 
