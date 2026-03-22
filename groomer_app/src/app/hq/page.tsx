@@ -352,6 +352,15 @@ export default async function HeadquartersPage({ searchParams }: PageProps) {
           >
             配信承認一覧へ
           </Link>
+          <Link href="/hq/hotel-menu-templates" className="rounded border border-slate-300 px-3 py-2 text-slate-700">
+            ホテル配信リクエストへ
+          </Link>
+          <Link
+            href="/hq/hotel-menu-template-deliveries"
+            className="rounded border border-slate-300 px-3 py-2 text-slate-700"
+          >
+            ホテル配信承認一覧へ
+          </Link>
         </div>
       </Card>
     </section>

@@ -109,6 +109,22 @@ Completed tasks should be marked:
 
 # TASKS
 
+## HP本部運用にホテルメニュー向けテンプレ配信（リクエスト/承認）を追加
+- Task ID: `TASK-404`
+- ブランチ: `feat/TASK-404-hq-hotel-template-menu-gate`
+- ステータス: `done`
+- 概要: 施術メニュー向けとは別に、ホテルメニュー向けのテンプレ配信リクエスト/承認フローを本部運用へ追加する
+- 影響範囲: HQサイドバー / HQページ / API / 配信ロジック / Supabase SQL / テスト
+- リスク: 既存の施術メニュー配信フローとの混線、RLS不足による権限逸脱
+- 完了条件: 本部運用にホテル版の配信リクエスト・承認画面とAPIが追加され、全対象店舗承認で`hotel_menu_items`へ適用される
+- 進捗:
+  - [x] ブランチ作成・タスク登録
+  - [x] 影響箇所調査
+  - [x] ホテル版のUI/API/配信ロジックを追加
+  - [x] Supabase SQL（ホテル版配信テーブル/RLS）を追加
+  - [x] テスト/lint 実行
+  - [ ] PR作成（必要時）
+
 ## ペット管理からQR機能を完全削除
 - Task ID: `TASK-403`
 - ブランチ: `fix/TASK-403-remove-pet-qr-feature`

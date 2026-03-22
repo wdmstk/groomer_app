@@ -15,6 +15,8 @@ const ROUTE_MINIMUM_PLAN: Record<string, AppPlan> = {
   '/hq': 'pro',
   '/hq/menu-templates': 'pro',
   '/hq/menu-template-deliveries': 'pro',
+  '/hq/hotel-menu-templates': 'pro',
+  '/hq/hotel-menu-template-deliveries': 'pro',
   '/hq/manual': 'pro',
   '/manual': 'light',
   '/customers': 'light',
@@ -40,6 +42,8 @@ const ROUTE_MINIMUM_PLAN: Record<string, AppPlan> = {
 
 const ROUTE_REQUIRED_OPTION: Partial<Record<string, AppOption>> = {
   '/hotel': 'hotel',
+  '/hq/hotel-menu-templates': 'hotel',
+  '/hq/hotel-menu-template-deliveries': 'hotel',
 }
 
 export function normalizePlanCode(planCode: string | null | undefined): AppPlan {
