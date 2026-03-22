@@ -10,7 +10,6 @@ import {
   formatPetList,
   formatPetWeight,
   getPetRelatedValue,
-  resolvePetQrDisplayUrl,
 } from '@/lib/pets/presentation'
 
 export const dynamic = 'force-dynamic'
@@ -32,8 +31,6 @@ type PetRow = {
   vaccine_date: string | null
   chronic_diseases: string[] | null
   notes: string | null
-  qr_code_url: string | null
-  qr_payload: string | null
   customers?: { full_name: string } | { full_name: string }[] | null
 }
 
@@ -60,34 +57,17 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
     : await createStoreScopedClient()
   const db = supabase as NonNullable<typeof supabase>
 
-  const petsSelectWithQr =
-    'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, qr_code_url, qr_payload, customers(full_name)'
-  const petsSelectBase =
+  const petsSelect =
     'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, customers(full_name)'
   const resolvedPetsData = isPlaywrightE2E
     ? petsPageFixtures.pets
-    : await (async () => {
-        const petsQuery = await db
+    : (
+        await db
           .from('pets')
-          .select(petsSelectWithQr)
+          .select(petsSelect)
           .eq('store_id', storeId)
           .order('created_at', { ascending: false })
-        if (petsQuery.error && petsQuery.error.message.includes('qr_code_url')) {
-          const fallback = await db
-            .from('pets')
-            .select(petsSelectBase)
-            .eq('store_id', storeId)
-            .order('created_at', { ascending: false })
-          return (
-            fallback.data?.map((row) => ({
-              ...row,
-              qr_code_url: null,
-              qr_payload: null,
-            })) ?? []
-          )
-        }
-        return petsQuery.data ?? []
-      })()
+      ).data ?? []
 
   const customers = isPlaywrightE2E
     ? petsPageFixtures.customers
@@ -101,34 +81,16 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
 
   let editPetData: PetRow | null = null
   if (editId && !isPlaywrightE2E) {
-    const editWithQr = await db
+    const editBase = await db
       .from('pets')
       .select(
-        'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, qr_code_url, qr_payload'
+        'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes'
       )
       .eq('id', editId)
       .eq('store_id', storeId)
       .single()
 
-    if (editWithQr.error && editWithQr.error.message.includes('qr_code_url')) {
-      const editBase = await db
-        .from('pets')
-        .select(
-          'id, name, customer_id, breed, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes'
-        )
-        .eq('id', editId)
-        .eq('store_id', storeId)
-        .single()
-      editPetData = editBase.data
-        ? {
-            ...editBase.data,
-            qr_code_url: null,
-            qr_payload: null,
-          }
-        : null
-    } else {
-      editPetData = (editWithQr.data as PetRow | null) ?? null
-    }
+    editPetData = (editBase.data as PetRow | null) ?? null
   }
   if (editId && isPlaywrightE2E) {
     editPetData = (petsPageFixtures.pets.find((pet) => pet.id === editId) as PetRow | undefined) ?? null
@@ -179,10 +141,6 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                     className="rounded border p-3 text-sm text-gray-700"
                     data-testid={`pet-row-${pet.id}`}
                   >
-                    {(() => {
-                      const qrDisplayUrl = resolvePetQrDisplayUrl(pet)
-                      return (
-                        <>
                     <p className="font-semibold text-gray-900">{pet.name}</p>
                     <p>飼い主: {getPetRelatedValue(pet.customers, 'full_name')}</p>
                     <p>犬種: {formatPetFallback(pet.breed)}</p>
@@ -192,9 +150,6 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                     <p>ワクチン: {formatPetFallback(pet.vaccine_date)}</p>
                     <p>持病: {formatPetList(pet.chronic_diseases)}</p>
                     <p>注意事項: {formatPetFallback(pet.notes)}</p>
-                    <p>
-                      QR: {qrDisplayUrl ? <a href={qrDisplayUrl} className="text-blue-600 underline" target="_blank" rel="noreferrer">表示</a> : '未生成'}
-                    </p>
                     <div className="mt-2 flex items-center gap-2">
                       <Link href={`/pets?tab=list&edit=${pet.id}`} className="text-blue-600 text-sm">
                         編集
@@ -206,9 +161,6 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                         </Button>
                       </form>
                     </div>
-                        </>
-                      )
-                    })()}
                   </article>
                 ))}
               </div>
@@ -226,7 +178,6 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                       <th className="py-2 px-2">ワクチン</th>
                       <th className="py-2 px-2">持病</th>
                       <th className="py-2 px-2">注意事項</th>
-                      <th className="py-2 px-2">QR</th>
                       <th className="py-2 px-2">操作</th>
                     </tr>
                   </thead>
@@ -237,10 +188,6 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                         className="text-gray-700"
                         data-testid={`pet-row-${pet.id}`}
                       >
-                        {(() => {
-                          const qrDisplayUrl = resolvePetQrDisplayUrl(pet)
-                          return (
-                            <>
                         <td className="py-3 px-2 font-medium text-gray-900">{pet.name}</td>
                         <td className="py-3 px-2">{getPetRelatedValue(pet.customers, 'full_name')}</td>
                         <td className="py-3 px-2">{formatPetFallback(pet.breed)}</td>
@@ -250,20 +197,6 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                         <td className="py-3 px-2">{formatPetFallback(pet.vaccine_date)}</td>
                         <td className="py-3 px-2">{formatPetList(pet.chronic_diseases)}</td>
                         <td className="py-3 px-2">{formatPetFallback(pet.notes)}</td>
-                        <td className="py-3 px-2">
-                          {qrDisplayUrl ? (
-                            <a
-                              href={qrDisplayUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-blue-600 underline"
-                            >
-                              QR表示
-                            </a>
-                          ) : (
-                            '未生成'
-                          )}
-                        </td>
                         <td className="py-3 px-2">
                           <div className="flex items-center gap-2">
                             <Link
@@ -280,9 +213,6 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                             </form>
                           </div>
                         </td>
-                            </>
-                          )
-                        })()}
                       </tr>
                     ))}
                   </tbody>

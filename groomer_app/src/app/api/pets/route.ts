@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { insertAuditLogBestEffort } from '@/lib/audit-logs'
 import { createStoreScopedClient } from '@/lib/supabase/store'
-import { buildPetQrProfile } from '@/lib/qr/pet-profile'
 
 function parseList(value: string | string[] | null | undefined) {
   if (!value) return null
@@ -21,7 +20,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('pets')
     .select(
-      'id, name, customer_id, breed, coat_volume, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, qr_code_url, qr_payload, customers(full_name)'
+      'id, name, customer_id, breed, coat_volume, gender, date_of_birth, weight, vaccine_date, chronic_diseases, notes, customers(full_name)'
     )
     .eq('store_id', storeId)
     .order('created_at', { ascending: false })
@@ -108,7 +107,7 @@ export async function POST(request: Request) {
 
   const { data: customerInStore } = await supabase
     .from('customers')
-    .select('id, full_name, phone_number')
+    .select('id')
     .eq('id', customerId)
     .eq('store_id', storeId)
     .maybeSingle()
@@ -128,22 +127,6 @@ export async function POST(request: Request) {
   }
 
   if (isJson) {
-    const qr = buildPetQrProfile({
-      customerId: createdPet.customer_id,
-      customerName: customerInStore.full_name ?? '未登録顧客',
-      phoneNumber: customerInStore.phone_number ?? '',
-      petId: createdPet.id,
-      petName: createdPet.name ?? '未登録ペット',
-      petBreed: payload.breed ?? '',
-    })
-    await supabase
-      .from('pets')
-      .update({
-        qr_code_url: qr.qrImageUrl,
-        qr_payload: qr.qrPayload,
-      })
-      .eq('id', createdPet.id)
-      .eq('store_id', storeId)
     await insertAuditLogBestEffort({
       supabase,
       storeId,
@@ -158,23 +141,6 @@ export async function POST(request: Request) {
     })
     return NextResponse.json(createdPet)
   }
-
-  const qr = buildPetQrProfile({
-    customerId: createdPet.customer_id,
-    customerName: customerInStore.full_name ?? '未登録顧客',
-    phoneNumber: customerInStore.phone_number ?? '',
-    petId: createdPet.id,
-    petName: createdPet.name ?? '未登録ペット',
-    petBreed: payload.breed ?? '',
-  })
-  await supabase
-    .from('pets')
-    .update({
-      qr_code_url: qr.qrImageUrl,
-      qr_payload: qr.qrPayload,
-    })
-    .eq('id', createdPet.id)
-    .eq('store_id', storeId)
 
   await insertAuditLogBestEffort({
     supabase,

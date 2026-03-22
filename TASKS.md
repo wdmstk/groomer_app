@@ -109,6 +109,21 @@ Completed tasks should be marked:
 
 # TASKS
 
+## ペット管理からQR機能を完全削除
+- Task ID: `TASK-403`
+- ブランチ: `fix/TASK-403-remove-pet-qr-feature`
+- ステータス: `done`
+- 概要: ペット一覧に残っているQR表示を削除し、ペットQR向けのAPI/DB項目を不要化する
+- 影響範囲: ペット管理UI / pets API / Supabaseマイグレーション / テスト
+- リスク: 旧QR列参照コードの取り残しによる一覧取得エラー、公開予約QR照合への影響
+- 完了条件: ペット一覧にQR列/リンクが表示されず、`qr_code_url` `qr_payload` 依存が除去され、不要DB項目を削除するSQLが追加されている
+- 進捗:
+  - [x] ブランチ作成・タスク登録
+  - [x] 影響箇所調査（UI/API/DB）
+  - [x] 実装
+  - [x] テスト/lint実行
+  - [ ] PR作成（必要時）
+
 ## appointments更新後にPOSTが/appointmentsへ転送される不具合修正
 - Task ID: `TASK-402`
 - ブランチ: `fix/TASK-402-appointments-post-redirect`
