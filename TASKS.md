@@ -126,7 +126,8 @@ Completed tasks should be marked:
 
 ## 統合会計（Invoice方式）
 - Task ID: `TASK-401`
-- ブランチ: `feat/TASK-401-unified-invoice-checkout`
+- ブランチ: `fix/TASK-401-unified-checkout-playwright-recording`（録画完走対応）
+- ステータス: `in_progress`
 - 概要: 同一タイミングのトリミング予約とホテル滞在を1回の会計で確定できる `invoice` 基盤を導入する
 - 影響範囲: DB / API / UI / 領収書 / 既存会計連携
 - リスク: 既存 `payments` の互換性、二重計上、来店履歴自動作成の整合性
@@ -145,6 +146,12 @@ Completed tasks should be marked:
   - [x] Invoice 作成・更新ロジックのユニットテスト追加（invoices.create-core / invoices.detail-core）
   - [x] 会計UI改修（統合請求を主導線、予約単位会計をレガシー導線化）
   - [x] テスト（invoice系ユニットテスト4本を追加・実行）
+  - [x] マニュアル更新（会計管理/ホテル管理に統合会計フローを追記）
+  - [x] 運用手順書追加（docs/invoice-unified-checkout-user-manual.md）
+  - [x] Playwright録画シナリオ作成（e2e/unified-invoice-walkthrough.spec.ts）
+  - [x] Playwright E2Eログイン回避の調整（proxyエントリ追加）
+  - [x] Playwright録画実行（`e2e/unified-invoice-walkthrough.spec.ts` 実行、動画出力あり）
+  - [x] Playwright録画完走（`--retries=0` で 1 passed を確認）
   - [ ] PR作成
 
 ## 事前決済

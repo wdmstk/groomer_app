@@ -227,7 +227,10 @@ async function shouldBlockBySubscription(req: NextRequest, userId: string) {
 }
 
 export async function proxy(req: NextRequest) {
-  if (process.env.PLAYWRIGHT_E2E === '1') {
+  const isPlaywrightE2E =
+    process.env.PLAYWRIGHT_E2E === '1' || process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E === '1'
+
+  if (isPlaywrightE2E) {
     return NextResponse.next({
       request: {
         headers: req.headers,
