@@ -109,6 +109,29 @@ Completed tasks should be marked:
 
 # TASKS
 
+## 統合会計（Invoice方式）
+- Task ID: `TASK-401`
+- ブランチ: `feat/TASK-401-unified-invoice-checkout`
+- 概要: 同一タイミングのトリミング予約とホテル滞在を1回の会計で確定できる `invoice` 基盤を導入する
+- 影響範囲: DB / API / UI / 領収書 / 既存会計連携
+- リスク: 既存 `payments` の互換性、二重計上、来店履歴自動作成の整合性
+- 完了条件: `invoices` / `invoice_lines` 導入、既存会計の `invoice_id` 連携、統合会計作成APIと画面導線、テスト整備が完了している
+- 進捗:
+  - [x] ブランチ作成・タスク登録
+  - [x] 方式決定（invoice新設）
+  - [x] DBマイグレーション追加
+  - [x] API契約定義
+  - [x] Invoice API（作成/取得/更新）初期実装
+  - [x] ホテル詳細から統合会計作成ボタンを追加（invoice作成呼び出し）
+  - [x] 会計画面に統合請求パネルを追加（invoice一覧/確定）
+  - [x] Invoice 支払い確定API（/api/invoices/[invoice_id]/pay）を追加
+  - [x] Invoice 共通ロジックのユニットテスト追加（invoices.shared.test.ts）
+  - [x] Invoice 支払い判定ロジックのユニットテスト追加（invoices.pay-core.test.ts）
+  - [x] Invoice 作成・更新ロジックのユニットテスト追加（invoices.create-core / invoices.detail-core）
+  - [x] 会計UI改修（統合請求を主導線、予約単位会計をレガシー導線化）
+  - [x] テスト（invoice系ユニットテスト4本を追加・実行）
+  - [ ] PR作成
+
 ## 事前決済
 - ブランチ: `feature/prepayment`
 - 概要: 予約時に事前決済またはカード仮押さえを選択できるようにし、無断キャンセル請求とキャンセルポリシー管理を追加する

@@ -10,6 +10,7 @@ import {
 import { paymentsPageFixtures } from '@/lib/e2e/payments-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { PaymentCreateModal } from '@/components/payments/PaymentCreateModal'
+import { InvoiceCheckoutPanel } from '@/components/payments/InvoiceCheckoutPanel'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -57,6 +58,7 @@ type PaymentsPageProps = {
     modal?: string
     edit?: string
     appointment_id?: string
+    mode?: string
   }>
 }
 
@@ -66,8 +68,9 @@ const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 export default async function PaymentsPage({ searchParams }: PaymentsPageProps) {
   const resolvedSearchParams = await searchParams
   const activeTab = 'list'
+  const isLegacyMode = resolvedSearchParams?.mode === 'legacy' || Boolean(resolvedSearchParams?.appointment_id)
   const isCreateModalOpen =
-    resolvedSearchParams?.modal === 'create' || resolvedSearchParams?.tab === 'new'
+    resolvedSearchParams?.modal === 'create' && isLegacyMode
   const editId = resolvedSearchParams?.edit
   const prefillAppointmentId = resolvedSearchParams?.appointment_id ?? ''
   const { supabase, storeId } = isPlaywrightE2E
@@ -190,7 +193,12 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
     <section className="space-y-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-gray-900">会計管理</h1>
+        <p className="text-sm text-gray-600">
+          統合請求（トリミング + ホテル）を優先して会計確定できます。予約単位の会計はレガシー導線から利用してください。
+        </p>
       </div>
+
+      <InvoiceCheckoutPanel customerNameById={customerNameById} />
 
       <div className="flex items-center gap-4 border-b">
         <Link
@@ -210,10 +218,10 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
             <div className="flex items-center gap-3">
               <p className="text-sm text-gray-500">全 {paymentList.length} 件</p>
               <Link
-                href="/payments?tab=list&modal=create"
+                href="/payments?tab=list&modal=create&mode=legacy"
                 className="inline-flex items-center rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
               >
-                新規登録
+                予約単位会計（レガシー）
               </Link>
             </div>
           </div>
@@ -344,7 +352,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
           paymentMethodOptions={paymentMethodOptions}
           appointmentOptions={selectableAppointmentOptions}
           customerNameById={customerNameById}
-          closeRedirectTo={modalCloseRedirect}
+          closeRedirectTo={`${modalCloseRedirect}&mode=legacy`}
         />
       ) : null}
     </section>
