@@ -49,6 +49,7 @@ type StayRow = {
   stay_code: string
   status: string
   customer_id: string | null
+  appointment_id: string | null
   pet_id: string
   planned_check_in_at: string
   planned_check_out_at: string
@@ -135,7 +136,7 @@ export default async function HotelPage() {
         await supabase!
           .from('hotel_stays')
           .select(
-            'id, stay_code, status, customer_id, pet_id, planned_check_in_at, planned_check_out_at, actual_check_in_at, actual_check_out_at, nights, pickup_required, dropoff_required, vaccine_expires_on, total_amount_jpy, notes'
+            'id, stay_code, status, customer_id, appointment_id, pet_id, planned_check_in_at, planned_check_out_at, actual_check_in_at, actual_check_out_at, nights, pickup_required, dropoff_required, vaccine_expires_on, total_amount_jpy, notes'
           )
           .eq('store_id', storeId)
           .order('planned_check_in_at', { ascending: false })

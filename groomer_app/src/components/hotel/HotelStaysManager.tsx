@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useDismissibleModal } from '@/hooks/useDismissibleModal'
@@ -30,6 +31,7 @@ type StayRow = {
   stay_code: string
   status: string
   customer_id: string | null
+  appointment_id?: string | null
   pet_id: string
   planned_check_in_at: string
   planned_check_out_at: string
@@ -383,6 +385,8 @@ export function HotelStaysManager({
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
+  const [creatingInvoice, setCreatingInvoice] = useState(false)
+  const [invoiceMessage, setInvoiceMessage] = useState<string | null>(null)
   const [savingMenuItem, setSavingMenuItem] = useState(false)
   const [deletingMenuItemId, setDeletingMenuItemId] = useState<string | null>(null)
   const [seasonSwitchingMode, setSeasonSwitchingMode] = useState<'normal' | 'high_season' | null>(null)
@@ -710,6 +714,39 @@ export function HotelStaysManager({
       setMessage(error instanceof Error ? error.message : '削除に失敗しました。')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function createUnifiedInvoiceFromSelectedStay() {
+    if (!selectedStay) return
+    if (!selectedStay.customer_id) {
+      setError('顧客情報が未設定の宿泊予約は統合会計を作成できません。')
+      return
+    }
+
+    setCreatingInvoice(true)
+    setError(null)
+    setInvoiceMessage(null)
+    try {
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_id: selectedStay.customer_id,
+          appointment_ids: selectedStay.appointment_id ? [selectedStay.appointment_id] : [],
+          hotel_stay_ids: [selectedStay.id],
+          notes: `ホテル統合会計: ${selectedStay.stay_code}`,
+        }),
+      })
+      const body = (await response.json().catch(() => null)) as { invoice?: { id?: string }; message?: string } | null
+      if (!response.ok || !body?.invoice?.id) {
+        throw new Error(body?.message ?? '統合会計の作成に失敗しました。')
+      }
+      setInvoiceMessage(`統合会計を作成しました（請求ID: ${body.invoice.id}）。`)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '統合会計の作成に失敗しました。')
+    } finally {
+      setCreatingInvoice(false)
     }
   }
 
@@ -1368,10 +1405,23 @@ export function HotelStaysManager({
                     {statusLabel(selectedStay.status)}
                   </p>
                 </div>
-                <Button type="button" onClick={() => openEdit(selectedStay.id)}>
-                  この予約を編集
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" onClick={() => void createUnifiedInvoiceFromSelectedStay()} disabled={creatingInvoice}>
+                    {creatingInvoice ? '統合会計を作成中...' : '統合会計を作成'}
+                  </Button>
+                  <Button type="button" onClick={() => openEdit(selectedStay.id)}>
+                    この予約を編集
+                  </Button>
+                </div>
               </div>
+              {invoiceMessage ? (
+                <div className="mt-3 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+                  <p>{invoiceMessage}</p>
+                  <Link href="/payments?tab=list" className="mt-1 inline-block text-xs font-semibold text-emerald-700 underline">
+                    会計管理を開く
+                  </Link>
+                </div>
+              ) : null}
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="rounded border border-gray-200 p-4 text-sm text-gray-700">
                   <p>予定チェックイン: {formatDateTime(selectedStay.planned_check_in_at)}</p>
