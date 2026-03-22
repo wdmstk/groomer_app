@@ -41,7 +41,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   const currentStatus = normalizeStatus(appointment.status)
   if (currentStatus === '会計待ち') {
-    return NextResponse.redirect(new URL(redirectTo ?? '/ops/today', request.url))
+    return NextResponse.redirect(new URL(redirectTo ?? '/ops/today', request.url), { status: 303 })
   }
   if (currentStatus !== '完了') {
     return NextResponse.json({ message: 'このステータスは差し戻しできません。' }, { status: 400 })
@@ -82,5 +82,5 @@ export async function POST(request: Request, { params }: RouteParams) {
     },
   })
 
-  return NextResponse.redirect(new URL(redirectTo ?? '/ops/today', request.url))
+  return NextResponse.redirect(new URL(redirectTo ?? '/ops/today', request.url), { status: 303 })
 }

@@ -62,7 +62,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   const currentStatus = normalizeStatus(appointment.status)
   if (currentStatus === nextStatus) {
-    return NextResponse.redirect(new URL(redirectTo ?? resolveRedirectPath(redirectTab), request.url))
+    return NextResponse.redirect(new URL(redirectTo ?? resolveRedirectPath(redirectTab), request.url), { status: 303 })
   }
   const expectedNext = statusTransitionMap[currentStatus]
   if (!expectedNext || nextStatus !== expectedNext) {
@@ -107,5 +107,5 @@ export async function POST(request: Request, { params }: RouteParams) {
     },
   })
 
-  return NextResponse.redirect(new URL(redirectTo ?? resolveRedirectPath(redirectTab), request.url))
+  return NextResponse.redirect(new URL(redirectTo ?? resolveRedirectPath(redirectTab), request.url), { status: 303 })
 }

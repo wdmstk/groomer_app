@@ -132,7 +132,7 @@ export async function POST(request: Request) {
       })
     }
 
-    return NextResponse.redirect(new URL('/appointments', request.url))
+    return NextResponse.redirect(new URL('/appointments', request.url), { status: 303 })
   } catch (error) {
     if (error instanceof AppointmentServiceError) {
       const body =
