@@ -120,6 +120,8 @@ const hqNavSections: NavSection[] = [
       { href: '/hq', label: '本部ダッシュボード', ownerOrAdminOnly: true },
       { href: '/hq/menu-templates', label: 'テンプレ配信リクエスト', ownerOnly: true },
       { href: '/hq/menu-template-deliveries', label: 'テンプレ配信承認', ownerOrAdminOnly: true },
+      { href: '/hq/hotel-menu-templates', label: 'ホテルテンプレ配信リクエスト', ownerOnly: true },
+      { href: '/hq/hotel-menu-template-deliveries', label: 'ホテルテンプレ配信承認', ownerOrAdminOnly: true },
       { href: '/hq/manual', label: '本部管理マニュアル', ownerOrAdminOnly: true },
     ],
   },
