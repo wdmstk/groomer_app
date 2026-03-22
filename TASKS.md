@@ -109,6 +109,16 @@ Completed tasks should be marked:
 
 # TASKS
 
+## devサブスク保存後404修正（2026-03-23）
+- Task ID: `TASK-406`
+- ブランチ: `fix/TASK-406-dev-subscription-save-404`
+- ステータス: `done`
+- 概要: `/dev/subscriptions` の保存後に発生する404を解消し、POST後に確実に一覧へ戻るようにする
+- 進捗:
+  - [x] 原因調査（保存APIのリダイレクト方式を確認）
+  - [x] API修正（POST後の303リダイレクト）
+  - [x] 回帰テスト追加・実行
+
 ## タスク/ブランチ運用ガード追加とStorage設定導線整理
 - Task ID: `TASK-405`
 - ブランチ: `chore/TASK-405-task-branch-guard-storage-cleanup`

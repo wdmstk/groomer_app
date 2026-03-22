@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { requireDeveloperAdmin } from '@/lib/auth/developer-admin'
 import { canPurchaseOptionsByPlan, normalizePlanCode } from '@/lib/subscription-plan'
 import { parseAiPlanCode } from '@/lib/billing/pricing'
+import { buildDevSubscriptionsRedirectUrl } from '@/lib/dev-subscriptions/redirect'
 
 type RouteParams = {
   params: Promise<{
@@ -46,10 +47,9 @@ function normalizeInt(value: string, fallback = 0) {
   return parsed
 }
 
-function redirectWithMessage(request: Request, message: string) {
-  const url = new URL('/dev/subscriptions', request.url)
-  url.searchParams.set('message', message)
-  return NextResponse.redirect(url)
+export function redirectWithMessage(request: Request, message: string) {
+  const url = buildDevSubscriptionsRedirectUrl(request.url, message)
+  return NextResponse.redirect(url, { status: 303 })
 }
 
 export async function POST(request: Request, { params }: RouteParams) {
