@@ -9,24 +9,6 @@ export function getPetRelatedValue<T extends RelatedRecord>(
   return relation[key] ?? '未登録'
 }
 
-export function resolvePetQrDisplayUrl(pet: { qr_code_url: string | null; qr_payload: string | null }) {
-  if (!pet.qr_payload) return pet.qr_code_url
-
-  try {
-    const parsed = JSON.parse(pet.qr_payload) as {
-      customer_name?: string
-      pet_name?: string
-    }
-    const customerName = parsed.customer_name ?? ''
-    const petName = parsed.pet_name ?? ''
-    return `/api/qr/pet-profile?customer_name=${encodeURIComponent(
-      customerName
-    )}&pet_name=${encodeURIComponent(petName)}&payload=${encodeURIComponent(pet.qr_payload)}&v=2`
-  } catch {
-    return pet.qr_code_url
-  }
-}
-
 export function formatPetWeight(weight: number | null | undefined) {
   return weight === null || weight === undefined ? '未登録' : `${weight} kg`
 }

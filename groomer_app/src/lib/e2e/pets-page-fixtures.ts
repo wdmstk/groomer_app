@@ -16,11 +16,6 @@ export const petsPageFixtures = {
       vaccine_date: '2026-02-14',
       chronic_diseases: ['心臓', 'アレルギー'],
       notes: '怖がり。顔周りは短時間で。',
-      qr_code_url: null,
-      qr_payload: JSON.stringify({
-        customer_name: '山田 花子',
-        pet_name: 'こむぎ',
-      }),
       customers: [{ full_name: '山田 花子' }],
     },
     {
@@ -34,8 +29,6 @@ export const petsPageFixtures = {
       vaccine_date: null,
       chronic_diseases: null,
       notes: null,
-      qr_code_url: null,
-      qr_payload: null,
       customers: null,
     },
   ],
