@@ -210,4 +210,30 @@ Rules:
 
 ---
 
+# 14. Task And Branch Management (Mandatory)
+
+For all implementation and investigation work, agents must manage progress with `TASKS.md`
+and use an appropriate working branch.
+
+Before starting work:
+* Confirm current branch is not `main`/`master`
+* Create or switch to a task branch
+* Register the task in `TASKS.md` with status `todo` or `in_progress`
+
+During work:
+* Keep `TASKS.md` updated as scope or status changes
+* Reference the task ID in commits and PR descriptions
+
+Before finishing:
+* Update `TASKS.md` status to `done` (or clearly note blockers)
+* Verify the branch name follows this format:
+    `<type>/<task-id>-<short-description>`
+  Examples:
+    `feat/TASK-102-ai-video-tagging`
+    `fix/TASK-245-billing-rounding-error`
+
+Agents must not implement or investigate work without both `TASKS.md` tracking and branch-based management.
+
+---
+
 # End of AGENTS.md

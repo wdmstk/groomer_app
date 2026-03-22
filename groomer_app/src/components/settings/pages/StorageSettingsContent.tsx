@@ -1,6 +1,5 @@
 import { Card } from '@/components/ui/Card'
 import { requireOwnerStoreMembership } from '@/lib/auth/store-owner'
-import { StorageAddonCheckoutPanel } from '@/components/billing/StorageAddonCheckoutPanel'
 import { settingsPageFixtures } from '@/lib/e2e/settings-page-fixtures'
 import {
   fetchStoreStorageQuotaState,
@@ -143,16 +142,6 @@ export default async function StorageSettingsPage({ searchParams }: PageProps) {
             容量設定を保存
           </button>
         </form>
-      </Card>
-
-      <Card>
-        <h2 className="text-lg font-semibold text-gray-900">容量追加課金（自動反映）</h2>
-        <p className="mt-2 text-xs text-gray-600">
-          10GBあたり300円/月で容量を追加できます。決済完了後、Webhookで容量が自動反映されます。
-        </p>
-        <div className="mt-4">
-          <StorageAddonCheckoutPanel />
-        </div>
       </Card>
     </section>
   )

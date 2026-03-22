@@ -109,6 +109,20 @@ Completed tasks should be marked:
 
 # TASKS
 
+## タスク/ブランチ運用ガード追加とStorage設定導線整理
+- Task ID: `TASK-405`
+- ブランチ: `chore/TASK-405-task-branch-guard-storage-cleanup`
+- ステータス: `done`
+- 概要: CIでタスク/ブランチ命名と`TASKS.md`同時更新を強制し、Storage設定画面から不要になった容量追加課金パネル導線を整理する
+- 影響範囲: CI workflow / AGENTS.md / Storage設定UI / TASKS
+- リスク: 既存PRで新ガードによりチェック失敗が増える可能性、Storage設定画面の導線変更による運用混乱
+- 完了条件: `task-and-branch-guard` workflowが追加され、`AGENTS.md`の運用ルールが反映され、Storage設定画面の不要導線が削除される
+- 進捗:
+  - [x] ブランチ作成・タスク登録
+  - [x] 差分整理（AGENTS / workflow / Storage設定）
+  - [x] テスト/lint 実行
+  - [x] コミット・push・mainマージ
+
 ## HP本部運用にホテルメニュー向けテンプレ配信（リクエスト/承認）を追加
 - Task ID: `TASK-404`
 - ブランチ: `feat/TASK-404-hq-hotel-template-menu-gate`
