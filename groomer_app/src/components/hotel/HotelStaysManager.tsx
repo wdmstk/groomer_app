@@ -720,12 +720,12 @@ export function HotelStaysManager({
   async function createUnifiedInvoiceFromSelectedStay() {
     if (!selectedStay) return
     if (!selectedStay.customer_id) {
-      setError('顧客情報が未設定の宿泊予約は統合会計を作成できません。')
+      setMessage('顧客情報が未設定の宿泊予約は統合会計を作成できません。')
       return
     }
 
     setCreatingInvoice(true)
-    setError(null)
+    setMessage('')
     setInvoiceMessage(null)
     try {
       const response = await fetch('/api/invoices', {
@@ -744,7 +744,7 @@ export function HotelStaysManager({
       }
       setInvoiceMessage(`統合会計を作成しました（請求ID: ${body.invoice.id}）。`)
     } catch (error) {
-      setError(error instanceof Error ? error.message : '統合会計の作成に失敗しました。')
+      setMessage(error instanceof Error ? error.message : '統合会計の作成に失敗しました。')
     } finally {
       setCreatingInvoice(false)
     }
