@@ -133,12 +133,12 @@ Completed tasks should be marked:
 8. `TASK-401` 統合会計（Invoice方式）
 9. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
 10. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
+11. `TASK-POS-003` POS会計画面（MVP）実装（`TASK-408`配下）
 
 ### todo
-1. `TASK-POS-003` POS会計画面（MVP）実装（`TASK-408`配下）
-2. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
-3. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
-4. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
+1. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
+2. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
+3. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
 
 ### blocked
 1. `TASK-413` AIタグ解析ジョブのRLS修正（Supabase SQL Editor反映待ち）
@@ -1025,7 +1025,7 @@ Completed tasks should be marked:
 
 #### TASK-POS-003 POS会計画面（MVP）実装
 - ブランチ: `feat/TASK-POS-003-pos-checkout-ui`
-- ステータス: `todo`
+- ステータス: `in_progress`
 - 目的: サービス＋物販を1画面で会計確定できるPOS UIを実装する
 - スコープ:
   - POSカート（明細追加/数量変更/値引き）
@@ -1039,6 +1039,12 @@ Completed tasks should be marked:
 - テスト観点:
   - 単体: 税・割引・合計計算
   - E2E: 伝票作成→会計確定→領収書遷移
+- 進捗:
+  - [x] `/payments` に POS会計（β）パネルを追加
+  - [x] POSカート合計計算ロジックを `src/lib/pos/checkout.ts` に追加
+  - [x] 単体テスト追加（`tests/pos.checkout.test.ts`）
+  - [ ] 会計確定API（`/api/pos/orders/:order_id/confirm`）接続
+  - [ ] 確定後の領収書遷移を本実装
 
 #### TASK-POS-004 在庫連動（自動出庫/返品戻し）実装
 - ブランチ: `feat/TASK-POS-004-pos-inventory-link`
