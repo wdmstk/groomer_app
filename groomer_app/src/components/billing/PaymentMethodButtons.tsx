@@ -29,6 +29,7 @@ export function PaymentMethodButtons({
   aiPlanCode = 'none',
   ownerActiveStoreCount = 1,
 }: PaymentMethodButtonsProps) {
+  const skipApplicationValidation = process.env.NODE_ENV !== 'production'
   const [isLoading, setIsLoading] = useState<Provider | null>(null)
   const [error, setError] = useState('')
   const [legalAgreed, setLegalAgreed] = useState(false)
@@ -49,7 +50,7 @@ export function PaymentMethodButtons({
 
   async function startCheckout(provider: Provider) {
     setError('')
-    if (!legalAgreed) {
+    if (!skipApplicationValidation && !legalAgreed) {
       setError('決済前に、利用規約・プライバシーポリシー・特定商取引法表記への同意が必要です。')
       return
     }
@@ -121,7 +122,7 @@ export function PaymentMethodButtons({
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
-            disabled={isLoading !== null || !legalAgreed}
+            disabled={isLoading !== null || (!skipApplicationValidation && !legalAgreed)}
             onClick={() => startCheckout('stripe')}
             className="inline-flex items-center justify-center rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
           >
@@ -129,7 +130,7 @@ export function PaymentMethodButtons({
           </button>
           <button
             type="button"
-            disabled={isLoading !== null || !legalAgreed}
+            disabled={isLoading !== null || (!skipApplicationValidation && !legalAgreed)}
             onClick={() => startCheckout('komoju')}
             className="inline-flex items-center justify-center rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
           >

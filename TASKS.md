@@ -109,6 +109,22 @@ Completed tasks should be marked:
 
 # TASKS
 
+## 開発環境で課金なしのプラン/オプション切替を可能にする
+- Task ID: `TASK-407`
+- ブランチ: `feat/TASK-407-dev-billing-no-payment-switch`
+- ステータス: `done`
+- 概要: 開発環境では実課金を発生させず、ownerが決済管理画面からプラン/オプションを即時切替できるようにする
+- 影響範囲: Billing API（checkout/options）
+- リスク: 本番環境へ誤適用すると課金ゲートがバイパスされるため、開発環境限定条件を厳格化する
+- 完了条件: 開発環境ではcheckout未実行で切替が反映され、本番環境の課金フローは従来通り維持される
+- 進捗:
+  - [x] ブランチ作成・タスク登録
+  - [x] 分岐条件と反映処理の実装
+  - [x] テスト実行（対象テスト + lint）
+  - [x] `/dev/subscriptions` 更新時の requested/effective 同期不備を修正
+  - [x] ライトプラン時にオプション/AI指定が黙って破棄される不具合を修正（明示エラー化）
+  - [x] `/dev/subscriptions` のcheckbox受信不備を修正（hidden=false優先読取の解消）
+
 ## devサブスク保存後404修正（2026-03-23）
 - Task ID: `TASK-406`
 - ブランチ: `fix/TASK-406-dev-subscription-save-404`

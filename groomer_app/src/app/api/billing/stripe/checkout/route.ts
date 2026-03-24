@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createProviderCustomer, createStripeCheckoutSession } from '@/lib/billing/providers'
 import {
+  applyRequestedOptionEntitlements,
   countActiveOwnerStores,
   createBillingCheckoutSessionLog,
   findBillingCustomer,
   findLatestBillingSubscriptionByStoreAndProvider,
   findReusableCheckoutSession,
+  updateStoreSubscriptionStatus,
   upsertBillingCustomer,
   upsertBillingSubscription,
 } from '@/lib/billing/db'
@@ -20,6 +22,7 @@ import { canPurchaseOptionsByPlan } from '@/lib/subscription-plan'
 import { asObject } from '@/lib/object-utils'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/database.types'
+import { isDevBillingBypassEnabled } from '@/lib/billing/dev-bypass'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -54,22 +57,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: guard.message }, { status: guard.status })
     }
     const { storeId, user } = guard
+    const isDevBypassEnabled = isDevBillingBypassEnabled()
     const idempotencyKey =
       request.headers.get('x-idempotency-key') ??
       `${new Date().toISOString().slice(0, 16)}:${storeId}:${user.id}:stripe`
-
-    const reusable = await findReusableCheckoutSession({
-      storeId,
-      userId: user.id,
-      provider: 'stripe',
-    })
-    if (reusable?.checkout_url) {
-      return NextResponse.json({
-        checkout_url: reusable.checkout_url,
-        session_id: reusable.checkout_session_id,
-        reused: true,
-      })
-    }
 
     const bodyRaw: unknown = await request.json().catch(() => null)
     const body = asObject(bodyRaw)
@@ -106,6 +97,36 @@ export async function POST(request: Request) {
       ownerActiveStoreCount,
       options
     )
+    const origin = new URL(request.url).origin
+    if (isDevBypassEnabled) {
+      await updateStoreSubscriptionStatus({
+        storeId,
+        status: 'active',
+        provider: 'stripe',
+        planCode,
+        billingCycle,
+        amountJpy,
+        source: 'manual',
+        reason: 'dev_no_payment_checkout_bypass',
+      })
+      await applyRequestedOptionEntitlements({ storeId })
+      return NextResponse.json({
+        checkout_url: `${origin}/billing?message=${encodeURIComponent('開発環境のため決済をスキップして契約内容を反映しました。')}`,
+        session_id: 'dev-bypass',
+      })
+    }
+    const reusable = await findReusableCheckoutSession({
+      storeId,
+      userId: user.id,
+      provider: 'stripe',
+    })
+    if (reusable?.checkout_url) {
+      return NextResponse.json({
+        checkout_url: reusable.checkout_url,
+        session_id: reusable.checkout_session_id,
+        reused: true,
+      })
+    }
     const latestSubscription = await findLatestBillingSubscriptionByStoreAndProvider({
       storeId,
       provider: 'stripe',
@@ -122,7 +143,6 @@ export async function POST(request: Request) {
         { status: 409 }
       )
     }
-    const origin = new URL(request.url).origin
     const successUrl =
       returnUrlRaw.trim() || `${origin}/billing/success?provider=stripe&session_id={CHECKOUT_SESSION_ID}`
     const cancelUrl = `${origin}/billing-required`
