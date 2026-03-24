@@ -109,6 +109,56 @@ Completed tasks should be marked:
 
 # TASKS
 
+## TASK運用ルール（2026-03-24）
+- `Task ID` を持つタスクのみを「正式タスク」として扱う（形式: `TASK-xxx` または `TASK-<prefix>-xxx`）。
+- 正式タスクの表示順は以下で固定する。
+  - `in_progress`
+  - `todo`
+  - `blocked`
+  - `done`
+- 同一ステータス内は `Task ID` の降順（新しい番号が上）で並べる。
+- `Task ID` 未採番のメモ/旧タスクは `Archive` セクションへ置き、正式タスクの並びに混在させない。
+- 新規タスク追加時は、必ずこのルールで `TASK INDEX` と該当タスク本文の両方を更新する。
+
+## TASK INDEX（正式タスクの正規順序）
+
+### in_progress
+1. `TASK-417` AI動画段階実装（2026-03-21）
+2. `TASK-414` 顧客LTV分析
+3. `TASK-412` AIタグ活用導線の改善
+4. `TASK-411` 写真カルテのAIタグ付け
+5. `TASK-410` LINEの自動マーケ
+6. `TASK-409` 事前決済
+7. `TASK-408` POS機能導入計画（要件定義〜実装）
+8. `TASK-401` 統合会計（Invoice方式）
+9. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
+10. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
+
+### todo
+1. `TASK-POS-003` POS会計画面（MVP）実装（`TASK-408`配下）
+2. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
+3. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
+4. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
+
+### blocked
+1. `TASK-413` AIタグ解析ジョブのRLS修正（Supabase SQL Editor反映待ち）
+
+### done
+1. `TASK-420` dev課金操作の安全運用化（2026-03-22）
+2. `TASK-419` 法務・規約コンプライアンス是正（2026-03-22）
+3. `TASK-418` オプション課金確定ゲート整備（2026-03-22）
+4. `TASK-416` サイドバー改善（2026-03-21）
+5. `TASK-415` 動画カルテ + AIプラン拡張（非破壊導入）
+6. `TASK-407` 開発環境で課金なしのプラン/オプション切替
+7. `TASK-406` devサブスク保存後404修正
+8. `TASK-405` タスク/ブランチ運用ガード追加とStorage設定導線整理
+9. `TASK-404` HP本部運用にホテルメニュー向けテンプレ配信を追加
+10. `TASK-403` ペット管理からQR機能を完全削除
+11. `TASK-402` appointments更新後POST転送不具合修正
+
+## 正式タスク詳細（Task ID採番済み）
+
+
 ## 開発環境で課金なしのプラン/オプション切替を可能にする
 - Task ID: `TASK-407`
 - ブランチ: `feat/TASK-407-dev-billing-no-payment-switch`
@@ -226,7 +276,9 @@ Completed tasks should be marked:
   - [ ] PR作成
 
 ## 事前決済
+- Task ID: `TASK-409`
 - ブランチ: `feature/prepayment`
+- ステータス: `in_progress`
 - 概要: 予約時に事前決済またはカード仮押さえを選択できるようにし、無断キャンセル請求とキャンセルポリシー管理を追加する
 - 影響範囲: API / DB / UI
 - リスク: 予約作成と既存会計フローの二重課金、無断キャンセル時の請求判定、既存予約画面の一覧表示崩れ
@@ -240,7 +292,9 @@ Completed tasks should be marked:
   - [ ] PR作成
 
 ## LINEの自動マーケ
+- Task ID: `TASK-410`
 - ブランチ: `feature/line-auto-marketing`
+- ステータス: `in_progress`
 - 概要: 施術日、犬種、毛量から次回来店推奨日を算出し、既存LINE通知基盤で自動送信する
 - 影響範囲: API / DB / UI
 - リスク: 推奨日ロジックの過剰送信、既存 reminder/followup 通知との重複、テンプレート互換性
@@ -255,7 +309,9 @@ Completed tasks should be marked:
   - [ ] PR作成
 
 ## 写真カルテのAIタグ付け
+- Task ID: `TASK-411`
 - ブランチ: `feature/ai-photo-tags`
+- ステータス: `in_progress`
 - 概要: 写真カルテにAI解析タグを非同期付与し、カルテ画面で確認と編集ができるようにする
 - 影響範囲: API / DB / UI
 - リスク: 推論遅延、タグ誤判定、写真保存フローとの競合、既存カルテ作成UXの劣化
@@ -269,7 +325,9 @@ Completed tasks should be marked:
   - [ ] PR作成
 
 ## AIタグ活用導線の改善
+- Task ID: `TASK-412`
 - ブランチ: `feat/medical-record-ai-tag-usage`
+- ステータス: `in_progress`
 - 概要: カルテ一覧でAIタグをチップ表示し、タグや解析状態で絞り込めるようにして、詳細を開かなくても要確認カルテを見つけやすくする
 - 影響範囲: UI / 一覧導線 / テスト
 - リスク: 一覧の情報量増加、モバイル表示の圧迫、タグ絞り込み条件の分かりにくさ
@@ -281,7 +339,9 @@ Completed tasks should be marked:
   - [ ] PR作成
 
 ## AIタグ解析ジョブのRLS修正
+- Task ID: `TASK-413`
 - ブランチ: `fix/medical-record-ai-tag-jobs-rls`
+- ステータス: `blocked`
 - 概要: AIタグの「AIタグを解析」実行時に `medical_record_ai_tag_jobs` insert が RLS で拒否される問題を解消する
 - 影響範囲: DB(RLS) / AIタグ解析受付API
 - リスク: RLS条件の誤設定による他店舗データアクセス、既存ジョブ更新系への影響
@@ -294,7 +354,9 @@ Completed tasks should be marked:
   - [ ] PR作成
 
 ## 顧客LTV分析
+- Task ID: `TASK-414`
 - ブランチ: `feature/customer-ltv`
+- ステータス: `in_progress`
 - 概要: 既存の visits / payments を集計して年間売上、来店回数、平均単価、オプション利用率、LTVランクを可視化する
 - 影響範囲: API / DB / UI
 - リスク: 売上集計の整合性、会計未確定データの扱い、一覧画面の負荷、店舗スコープ漏れ
@@ -307,6 +369,8 @@ Completed tasks should be marked:
   - [x] UI実装
   - [x] テスト
   - [ ] PR作成
+
+## Archive（調査メモ・過去の運用記録）
 
 ## Issues
 - `main` から4本の専用ブランチを作成済み。実装は依存順の都合で `feature/prepayment` から着手している
@@ -519,6 +583,9 @@ Completed tasks should be marked:
 ---
 
 ## 動画カルテ + AIプラン拡張（非破壊導入）
+- Task ID: `TASK-415`
+- ブランチ: `feature/video-mvp` -> `feature/ai-assist` -> `feature/ai-pro` -> `feature/ai-pro-plus`
+- ステータス: `done`
 
 ### 運用前提
 - 既存の写真カルテ（`medical_records` / `medical_record_photos` / 既存API / 既存UI）は挙動変更しない
@@ -702,7 +769,9 @@ Completed tasks should be marked:
 4. `feature/ai-pro-plus`
 
 ## サイドバー改善（2026-03-21）
+- Task ID: `TASK-416`
 - ブランチ: `feature/sidebar-navigation-improvement`
+- ステータス: `done`
 - 概要: サイドバーの名称・並び順を再編し、設定系/課金系をそれぞれタブ統合ページへ集約する
 - 完了条件:
   - `店舗設定` を `店舗管理` へ改名
@@ -721,8 +790,7 @@ Completed tasks should be marked:
   - [x] テスト更新
   - [x] lint/test 実行
 
-## サイドバー改善（優先度見直し 2026-03-21）
-- ブランチ: `feature/sidebar-navigation-improvement`
+### 追記事項: 優先度見直し（2026-03-21）
 - 概要: サイドバーの情報設計を業務優先に見直し、メイン上段から分析系リンクを下段へ移動する
 - 完了条件:
   - `メイン` セクションは `ダッシュボード` のみ表示
@@ -731,8 +799,7 @@ Completed tasks should be marked:
   - [x] TASKS追記
   - [x] サイドバー実装
 
-## サイドバー改善（カテゴリ視認性 2026-03-21）
-- ブランチ: `feature/sidebar-navigation-improvement`
+### 追記事項: カテゴリ視認性（2026-03-21）
 - 概要: カテゴリ名とメニューの境界を明確にするため、カテゴリ見出しに横線を追加する
 - 完了条件:
   - 店舗/HQ サイドバーのカテゴリ見出しに「カテゴリ名 + 横線」を適用
@@ -741,8 +808,7 @@ Completed tasks should be marked:
   - [x] TASKS追記
   - [x] UI実装
 
-## サイドバー改善（並び順調整 2026-03-21）
-- ブランチ: `feature/sidebar-navigation-improvement`
+### 追記事項: 並び順調整（2026-03-21）
 - 概要: 日次運用導線を優先するため、メニューとカテゴリの順序を再調整する
 - 完了条件:
   - `モバイル当日運用` を `ダッシュボード` の直下に移動
@@ -752,8 +818,7 @@ Completed tasks should be marked:
   - [x] TASKS追記
   - [x] サイドバー実装
 
-## サイドバー改善（マニュアル整合 2026-03-21）
-- ブランチ: `feature/sidebar-navigation-improvement`
+### 追記事項: マニュアル整合（2026-03-21）
 - 概要: サイドバー改修後の名称・導線にあわせてユーザーマニュアルを棚卸しし、旧表記/旧URLを更新する
 - 完了条件:
   - `サブスク課金 / 課金履歴` を `決済管理 / 決済履歴` に更新
@@ -764,7 +829,9 @@ Completed tasks should be marked:
   - [x] manual-data修正
 
 ## AI動画段階実装（2026-03-21）
+- Task ID: `TASK-417`
 - ブランチ: `feature/ai-video-tiered-rollout`
+- ステータス: `in_progress`
 - 概要: Assist / Pro / Pro+ の境界を守りつつ、動画機能を段階導入する
 - 完了条件:
   - Assist: 動画AI非使用で短尺化・テロップ・要約・LINE最適化ジョブを実装
@@ -800,7 +867,9 @@ Completed tasks should be marked:
   - [x] Step 17: PR提出向け最終整理（RunbookへPRテンプレ/確認観点/スクショ項目）を追加
 
 ## オプション課金確定ゲート整備（2026-03-22）
+- Task ID: `TASK-418`
 - ブランチ: `feature/billing-option-entitlement-gate`
+- ステータス: `done`
 - 概要: AI / ホテル / 通知強化を「申込即時有効」ではなく「支払い確定後有効」に統一する
 - 完了条件:
   - `requested`（申込状態）と `effective`（利用可状態）を分離
@@ -841,7 +910,9 @@ Completed tasks should be marked:
     - TASKS を Step 8 まで更新し、PR作成前の差分整理状態に移行
 
 ## 法務・規約コンプライアンス是正（2026-03-22）
+- Task ID: `TASK-419`
 - ブランチ: `feature/legal-compliance-hardening`
+- ステータス: `done`
 - 概要: 規約同意取得・課金条件明示・解約導線明示・法務文書具体化を行い、国内SaaS実務レベルの説明責任を補強する
 - 完了条件:
   - 新規登録で規約/プライバシー/特商法への同意を必須化
@@ -863,7 +934,9 @@ Completed tasks should be marked:
   - [x] lint/test 実行
 
 ## dev課金操作の安全運用化（2026-03-22）
+- Task ID: `TASK-420`
 - ブランチ: `feature/dev-billing-safe-ops`
+- ステータス: `done`
 - 概要: devサブスク管理を requested/effective 前提の請求フローへ揃え、誤課金・未課金有効化・状態不整合を防ぐ
 - 完了条件:
   - `/dev/subscriptions` でオプション/AIプランを legacy `*_enabled` 直更新しない
@@ -878,3 +951,148 @@ Completed tasks should be marked:
   - [x] trial rollover課金計算の整合化
   - [x] 回帰テスト整備
   - [x] lint/test 実行
+
+## POS機能導入計画（要件定義〜実装）
+- Task ID: `TASK-408`
+- ブランチ: `feat/TASK-408-pos-implementation-plan`
+- ステータス: `in_progress`
+- 概要: 既存の会計（payments/invoices）・在庫（inventory）基盤を活かし、店舗運用で使えるPOS機能を段階導入する
+- 影響範囲: POS UI / Invoice・Payment API / Inventory Movement / Receipt / Manual・Runbook / E2E
+- リスク:
+  - 既存統合会計（TASK-401）との二重計上
+  - 返品/取消時の在庫戻し漏れ
+  - 締め処理の現金差異集計ミス
+  - 店舗スコープ/RLS逸脱
+- 完了条件:
+  - 要件定義書（MVP範囲、非機能要件、受け入れ基準）を確定
+  - 実装タスクを `TASK-POS-001` 〜 `TASK-POS-006` に分解し、依存順を明示
+  - 既存会計・在庫基盤との統合方針（拡張点/非対応点）を明記
+  - 各タスクに DoD（定義済み完了条件）とテスト観点を設定
+- 進捗:
+  - [x] 既存資産調査（payments / invoices / inventory / receipts）
+  - [x] POS計画の初版作成
+  - [x] TASKSへのタスク分解反映
+  - [x] 実装フェーズ開始（TASK-POS-001 から着手）
+  - [x] `docs/pos-requirements-definition.md` を追加（MVP要件・GWT12ケース）
+  - [x] `docs/pos-data-api-contract.md` を追加（データモデル/API契約ドラフト）
+  - [x] `supabase/supabase_pos_core.sql` を追加（DDL + RLS草案）
+
+### POS実装タスク分解
+
+#### TASK-POS-001 要件定義・業務フロー確定
+- ブランチ: `feat/TASK-POS-001-pos-requirements`
+- ステータス: `in_progress`
+- 目的: 店舗運用に必要なPOS業務（通常会計/返品/取消/締め）を仕様化する
+- スコープ:
+  - ユースケース定義（トリミング会計、ホテル会計、物販会計、混在会計）
+  - 支払手段と運用ルール（現金/カード/QR/電子マネー/その他）
+  - 値引き/クーポン/端数処理方針
+  - 返品・取消・再発行の監査方針
+- DoD:
+  - 要件定義ドキュメントを `docs/` に追加
+  - 受け入れ基準（Given/When/Then）を主要10ケース以上で定義
+  - 非機能要件（性能/監査/可用性）を確定
+- テスト観点:
+  - 仕様テストケース一覧の作成
+  - 既存会計導線との互換確認項目の確定
+- 進捗:
+  - [x] 要件定義ドキュメント作成（`docs/pos-requirements-definition.md`）
+  - [x] 受け入れ基準（Given/When/Then）12ケース定義
+  - [x] 非機能要件（性能/監査/可用性/セキュリティ）定義
+  - [ ] レビュー反映と確定版化
+
+#### TASK-POS-002 データモデル・API契約設計
+- ブランチ: `feat/TASK-POS-002-pos-data-contract`
+- ステータス: `in_progress`
+- 目的: POS伝票・レジ締め・返金を扱うDB/API基盤を設計する
+- スコープ:
+  - 新規テーブル案: `pos_sessions`, `pos_orders`, `pos_order_lines`, `pos_payments`, `pos_refunds`, `cash_drawer_events`
+  - 既存拡張: `invoice_lines` の物販行対応、`payments` との紐づけ
+  - API契約: 作成/確定/取消/返金/締め処理
+- DoD:
+  - SQLマイグレーションを `supabase/` に追加
+  - API contract を `docs/` に追加
+  - RLS方針・監査ログ方針を定義
+- テスト観点:
+  - スキーマ整合性テスト
+  - RLS観点（他店舗アクセス不可）の検証項目
+- 進捗:
+  - [x] 契約ドラフト作成（`docs/pos-data-api-contract.md`）
+  - [x] 新規テーブル案・既存テーブル連携方針を定義
+  - [x] SQLマイグレーション草案作成（`supabase/supabase_pos_core.sql`）
+  - [x] SQLマイグレーション案の確定（主要制約・一意性を反映）
+  - [x] APIレスポンス契約の最終化（status/code/response schema を明記）
+
+#### TASK-POS-003 POS会計画面（MVP）実装
+- ブランチ: `feat/TASK-POS-003-pos-checkout-ui`
+- ステータス: `todo`
+- 目的: サービス＋物販を1画面で会計確定できるPOS UIを実装する
+- スコープ:
+  - POSカート（明細追加/数量変更/値引き）
+  - 支払方法選択と会計確定
+  - 領収書表示への遷移
+  - 既存`/payments`導線との棲み分け
+- DoD:
+  - `/payments` またはPOS専用画面でMVP操作が完了する
+  - エラー時の再実行/重複防止（idempotency）が機能する
+  - モバイル幅で操作できる
+- テスト観点:
+  - 単体: 税・割引・合計計算
+  - E2E: 伝票作成→会計確定→領収書遷移
+
+#### TASK-POS-004 在庫連動（自動出庫/返品戻し）実装
+- ブランチ: `feat/TASK-POS-004-pos-inventory-link`
+- ステータス: `todo`
+- 目的: 物販会計・返品時に在庫を自動で増減させる
+- スコープ:
+  - 会計確定時の `inventory_movements` 自動起票
+  - 返品/取消時の逆仕訳
+  - 在庫不足時のエラーハンドリング
+- DoD:
+  - 会計/返品の在庫反映が一貫して実行される
+  - 手動出庫との二重起票を防止する
+  - 在庫履歴画面で追跡可能
+- テスト観点:
+  - 単体: 増減ロジック
+  - 結合: POS会計→在庫履歴の整合
+
+#### TASK-POS-005 レジ開閉局・日次締め実装
+- ブランチ: `feat/TASK-POS-005-pos-day-close`
+- ステータス: `todo`
+- 目的: 現場で必要なレジ開局/中間入出金/締め処理を追加する
+- スコープ:
+  - レジセッション開始/終了
+  - 現金入出金イベント記録
+  - 日次売上集計・現金差異入力
+- DoD:
+  - 日次締めレポート（支払手段別・差異含む）を出力
+  - 締め確定後の再編集制約を実装
+  - 監査ログに操作主体が残る
+- テスト観点:
+  - 集計ロジックの単体テスト
+  - 締め処理のE2E（開局→会計→締め）
+
+#### TASK-POS-006 受入試験・移行・運用ドキュメント整備
+- ブランチ: `feat/TASK-POS-006-pos-uat-rollout`
+- ステータス: `todo`
+- 目的: パイロット導入に必要な検証・運用資料を完了する
+- スコープ:
+  - 店舗UAT（通常会計/返品/締め）
+  - データ移行/初期設定手順
+  - 障害時ロールバック手順
+  - マニュアル更新
+- DoD:
+  - UATチェックリスト完了
+  - `docs/` の運用手順が最新化
+  - 本番段階展開計画（pilot→full）が承認済み
+- テスト観点:
+  - 回帰テスト（既存会計/在庫/予約への影響）
+  - 負荷・運用手順リハーサル
+
+### 依存順
+1. `TASK-POS-001`
+2. `TASK-POS-002`
+3. `TASK-POS-003`
+4. `TASK-POS-004`
+5. `TASK-POS-005`
+6. `TASK-POS-006`

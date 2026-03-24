@@ -234,6 +234,25 @@ Before finishing:
 
 Agents must not implement or investigate work without both `TASKS.md` tracking and branch-based management.
 
+## 14.1 TASKS.md Ordering Rules (Mandatory)
+
+When updating `TASKS.md`, agents must follow this order policy:
+
+* Treat tasks with `Task ID` (format: `TASK-xxx` or `TASK-<prefix>-xxx`) as the canonical task registry.
+* Keep the canonical order as:
+  * `in_progress`
+  * `todo`
+  * `blocked`
+  * `done`
+* Within each status, sort by `Task ID` descending.
+* Keep `Task ID` and branch naming aligned (`<type>/TASK-xxx-...`).
+* Keep non-canonical notes (old plans, investigation notes, non-ID drafts) under `Archive` sections so they do not break task ordering.
+* If you add or change a task, update both:
+  * the `TASK INDEX` section
+  * the corresponding task detail section
+
+If ordering is inconsistent, normalize ordering first before adding new tasks.
+
 ---
 
 # End of AGENTS.md
