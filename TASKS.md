@@ -133,7 +133,6 @@ Completed tasks should be marked:
 8. `TASK-401` 統合会計（Invoice方式）
 9. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
 10. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
-11. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
 
 ### todo
 1. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
@@ -155,6 +154,7 @@ Completed tasks should be marked:
 10. `TASK-403` ペット管理からQR機能を完全削除
 11. `TASK-402` appointments更新後POST転送不具合修正
 12. `TASK-POS-003` POS会計画面（MVP）実装（`TASK-408`配下）
+13. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
 
 ## 正式タスク詳細（Task ID採番済み）
 
@@ -1049,7 +1049,7 @@ Completed tasks should be marked:
 
 #### TASK-POS-004 在庫連動（自動出庫/返品戻し）実装
 - ブランチ: `feat/TASK-POS-004-pos-inventory-link`
-- ステータス: `in_progress`
+- ステータス: `done`
 - 目的: 物販会計・返品時に在庫を自動で増減させる
 - スコープ:
   - 会計確定時の `inventory_movements` 自動起票
@@ -1067,7 +1067,7 @@ Completed tasks should be marked:
   - [x] POS取消時の在庫戻し起票を実装（`void` API）
   - [x] notesキー（`POS_OUTBOUND:*` / `POS_VOID_REVERT:*`）による重複起票防止を実装
   - [x] 増減ロジック単体テストを追加（`tests/pos.inventory.test.ts`）
-  - [ ] 在庫履歴画面でPOS自動起票フィルタを追加
+  - [x] 在庫履歴画面でPOS自動起票フィルタを追加（`/inventory/history?source=pos_auto`）
 
 #### TASK-POS-005 レジ開閉局・日次締め実装
 - ブランチ: `feat/TASK-POS-005-pos-day-close`
