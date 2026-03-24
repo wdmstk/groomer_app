@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { insertAuditLogBestEffort } from '@/lib/audit-logs'
 import { toNumber } from '@/lib/inventory/stock'
 import { asObjectOrNull } from '@/lib/object-utils'
+import { buildPosInventoryMovements, filterNotYetAppliedPosMovements } from '@/lib/pos/inventory'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
 type RouteParams = {
@@ -100,7 +101,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   const { data: lines, error: linesError } = await supabase
     .from('pos_order_lines')
-    .select('line_type, source_id, quantity')
+    .select('id, line_type, source_id, quantity')
     .eq('store_id', storeId)
     .eq('order_id', orderId)
 
@@ -109,25 +110,61 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   const nowIso = new Date().toISOString()
-  const productLines = ((lines ?? []) as Array<{ line_type: string; source_id: string | null; quantity: number }>).filter(
+  const productLines = ((lines ?? []) as Array<{ id: string; line_type: string; source_id: string | null; quantity: number }>).filter(
     (line) => line.line_type === 'product' && line.source_id
   )
   if (productLines.length > 0) {
-    const inventoryPayload = productLines.map((line) => ({
-      store_id: storeId,
-      item_id: line.source_id,
-      movement_type: 'inbound',
-      reason: 'POS取消戻し',
-      quantity_delta: Math.abs(toNumber(line.quantity)),
-      happened_at: nowIso,
-      notes: `POS void: ${orderId}`,
-      created_by: user?.id ?? null,
-    }))
-    const { error: inventoryError } = await supabase.from('inventory_movements').insert(inventoryPayload)
-    if (inventoryError) {
+    const draftMovements = buildPosInventoryMovements({
+      storeId,
+      orderId,
+      happenedAt: nowIso,
+      createdBy: user?.id ?? null,
+      direction: 'void',
+      lines: productLines.map((line) => ({
+        id: line.id,
+        source_id: line.source_id,
+        quantity: toNumber(line.quantity),
+      })),
+    })
+
+    const notes = draftMovements.map((movement) => movement.notes)
+    const { data: existingMovements, error: existingMovementError } = await supabase
+      .from('inventory_movements')
+      .select('notes')
+      .eq('store_id', storeId)
+      .in('notes', notes)
+    if (existingMovementError) {
       return NextResponse.json(
-        { ok: false, code: 'POS_INVENTORY_REVERT_FAILED', message: inventoryError.message },
+        { ok: false, code: 'POS_INVENTORY_CHECK_FAILED', message: existingMovementError.message },
         { status: 500 }
+      )
+    }
+
+    const movementPayload = filterNotYetAppliedPosMovements(
+      draftMovements,
+      (existingMovements ?? []).map((row) => row.notes).filter((value): value is string => typeof value === 'string')
+    )
+
+    if (movementPayload.length > 0) {
+      const { error: inventoryError } = await supabase.from('inventory_movements').insert(movementPayload)
+      if (inventoryError) {
+        return NextResponse.json(
+          { ok: false, code: 'POS_INVENTORY_REVERT_FAILED', message: inventoryError.message },
+          { status: 500 }
+        )
+      }
+    }
+    if (movementPayload.length === 0 && existingRefund?.id) {
+      return NextResponse.json(
+        {
+          ok: true,
+          data: {
+            order_id: orderId,
+            status: 'void',
+            refund_id: existingRefund.id,
+            reused: true,
+          },
+        }
       )
     }
   }

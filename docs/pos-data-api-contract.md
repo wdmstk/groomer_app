@@ -210,6 +210,7 @@ Parent Task: `TASK-408`
   - `payments` 生成（または既存再利用）
   - `pos_orders.status=confirmed`
   - `product` 明細在庫を `inventory_movements(outbound)` へ反映
+  - 在庫起票は `notes=POS_OUTBOUND:<order_id>:<line_id>` で冪等化（同notesがあれば再起票しない）
 - Rule:
   - 現行`payments`互換のため `appointment_id` と `customer_id` は必須（未指定時は `409 POS_APPOINTMENT_REQUIRED` / `POS_CUSTOMER_REQUIRED`）
 - Response 200:
@@ -239,6 +240,7 @@ Parent Task: `TASK-408`
   - `pos_orders.status=void`（`confirmed` 伝票のみ取消可能）
   - `payments.status` を `取消` に更新
   - 在庫戻し仕訳（`inventory_movements.inbound`）を作成
+  - 在庫戻しは `notes=POS_VOID_REVERT:<order_id>:<line_id>` で冪等化
   - `pos_refunds` 記録
   - 領収書画面（`/receipts/[payment_id]`）から実行可能
 - Response 200:

@@ -3,6 +3,7 @@ import { insertAuditLogBestEffort } from '@/lib/audit-logs'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { toNumber } from '@/lib/inventory/stock'
 import { asObjectOrNull } from '@/lib/object-utils'
+import { buildPosInventoryMovements, filterNotYetAppliedPosMovements } from '@/lib/pos/inventory'
 
 type RouteParams = {
   params: Promise<{ order_id: string }>
@@ -114,7 +115,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   const { data: lines, error: linesError } = await supabase
     .from('pos_order_lines')
-    .select('id, line_type, source_id, quantity, unit_amount, metadata')
+    .select('id, line_type, source_id, quantity, unit_amount')
     .eq('store_id', storeId)
     .eq('order_id', orderId)
 
@@ -216,21 +217,39 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   if (productLines.length > 0) {
     const nowIso = new Date().toISOString()
-    const inventoryPayload = productLines
-      .filter((line) => line.source_id)
-      .map((line) => ({
-        store_id: storeId,
-        item_id: line.source_id,
-        movement_type: 'outbound',
-        reason: '店販売上',
-        quantity_delta: -Math.abs(toNumber(line.quantity)),
-        happened_at: nowIso,
-        notes: `POS order: ${orderId}`,
-        created_by: user?.id ?? null,
-      }))
+    const draftMovements = buildPosInventoryMovements({
+      storeId,
+      orderId,
+      happenedAt: nowIso,
+      createdBy: user?.id ?? null,
+      direction: 'confirm',
+      lines: productLines.map((line) => ({
+        id: line.id,
+        source_id: line.source_id,
+        quantity: toNumber(line.quantity),
+      })),
+    })
 
-    if (inventoryPayload.length > 0) {
-      const { error: movementError } = await supabase.from('inventory_movements').insert(inventoryPayload)
+    const notes = draftMovements.map((movement) => movement.notes)
+    const { data: existingMovements, error: existingMovementError } = await supabase
+      .from('inventory_movements')
+      .select('notes')
+      .eq('store_id', storeId)
+      .in('notes', notes)
+    if (existingMovementError) {
+      return NextResponse.json(
+        { ok: false, code: 'POS_INVENTORY_CHECK_FAILED', message: existingMovementError.message },
+        { status: 500 }
+      )
+    }
+
+    const movementPayload = filterNotYetAppliedPosMovements(
+      draftMovements,
+      (existingMovements ?? []).map((row) => row.notes).filter((value): value is string => typeof value === 'string')
+    )
+
+    if (movementPayload.length > 0) {
+      const { error: movementError } = await supabase.from('inventory_movements').insert(movementPayload)
       if (movementError) {
         return NextResponse.json(
           { ok: false, code: 'POS_INVENTORY_APPLY_FAILED', message: movementError.message },

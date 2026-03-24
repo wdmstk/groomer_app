@@ -78,6 +78,9 @@ create index if not exists idx_pos_orders_store_customer
 create index if not exists idx_pos_orders_store_appointment
   on public.pos_orders(store_id, appointment_id, created_at desc);
 
+create index if not exists idx_inventory_movements_store_notes
+  on public.inventory_movements(store_id, notes);
+
 create table if not exists public.pos_order_lines (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),

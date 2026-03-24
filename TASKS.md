@@ -133,11 +133,11 @@ Completed tasks should be marked:
 8. `TASK-401` 統合会計（Invoice方式）
 9. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
 10. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
+11. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
 
 ### todo
-1. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
-2. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
-3. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
+1. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
+2. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
 
 ### blocked
 1. `TASK-413` AIタグ解析ジョブのRLS修正（Supabase SQL Editor反映待ち）
@@ -1049,7 +1049,7 @@ Completed tasks should be marked:
 
 #### TASK-POS-004 在庫連動（自動出庫/返品戻し）実装
 - ブランチ: `feat/TASK-POS-004-pos-inventory-link`
-- ステータス: `todo`
+- ステータス: `in_progress`
 - 目的: 物販会計・返品時に在庫を自動で増減させる
 - スコープ:
   - 会計確定時の `inventory_movements` 自動起票
@@ -1062,6 +1062,12 @@ Completed tasks should be marked:
 - テスト観点:
   - 単体: 増減ロジック
   - 結合: POS会計→在庫履歴の整合
+- 進捗:
+  - [x] POS会計確定時の自動出庫起票を実装（`confirm` API）
+  - [x] POS取消時の在庫戻し起票を実装（`void` API）
+  - [x] notesキー（`POS_OUTBOUND:*` / `POS_VOID_REVERT:*`）による重複起票防止を実装
+  - [x] 増減ロジック単体テストを追加（`tests/pos.inventory.test.ts`）
+  - [ ] 在庫履歴画面でPOS自動起票フィルタを追加
 
 #### TASK-POS-005 レジ開閉局・日次締め実装
 - ブランチ: `feat/TASK-POS-005-pos-day-close`
