@@ -4,6 +4,7 @@ import { requireDeveloperAdmin } from '@/lib/auth/developer-admin'
 import { canPurchaseOptionsByPlan, normalizePlanCode } from '@/lib/subscription-plan'
 import { parseAiPlanCode } from '@/lib/billing/pricing'
 import { buildDevSubscriptionsRedirectUrl } from '@/lib/dev-subscriptions/redirect'
+import { applyRequestedOptionEntitlements } from '@/lib/billing/db'
 
 type RouteParams = {
   params: Promise<{
@@ -45,6 +46,16 @@ function normalizeInt(value: string, fallback = 0) {
   const parsed = Number.parseInt(value, 10)
   if (!Number.isFinite(parsed)) return fallback
   return parsed
+}
+
+function parseBooleanField(formData: FormData, name: string, legacyName?: string) {
+  const values = [
+    ...formData.getAll(name).map((value) => value.toString().trim().toLowerCase()),
+    ...(legacyName
+      ? formData.getAll(legacyName).map((value) => value.toString().trim().toLowerCase())
+      : []),
+  ]
+  return values.some((value) => value === 'true' || value === 'on' || value === '1')
 }
 
 export function redirectWithMessage(request: Request, message: string) {
@@ -95,14 +106,6 @@ export async function POST(request: Request, { params }: RouteParams) {
   const graceDaysRaw = formData.get('grace_days')?.toString().trim() ?? '3'
   const trialStartedAtRaw = formData.get('trial_started_at')?.toString() ?? ''
   const preferredProvider = formData.get('preferred_provider')?.toString().trim() ?? ''
-  const hotelOptionRequestedRaw =
-    formData.get('hotel_option_requested')?.toString() ??
-    formData.get('hotel_option_enabled')?.toString() ??
-    'false'
-  const notificationOptionRequestedRaw =
-    formData.get('notification_option_requested')?.toString() ??
-    formData.get('notification_option_enabled')?.toString() ??
-    'false'
   const aiPlanRequestedRaw =
     formData.get('ai_plan_code_requested')?.toString() ??
     formData.get('ai_plan_code')?.toString() ??
@@ -113,17 +116,33 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
   const planCode = normalizePlanCode(rawPlanCode)
   const optionContractAllowed = canPurchaseOptionsByPlan(planCode)
+  const hotelOptionRequestedInput = parseBooleanField(
+    formData,
+    'hotel_option_requested',
+    'hotel_option_enabled'
+  )
+  const notificationOptionRequestedInput = parseBooleanField(
+    formData,
+    'notification_option_requested',
+    'notification_option_enabled'
+  )
+  const aiPlanRequestedInput = parseAiPlanCode(aiPlanRequestedRaw)
   const hotelOptionRequested =
-    (hotelOptionRequestedRaw === 'true' || hotelOptionRequestedRaw === 'on') && optionContractAllowed
+    hotelOptionRequestedInput && optionContractAllowed
   const notificationOptionRequested =
-    (notificationOptionRequestedRaw === 'true' || notificationOptionRequestedRaw === 'on') &&
-    optionContractAllowed
+    notificationOptionRequestedInput && optionContractAllowed
   const aiPlanRequested = optionContractAllowed ? parseAiPlanCode(aiPlanRequestedRaw) : 'none'
 
-  if ((hotelOptionRequested || notificationOptionRequested) && !optionContractAllowed) {
+  if ((hotelOptionRequestedInput || notificationOptionRequestedInput) && !optionContractAllowed) {
     return redirectWithMessage(
       request,
       'オプション契約はスタンダード以上のプランでのみ有効化できます。'
+    )
+  }
+  if (aiPlanRequestedInput !== 'none' && !optionContractAllowed) {
+    return redirectWithMessage(
+      request,
+      'AIプランはスタンダード以上のプランでのみ有効化できます。'
     )
   }
   if (!ALLOWED_STATUSES.has(billingStatus)) {
@@ -201,6 +220,28 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
     return redirectWithMessage(request, `更新に失敗しました: ${upsertError.message}`)
   }
+  const entitlementResult = await applyRequestedOptionEntitlements({ storeId })
+  if (!entitlementResult.applied) {
+    return redirectWithMessage(
+      request,
+      `更新しましたが反映同期に失敗しました: ${entitlementResult.reason}`
+    )
+  }
 
-  return redirectWithMessage(request, '更新しました。')
+  const { data: saved } = await admin
+    .from('store_subscriptions')
+    .select('plan_code, hotel_option_requested, notification_option_requested, ai_plan_code_requested')
+    .eq('store_id', storeId)
+    .maybeSingle()
+
+  const savedPlan = normalizePlanCode(saved?.plan_code ?? planCode)
+  const savedHotel = (saved?.hotel_option_requested ?? hotelOptionRequested) ? 'ON' : 'OFF'
+  const savedNotification =
+    (saved?.notification_option_requested ?? notificationOptionRequested) ? 'ON' : 'OFF'
+  const savedAi = parseAiPlanCode(saved?.ai_plan_code_requested ?? aiPlanRequested)
+
+  return redirectWithMessage(
+    request,
+    `更新しました。plan=${savedPlan}, hotel=${savedHotel}, notification=${savedNotification}, ai=${savedAi}`
+  )
 }

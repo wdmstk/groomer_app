@@ -4,6 +4,8 @@ import { canPurchaseOptionsByPlan } from '@/lib/subscription-plan'
 import { asStorePlanOptionsClient, fetchStorePlanOptionState } from '@/lib/store-plan-options'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { parseAiPlanCode } from '@/lib/billing/pricing'
+import { applyRequestedOptionEntitlements } from '@/lib/billing/db'
+import { isDevBillingBypassEnabled } from '@/lib/billing/dev-bypass'
 
 function redirectWithMessage(request: Request, key: 'message' | 'error', value: string) {
   const url = new URL('/billing', request.url)
@@ -29,6 +31,7 @@ export async function POST(request: Request) {
     storeId: guard.storeId,
   })
   const admin = createAdminSupabaseClient()
+  const isDevBypassEnabled = isDevBillingBypassEnabled()
 
   const optionContractAllowed = canPurchaseOptionsByPlan(state.planCode)
   if (!optionContractAllowed && (hotelOptionEnabled || notificationOptionEnabled)) {
@@ -79,20 +82,35 @@ export async function POST(request: Request) {
     }
     return redirectWithMessage(request, 'error', error.message)
   }
+  if (isDevBypassEnabled) {
+    await applyRequestedOptionEntitlements({ storeId: guard.storeId })
+  }
 
   return redirectWithMessage(
     request,
     'message',
     targetOption === 'notification'
       ? notificationOptionEnabled
-        ? '通知強化オプションの申込を受け付けました。支払い確定後に有効化されます。'
-        : '通知強化オプションの無効化申込を受け付けました。'
+        ? isDevBypassEnabled
+          ? '通知強化オプションを有効化しました（開発環境では決済をスキップします）。'
+          : '通知強化オプションの申込を受け付けました。支払い確定後に有効化されます。'
+        : isDevBypassEnabled
+          ? '通知強化オプションを無効化しました（開発環境では決済をスキップします）。'
+          : '通知強化オプションの無効化申込を受け付けました。'
       : targetOption === 'ai_plan'
         ? nextAiPlanCodeRequested === 'none'
-          ? 'AIプランの無効化申込を受け付けました。'
-          : `AIプランを${nextAiPlanCodeRequested === 'assist' ? 'Assist' : nextAiPlanCodeRequested === 'pro' ? 'Pro' : 'Pro+'}へ変更する申込を受け付けました。支払い確定後に有効化されます。`
+          ? isDevBypassEnabled
+            ? 'AIプランを無効化しました（開発環境では決済をスキップします）。'
+            : 'AIプランの無効化申込を受け付けました。'
+          : isDevBypassEnabled
+            ? `AIプランを${nextAiPlanCodeRequested === 'assist' ? 'Assist' : nextAiPlanCodeRequested === 'pro' ? 'Pro' : 'Pro+'}へ変更しました（開発環境では決済をスキップします）。`
+            : `AIプランを${nextAiPlanCodeRequested === 'assist' ? 'Assist' : nextAiPlanCodeRequested === 'pro' ? 'Pro' : 'Pro+'}へ変更する申込を受け付けました。支払い確定後に有効化されます。`
       : hotelOptionEnabled
-        ? 'ホテルオプションの申込を受け付けました。支払い確定後に有効化されます。'
-        : 'ホテルオプションの無効化申込を受け付けました。'
+        ? isDevBypassEnabled
+          ? 'ホテルオプションを有効化しました（開発環境では決済をスキップします）。'
+          : 'ホテルオプションの申込を受け付けました。支払い確定後に有効化されます。'
+        : isDevBypassEnabled
+          ? 'ホテルオプションを無効化しました（開発環境では決済をスキップします）。'
+          : 'ホテルオプションの無効化申込を受け付けました。'
   )
 }
