@@ -133,10 +133,10 @@ Completed tasks should be marked:
 8. `TASK-401` 統合会計（Invoice方式）
 9. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
 10. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
+11. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
 
 ### todo
-1. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
-2. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
+1. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
 
 ### blocked
 1. `TASK-413` AIタグ解析ジョブのRLS修正（Supabase SQL Editor反映待ち）
@@ -1071,7 +1071,7 @@ Completed tasks should be marked:
 
 #### TASK-POS-005 レジ開閉局・日次締め実装
 - ブランチ: `feat/TASK-POS-005-pos-day-close`
-- ステータス: `todo`
+- ステータス: `in_progress`
 - 目的: 現場で必要なレジ開局/中間入出金/締め処理を追加する
 - スコープ:
   - レジセッション開始/終了
@@ -1084,6 +1084,12 @@ Completed tasks should be marked:
 - テスト観点:
   - 集計ロジックの単体テスト
   - 締め処理のE2E（開局→会計→締め）
+- 進捗:
+  - [x] レジ開局APIを追加（`POST /api/pos/sessions/open`）
+  - [x] 現金入出金APIを追加（`POST /api/pos/cash-drawer-events`）
+  - [x] 日次締めAPIを追加（`POST /api/pos/sessions/:session_id/close`）
+  - [x] 集計ロジック単体テストを追加（`tests/pos.session-close.test.ts`）
+  - [ ] 締め処理の画面導線実装（開局→会計→締め）
 
 #### TASK-POS-006 受入試験・移行・運用ドキュメント整備
 - ブランチ: `feat/TASK-POS-006-pos-uat-rollout`
