@@ -1,5 +1,6 @@
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { PrintButton } from '@/components/receipts/PrintButton'
+import { PosVoidAction } from '@/components/receipts/PosVoidAction'
 import { paymentsPageFixtures } from '@/lib/e2e/payments-page-fixtures'
 
 type ReceiptPageProps = {
@@ -90,6 +91,23 @@ export default async function ReceiptPage({ params }: ReceiptPageProps) {
         : []
     : []
 
+  const posOrder = payment?.id
+    ? isPlaywrightE2E
+      ? null
+      : scopedClient
+        ? (
+            await scopedClient.supabase
+              .from('pos_orders')
+              .select('id, status')
+              .eq('store_id', storeId)
+              .eq('payment_id', payment.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+          ).data
+        : null
+    : null
+
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-10">
       <div className="mx-auto max-w-2xl space-y-6 rounded bg-white p-8 shadow" data-testid="receipt-page">
@@ -168,6 +186,10 @@ export default async function ReceiptPage({ params }: ReceiptPageProps) {
         {payment?.notes && (
           <p className="text-sm text-gray-500">備考: {payment.notes}</p>
         )}
+
+        {posOrder?.id ? (
+          <PosVoidAction orderId={posOrder.id} disabled={posOrder.status === 'void'} />
+        ) : null}
 
         <p className="text-sm text-gray-600">この度はご利用いただき、誠にありがとうございます。</p>
       </div>

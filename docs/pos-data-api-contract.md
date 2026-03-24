@@ -26,6 +26,7 @@ Parent Task: `TASK-408`
   - `store_id` (uuid)
   - `session_id` (uuid, nullable)
   - `customer_id` (uuid, nullable)
+  - `appointment_id` (uuid, nullable, `appointments.id`)
   - `status` (`draft|confirmed|void|refunded`)
   - `subtotal_amount` (numeric)
   - `tax_amount` (numeric)
@@ -140,6 +141,7 @@ Parent Task: `TASK-408`
 ```json
 {
   "customer_id": "uuid-or-null",
+  "appointment_id": "uuid-or-null",
   "session_id": "uuid-or-null",
   "lines": [
     {
@@ -208,6 +210,8 @@ Parent Task: `TASK-408`
   - `payments` 生成（または既存再利用）
   - `pos_orders.status=confirmed`
   - `product` 明細在庫を `inventory_movements(outbound)` へ反映
+- Rule:
+  - 現行`payments`互換のため `appointment_id` と `customer_id` は必須（未指定時は `409 POS_APPOINTMENT_REQUIRED` / `POS_CUSTOMER_REQUIRED`）
 - Response 200:
 ```json
 {
@@ -232,9 +236,11 @@ Parent Task: `TASK-408`
 }
 ```
 - Behavior:
-  - `pos_orders.status=void`
-  - 在庫戻し仕訳作成
+  - `pos_orders.status=void`（`confirmed` 伝票のみ取消可能）
+  - `payments.status` を `取消` に更新
+  - 在庫戻し仕訳（`inventory_movements.inbound`）を作成
   - `pos_refunds` 記録
+  - 領収書画面（`/receipts/[payment_id]`）から実行可能
 - Response 200:
 ```json
 {

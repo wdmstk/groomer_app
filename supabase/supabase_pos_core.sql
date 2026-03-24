@@ -43,6 +43,7 @@ create table if not exists public.pos_orders (
   store_id uuid not null references public.stores(id) on delete cascade,
   session_id uuid references public.pos_sessions(id) on delete set null,
   customer_id uuid references public.customers(id) on delete set null,
+  appointment_id uuid references public.appointments(id) on delete set null,
   status text not null default 'draft' check (status in ('draft', 'confirmed', 'void', 'refunded')),
   subtotal_amount numeric not null default 0 check (subtotal_amount >= 0),
   tax_amount numeric not null default 0 check (tax_amount >= 0),
@@ -73,6 +74,9 @@ create index if not exists idx_pos_orders_store_session
 
 create index if not exists idx_pos_orders_store_customer
   on public.pos_orders(store_id, customer_id, created_at desc);
+
+create index if not exists idx_pos_orders_store_appointment
+  on public.pos_orders(store_id, appointment_id, created_at desc);
 
 create table if not exists public.pos_order_lines (
   id uuid primary key default gen_random_uuid(),

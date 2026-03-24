@@ -59,6 +59,12 @@ type ProductOption = {
   unit: string
 }
 
+type PosAppointmentOption = {
+  id: string
+  label: string
+  customerId: string | null
+}
+
 type PaymentsPageProps = {
   searchParams?: Promise<{
     tab?: string
@@ -206,6 +212,11 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
   const selectableAppointmentOptions = appointmentFormOptions.filter(
     (appointment) => appointment.id === (editPayment?.appointment_id ?? null) || !occupiedAppointmentIds.has(appointment.id)
   )
+  const posAppointmentOptions: PosAppointmentOption[] = appointmentFormOptions.map((appointment) => ({
+    id: appointment.id,
+    label: appointment.label,
+    customerId: appointment.customerId,
+  }))
   const modalCloseRedirect = `/payments?tab=${activeTab}`
 
   return (
@@ -218,7 +229,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
       </div>
 
       <InvoiceCheckoutPanel customerNameById={customerNameById} />
-      <PosCheckoutPanel customers={customerOptions} products={productOptions} />
+      <PosCheckoutPanel customers={customerOptions} products={productOptions} appointments={posAppointmentOptions} />
 
       <div className="flex items-center gap-4 border-b">
         <Link

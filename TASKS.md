@@ -133,7 +133,6 @@ Completed tasks should be marked:
 8. `TASK-401` 統合会計（Invoice方式）
 9. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
 10. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
-11. `TASK-POS-003` POS会計画面（MVP）実装（`TASK-408`配下）
 
 ### todo
 1. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
@@ -155,6 +154,7 @@ Completed tasks should be marked:
 9. `TASK-404` HP本部運用にホテルメニュー向けテンプレ配信を追加
 10. `TASK-403` ペット管理からQR機能を完全削除
 11. `TASK-402` appointments更新後POST転送不具合修正
+12. `TASK-POS-003` POS会計画面（MVP）実装（`TASK-408`配下）
 
 ## 正式タスク詳細（Task ID採番済み）
 
@@ -1025,7 +1025,7 @@ Completed tasks should be marked:
 
 #### TASK-POS-003 POS会計画面（MVP）実装
 - ブランチ: `feat/TASK-POS-003-pos-checkout-ui`
-- ステータス: `in_progress`
+- ステータス: `done`
 - 目的: サービス＋物販を1画面で会計確定できるPOS UIを実装する
 - スコープ:
   - POSカート（明細追加/数量変更/値引き）
@@ -1043,8 +1043,9 @@ Completed tasks should be marked:
   - [x] `/payments` に POS会計（β）パネルを追加
   - [x] POSカート合計計算ロジックを `src/lib/pos/checkout.ts` に追加
   - [x] 単体テスト追加（`tests/pos.checkout.test.ts`）
-  - [ ] 会計確定API（`/api/pos/orders/:order_id/confirm`）接続
-  - [ ] 確定後の領収書遷移を本実装
+  - [x] 会計確定API（`/api/pos/orders/:order_id/confirm`）接続
+  - [x] 確定後の領収書遷移を本実装
+  - [x] 取消導線（`/receipts/[payment_id]` から `/api/pos/orders/:order_id/void` 実行）を実装
 
 #### TASK-POS-004 在庫連動（自動出庫/返品戻し）実装
 - ブランチ: `feat/TASK-POS-004-pos-inventory-link`
