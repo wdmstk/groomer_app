@@ -56,4 +56,24 @@ test.describe('会計一覧', () => {
     await expect(page.getByText('合計: 8,500 円')).toBeVisible()
     await expect(page.getByText('備考: 次回予約で毛玉取り提案')).toBeVisible()
   })
+
+  test('POS会計で施術明細とホテル明細を取込できる', async ({ page }) => {
+    await page.goto('/payments?tab=list')
+
+    const panel = page.getByTestId('pos-checkout-panel')
+    await expect(panel).toBeVisible()
+
+    await panel.getByRole('button', { name: '開局' }).click()
+    await expect(panel.getByText('レジを開局しました。')).toBeVisible()
+
+    await panel.getByLabel('予約').selectOption('appt-001')
+    await panel.getByRole('button', { name: '施術明細を取込（1件）' }).click()
+    await panel.getByRole('button', { name: 'ホテル明細を取込（2件）' }).click()
+
+    const row = panel.locator('tbody tr')
+    await expect(row).toHaveCount(3)
+    await expect(panel.getByText('施術: トリミングコース')).toBeVisible()
+    await expect(panel.getByText('ホテル: 1泊')).toBeVisible()
+    await expect(panel.getByText('ホテル: 送迎')).toBeVisible()
+  })
 })

@@ -58,10 +58,18 @@ export const paymentsPageFixtures = {
     },
   ],
   appointmentMenus: [
-    { appointment_id: 'appt-001', price: 8800, tax_rate: 0.1, tax_included: true },
-    { appointment_id: 'appt-002', price: 2750, tax_rate: 0.1, tax_included: true },
-    { appointment_id: 'appt-003', price: 5500, tax_rate: 0.1, tax_included: true },
-    { appointment_id: 'appt-003', price: 1200, tax_rate: 0.1, tax_included: true },
+    { id: 'am-001', appointment_id: 'appt-001', menu_name: 'トリミングコース', price: 8800, tax_rate: 0.1, tax_included: true },
+    { id: 'am-002', appointment_id: 'appt-002', menu_name: 'シャンプーコース', price: 2750, tax_rate: 0.1, tax_included: true },
+    { id: 'am-003', appointment_id: 'appt-003', menu_name: 'カットコース', price: 5500, tax_rate: 0.1, tax_included: true },
+    { id: 'am-004', appointment_id: 'appt-003', menu_name: '爪切り', price: 1200, tax_rate: 0.1, tax_included: true },
+  ],
+  hotelStaysForPos: [
+    { id: 'stay-001', appointment_id: 'appt-001' },
+    { id: 'stay-002', appointment_id: 'appt-003' },
+  ],
+  hotelChargesForPos: [
+    { id: 'hc-001', stay_id: 'stay-001', label: '1泊', line_amount_jpy: 4000, tax_rate: 0.1, tax_included: true },
+    { id: 'hc-002', stay_id: 'stay-001', label: '送迎', line_amount_jpy: 1000, tax_rate: 0.1, tax_included: true },
   ],
   receiptAppointmentMenus: [
     { appointment_id: 'appt-001', menu_name: 'トリミングコース', price: 6800, duration: 120 },

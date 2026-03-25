@@ -382,7 +382,7 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-amber-900">POS会計（β）</p>
-          <p className="text-xs text-amber-800">店販を含む会計を予約に紐づけて確定できます。</p>
+          <p className="text-xs text-amber-800">施術・ホテル・店販を1つの会計として予約に紐づけて確定できます。</p>
         </div>
       </div>
 

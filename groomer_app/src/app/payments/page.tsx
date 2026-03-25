@@ -157,7 +157,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
       ).data
 
   const hotelStaysForPos = isPlaywrightE2E
-    ? []
+    ? paymentsPageFixtures.hotelStaysForPos
     : (
         await db
           .from('hotel_stays')
@@ -167,7 +167,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
       ).data
 
   const hotelChargesForPos = isPlaywrightE2E
-    ? []
+    ? paymentsPageFixtures.hotelChargesForPos
     : (
         await db
           .from('hotel_charges')

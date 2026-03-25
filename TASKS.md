@@ -1139,8 +1139,9 @@ Completed tasks should be marked:
   - [x] POSカートで `line_type=service|product` を扱えるように改修
   - [x] 予約メニュー取込ボタンを追加
   - [x] ホテル明細取込ボタンを追加
-  - [ ] API契約・運用マニュアル更新
-  - [ ] E2E/回帰テスト追加
+  - [x] API契約・運用マニュアル更新
+  - [x] E2Eケース追加（`e2e/payments-list.spec.ts`）
+  - [ ] E2E実行の安定化（webServer起動失敗の解消）
 
 ### 依存順
 1. `TASK-POS-001`
