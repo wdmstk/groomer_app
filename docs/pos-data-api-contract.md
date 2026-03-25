@@ -271,6 +271,22 @@ Parent Task: `TASK-408`
 }
 ```
 
+### 4.5.1 `GET /api/pos/sessions/open`
+- 目的: 開局中セッションの取得（0件時は `session: null`）
+- Response 200:
+```json
+{
+  "ok": true,
+  "data": {
+    "session": {
+      "id": "uuid",
+      "status": "open",
+      "opened_at": "2026-03-25T01:00:00.000Z"
+    }
+  }
+}
+```
+
 ### 4.6 `POST /api/pos/sessions/:session_id/close`
 - 目的: レジ締め
 - Request:

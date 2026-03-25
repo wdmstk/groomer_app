@@ -80,3 +80,26 @@ export async function POST(request: Request) {
     { status: 201 }
   )
 }
+
+export async function GET() {
+  const { supabase, storeId } = await createStoreScopedClient()
+  const { data: openSession, error: openSessionError } = await supabase
+    .from('pos_sessions')
+    .select('id, status, opened_at, notes')
+    .eq('store_id', storeId)
+    .eq('status', 'open')
+    .order('opened_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (openSessionError) {
+    return NextResponse.json({ ok: false, code: 'POS_SESSION_FETCH_FAILED', message: openSessionError.message }, { status: 500 })
+  }
+
+  return NextResponse.json({
+    ok: true,
+    data: {
+      session: openSession ?? null,
+    },
+  })
+}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { calculatePosCartTotals } from '@/lib/pos/checkout'
@@ -39,12 +39,30 @@ type PosCheckoutPanelProps = {
   appointments: AppointmentOption[]
 }
 
+type PosSessionSummary = {
+  sales_total: number
+  cash_expected: number
+  cash_counted: number
+  cash_diff: number
+}
+
 function formatYen(value: number) {
   return `${Math.round(value).toLocaleString()} 円`
 }
 
 export function PosCheckoutPanel({ customers, products, appointments }: PosCheckoutPanelProps) {
   const router = useRouter()
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [sessionOpenedAt, setSessionOpenedAt] = useState<string | null>(null)
+  const [sessionLoading, setSessionLoading] = useState(false)
+  const [sessionSubmitting, setSessionSubmitting] = useState(false)
+  const [sessionMessage, setSessionMessage] = useState<string | null>(null)
+  const [eventType, setEventType] = useState<'cash_in' | 'cash_out' | 'adjustment'>('cash_in')
+  const [eventAmount, setEventAmount] = useState('0')
+  const [eventReason, setEventReason] = useState('')
+  const [closeCountedAmount, setCloseCountedAmount] = useState('0')
+  const [closeNote, setCloseNote] = useState('')
+  const [sessionSummary, setSessionSummary] = useState<PosSessionSummary | null>(null)
   const [customerId, setCustomerId] = useState('')
   const [appointmentId, setAppointmentId] = useState('')
   const [selectedProductId, setSelectedProductId] = useState('')
@@ -70,6 +88,123 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
       Number(discount || 0)
     )
   }, [cart, discount])
+
+  async function loadOpenSession() {
+    setSessionLoading(true)
+    try {
+      const response = await fetch('/api/pos/sessions/open', { method: 'GET' })
+      const body = (await response.json().catch(() => null)) as
+        | { ok?: boolean; data?: { session?: { id?: string; opened_at?: string } | null }; message?: string }
+        | null
+      if (!response.ok || !body?.ok) {
+        throw new Error(body?.message ?? 'レジセッションの取得に失敗しました。')
+      }
+      setSessionId(body.data?.session?.id ?? null)
+      setSessionOpenedAt(body.data?.session?.opened_at ?? null)
+    } catch (sessionError) {
+      setSessionMessage(sessionError instanceof Error ? sessionError.message : 'レジセッションの取得に失敗しました。')
+    } finally {
+      setSessionLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadOpenSession()
+  }, [])
+
+  async function openSession() {
+    setSessionSubmitting(true)
+    setSessionMessage(null)
+    try {
+      const response = await fetch('/api/pos/sessions/open', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: 'POS会計画面から開局' }),
+      })
+      const body = (await response.json().catch(() => null)) as
+        | { ok?: boolean; data?: { session?: { id?: string; opened_at?: string } }; message?: string }
+        | null
+      if (!response.ok || !body?.ok) {
+        throw new Error(body?.message ?? '開局に失敗しました。')
+      }
+      setSessionId(body.data?.session?.id ?? null)
+      setSessionOpenedAt(body.data?.session?.opened_at ?? null)
+      setSessionSummary(null)
+      setSessionMessage('レジを開局しました。')
+    } catch (sessionError) {
+      setSessionMessage(sessionError instanceof Error ? sessionError.message : '開局に失敗しました。')
+    } finally {
+      setSessionSubmitting(false)
+    }
+  }
+
+  async function submitCashDrawerEvent() {
+    if (!sessionId) {
+      setSessionMessage('先にレジを開局してください。')
+      return
+    }
+    const amount = Math.max(0, Number(eventAmount) || 0)
+    setSessionSubmitting(true)
+    setSessionMessage(null)
+    try {
+      const response = await fetch('/api/pos/cash-drawer-events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          event_type: eventType,
+          amount,
+          reason: eventReason || null,
+        }),
+      })
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null
+      if (!response.ok || !body?.ok) {
+        throw new Error(body?.message ?? '現金入出金の登録に失敗しました。')
+      }
+      setEventAmount('0')
+      setEventReason('')
+      setSessionMessage('現金入出金を登録しました。')
+    } catch (sessionError) {
+      setSessionMessage(sessionError instanceof Error ? sessionError.message : '現金入出金の登録に失敗しました。')
+    } finally {
+      setSessionSubmitting(false)
+    }
+  }
+
+  async function closeSession() {
+    if (!sessionId) {
+      setSessionMessage('開いているレジセッションがありません。')
+      return
+    }
+    const countedAmount = Math.max(0, Number(closeCountedAmount) || 0)
+    setSessionSubmitting(true)
+    setSessionMessage(null)
+    try {
+      const response = await fetch(`/api/pos/sessions/${sessionId}/close`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cash_counted_amount: countedAmount,
+          note: closeNote || null,
+        }),
+      })
+      const body = (await response.json().catch(() => null)) as
+        | { ok?: boolean; data?: { summary?: PosSessionSummary }; message?: string }
+        | null
+      if (!response.ok || !body?.ok) {
+        throw new Error(body?.message ?? 'レジ締めに失敗しました。')
+      }
+      setSessionSummary(body.data?.summary ?? null)
+      setSessionId(null)
+      setSessionOpenedAt(null)
+      setCloseNote('')
+      setSessionMessage('レジ締めを完了しました。')
+    } catch (sessionError) {
+      setSessionMessage(sessionError instanceof Error ? sessionError.message : 'レジ締めに失敗しました。')
+    } finally {
+      setSessionSubmitting(false)
+    }
+  }
 
   function addProductLine() {
     const product = products.find((row) => row.id === selectedProductId)
@@ -100,6 +235,10 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
   }
 
   async function submitCheckout() {
+    if (!sessionId) {
+      setError('先にレジを開局してください。')
+      return
+    }
     if (!customerId || !appointmentId || cart.length === 0) {
       setError('予約・顧客・明細を指定してください。')
       return
@@ -113,6 +252,7 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
         body: JSON.stringify({
           customer_id: customerId,
           appointment_id: appointmentId,
+          session_id: sessionId,
           lines: cart.map((line) => ({
             line_type: 'product',
             source_id: line.productId,
@@ -178,6 +318,97 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
           <p className="text-sm font-semibold text-amber-900">POS会計（β）</p>
           <p className="text-xs text-amber-800">店販を含む会計を予約に紐づけて確定できます。</p>
         </div>
+      </div>
+
+      <div className="mb-3 rounded border border-slate-200 bg-white p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">レジセッション</p>
+            <p className="text-xs text-slate-600">
+              {sessionLoading
+                ? '確認中...'
+                : sessionId
+                  ? `開局中: ${sessionOpenedAt ? new Date(sessionOpenedAt).toLocaleString('ja-JP') : sessionId}`
+                  : '未開局'}
+            </p>
+          </div>
+          <Button type="button" onClick={() => void openSession()} disabled={sessionSubmitting || Boolean(sessionId)}>
+            開局
+          </Button>
+        </div>
+
+        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[1fr_120px_120px_auto] md:items-end">
+          <label className="text-xs text-slate-700">
+            入出金種別
+            <select
+              value={eventType}
+              onChange={(event) => setEventType(event.target.value as 'cash_in' | 'cash_out' | 'adjustment')}
+              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+            >
+              <option value="cash_in">入金</option>
+              <option value="cash_out">出金</option>
+              <option value="adjustment">調整</option>
+            </select>
+          </label>
+          <label className="text-xs text-slate-700">
+            金額
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={eventAmount}
+              onChange={(event) => setEventAmount(event.target.value)}
+              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label className="text-xs text-slate-700">
+            理由
+            <input
+              value={eventReason}
+              onChange={(event) => setEventReason(event.target.value)}
+              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <Button type="button" onClick={() => void submitCashDrawerEvent()} disabled={sessionSubmitting || !sessionId}>
+            登録
+          </Button>
+        </div>
+
+        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[1fr_1fr_auto] md:items-end">
+          <label className="text-xs text-slate-700">
+            実残高
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={closeCountedAmount}
+              onChange={(event) => setCloseCountedAmount(event.target.value)}
+              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label className="text-xs text-slate-700">
+            締めメモ
+            <input
+              value={closeNote}
+              onChange={(event) => setCloseNote(event.target.value)}
+              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <Button type="button" onClick={() => void closeSession()} disabled={sessionSubmitting || !sessionId}>
+            レジ締め
+          </Button>
+        </div>
+
+        {sessionSummary ? (
+          <div className="mt-3 rounded border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-900">
+            <p>売上合計: {formatYen(sessionSummary.sales_total)}</p>
+            <p>現金期待額: {formatYen(sessionSummary.cash_expected)}</p>
+            <p>実残高: {formatYen(sessionSummary.cash_counted)}</p>
+            <p>差異: {formatYen(sessionSummary.cash_diff)}</p>
+          </div>
+        ) : null}
+
+        {sessionMessage ? <p className="mt-2 text-xs text-slate-700">{sessionMessage}</p> : null}
       </div>
 
       {error ? <p className="mb-2 text-sm text-red-700">{error}</p> : null}
@@ -346,7 +577,7 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
           <Button
             type="button"
             className="mt-2"
-            disabled={submitting || !appointmentId || !customerId || cart.length === 0}
+            disabled={submitting || !sessionId || !appointmentId || !customerId || cart.length === 0}
             onClick={() => void submitCheckout()}
           >
             {submitting ? '確定中...' : '会計確定して領収書へ'}
