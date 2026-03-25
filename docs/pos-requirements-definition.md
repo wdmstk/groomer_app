@@ -147,3 +147,8 @@ Parent Task: `TASK-408`
 - `invoice_lines.source_type` のPOS物販対応の契約化
 - 取消/返金APIの境界（未締め取消と締め後返金）の明確化
 - 在庫不足時エラーコード仕様の標準化
+
+## 11. TASK-POS-006運用ドキュメント
+- UAT: `docs/pos-uat-checklist.md`
+- 移行/初期設定: `docs/pos-migration-initial-setup.md`
+- 段階展開/ロールバック: `docs/pos-pilot-rollout-runbook.md`

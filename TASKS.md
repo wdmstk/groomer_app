@@ -133,9 +133,10 @@ Completed tasks should be marked:
 8. `TASK-401` 統合会計（Invoice方式）
 9. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
 10. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
+11. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
 
 ### todo
-1. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
+（なし）
 
 ### blocked
 1. `TASK-413` AIタグ解析ジョブのRLS修正（Supabase SQL Editor反映待ち）
@@ -1093,7 +1094,7 @@ Completed tasks should be marked:
 
 #### TASK-POS-006 受入試験・移行・運用ドキュメント整備
 - ブランチ: `feat/TASK-POS-006-pos-uat-rollout`
-- ステータス: `todo`
+- ステータス: `in_progress`
 - 目的: パイロット導入に必要な検証・運用資料を完了する
 - スコープ:
   - 店舗UAT（通常会計/返品/締め）
@@ -1107,6 +1108,12 @@ Completed tasks should be marked:
 - テスト観点:
   - 回帰テスト（既存会計/在庫/予約への影響）
   - 負荷・運用手順リハーサル
+- 進捗:
+  - [x] UATチェックリストを追加（`docs/pos-uat-checklist.md`）
+  - [x] 移行/初期設定手順を追加（`docs/pos-migration-initial-setup.md`）
+  - [x] pilot→full展開Runbookを追加（`docs/pos-pilot-rollout-runbook.md`）
+  - [ ] パイロット店舗でUAT実施（チェックリスト実測）
+  - [ ] pilot→full承認記録の反映
 
 ### 依存順
 1. `TASK-POS-001`

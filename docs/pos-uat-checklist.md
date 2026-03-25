@@ -1,0 +1,58 @@
+# POS UATチェックリスト（TASK-POS-006）
+
+## 目的
+- パイロット導入前に、通常会計・取消・在庫連動・レジ締めの実運用可否を確認する。
+
+## 前提
+- `supabase/supabase_pos_core.sql` が適用済み
+- `/payments` の POS会計（β）パネルが利用可能
+- テスト対象店舗で `inventory_items` が登録済み
+
+## 実施記録
+- 対象店舗:
+- 実施日:
+- 実施者:
+- 判定: `pass` / `fail` / `conditional`
+
+## シナリオ
+1. 開局
+- [ ] `/payments` で「開局」できる
+- [ ] 同時に2回目の開局が `POS_SESSION_ALREADY_OPEN` で拒否される
+
+2. 通常会計（POS）
+- [ ] 予約・顧客・商品を選び会計確定できる
+- [ ] 領収書へ遷移し `payments` が `支払済` で作成される
+- [ ] `pos_orders.session_id` が開局中セッションに紐づく
+
+3. 在庫連動（出庫）
+- [ ] POS会計で `inventory_movements` に `outbound` が作成される
+- [ ] `notes` が `POS_OUTBOUND:<order_id>:<line_id>` 形式で記録される
+- [ ] 同一操作再試行で重複起票されない
+
+4. 取消（void）
+- [ ] 領収書画面から取消できる
+- [ ] `pos_orders.status=void` と `pos_refunds` 記録を確認できる
+- [ ] `payments.status=取消` に更新される
+
+5. 在庫連動（戻し）
+- [ ] 取消で `inventory_movements` に `inbound` が作成される
+- [ ] `notes` が `POS_VOID_REVERT:<order_id>:<line_id>` 形式で記録される
+- [ ] 同一取消再試行で重複起票されない
+
+6. 現金入出金
+- [ ] `cash_in` / `cash_out` / `adjustment` を登録できる
+- [ ] クローズ済みセッションでは登録不可になる
+
+7. 日次締め
+- [ ] 実残高を入力して締め処理できる
+- [ ] サマリ（売上合計・現金期待額・差異）が表示される
+- [ ] セッションが `closed` になり再締め不可になる
+
+8. 権限/スコープ
+- [ ] 他店舗データへアクセスできない（RLS）
+- [ ] 監査ログに `pos_session` / `pos_order` / `cash_drawer_event` 操作が残る
+
+## 受入判定基準
+- `fail` が 0 件
+- `conditional` は期限付きの是正計画がある
+- 主要業務（開局・会計・取消・締め）がすべて `pass`
