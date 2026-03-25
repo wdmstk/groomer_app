@@ -145,9 +145,16 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
         body: JSON.stringify({ notes: 'POS会計画面から開局' }),
       })
       const body = (await response.json().catch(() => null)) as
-        | { ok?: boolean; data?: { session?: { id?: string; opened_at?: string } }; message?: string }
+        | { ok?: boolean; code?: string; data?: { session?: { id?: string; opened_at?: string } }; message?: string }
         | null
       if (!response.ok || !body?.ok) {
+        if (body?.code === 'POS_SESSION_ALREADY_OPEN' && body.data?.session?.id) {
+          setSessionId(body.data.session.id)
+          setSessionOpenedAt(body.data.session.opened_at ?? null)
+          setSessionSummary(null)
+          setSessionMessage('既に開局中のレジセッションへ接続しました。')
+          return
+        }
         throw new Error(body?.message ?? '開局に失敗しました。')
       }
       setSessionId(body.data?.session?.id ?? null)

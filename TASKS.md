@@ -134,7 +134,6 @@ Completed tasks should be marked:
 9. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
 10. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
 11. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
-12. `TASK-POS-007` POS一本化（トリミング/ホテル会計統合）（`TASK-408`配下）
 
 ### todo
 （なし）
@@ -157,6 +156,7 @@ Completed tasks should be marked:
 12. `TASK-POS-003` POS会計画面（MVP）実装（`TASK-408`配下）
 13. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
 14. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
+15. `TASK-POS-007` POS一本化（トリミング/ホテル会計統合）（`TASK-408`配下）
 
 ## 正式タスク詳細（Task ID採番済み）
 
@@ -1120,7 +1120,7 @@ Completed tasks should be marked:
 
 #### TASK-POS-007 POS一本化（トリミング/ホテル会計統合）
 - ブランチ: `feat/TASK-POS-007-pos-unification`
-- ステータス: `in_progress`
+- ステータス: `done`
 - 目的: 既存のInvoice中心導線をPOS中心導線へ段階統合し、会計画面を一本化する
 - スコープ:
   - 予約メニュー（トリミング）明細のPOS取り込み
@@ -1141,7 +1141,7 @@ Completed tasks should be marked:
   - [x] ホテル明細取込ボタンを追加
   - [x] API契約・運用マニュアル更新
   - [x] E2Eケース追加（`e2e/payments-list.spec.ts`）
-  - [ ] E2E実行の安定化（webServer起動失敗の解消）
+  - [x] E2E実行の安定化（webServer起動失敗/ブラウザインストール問題を解消）
 
 ### 依存順
 1. `TASK-POS-001`

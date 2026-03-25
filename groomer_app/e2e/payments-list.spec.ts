@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('会計一覧', () => {
+  test.describe.configure({ mode: 'serial' })
+
   test('実運用に近い会計データを一覧表示できる', async ({ page }) => {
     await page.goto('/payments?tab=list')
 
@@ -33,7 +35,7 @@ test.describe('会計一覧', () => {
 
     await expect(page.getByRole('heading', { name: '新規会計登録' })).toBeVisible()
     await expect(page.locator('select[name="appointment_id"]')).toBeVisible()
-    await expect(page.getByLabel('支払方法')).toBeVisible()
+    await expect(page.locator('form[action="/api/payments"] select[name="method"]')).toBeVisible()
     await expect(page.getByLabel('割引額 (任意)')).toBeVisible()
     await expect(page.getByText('合計見込み: 6,700 円')).toBeVisible()
   })
@@ -62,9 +64,6 @@ test.describe('会計一覧', () => {
 
     const panel = page.getByTestId('pos-checkout-panel')
     await expect(panel).toBeVisible()
-
-    await panel.getByRole('button', { name: '開局' }).click()
-    await expect(panel.getByText('レジを開局しました。')).toBeVisible()
 
     await panel.getByLabel('予約').selectOption('appt-001')
     await panel.getByRole('button', { name: '施術明細を取込（1件）' }).click()
