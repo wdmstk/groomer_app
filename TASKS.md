@@ -134,6 +134,7 @@ Completed tasks should be marked:
 9. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
 10. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
 11. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
+12. `TASK-POS-007` POS一本化（トリミング/ホテル会計統合）（`TASK-408`配下）
 
 ### todo
 （なし）
@@ -1117,6 +1118,30 @@ Completed tasks should be marked:
   - [ ] パイロット店舗でUAT実施（チェックリスト実測）
   - [ ] pilot→full承認記録の反映
 
+#### TASK-POS-007 POS一本化（トリミング/ホテル会計統合）
+- ブランチ: `feat/TASK-POS-007-pos-unification`
+- ステータス: `in_progress`
+- 目的: 既存のInvoice中心導線をPOS中心導線へ段階統合し、会計画面を一本化する
+- スコープ:
+  - 予約メニュー（トリミング）明細のPOS取り込み
+  - ホテル明細のPOS取り込み
+  - POS会計APIで `service` 明細を正式処理
+  - 既存Invoice導線との整合（段階的縮退）
+- DoD:
+  - `/payments` のPOSでトリミング/ホテル/店販を同一カートで会計確定できる
+  - 既存在庫連動・取消・締め処理と矛盾しない
+  - 運用マニュアルと契約書が一本化方針へ更新されている
+- テスト観点:
+  - 単体: カート合計（service+product混在）
+  - E2E: 開局→明細取込→会計確定→領収書→取消→締め
+- 進捗:
+  - [x] TASK登録・ブランチ作成
+  - [x] POSカートで `line_type=service|product` を扱えるように改修
+  - [x] 予約メニュー取込ボタンを追加
+  - [x] ホテル明細取込ボタンを追加
+  - [ ] API契約・運用マニュアル更新
+  - [ ] E2E/回帰テスト追加
+
 ### 依存順
 1. `TASK-POS-001`
 2. `TASK-POS-002`
@@ -1124,3 +1149,4 @@ Completed tasks should be marked:
 4. `TASK-POS-004`
 5. `TASK-POS-005`
 6. `TASK-POS-006`
+7. `TASK-POS-007`

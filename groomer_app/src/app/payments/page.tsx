@@ -25,10 +25,26 @@ type AppointmentOption = {
 }
 
 type AppointmentMenuSummary = {
+  id?: string
   appointment_id: string
+  menu_name?: string | null
   price: number
   tax_rate: number | null
   tax_included: boolean | null
+}
+
+type HotelStayForPos = {
+  id: string
+  appointment_id: string | null
+}
+
+type HotelChargeForPos = {
+  id: string
+  stay_id: string
+  label: string
+  line_amount_jpy: number
+  tax_rate: number
+  tax_included: boolean
 }
 
 type PaymentRow = {
@@ -63,6 +79,24 @@ type PosAppointmentOption = {
   id: string
   label: string
   customerId: string | null
+}
+
+type PosServiceLineOption = {
+  id: string
+  appointmentId: string
+  label: string
+  amount: number
+  taxRate: number
+  taxIncluded: boolean
+}
+
+type PosHotelLineOption = {
+  id: string
+  appointmentId: string
+  label: string
+  amount: number
+  taxRate: number
+  taxIncluded: boolean
 }
 
 type PaymentsPageProps = {
@@ -118,7 +152,26 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
     : (
         await db
           .from('appointment_menus')
-          .select('appointment_id, price, tax_rate, tax_included')
+          .select('id, appointment_id, menu_name, price, tax_rate, tax_included')
+          .eq('store_id', storeId)
+      ).data
+
+  const hotelStaysForPos = isPlaywrightE2E
+    ? []
+    : (
+        await db
+          .from('hotel_stays')
+          .select('id, appointment_id')
+          .eq('store_id', storeId)
+          .not('appointment_id', 'is', null)
+      ).data
+
+  const hotelChargesForPos = isPlaywrightE2E
+    ? []
+    : (
+        await db
+          .from('hotel_charges')
+          .select('id, stay_id, label, line_amount_jpy, tax_rate, tax_included')
           .eq('store_id', storeId)
       ).data
 
@@ -217,6 +270,35 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
     label: appointment.label,
     customerId: appointment.customerId,
   }))
+  const posServiceLineOptions: PosServiceLineOption[] = ((appointmentMenus ?? []) as AppointmentMenuSummary[])
+    .filter((row) => Boolean(row.appointment_id))
+    .map((row, index) => ({
+      id: row.id ?? `appointment-menu-${row.appointment_id}-${index}`,
+      appointmentId: row.appointment_id,
+      label: row.menu_name ?? '施術メニュー',
+      amount: Math.round(Number(row.price ?? 0)),
+      taxRate: row.tax_rate ?? 0.1,
+      taxIncluded: row.tax_included ?? true,
+    }))
+  const stayAppointmentMap = new Map(
+    ((hotelStaysForPos ?? []) as HotelStayForPos[])
+      .filter((row) => Boolean(row.appointment_id))
+      .map((row) => [row.id, row.appointment_id as string])
+  )
+  const posHotelLineOptions: PosHotelLineOption[] = ((hotelChargesForPos ?? []) as HotelChargeForPos[])
+    .map((row) => {
+      const appointmentId = stayAppointmentMap.get(row.stay_id)
+      if (!appointmentId) return null
+      return {
+        id: row.id,
+        appointmentId,
+        label: row.label || 'ホテル明細',
+        amount: Math.round(Number(row.line_amount_jpy ?? 0)),
+        taxRate: row.tax_rate ?? 0.1,
+        taxIncluded: row.tax_included ?? true,
+      }
+    })
+    .filter((row): row is PosHotelLineOption => Boolean(row))
   const modalCloseRedirect = `/payments?tab=${activeTab}`
 
   return (
@@ -229,7 +311,13 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
       </div>
 
       <InvoiceCheckoutPanel customerNameById={customerNameById} />
-      <PosCheckoutPanel customers={customerOptions} products={productOptions} appointments={posAppointmentOptions} />
+      <PosCheckoutPanel
+        customers={customerOptions}
+        products={productOptions}
+        appointments={posAppointmentOptions}
+        serviceLines={posServiceLineOptions}
+        hotelLines={posHotelLineOptions}
+      />
 
       <div className="flex items-center gap-4 border-b">
         <Link
