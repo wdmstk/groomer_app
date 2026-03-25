@@ -1112,6 +1112,7 @@ Completed tasks should be marked:
   - [x] UATチェックリストを追加（`docs/pos-uat-checklist.md`）
   - [x] 移行/初期設定手順を追加（`docs/pos-migration-initial-setup.md`）
   - [x] pilot→full展開Runbookを追加（`docs/pos-pilot-rollout-runbook.md`）
+  - [x] pilot→full承認記録テンプレを追加（`docs/pos-pilot-approval-record.md`）
   - [ ] パイロット店舗でUAT実施（チェックリスト実測）
   - [ ] pilot→full承認記録の反映
 

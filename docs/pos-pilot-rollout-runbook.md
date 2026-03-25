@@ -49,3 +49,8 @@
 - パイロット店舗で2営業日連続 `重大障害 0`
 - UATと運用手順が最新版へ更新済み
 - 運用責任者承認（pilot -> full）が記録済み
+
+## 関連ドキュメント
+- UATチェックリスト: `docs/pos-uat-checklist.md`
+- 移行/初期設定: `docs/pos-migration-initial-setup.md`
+- 承認記録テンプレート: `docs/pos-pilot-approval-record.md`

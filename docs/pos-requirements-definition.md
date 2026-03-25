@@ -152,3 +152,4 @@ Parent Task: `TASK-408`
 - UAT: `docs/pos-uat-checklist.md`
 - 移行/初期設定: `docs/pos-migration-initial-setup.md`
 - 段階展開/ロールバック: `docs/pos-pilot-rollout-runbook.md`
+- 承認記録: `docs/pos-pilot-approval-record.md`
