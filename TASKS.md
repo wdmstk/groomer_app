@@ -1114,8 +1114,9 @@ Completed tasks should be marked:
   - [x] pilot→full展開Runbookを追加（`docs/pos-pilot-rollout-runbook.md`）
   - [x] pilot→full承認記録テンプレを追加（`docs/pos-pilot-approval-record.md`）
   - [x] 店舗向けPOS操作マニュアルを追加（`docs/pos-operations-user-manual.md`）
-  - [ ] パイロット店舗でUAT実施（チェックリスト実測）
-  - [ ] pilot→full承認記録の反映
+  - [x] 開発環境リハーサルUAT実測を反映（`docs/pos-uat-checklist.md`, 判定: `conditional`）
+  - [x] pilot→full承認記録を反映（`docs/pos-pilot-approval-record.md`, 判定: `hold`）
+  - [ ] 実店舗パイロット（2営業日）実測と最終サインオフ
 
 ### 依存順
 1. `TASK-POS-001`

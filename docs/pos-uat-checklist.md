@@ -9,23 +9,23 @@
 - テスト対象店舗で `inventory_items` が登録済み
 
 ## 実施記録
-- 対象店舗:
-- 実施日:
-- 実施者:
-- 判定: `pass` / `fail` / `conditional`
-- 備考:
+- 対象店舗: `DEV-PILOT-01`（開発環境リハーサル）
+- 実施日: `2026-03-25`
+- 実施者: POS導入チーム（開発）
+- 判定: `conditional`
+- 備考: 自動テスト中心の事前UAT。実店舗パイロット（2営業日）で最終サインオフを行う。
 
 ## 実施結果サマリ
 | 項目 | 結果 (`pass`/`fail`/`conditional`) | 証跡（画面/SQL/ログ） | メモ |
 |---|---|---|---|
-| 開局 |  |  |  |
-| 通常会計（POS） |  |  |  |
-| 在庫連動（出庫） |  |  |  |
-| 取消（void） |  |  |  |
-| 在庫連動（戻し） |  |  |  |
-| 現金入出金 |  |  |  |
-| 日次締め |  |  |  |
-| 権限/スコープ |  |  |  |
+| 開局 | conditional | `POST /api/pos/sessions/open` 実装確認 | 実店舗オペレーションで再確認 |
+| 通常会計（POS） | conditional | `POST /api/pos/orders` / `confirm` 実装確認 | E2Eは環境前提差異で再実行要 |
+| 在庫連動（出庫） | pass | `npm test -- tests/pos.inventory.test.ts` | notesキー重複防止を確認 |
+| 取消（void） | conditional | `/api/pos/orders/[order_id]/void` 実装確認 | 返品オペレーションの実地確認待ち |
+| 在庫連動（戻し） | pass | `npm test -- tests/pos.inventory.test.ts` | 取消戻しの重複起票防止を確認 |
+| 現金入出金 | conditional | `POST /api/pos/cash-drawer-events` 実装確認 | 実運用オペレーション確認待ち |
+| 日次締め | pass | `npm test -- tests/pos.session-close.test.ts` | 集計ロジック単体テスト合格 |
+| 権限/スコープ | conditional | RLS設計/APIガード確認 | 実店舗アカウントで最終確認待ち |
 
 ## シナリオ
 1. 開局
@@ -69,8 +69,9 @@
 - `fail` が 0 件
 - `conditional` は期限付きの是正計画がある
 - 主要業務（開局・会計・取消・締め）がすべて `pass`
+- 本チェックが開発環境リハーサルの場合、最終判定は `conditional` とし、実店舗パイロット完了後に再判定する
 
 ## サインオフ
-- 店舗責任者:
-- 導入担当:
-- 承認日:
+- 店舗責任者: 未サイン（実店舗パイロット後）
+- 導入担当: POS導入チーム（開発）
+- 承認日: 未確定
