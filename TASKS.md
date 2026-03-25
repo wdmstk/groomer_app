@@ -1116,6 +1116,7 @@ Completed tasks should be marked:
   - [x] 店舗向けPOS操作マニュアルを追加（`docs/pos-operations-user-manual.md`）
   - [x] 開発環境リハーサルUAT実測を反映（`docs/pos-uat-checklist.md`, 判定: `conditional`）
   - [x] pilot→full承認記録を反映（`docs/pos-pilot-approval-record.md`, 判定: `hold`）
+  - [x] payments E2Eの前提調整と再実行（`e2e/payments-list.spec.ts` 3件pass）
   - [ ] 実店舗パイロット（2営業日）実測と最終サインオフ
 
 ### 依存順

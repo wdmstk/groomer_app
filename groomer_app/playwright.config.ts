@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const port = Number(process.env.PORT ?? '3000')
+const port = Number(process.env.PORT ?? '3100')
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`
 
 export default defineConfig({
@@ -20,7 +20,7 @@ export default defineConfig({
     command: 'npx next dev --webpack',
     url: baseURL,
     timeout: 180_000,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     stdout: 'ignore',
     stderr: 'pipe',
     env: {

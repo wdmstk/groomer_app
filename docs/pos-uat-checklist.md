@@ -15,6 +15,10 @@
 - 判定: `conditional`
 - 備考: 自動テスト中心の事前UAT。実店舗パイロット（2営業日）で最終サインオフを行う。
 
+## 自動テスト証跡（2026-03-25）
+- `npm test -- tests/pos.inventory.test.ts tests/pos.session-close.test.ts` : `pass (2/2)`
+- `npx playwright test --project=chromium e2e/payments-list.spec.ts` : `pass (3/3)`
+
 ## 実施結果サマリ
 | 項目 | 結果 (`pass`/`fail`/`conditional`) | 証跡（画面/SQL/ログ） | メモ |
 |---|---|---|---|
