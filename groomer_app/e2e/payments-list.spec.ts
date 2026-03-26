@@ -33,8 +33,8 @@ test.describe('会計一覧', () => {
 
     await expect(page.getByRole('heading', { name: '新規会計登録' })).toBeVisible()
     await expect(page.locator('select[name="appointment_id"]')).toBeVisible()
-    await expect(page.getByLabel('支払方法')).toBeVisible()
-    await expect(page.getByLabel('割引額 (任意)')).toBeVisible()
+    await expect(page.locator('select[name="method"]')).toBeVisible()
+    await expect(page.locator('input[name="discount_amount"]')).toBeVisible()
     await expect(page.getByText('合計見込み: 6,700 円')).toBeVisible()
   })
 

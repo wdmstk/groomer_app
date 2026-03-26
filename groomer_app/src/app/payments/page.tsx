@@ -11,6 +11,7 @@ import { paymentsPageFixtures } from '@/lib/e2e/payments-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { PaymentCreateModal } from '@/components/payments/PaymentCreateModal'
 import { InvoiceCheckoutPanel } from '@/components/payments/InvoiceCheckoutPanel'
+import { PosCheckoutPanel } from '@/components/payments/PosCheckoutPanel'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -50,6 +51,18 @@ type PaymentRow = {
 type CustomerOption = {
   id: string
   full_name: string
+}
+
+type ProductOption = {
+  id: string
+  name: string
+  unit: string
+}
+
+type PosAppointmentOption = {
+  id: string
+  label: string
+  customerId: string | null
 }
 
 type PaymentsPageProps = {
@@ -119,6 +132,17 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
           .order('created_at', { ascending: false })
       ).data
 
+  const products = isPlaywrightE2E
+    ? []
+    : (
+        await db
+          .from('inventory_items')
+          .select('id, name, unit')
+          .eq('store_id', storeId)
+          .eq('is_active', true)
+          .order('name', { ascending: true })
+      ).data
+
   const editPayment =
     !editId
       ? null
@@ -138,6 +162,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
   const paymentList: PaymentRow[] = ((payments ?? []) as PaymentRow[])
   const appointmentOptions: AppointmentOption[] = ((appointments ?? []) as AppointmentOption[])
   const customerOptions: CustomerOption[] = ((customers ?? []) as CustomerOption[])
+  const productOptions: ProductOption[] = ((products ?? []) as ProductOption[])
   const customerNameById = Object.fromEntries(
     customerOptions.map((customer) => [customer.id, customer.full_name])
   )
@@ -187,6 +212,11 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
   const selectableAppointmentOptions = appointmentFormOptions.filter(
     (appointment) => appointment.id === (editPayment?.appointment_id ?? null) || !occupiedAppointmentIds.has(appointment.id)
   )
+  const posAppointmentOptions: PosAppointmentOption[] = appointmentFormOptions.map((appointment) => ({
+    id: appointment.id,
+    label: appointment.label,
+    customerId: appointment.customerId,
+  }))
   const modalCloseRedirect = `/payments?tab=${activeTab}`
 
   return (
@@ -199,6 +229,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
       </div>
 
       <InvoiceCheckoutPanel customerNameById={customerNameById} />
+      <PosCheckoutPanel customers={customerOptions} products={productOptions} appointments={posAppointmentOptions} />
 
       <div className="flex items-center gap-4 border-b">
         <Link

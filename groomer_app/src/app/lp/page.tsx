@@ -47,6 +47,22 @@ type AiFeatureCard = {
   output: string
 }
 
+type BillingTermRow = {
+  item: string
+  detail: string
+}
+
+type PainPoint = {
+  title: string
+  detail: string
+}
+
+type OnboardingStep = {
+  step: string
+  title: string
+  detail: string
+}
+
 const PLAN_CARDS: PlanCard[] = [
   {
     id: 'light',
@@ -205,6 +221,70 @@ const AI_FEATURE_CARDS: AiFeatureCard[] = [
   },
 ]
 
+const BILLING_TERM_ROWS: BillingTermRow[] = [
+  {
+    item: '更新ルール',
+    detail: '月額・年額プランは、停止手続きがない限り自動更新されます。',
+  },
+  {
+    item: '解約締切',
+    detail: '次回更新日の前日23:59（日本時間）までに手続きすると、次回更新以降の課金が停止されます。',
+  },
+  {
+    item: '返金ポリシー',
+    detail: 'デジタルサービスの性質上、提供開始後の返金は原則不可です。',
+  },
+  {
+    item: '返金例外',
+    detail: '二重課金・当社起因の重複請求・法令上返金義務がある場合は返金対応します（請求日から30日以内に申請）。',
+  },
+  {
+    item: '課金タイミング',
+    detail: '申込時に初回決済。以後は契約日基準で自動決済されます（毎月同日 / 毎年同日）。',
+  },
+  {
+    item: '契約条件の確認先',
+    detail: '詳細条文は「利用規約」「特定商取引法に基づく表記」をご確認ください。',
+  },
+]
+
+const PAIN_POINTS: PainPoint[] = [
+  {
+    title: '予約対応が電話・LINE・紙で分散',
+    detail: '対応履歴が分かれ、引き継ぎや折返しの漏れが発生しやすい状態を解消します。',
+  },
+  {
+    title: 'カルテ記録に時間がかかる',
+    detail: '写真と動画を同じ時系列で扱い、AI補助で記録の負担を下げます。',
+  },
+  {
+    title: 'キャンセル枠の再販が追いつかない',
+    detail: '空き枠再販と通知導線で、機会損失を抑える運用を組み込みます。',
+  },
+  {
+    title: '会計・在庫・監査が分断',
+    detail: '日次運用の数字を一本化し、店舗運用と本部管理の両方で確認しやすくします。',
+  },
+]
+
+const ONBOARDING_STEPS: OnboardingStep[] = [
+  {
+    step: 'STEP 1',
+    title: '無料トライアル開始',
+    detail: '店舗情報と基本設定を登録し、現場端末でそのまま使い始めます。',
+  },
+  {
+    step: 'STEP 2',
+    title: '既存データ取り込み',
+    detail: '顧客・ペット・メニューを移行し、予約/カルテ運用へ切り替えます。',
+  },
+  {
+    step: 'STEP 3',
+    title: '本運用と改善',
+    detail: '通知・再販・AI活用を段階的に有効化し、運用指標を改善します。',
+  },
+]
+
 function planCardClass(planId: PlanKey): string {
   if (planId === 'pro') return 'border-slate-900 bg-slate-900 text-white shadow-xl'
   if (planId === 'standard') return 'border-sky-200 bg-white text-slate-900 shadow-lg'
@@ -228,6 +308,23 @@ export default function LandingPage() {
             最安ではなく、ペットサロン業務に必要な機能をまとめて提供。写真+動画カルテ、空き枠再販、LINE通知、AI Assist/Pro/Pro+による提案支援、当日運用まで一体で使えます。
           </p>
         </header>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-lg sm:p-6">
+          <h2 className="text-xl font-bold sm:text-2xl">こんな課題をまとめて解消</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            予約・カルテ・会計・通知を分断せず、現場運用を一つの流れで回せるように設計しています。
+          </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {PAIN_POINTS.map((item) => (
+              <article key={item.title} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <h3 className="text-sm font-bold text-slate-900">{item.title}</h3>
+                <p className="mt-1 text-sm text-slate-700">{item.detail}</p>
+              </article>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 lg:px-8">
@@ -529,6 +626,42 @@ export default function LandingPage() {
 
       <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 lg:px-8">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:p-6">
+          <h2 className="mb-4 text-xl font-bold sm:text-2xl">解約・請求条件（重要）</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse text-left text-sm">
+              <thead>
+                <tr className="bg-slate-50 text-slate-700">
+                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">項目</th>
+                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">内容</th>
+                </tr>
+              </thead>
+              <tbody>
+                {BILLING_TERM_ROWS.map((row) => (
+                  <tr key={row.item} className="odd:bg-white even:bg-slate-50/40">
+                    <td className="border-b border-slate-100 px-3 py-2 font-medium text-slate-900">{row.item}</td>
+                    <td className="border-b border-slate-100 px-3 py-2">{row.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-xs text-slate-500">
+            最新の契約条件は
+            {' '}
+            <Link href="/legal/terms" className="underline hover:text-slate-700">
+              利用規約
+            </Link>
+            ・
+            <Link href="/legal/tokusho" className="underline hover:text-slate-700">
+              特定商取引法に基づく表記
+            </Link>
+            を優先します。
+          </p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:p-6">
           <h2 className="mb-4 text-xl font-bold sm:text-2xl">業務特化で選ばれる理由</h2>
           <ul className="list-disc space-y-3 pl-5 text-sm text-slate-700">
             <li>写真と動画を同じカルテ時系列で管理でき、引き継ぎの解像度を上げやすい</li>
@@ -565,6 +698,21 @@ export default function LandingPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:p-6">
+          <h2 className="mb-4 text-xl font-bold sm:text-2xl">導入までの流れ</h2>
+          <div className="grid gap-3 md:grid-cols-3">
+            {ONBOARDING_STEPS.map((item) => (
+              <article key={item.step} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold tracking-wide text-sky-700">{item.step}</p>
+                <h3 className="mt-1 text-base font-bold text-slate-900">{item.title}</h3>
+                <p className="mt-1 text-sm text-slate-700">{item.detail}</p>
+              </article>
+            ))}
           </div>
         </div>
       </section>

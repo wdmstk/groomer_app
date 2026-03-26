@@ -6,6 +6,11 @@ import { createStoreScopedClient } from '@/lib/supabase/store'
 import { PetCreateModal } from '@/components/pets/PetCreateModal'
 import { petsPageFixtures } from '@/lib/e2e/pets-page-fixtures'
 import {
+  formatConsentDateTime,
+  getConsentStatusLabel,
+  getConsentStatusTone,
+} from '@/lib/consents/presentation'
+import {
   formatPetFallback,
   formatPetList,
   formatPetWeight,
@@ -32,6 +37,13 @@ type PetRow = {
   chronic_diseases: string[] | null
   notes: string | null
   customers?: { full_name: string } | { full_name: string }[] | null
+}
+
+type ConsentSummary = {
+  id: string
+  status: string
+  created_at: string
+  signed_at: string | null
 }
 
 type PetsPageProps = {
@@ -96,8 +108,20 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
     editPetData = (petsPageFixtures.pets.find((pet) => pet.id === editId) as PetRow | undefined) ?? null
   }
 
+  const { data: editPetConsentRows } =
+    editId && !isPlaywrightE2E
+      ? await db
+          .from('consent_documents')
+          .select('id, status, created_at, signed_at')
+          .eq('store_id', storeId)
+          .eq('pet_id', editId)
+          .order('created_at', { ascending: false })
+          .limit(5)
+      : { data: [] }
+
   const petList = (resolvedPetsData ?? []) as PetRow[]
   const customerOptions: CustomerOption[] = (customers ?? []) as CustomerOption[]
+  const editPetConsents = (editPetConsentRows as ConsentSummary[] | null) ?? []
 
   return (
     <section className="space-y-6">
@@ -154,6 +178,9 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                       <Link href={`/pets?tab=list&edit=${pet.id}`} className="text-blue-600 text-sm">
                         編集
                       </Link>
+                      <Link href={`/consents?pet_id=${pet.id}`} className="text-indigo-700 text-sm">
+                        同意書
+                      </Link>
                       <form action={`/api/pets/${pet.id}`} method="post">
                         <input type="hidden" name="_method" value="delete" />
                         <Button type="submit" className="bg-red-500 hover:bg-red-600">
@@ -204,6 +231,12 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                               className="text-blue-600 text-sm"
                             >
                               編集
+                            </Link>
+                            <Link
+                              href={`/consents?pet_id=${pet.id}`}
+                              className="text-indigo-700 text-sm"
+                            >
+                              同意書
                             </Link>
                             <form action={`/api/pets/${pet.id}`} method="post">
                               <input type="hidden" name="_method" value="delete" />
@@ -328,6 +361,40 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
               />
             </label>
             </div>
+            {editPetData ? (
+              <div className="rounded border border-indigo-200 bg-indigo-50 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-indigo-900">電子同意書（最新5件）</p>
+                  <Link
+                    href={`/consents?pet_id=${editPetData.id}`}
+                    className="text-xs font-semibold text-indigo-700 hover:text-indigo-900"
+                  >
+                    一覧を開く
+                  </Link>
+                </div>
+                {editPetConsents.length === 0 ? (
+                  <p className="text-sm text-indigo-900/80">同意書はまだありません。</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {editPetConsents.map((consent) => (
+                      <li key={consent.id} className="rounded border border-indigo-100 bg-white px-3 py-2 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getConsentStatusTone(consent.status)}`}
+                          >
+                            {getConsentStatusLabel(consent.status)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            作成: {formatConsentDateTime(consent.created_at)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-gray-600">署名: {formatConsentDateTime(consent.signed_at)}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
             <div className="flex items-center gap-2">
               <Button type="submit">{editPetData ? '更新する' : '登録する'}</Button>
               {editPetData && (

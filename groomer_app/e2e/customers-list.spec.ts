@@ -60,4 +60,16 @@ test.describe('顧客一覧', () => {
     await expect(page.getByLabel('電話番号')).toBeVisible()
     await expect(page.getByLabel('来店経路')).toBeVisible()
   })
+
+  test('顧客編集モーダルで電子同意書サマリーを表示できる', async ({ page }) => {
+    await page.goto('/customers?tab=list&edit=customer-001')
+
+    await expect(page.getByRole('heading', { name: '顧客情報の更新' })).toBeVisible()
+    await expect(page.getByText('電子同意書（最新5件）')).toBeVisible()
+    await expect(page.getByText('同意書はまだありません。')).toBeVisible()
+    await expect(page.getByRole('link', { name: '一覧を開く' })).toHaveAttribute(
+      'href',
+      '/consents?customer_id=customer-001'
+    )
+  })
 })
