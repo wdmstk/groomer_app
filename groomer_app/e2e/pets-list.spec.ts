@@ -31,4 +31,16 @@ test.describe('ペット一覧', () => {
     await expect(page.getByLabel('ペット名')).toBeVisible()
     await expect(page.getByLabel('体重 (kg)')).toBeVisible()
   })
+
+  test('ペット編集モーダルで電子同意書サマリーを表示できる', async ({ page }) => {
+    await page.goto('/pets?tab=list&edit=pet-001')
+
+    await expect(page.getByRole('heading', { name: 'ペット情報の更新' })).toBeVisible()
+    await expect(page.getByText('電子同意書（最新5件）')).toBeVisible()
+    await expect(page.getByText('同意書はまだありません。')).toBeVisible()
+    await expect(page.getByRole('link', { name: '一覧を開く' })).toHaveAttribute(
+      'href',
+      '/consents?pet_id=pet-001'
+    )
+  })
 })

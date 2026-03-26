@@ -77,6 +77,7 @@ const storeNavSections: NavSection[] = [
       { href: '/service-menus', label: '施術メニュー管理' },
       { href: '/appointments', label: '予約管理' },
       { href: '/medical-records', label: 'ペットカルテ管理' },
+      { href: '/consents', label: '電子同意書管理' },
       { href: '/hotel', label: 'ペットホテル管理' },
       { href: '/visits', label: '来店履歴' },
     ],

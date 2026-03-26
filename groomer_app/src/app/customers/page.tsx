@@ -15,6 +15,11 @@ import {
 import { CustomerMemberPortalControls } from '@/components/customers/CustomerMemberPortalControls'
 import { customersPageFixtures } from '@/lib/e2e/customers-page-fixtures'
 import {
+  formatConsentDateTime,
+  getConsentStatusLabel,
+  getConsentStatusTone,
+} from '@/lib/consents/presentation'
+import {
   formatCustomerFallback,
   formatCustomerNoShowCount,
   formatCustomerTags,
@@ -82,6 +87,13 @@ type MemberPortalLink = {
   customer_id: string
   expires_at: string
   last_used_at: string | null
+}
+
+type ConsentSummary = {
+  id: string
+  status: string
+  created_at: string
+  signed_at: string | null
 }
 
 function formatCurrency(value: number | null | undefined) {
@@ -169,16 +181,30 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
           .gt('expires_at', new Date().toISOString())
           .order('expires_at', { ascending: false })
       : { data: isPlaywrightE2E ? customersPageFixtures.memberPortalLinks : [] }
-  const editCustomer = needsListSupportData && editId && !isPlaywrightE2E
-    ? (
-        (await db
-          .from('customers')
-          .select('id, full_name, phone_number, email, address, line_id, how_to_know, tags')
-          .eq('id', editId)
+  let editCustomer: Customer | null = null
+  if (needsListSupportData && editId && !isPlaywrightE2E) {
+    editCustomer = (
+      (await db
+        .from('customers')
+        .select('id, full_name, phone_number, email, address, line_id, how_to_know, tags')
+        .eq('id', editId)
+        .eq('store_id', storeId)
+        .single()) as { data: Customer | null }
+    ).data
+  }
+  if (needsListSupportData && editId && isPlaywrightE2E) {
+    editCustomer = (customersPageFixtures.customers.find((customer) => customer.id === editId) as Customer | undefined) ?? null
+  }
+  const { data: editCustomerConsentRows } =
+    needsListSupportData && editId && !isPlaywrightE2E
+      ? await db
+          .from('consent_documents')
+          .select('id, status, created_at, signed_at')
           .eq('store_id', storeId)
-          .single()) as { data: Customer | null }
-      ).data
-    : null
+          .eq('customer_id', editId)
+          .order('created_at', { ascending: false })
+          .limit(5)
+      : { data: [] }
   const noShowCounts = ((appointmentRows ?? []) as Array<{ customer_id: string | null }>).reduce(
     (acc, row) => {
       if (row.customer_id) {
@@ -206,6 +232,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   const waitlistPets = waitlistCustomer
     ? pets.filter((pet) => pet.customer_id === waitlistCustomer.id)
     : []
+  const editCustomerConsents = (editCustomerConsentRows as ConsentSummary[] | null) ?? []
 
   return (
     <section className="space-y-6">
@@ -307,6 +334,12 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                         編集
                       </Link>
                       <Link
+                        href={`/consents?customer_id=${customer.id}`}
+                        className="text-indigo-700 text-sm"
+                      >
+                        同意書
+                      </Link>
+                      <Link
                         href={`/customers?tab=list&modal=waitlist&waitlist_customer=${customer.id}`}
                         className="text-emerald-700 text-sm"
                       >
@@ -396,6 +429,12 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                               className="text-blue-600 text-sm"
                             >
                               編集
+                            </Link>
+                            <Link
+                              href={`/consents?customer_id=${customer.id}`}
+                              className="text-indigo-700 text-sm"
+                            >
+                              同意書
                             </Link>
                             <Link
                               href={`/customers?tab=list&modal=waitlist&waitlist_customer=${customer.id}`}
@@ -498,14 +537,51 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
             </label>
             </div>
             {editCustomer ? (
-              <div className="rounded border border-amber-200 bg-amber-50 p-4">
-                <p className="mb-3 text-sm font-semibold text-amber-900">会員証URL</p>
-                <CustomerMemberPortalControls
-                  customerId={editCustomer.id}
-                  customerName={editCustomer.full_name}
-                  activeExpiresAt={activeMemberPortalByCustomerId.get(editCustomer.id)?.expires_at ?? null}
-                  lastUsedAt={activeMemberPortalByCustomerId.get(editCustomer.id)?.last_used_at ?? null}
-                />
+              <div className="space-y-3">
+                <div className="rounded border border-amber-200 bg-amber-50 p-4">
+                  <p className="mb-3 text-sm font-semibold text-amber-900">会員証URL</p>
+                  <CustomerMemberPortalControls
+                    customerId={editCustomer.id}
+                    customerName={editCustomer.full_name}
+                    activeExpiresAt={activeMemberPortalByCustomerId.get(editCustomer.id)?.expires_at ?? null}
+                    lastUsedAt={activeMemberPortalByCustomerId.get(editCustomer.id)?.last_used_at ?? null}
+                  />
+                </div>
+
+                <div className="rounded border border-indigo-200 bg-indigo-50 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-indigo-900">電子同意書（最新5件）</p>
+                    <Link
+                      href={`/consents?customer_id=${editCustomer.id}`}
+                      className="text-xs font-semibold text-indigo-700 hover:text-indigo-900"
+                    >
+                      一覧を開く
+                    </Link>
+                  </div>
+                  {editCustomerConsents.length === 0 ? (
+                    <p className="text-sm text-indigo-900/80">同意書はまだありません。</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {editCustomerConsents.map((consent) => (
+                        <li key={consent.id} className="rounded border border-indigo-100 bg-white px-3 py-2 text-sm">
+                          <div className="flex items-center justify-between gap-3">
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getConsentStatusTone(consent.status)}`}
+                            >
+                              {getConsentStatusLabel(consent.status)}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              作成: {formatConsentDateTime(consent.created_at)}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-gray-600">
+                            署名: {formatConsentDateTime(consent.signed_at)}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             ) : null}
             <div className="flex items-center gap-2">
