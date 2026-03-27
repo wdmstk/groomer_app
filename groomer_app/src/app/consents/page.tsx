@@ -1,4 +1,5 @@
 import { ConsentManagementPanel } from '@/components/consents/ConsentManagementPanel'
+import { formatConsentDateJst, renderConsentTemplateHtml } from '@/lib/consents/template-render'
 import { consentsPageFixtures } from '@/lib/e2e/consents-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
@@ -21,7 +22,7 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
   const customerId = resolvedSearchParams?.customer_id
   const petId = resolvedSearchParams?.pet_id
 
-  const [{ data: templates }, { data: customers }, { data: pets }, documentsQuery] = isPlaywrightE2E
+  const [{ data: templates }, { data: customers }, { data: pets }, documentsQuery, { data: store }] = isPlaywrightE2E
     ? [
         { data: consentsPageFixtures.templates },
         { data: consentsPageFixtures.customers },
@@ -33,11 +34,14 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
             return true
           }),
         },
+        { data: { name: 'テスト店舗' } },
       ]
     : await Promise.all([
         supabase
           .from('consent_templates' as never)
-          .select('id, name, category, status, current_version_id')
+          .select(
+            'id, name, category, status, current_version_id, current_version:consent_template_versions!consent_templates_current_version_id_fkey(id, title, body_html, body_text, version_no)'
+          )
           .eq('store_id', storeId)
           .order('updated_at', { ascending: false }),
         supabase
@@ -58,8 +62,9 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
             .order('created_at', { ascending: false })
           if (customerId) query = query.eq('customer_id', customerId)
           if (petId) query = query.eq('pet_id', petId)
-          return query
-        })(),
+            return query
+          })(),
+        supabase.from('stores').select('name').eq('id', storeId).maybeSingle(),
       ])
 
   return (
@@ -69,8 +74,33 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
         <p className="text-sm text-gray-600">同意書テンプレート管理、署名依頼、履歴確認を行います。</p>
       </div>
       <ConsentManagementPanel
-        templates={(templates as Array<{ id: string; name: string; category: string; status: string; current_version_id: string | null }>) ?? []}
+        templates={((templates as Array<{
+          id: string
+          name: string
+          category: string
+          status: string
+          current_version_id: string | null
+          current_version?: {
+            id: string
+            title: string
+            body_html: string
+            body_text: string
+            version_no: number
+          } | null
+        }>) ?? []).map((template) => ({
+          ...template,
+          current_version: template.current_version
+            ? {
+                ...template.current_version,
+                body_html: renderConsentTemplateHtml(template.current_version.body_html, {
+                  store_name: String((store as { name?: string | null } | null)?.name ?? ''),
+                  consent_date: formatConsentDateJst(),
+                }),
+              }
+            : null,
+        }))}
         documents={(documentsQuery.data as Array<{ id: string; customer_id: string; pet_id: string; status: string; signed_at: string | null; created_at: string }>) ?? []}
+        storeName={String((store as { name?: string | null } | null)?.name ?? '')}
         customers={((customers ?? []) as Array<{ id: string; full_name: string }>).map((row) => ({ id: row.id, label: row.full_name }))}
         pets={((pets ?? []) as Array<{ id: string; customer_id: string; name: string }>).map((row) => ({
           id: row.id,

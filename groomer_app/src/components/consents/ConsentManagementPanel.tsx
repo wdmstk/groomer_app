@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { formatConsentDateJst, renderConsentTemplateHtml } from '@/lib/consents/template-render'
 
 type Option = { id: string; label: string; extra?: string | null }
 type TemplateRow = {
@@ -9,6 +10,13 @@ type TemplateRow = {
   category: string
   status: string
   current_version_id: string | null
+  current_version?: {
+    id: string
+    title: string
+    body_html: string
+    body_text: string
+    version_no: number
+  } | null
 }
 type DocumentRow = {
   id: string
@@ -22,6 +30,7 @@ type DocumentRow = {
 type Props = {
   templates: TemplateRow[]
   documents: DocumentRow[]
+  storeName: string
   customers: Option[]
   pets: Array<Option & { customer_id: string }>
 }
@@ -41,7 +50,32 @@ function formatDate(value: string | null) {
   }).format(date)
 }
 
-export function ConsentManagementPanel({ templates: initialTemplates, documents: initialDocuments, customers, pets }: Props) {
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function normalizeBodyText(value: string) {
+  return value
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+function bodyTextToHtml(value: string) {
+  const normalized = normalizeBodyText(value)
+  if (!normalized) return '<p></p>'
+  return normalized
+    .split('\n\n')
+    .map((paragraph) => `<p>${escapeHtml(paragraph).replaceAll('\n', '<br />')}</p>`)
+    .join('\n')
+}
+
+export function ConsentManagementPanel({ templates: initialTemplates, documents: initialDocuments, storeName, customers, pets }: Props) {
   const [templates, setTemplates] = useState(initialTemplates)
   const [documents, setDocuments] = useState(initialDocuments)
   const [message, setMessage] = useState<string | null>(null)
@@ -51,17 +85,33 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
   const [templateCategory, setTemplateCategory] = useState('grooming')
   const [versionTemplateId, setVersionTemplateId] = useState('')
   const [versionTitle, setVersionTitle] = useState('')
-  const [versionHtml, setVersionHtml] = useState('<p>施術前に注意事項をご確認ください。</p>')
-  const [versionText, setVersionText] = useState('施術前に注意事項をご確認ください。')
+  const [versionBody, setVersionBody] = useState('施術前に注意事項をご確認ください。')
   const [docTemplateId, setDocTemplateId] = useState('')
   const [docCustomerId, setDocCustomerId] = useState('')
   const [docPetId, setDocPetId] = useState('')
   const [docChannel, setDocChannel] = useState<'in_person' | 'line'>('in_person')
+  const [resendingDocumentId, setResendingDocumentId] = useState<string | null>(null)
+  const [signUrlByDocumentId, setSignUrlByDocumentId] = useState<Record<string, string>>({})
 
   const filteredPets = useMemo(() => {
     if (!docCustomerId) return pets
     return pets.filter((pet) => pet.customer_id === docCustomerId)
   }, [docCustomerId, pets])
+
+  const selectedTemplate = useMemo(() => templates.find((row) => row.id === docTemplateId) ?? null, [docTemplateId, templates])
+  const selectedCustomer = useMemo(() => customers.find((row) => row.id === docCustomerId) ?? null, [customers, docCustomerId])
+  const selectedPet = useMemo(() => pets.find((row) => row.id === docPetId) ?? null, [docPetId, pets])
+
+  const renderedPreviewHtml = useMemo(() => {
+    const rawHtml = selectedTemplate?.current_version?.body_html
+    if (!rawHtml) return ''
+    return renderConsentTemplateHtml(rawHtml, {
+      store_name: storeName,
+      customer_name: selectedCustomer?.label ?? '',
+      pet_name: selectedPet?.label ?? '',
+      consent_date: formatConsentDateJst(),
+    })
+  }, [selectedCustomer?.label, selectedPet?.label, selectedTemplate?.current_version?.body_html, storeName])
 
   async function refreshDocuments() {
     const response = await fetch('/api/consents/documents', { cache: 'no-store' })
@@ -104,10 +154,13 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
   }
 
   async function publishVersion() {
-    if (!versionTemplateId || !versionTitle.trim() || !versionHtml.trim() || !versionText.trim()) {
-      setError('版公開に必要な項目を入力してください。')
+    const normalizedBody = normalizeBodyText(versionBody)
+    if (!versionTemplateId || !normalizedBody) {
+      setError('文面を入力してから有効化してください。')
       return
     }
+    const selectedTemplate = templates.find((row) => row.id === versionTemplateId)
+    const resolvedTitle = versionTitle.trim() || `${selectedTemplate?.name ?? '同意書'} 初版`
     setSubmitting(true)
     setError(null)
     setMessage(null)
@@ -116,9 +169,9 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: versionTitle,
-          body_html: versionHtml,
-          body_text: versionText,
+          title: resolvedTitle,
+          body_html: bodyTextToHtml(normalizedBody),
+          body_text: normalizedBody,
           publish: true,
         }),
       })
@@ -126,7 +179,7 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
       if (!response.ok) throw new Error(body?.message ?? '版公開に失敗しました。')
       await refreshTemplates()
       setVersionTitle('')
-      setMessage('テンプレート版を公開しました。')
+      setMessage('同意文を有効化しました。')
     } catch (publishError) {
       setError(publishError instanceof Error ? publishError.message : '版公開に失敗しました。')
     } finally {
@@ -153,9 +206,16 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
           delivery_channel: docChannel,
         }),
       })
-      const body = (await response.json().catch(() => null)) as { message?: string; sign_url?: string } | null
+      const body = (await response.json().catch(() => null)) as {
+        message?: string
+        sign_url?: string
+        document?: { id?: string }
+      } | null
       if (!response.ok) throw new Error(body?.message ?? '同意書作成に失敗しました。')
       await refreshDocuments()
+      if (body?.sign_url && body?.document?.id) {
+        setSignUrlByDocumentId((current) => ({ ...current, [body.document?.id as string]: body.sign_url as string }))
+      }
       setMessage(docChannel === 'line' ? '同意書を作成し、LINE送信しました。' : `同意書を作成しました。署名URL: ${body?.sign_url ?? '-'}`)
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : '同意書作成に失敗しました。')
@@ -164,28 +224,66 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
     }
   }
 
+  async function regenerateSignUrl(documentId: string) {
+    setResendingDocumentId(documentId)
+    setError(null)
+    setMessage(null)
+    try {
+      const response = await fetch(`/api/consents/documents/${documentId}/resend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel: 'in_person',
+        }),
+      })
+      const body = (await response.json().catch(() => null)) as {
+        message?: string
+        sign_url?: string
+        status?: 'sent' | 'failed'
+      } | null
+      if (!response.ok) throw new Error(body?.message ?? '署名URLの再発行に失敗しました。')
+
+      if (body?.sign_url) {
+        setSignUrlByDocumentId((current) => ({ ...current, [documentId]: body.sign_url as string }))
+      }
+      await refreshDocuments()
+      setMessage('署名URLを再発行しました。')
+    } catch (resendError) {
+      setError(resendError instanceof Error ? resendError.message : '署名URLの再発行に失敗しました。')
+    } finally {
+      setResendingDocumentId(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {message ? <p data-testid="consent-message" className="rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p> : null}
       {error ? <p data-testid="consent-error" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+      <section className="rounded border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+        <p className="font-semibold">この画面の使い方（最短）</p>
+        <p className="mt-1">1) まず「テンプレートを作成」→ 2) 「同意文を有効化」→ 3) 「同意書を作成・署名依頼」の順で進めます。</p>
+      </section>
 
       <section className="rounded border bg-white p-4">
-        <h2 className="text-lg font-semibold text-gray-900">テンプレート作成</h2>
+        <h2 className="text-lg font-semibold text-gray-900">1) テンプレートを作成</h2>
+        <p className="mt-1 text-sm text-gray-600">テンプレート名は「何の同意書か」を識別するための名前です（例: 施術同意書 標準）。</p>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           <input className="rounded border px-3 py-2 text-sm" placeholder="テンプレート名" value={templateName} onChange={(e) => setTemplateName(e.target.value)} />
           <select className="rounded border px-3 py-2 text-sm" value={templateCategory} onChange={(e) => setTemplateCategory(e.target.value)}>
-            <option value="grooming">grooming</option>
-            <option value="hotel">hotel</option>
-            <option value="medical">medical</option>
+            <option value="grooming">施術（grooming）</option>
+            <option value="hotel">ホテル（hotel）</option>
+            <option value="medical">医療/注意（medical）</option>
           </select>
           <button type="button" onClick={() => void createTemplate()} disabled={submitting} className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-blue-300">
             テンプレート作成
           </button>
         </div>
+        <p className="mt-2 text-xs text-gray-500">カテゴリは将来の絞り込み用です。今は運用しやすい分類を選べばOKです。</p>
       </section>
 
       <section className="rounded border bg-white p-4">
-        <h2 className="text-lg font-semibold text-gray-900">テンプレート版公開</h2>
+        <h2 className="text-lg font-semibold text-gray-900">2) 同意文を有効化</h2>
+        <p className="mt-1 text-sm text-gray-600">「版」は改訂履歴です。文面を変えるたびに新しい版として有効化します。</p>
         <div className="mt-3 space-y-3">
           <select className="w-full rounded border px-3 py-2 text-sm" value={versionTemplateId} onChange={(e) => setVersionTemplateId(e.target.value)}>
             <option value="">テンプレートを選択</option>
@@ -193,17 +291,23 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
               <option key={row.id} value={row.id}>{row.name} ({row.status})</option>
             ))}
           </select>
-          <input className="w-full rounded border px-3 py-2 text-sm" placeholder="版タイトル" value={versionTitle} onChange={(e) => setVersionTitle(e.target.value)} />
-          <textarea className="min-h-28 w-full rounded border px-3 py-2 text-sm" placeholder="HTML本文" value={versionHtml} onChange={(e) => setVersionHtml(e.target.value)} />
-          <textarea className="min-h-20 w-full rounded border px-3 py-2 text-sm" placeholder="本文プレーンテキスト" value={versionText} onChange={(e) => setVersionText(e.target.value)} />
+          <input className="w-full rounded border px-3 py-2 text-sm" placeholder="版名（任意。未入力なら「初版」）" value={versionTitle} onChange={(e) => setVersionTitle(e.target.value)} />
+          <textarea
+            className="min-h-32 w-full rounded border px-3 py-2 text-sm"
+            placeholder="同意文をそのまま入力してください（通常入力のみでOK）"
+            value={versionBody}
+            onChange={(e) => setVersionBody(e.target.value)}
+          />
           <button type="button" onClick={() => void publishVersion()} disabled={submitting} className="rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:bg-indigo-300">
-            版を公開
+            この文面を有効化
           </button>
+          <p className="text-xs text-gray-500">内部でHTML本文/本文プレーンテキストへ自動変換して保存します。</p>
         </div>
       </section>
 
       <section className="rounded border bg-white p-4">
-        <h2 className="text-lg font-semibold text-gray-900">同意書作成・署名依頼</h2>
+        <h2 className="text-lg font-semibold text-gray-900">3) 同意書を作成・署名依頼</h2>
+        <p className="mt-1 text-sm text-gray-600">日々の運用で主に使うのはこのブロックです。</p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <select data-testid="consent-doc-template" className="rounded border px-3 py-2 text-sm" value={docTemplateId} onChange={(e) => setDocTemplateId(e.target.value)}>
             <option value="">テンプレートを選択</option>
@@ -231,10 +335,22 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
         <button data-testid="consent-doc-submit" type="button" onClick={() => void createDocument()} disabled={submitting} className="mt-3 rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:bg-emerald-300">
           同意書を作成
         </button>
+        <div className="mt-4 rounded border border-gray-200 bg-gray-50 p-3">
+          <p className="text-sm font-semibold text-gray-800">本文プレビュー（差し込み後）</p>
+          {renderedPreviewHtml ? (
+            <div
+              className="prose prose-sm mt-2 max-w-none rounded bg-white p-3"
+              dangerouslySetInnerHTML={{ __html: renderedPreviewHtml }}
+            />
+          ) : (
+            <p className="mt-2 text-xs text-gray-500">テンプレートを選択すると本文が表示されます。</p>
+          )}
+        </div>
       </section>
 
       <section className="rounded border bg-white p-4">
         <h2 className="text-lg font-semibold text-gray-900">同意書履歴</h2>
+        <p className="mt-1 text-xs text-gray-500">現在、テンプレートの編集/削除UIは未対応です（新しい版を追加して運用してください）。</p>
         {documents.length === 0 ? <p className="mt-2 text-sm text-gray-500">同意書がまだ作成されていません。</p> : null}
         {documents.length > 0 ? (
           <div className="mt-2 overflow-x-auto">
@@ -245,6 +361,7 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
                   <th className="px-2 py-2">ステータス</th>
                   <th className="px-2 py-2">署名日時</th>
                   <th className="px-2 py-2">作成日時</th>
+                  <th className="px-2 py-2">署名URL</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -254,6 +371,25 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
                     <td className="px-2 py-2">{row.status}</td>
                     <td className="px-2 py-2">{formatDate(row.signed_at)}</td>
                     <td className="px-2 py-2">{formatDate(row.created_at)}</td>
+                    <td className="px-2 py-2">
+                      <div className="flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void regenerateSignUrl(row.id)}
+                          disabled={resendingDocumentId === row.id || row.status === 'signed' || row.status === 'revoked'}
+                          className="rounded border border-indigo-300 px-2 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+                        >
+                          {resendingDocumentId === row.id ? '再発行中...' : '署名URLを再発行'}
+                        </button>
+                        {signUrlByDocumentId[row.id] ? (
+                          <code className="break-all rounded bg-gray-50 px-2 py-1 text-[11px] text-gray-700">
+                            {signUrlByDocumentId[row.id]}
+                          </code>
+                        ) : (
+                          <p className="text-[11px] text-gray-500">未表示（再発行で表示）</p>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

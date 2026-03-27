@@ -54,7 +54,13 @@ export async function POST(request: Request, { params }: RouteParams) {
         const { error } = await admin.storage
           .from(CONSENT_SIGNATURE_BUCKET)
           .upload(path, bytes, { contentType: 'image/png', upsert: false })
-        if (error) throw new Error(error.message)
+        if (error) {
+          const message =
+            error.message === 'Bucket not found'
+              ? `Bucket not found: ${CONSENT_SIGNATURE_BUCKET}. Apply supabase_storage_consents.sql.`
+              : error.message
+          throw new Error(message)
+        }
       },
       getTemplateVersion: async ({ templateVersionId }) => {
         const { data } = await admin
@@ -76,7 +82,13 @@ export async function POST(request: Request, { params }: RouteParams) {
         const { error } = await admin.storage
           .from(CONSENT_PDF_BUCKET)
           .upload(path, bytes, { contentType: 'application/pdf', upsert: true })
-        if (error) throw new Error(error.message)
+        if (error) {
+          const message =
+            error.message === 'Bucket not found'
+              ? `Bucket not found: ${CONSENT_PDF_BUCKET}. Apply supabase_storage_consents.sql.`
+              : error.message
+          throw new Error(message)
+        }
       },
       insertSignature: async ({ payload }) => {
         const { error } = await admin.from('consent_signatures' as never).insert(payload as never)
