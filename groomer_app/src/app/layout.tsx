@@ -9,7 +9,7 @@ import '@fontsource/inter/latin.css'
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Groomer App',
+  title: 'GroomBase',
   description: 'A management system for grooming salons.',
 };
 
