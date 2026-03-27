@@ -1,4 +1,9 @@
 import { NextResponse } from 'next/server'
+import {
+  formatConsentDateJst,
+  renderConsentTemplateHtml,
+  renderConsentTemplateText,
+} from '@/lib/consents/template-render'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { hashConsentToken, noStoreHeaders } from '@/lib/consents/shared'
 
@@ -40,6 +45,31 @@ export async function GET(_request: Request, { params }: RouteParams) {
       .maybeSingle(),
   ])
 
+  const { data: store } = await admin
+    .from('stores')
+    .select('id, name')
+    .eq('id', document.store_id)
+    .maybeSingle()
+
+  const renderedVersion =
+    version && typeof version === 'object'
+      ? {
+          ...version,
+          body_html: renderConsentTemplateHtml(String(version.body_html ?? ''), {
+            store_name: String(store?.name ?? ''),
+            customer_name: String(customer?.full_name ?? ''),
+            pet_name: String(pet?.name ?? ''),
+            consent_date: formatConsentDateJst(),
+          }),
+          body_text: renderConsentTemplateText(String(version.body_text ?? ''), {
+            store_name: String(store?.name ?? ''),
+            customer_name: String(customer?.full_name ?? ''),
+            pet_name: String(pet?.name ?? ''),
+            consent_date: formatConsentDateJst(),
+          }),
+        }
+      : null
+
   return NextResponse.json({
     ok: true,
     document: {
@@ -47,7 +77,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
       status: document.status,
       expires_at: document.token_expires_at,
     },
-    template_version: version ?? null,
+    template_version: renderedVersion,
     customer: customer ?? null,
     pet: pet ?? null,
   }, { headers: noStoreHeaders() })
