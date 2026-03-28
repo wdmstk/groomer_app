@@ -39,8 +39,8 @@ export function buildConsentPdfPath(params: { storeId: string; documentId: strin
 export function buildConsentPdfLines(params: {
   documentId: string
   appointmentId?: string | null
+  templateTitle?: string | null
   versionNo: number | string | null | undefined
-  consentBodyText: string
   customerName: string | null | undefined
   petName: string | null | undefined
   signerName: string
@@ -49,18 +49,10 @@ export function buildConsentPdfLines(params: {
   signatureDigest: string
   signaturePath: string
 }) {
-  const consentLines = params.consentBodyText
-    .split('\n')
-    .map((line) => line.trimEnd())
-    .filter((line) => line.length > 0)
-
   return [
-    '同意本文',
-    ...consentLines,
-    '',
-    '監査情報',
     `Document ID: ${params.documentId}`,
     `Appointment ID: ${params.appointmentId ?? '-'}`,
+    `Template: ${params.templateTitle ?? '-'}`,
     `Version: ${params.versionNo ?? '-'}`,
     `Customer: ${params.customerName ?? '-'}`,
     `Pet: ${params.petName ?? '-'}`,
@@ -69,5 +61,33 @@ export function buildConsentPdfLines(params: {
     `Signature Method: ${params.signatureMethod}`,
     `Signature Digest (sha256): ${params.signatureDigest}`,
     `Signature Path: ${params.signaturePath}`,
+  ]
+}
+
+export function buildConsentPrintableLines(params: {
+  customerName: string | null | undefined
+  petName: string | null | undefined
+  signerName: string
+  signedAt: string
+  signatureMethod: 'draw' | 'typed'
+  consentBodyText: string
+}) {
+  const bodyLines = params.consentBodyText
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .flatMap((line) => [`  ${line}`, ''])
+
+  return [
+    `顧客: ${params.customerName ?? '-'}`,
+    `ペット: ${params.petName ?? '-'}`,
+    '',
+    '【施術同意書 本文】',
+    '',
+    ...bodyLines,
+    '【電子署名】',
+    `  署名者: ${params.signerName}`,
+    `  署名日時: ${params.signedAt}`,
+    `  署名方式: ${params.signatureMethod}`,
   ]
 }

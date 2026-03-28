@@ -2,7 +2,12 @@ import type { Json } from '@/lib/supabase/database.types'
 import type { UnknownObject } from '@/lib/object-utils'
 import { buildSimpleConsentPdf } from '@/lib/consents/pdf'
 import { formatConsentDateJst, renderConsentTemplateText } from '@/lib/consents/template-render'
-import { buildConsentPdfLines, buildConsentPdfPath, buildConsentSignaturePath } from '@/lib/consents/sign-core'
+import {
+  buildConsentPdfLines,
+  buildConsentPdfPath,
+  buildConsentPrintableLines,
+  buildConsentSignaturePath,
+} from '@/lib/consents/sign-core'
 import { createHash } from 'node:crypto'
 
 type ConsentDocumentRow = {
@@ -97,10 +102,20 @@ export async function signConsentWithDeps(params: {
     documentId: params.document.id,
   })
   const pdfBuffer = buildSimpleConsentPdf({
-    title: `施術同意書: ${version?.title ?? '同意書'}`,
-    lines: buildConsentPdfLines({
+    title: '施術同意書',
+    lines: buildConsentPrintableLines({
+      customerName: customer?.full_name ?? null,
+      petName: pet?.name ?? null,
+      signerName: params.signerName,
+      signedAt: nowIso,
+      signatureMethod: 'draw',
+      consentBodyText: renderedBodyText,
+    }),
+    secondPageTitle: '施術同意書 監査情報',
+    secondPageLines: buildConsentPdfLines({
       documentId: params.document.id,
       appointmentId: params.appointmentId ?? null,
+      templateTitle: version?.title ?? null,
       versionNo: version?.version_no ?? null,
       customerName: customer?.full_name ?? null,
       petName: pet?.name ?? null,
@@ -108,7 +123,6 @@ export async function signConsentWithDeps(params: {
       signedAt: nowIso,
       signatureMethod: 'draw',
       signatureDigest,
-      consentBodyText: renderedBodyText,
       signaturePath,
     }),
   })

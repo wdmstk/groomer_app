@@ -152,24 +152,27 @@ export function ConsentSignClient({ token, serviceName = '', appointmentId = '' 
 
   return (
     <div className="space-y-4">
-      <div className="rounded border bg-white p-4">
+      <div className="rounded border bg-white p-6 text-center">
         <p className="text-sm text-gray-600">
           対象: {payload?.customer?.full_name ?? '顧客'} / {payload?.pet?.name ?? 'ペット'}
         </p>
-        <h1 className="mt-1 text-xl font-semibold text-gray-900">
-          {payload?.template_version?.title ?? '施術同意書'}
+        <h1 className="mt-2 text-2xl font-semibold tracking-wide text-gray-900">
+          施術同意書
         </h1>
-        <p className="text-xs text-gray-500">版: {payload?.template_version?.version_no ?? '-'}</p>
+        <p className="mt-1 text-sm font-medium text-gray-700">
+          {payload?.template_version?.title ?? 'テンプレート名未設定'}
+        </p>
+        <p className="mt-1 text-xs text-gray-500">版: {payload?.template_version?.version_no ?? '-'}</p>
       </div>
 
-      <article className="rounded border bg-white p-4">
+      <article className="rounded border bg-white p-6">
         <div
-          className="prose prose-sm max-w-none"
+          className="prose prose-sm max-w-none leading-relaxed [&_h1]:text-center [&_h2]:text-center [&_p]:my-3 [&_p]:indent-4 [&_li]:my-1"
           dangerouslySetInnerHTML={{ __html: payload?.template_version?.body_html ?? '<p>本文がありません。</p>' }}
         />
       </article>
 
-      <div className="rounded border bg-white p-4 space-y-3">
+      <div className="rounded border bg-white p-6 space-y-4">
         <label className="block text-sm text-gray-700">
           署名者名
           <input
@@ -186,7 +189,7 @@ export function ConsentSignClient({ token, serviceName = '', appointmentId = '' 
         </label>
 
         <div>
-          <p className="mb-1 text-sm font-medium text-gray-800">手書き署名</p>
+          <p className="mb-2 text-sm font-medium text-gray-800">電子署名（手書き）</p>
           <canvas
             ref={canvasRef}
             width={640}
