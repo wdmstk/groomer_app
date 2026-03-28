@@ -38,8 +38,9 @@ test('buildConsentSignaturePath/buildConsentPdfPath build deterministic paths', 
 test('buildConsentPdfLines includes required audit lines', () => {
   const lines = buildConsentPdfLines({
     documentId: 'doc-1',
+    appointmentId: 'appt-1',
+    templateTitle: '標準施術同意書',
     versionNo: 2,
-    consentBodyText: '本文1\n本文2',
     customerName: '山田 花子',
     petName: 'こむぎ',
     signerName: '山田 花子',
@@ -49,10 +50,11 @@ test('buildConsentPdfLines includes required audit lines', () => {
     signaturePath: 'store-1/consents/signatures/doc-1-12345.png',
   })
 
-  assert.equal(lines[0], '同意本文')
-  assert.equal(lines[1], '本文1')
-  assert.equal(lines.includes('監査情報'), true)
+  assert.equal(lines[0], 'Document ID: doc-1')
+  assert.equal(lines[1], 'Appointment ID: appt-1')
+  assert.equal(lines[2], 'Template: 標準施術同意書')
   assert.equal(lines.includes('Document ID: doc-1'), true)
+  assert.equal(lines.includes('Appointment ID: appt-1'), true)
   assert.equal(lines.includes('Version: 2'), true)
   assert.equal(lines.includes('Signature Method: draw'), true)
   assert.equal(lines.includes('Signature Digest (sha256): abc123'), true)
