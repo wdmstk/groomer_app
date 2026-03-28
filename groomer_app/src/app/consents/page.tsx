@@ -8,8 +8,10 @@ export const revalidate = 0
 
 type PageProps = {
   searchParams?: Promise<{
+    appointment_id?: string
     customer_id?: string
     pet_id?: string
+    service_name?: string
   }>
 }
 
@@ -19,10 +21,12 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
     ? { supabase: null, storeId: consentsPageFixtures.storeId }
     : await createStoreScopedClient()
   const resolvedSearchParams = await searchParams
+  const appointmentId = resolvedSearchParams?.appointment_id
   const customerId = resolvedSearchParams?.customer_id
   const petId = resolvedSearchParams?.pet_id
+  const serviceName = resolvedSearchParams?.service_name
 
-  const [{ data: templates }, { data: customers }, { data: pets }, documentsQuery, { data: store }] = isPlaywrightE2E
+  const [{ data: templates }, { data: customers }, { data: pets }, documentsQuery, { data: store }, appointmentQuery] = isPlaywrightE2E
     ? [
         { data: consentsPageFixtures.templates },
         { data: consentsPageFixtures.customers },
@@ -35,6 +39,7 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
           }),
         },
         { data: { name: 'テスト店舗' } },
+        { data: null },
       ]
     : await Promise.all([
         supabase
@@ -65,7 +70,31 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
             return query
           })(),
         supabase.from('stores').select('name').eq('id', storeId).maybeSingle(),
+        appointmentId
+          ? supabase
+              .from('appointments')
+              .select('id, customer_id, pet_id, menu')
+              .eq('store_id', storeId)
+              .eq('id', appointmentId)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
       ])
+
+  const appointment = appointmentQuery?.data as
+    | {
+        id: string
+        customer_id: string
+        pet_id: string
+        menu: string
+      }
+    | null
+
+  const resolvedInitialCustomerId =
+    appointment?.customer_id ??
+    customerId ??
+    (((pets as Array<{ id: string; customer_id: string }> | null) ?? []).find((row) => row.id === petId)?.customer_id ?? '')
+  const resolvedInitialPetId = appointment?.pet_id ?? petId ?? ''
+  const resolvedInitialServiceName = serviceName ?? appointment?.menu ?? ''
 
   return (
     <section className="space-y-6">
@@ -107,6 +136,10 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
           customer_id: row.customer_id,
           label: row.name,
         }))}
+        initialAppointmentId={appointment?.id ?? appointmentId ?? ''}
+        initialDocCustomerId={resolvedInitialCustomerId}
+        initialDocPetId={resolvedInitialPetId}
+        initialServiceName={resolvedInitialServiceName}
       />
     </section>
   )

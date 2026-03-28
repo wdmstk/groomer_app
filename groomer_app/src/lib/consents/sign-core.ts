@@ -38,20 +38,36 @@ export function buildConsentPdfPath(params: { storeId: string; documentId: strin
 
 export function buildConsentPdfLines(params: {
   documentId: string
+  appointmentId?: string | null
   versionNo: number | string | null | undefined
+  consentBodyText: string
   customerName: string | null | undefined
   petName: string | null | undefined
   signerName: string
   signedAt: string
+  signatureMethod: 'draw' | 'typed'
+  signatureDigest: string
   signaturePath: string
 }) {
+  const consentLines = params.consentBodyText
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0)
+
   return [
+    '同意本文',
+    ...consentLines,
+    '',
+    '監査情報',
     `Document ID: ${params.documentId}`,
+    `Appointment ID: ${params.appointmentId ?? '-'}`,
     `Version: ${params.versionNo ?? '-'}`,
     `Customer: ${params.customerName ?? '-'}`,
     `Pet: ${params.petName ?? '-'}`,
     `Signer: ${params.signerName}`,
     `Signed At: ${params.signedAt}`,
+    `Signature Method: ${params.signatureMethod}`,
+    `Signature Digest (sha256): ${params.signatureDigest}`,
     `Signature Path: ${params.signaturePath}`,
   ]
 }

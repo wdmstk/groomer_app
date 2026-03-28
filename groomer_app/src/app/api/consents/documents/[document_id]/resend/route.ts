@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { asObjectOrNull } from '@/lib/object-utils'
 import { insertConsentAuditLogBestEffort } from '@/lib/consents/audit'
 import { sendLineMessage } from '@/lib/line'
+import { buildConsentSignUrlWithServiceName } from '@/lib/consents/documents-core'
 import {
   createConsentToken,
   hashConsentToken,
@@ -19,6 +20,8 @@ export async function POST(request: Request, { params }: RouteParams) {
   const body = asObjectOrNull(await request.json().catch(() => ({})))
   const expiresInHours = parseIntWithMin(body?.expires_in_hours, 1) ?? 72
   const overrideChannel = parseString(body?.channel)
+  const appointmentId = parseString(body?.appointment_id)
+  const serviceName = parseString(body?.service_name)
 
   const { supabase, storeId } = await createStoreScopedClient()
   const {
@@ -40,7 +43,12 @@ export async function POST(request: Request, { params }: RouteParams) {
   const tokenHash = hashConsentToken(token)
   const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000).toISOString()
   const nextChannel = overrideChannel ?? (document.delivery_channel as string | null) ?? 'line'
-  const signUrl = `${new URL(request.url).origin}/consent/sign/${token}`
+  const signUrl = buildConsentSignUrlWithServiceName({
+    requestUrl: request.url,
+    token,
+    appointmentId,
+    serviceName,
+  })
 
   const { error: updateError } = await supabase
     .from('consent_documents' as never)

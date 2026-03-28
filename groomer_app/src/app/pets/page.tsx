@@ -178,7 +178,7 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                       <Link href={`/pets?tab=list&edit=${pet.id}`} className="text-blue-600 text-sm">
                         編集
                       </Link>
-                      <Link href={`/consents?pet_id=${pet.id}`} className="text-indigo-700 text-sm">
+                      <Link href={`/consents?customer_id=${pet.customer_id}&pet_id=${pet.id}`} className="text-indigo-700 text-sm">
                         同意書
                       </Link>
                       <form action={`/api/pets/${pet.id}`} method="post">
@@ -233,7 +233,7 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                               編集
                             </Link>
                             <Link
-                              href={`/consents?pet_id=${pet.id}`}
+                              href={`/consents?customer_id=${pet.customer_id}&pet_id=${pet.id}`}
                               className="text-indigo-700 text-sm"
                             >
                               同意書
@@ -366,7 +366,7 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-indigo-900">電子同意書（最新5件）</p>
                   <Link
-                    href={`/consents?pet_id=${editPetData.id}`}
+                    href={`/consents?customer_id=${editPetData.customer_id}&pet_id=${editPetData.id}`}
                     className="text-xs font-semibold text-indigo-700 hover:text-indigo-900"
                   >
                     一覧を開く

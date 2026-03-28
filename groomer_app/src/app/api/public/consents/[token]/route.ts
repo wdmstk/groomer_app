@@ -12,6 +12,8 @@ type RouteParams = {
 }
 
 export async function GET(_request: Request, { params }: RouteParams) {
+  const requestUrl = new URL(_request.url)
+  const serviceName = requestUrl.searchParams.get('service_name') ?? ''
   const { token } = await params
   const tokenHash = hashConsentToken(token)
   const admin = createAdminSupabaseClient()
@@ -59,12 +61,14 @@ export async function GET(_request: Request, { params }: RouteParams) {
             store_name: String(store?.name ?? ''),
             customer_name: String(customer?.full_name ?? ''),
             pet_name: String(pet?.name ?? ''),
+            service_name: serviceName,
             consent_date: formatConsentDateJst(),
           }),
           body_text: renderConsentTemplateText(String(version.body_text ?? ''), {
             store_name: String(store?.name ?? ''),
             customer_name: String(customer?.full_name ?? ''),
             pet_name: String(pet?.name ?? ''),
+            service_name: serviceName,
             consent_date: formatConsentDateJst(),
           }),
         }
