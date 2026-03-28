@@ -16,9 +16,10 @@ function createDeps() {
     uploadSignature: async () => {
       calls.signatureUploads += 1
     },
-    getTemplateVersion: async () => ({ title: '基本同意書', version_no: 3 }),
+    getTemplateVersion: async () => ({ title: '基本同意書', version_no: 3, body_text: '同意本文 {{customer_name}}' }),
     getCustomer: async () => ({ full_name: '山田 花子' }),
     getPet: async () => ({ name: 'こむぎ' }),
+    getStore: async () => ({ name: 'テスト店舗' }),
     uploadPdf: async () => {
       calls.pdfUploads += 1
     },

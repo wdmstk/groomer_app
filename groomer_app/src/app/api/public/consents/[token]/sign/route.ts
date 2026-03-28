@@ -23,6 +23,9 @@ type RouteParams = {
 
 export async function POST(request: Request, { params }: RouteParams) {
   const { token } = await params
+  const requestUrl = new URL(request.url)
+  const appointmentId = parseString(requestUrl.searchParams.get('appointment_id'))
+  const serviceName = parseString(requestUrl.searchParams.get('service_name'))
   const body = asObjectOrNull(await request.json().catch(() => null))
   const parsed = validateConsentSignInput(body)
   if (!parsed.ok) {
@@ -65,10 +68,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       getTemplateVersion: async ({ templateVersionId }) => {
         const { data } = await admin
           .from('consent_template_versions' as never)
-          .select('title, version_no')
+          .select('title, version_no, body_text')
           .eq('id', templateVersionId)
           .maybeSingle()
-        return (data as { title: string | null; version_no: number | null } | null) ?? null
+        return (data as { title: string | null; version_no: number | null; body_text: string | null } | null) ?? null
       },
       getCustomer: async ({ customerId }) => {
         const { data } = await admin.from('customers').select('full_name').eq('id', customerId).maybeSingle()
@@ -76,6 +79,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       },
       getPet: async ({ petId }) => {
         const { data } = await admin.from('pets').select('name').eq('id', petId).maybeSingle()
+        return (data as { name: string | null } | null) ?? null
+      },
+      getStore: async ({ storeId }) => {
+        const { data } = await admin.from('stores').select('name').eq('id', storeId).maybeSingle()
         return (data as { name: string | null } | null) ?? null
       },
       uploadPdf: async ({ path, bytes }) => {
@@ -148,6 +155,8 @@ export async function POST(request: Request, { params }: RouteParams) {
     deviceType: parseString(body.device_type),
     deviceOs: parseString(body.device_os),
     browser: parseString(body.browser),
+    appointmentId,
+    serviceName,
   })
 
   return NextResponse.json({

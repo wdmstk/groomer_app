@@ -437,6 +437,12 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                       >
                         編集
                       </Link>
+                      <Link
+                        href={`/consents?appointment_id=${appointment.id}`}
+                        className="text-indigo-700 text-sm"
+                      >
+                        同意書
+                      </Link>
                       {appointment.status === '予約申請' ? (
                         <form action={`/api/appointments/${appointment.id}/confirm`} method="post">
                           <Button
@@ -537,6 +543,12 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                               className="text-blue-600 text-sm"
                             >
                               編集
+                            </Link>
+                            <Link
+                              href={`/consents?appointment_id=${appointment.id}`}
+                              className="text-indigo-700 text-sm"
+                            >
+                              同意書
                             </Link>
                             {appointment.status === '予約申請' ? (
                               <form action={`/api/appointments/${appointment.id}/confirm`} method="post">

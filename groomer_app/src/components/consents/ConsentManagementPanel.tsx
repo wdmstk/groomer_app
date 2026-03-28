@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { formatConsentDateJst, renderConsentTemplateHtml } from '@/lib/consents/template-render'
 
 type Option = { id: string; label: string; extra?: string | null }
@@ -33,6 +33,10 @@ type Props = {
   storeName: string
   customers: Option[]
   pets: Array<Option & { customer_id: string }>
+  initialAppointmentId?: string
+  initialDocCustomerId?: string
+  initialDocPetId?: string
+  initialServiceName?: string
 }
 
 function formatDate(value: string | null) {
@@ -75,7 +79,17 @@ function bodyTextToHtml(value: string) {
     .join('\n')
 }
 
-export function ConsentManagementPanel({ templates: initialTemplates, documents: initialDocuments, storeName, customers, pets }: Props) {
+export function ConsentManagementPanel({
+  templates: initialTemplates,
+  documents: initialDocuments,
+  storeName,
+  customers,
+  pets,
+  initialAppointmentId = '',
+  initialDocCustomerId = '',
+  initialDocPetId = '',
+  initialServiceName = '',
+}: Props) {
   const [templates, setTemplates] = useState(initialTemplates)
   const [documents, setDocuments] = useState(initialDocuments)
   const [message, setMessage] = useState<string | null>(null)
@@ -87,8 +101,10 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
   const [versionTitle, setVersionTitle] = useState('')
   const [versionBody, setVersionBody] = useState('施術前に注意事項をご確認ください。')
   const [docTemplateId, setDocTemplateId] = useState('')
-  const [docCustomerId, setDocCustomerId] = useState('')
-  const [docPetId, setDocPetId] = useState('')
+  const [docCustomerId, setDocCustomerId] = useState(initialDocCustomerId)
+  const [docPetId, setDocPetId] = useState(initialDocPetId)
+  const appointmentId = initialAppointmentId
+  const [serviceName, setServiceName] = useState(initialServiceName)
   const [docChannel, setDocChannel] = useState<'in_person' | 'line'>('in_person')
   const [resendingDocumentId, setResendingDocumentId] = useState<string | null>(null)
   const [signUrlByDocumentId, setSignUrlByDocumentId] = useState<Record<string, string>>({})
@@ -109,9 +125,17 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
       store_name: storeName,
       customer_name: selectedCustomer?.label ?? '',
       pet_name: selectedPet?.label ?? '',
+      service_name: serviceName,
       consent_date: formatConsentDateJst(),
     })
-  }, [selectedCustomer?.label, selectedPet?.label, selectedTemplate?.current_version?.body_html, storeName])
+  }, [selectedCustomer?.label, selectedPet?.label, selectedTemplate?.current_version?.body_html, serviceName, storeName])
+
+  useEffect(() => {
+    if (!versionTemplateId) return
+    const template = templates.find((row) => row.id === versionTemplateId)
+    const templateBody = template?.current_version?.body_text
+    setVersionBody(normalizeBodyText(templateBody && templateBody.trim() ? templateBody : '施術前に注意事項をご確認ください。'))
+  }, [templates, versionTemplateId])
 
   async function refreshDocuments() {
     const response = await fetch('/api/consents/documents', { cache: 'no-store' })
@@ -201,9 +225,11 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           template_id: docTemplateId,
+          appointment_id: appointmentId || null,
           customer_id: docCustomerId,
           pet_id: docPetId,
           delivery_channel: docChannel,
+          service_name: serviceName.trim() || null,
         }),
       })
       const body = (await response.json().catch(() => null)) as {
@@ -308,6 +334,11 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
       <section className="rounded border bg-white p-4">
         <h2 className="text-lg font-semibold text-gray-900">3) 同意書を作成・署名依頼</h2>
         <p className="mt-1 text-sm text-gray-600">日々の運用で主に使うのはこのブロックです。</p>
+        {appointmentId ? (
+          <p className="mt-2 rounded border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+            予約起点プリセット適用中（予約ID: {appointmentId}）
+          </p>
+        ) : null}
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <select data-testid="consent-doc-template" className="rounded border px-3 py-2 text-sm" value={docTemplateId} onChange={(e) => setDocTemplateId(e.target.value)}>
             <option value="">テンプレートを選択</option>
@@ -331,6 +362,12 @@ export function ConsentManagementPanel({ templates: initialTemplates, documents:
             <option value="in_person">店頭署名</option>
             <option value="line">LINE送信</option>
           </select>
+          <input
+            className="rounded border px-3 py-2 text-sm md:col-span-2"
+            placeholder="希望施術内容（例: シャンプー + カット）"
+            value={serviceName}
+            onChange={(e) => setServiceName(e.target.value)}
+          />
         </div>
         <button data-testid="consent-doc-submit" type="button" onClick={() => void createDocument()} disabled={submitting} className="mt-3 rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:bg-emerald-300">
           同意書を作成

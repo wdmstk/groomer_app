@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 
 type ConsentSignClientProps = {
   token: string
+  serviceName?: string
+  appointmentId?: string
 }
 
 type ConsentPayload = {
@@ -13,7 +15,7 @@ type ConsentPayload = {
   pet?: { name?: string }
 }
 
-export function ConsentSignClient({ token }: ConsentSignClientProps) {
+export function ConsentSignClient({ token, serviceName = '', appointmentId = '' }: ConsentSignClientProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const drawingRef = useRef(false)
   const [loading, setLoading] = useState(true)
@@ -27,9 +29,13 @@ export function ConsentSignClient({ token }: ConsentSignClientProps) {
 
   useEffect(() => {
     let active = true
+    const queryParams = new URLSearchParams()
+    if (serviceName.trim()) queryParams.set('service_name', serviceName.trim())
+    if (appointmentId.trim()) queryParams.set('appointment_id', appointmentId.trim())
+    const query = queryParams.toString() ? `?${queryParams.toString()}` : ''
     async function load() {
       try {
-        const response = await fetch(`/api/public/consents/${token}`, { cache: 'no-store' })
+        const response = await fetch(`/api/public/consents/${token}${query}`, { cache: 'no-store' })
         const body = (await response.json().catch(() => null)) as ConsentPayload & { message?: string }
         if (!response.ok) throw new Error(body?.message ?? '同意書を読み込めませんでした。')
         if (!active) return
@@ -46,7 +52,7 @@ export function ConsentSignClient({ token }: ConsentSignClientProps) {
     return () => {
       active = false
     }
-  }, [token])
+  }, [appointmentId, serviceName, token])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -115,7 +121,11 @@ export function ConsentSignClient({ token }: ConsentSignClientProps) {
     setSubmitting(true)
     setError(null)
     try {
-      const response = await fetch(`/api/public/consents/${token}/sign`, {
+      const queryParams = new URLSearchParams()
+      if (serviceName.trim()) queryParams.set('service_name', serviceName.trim())
+      if (appointmentId.trim()) queryParams.set('appointment_id', appointmentId.trim())
+      const query = queryParams.toString() ? `?${queryParams.toString()}` : ''
+      const response = await fetch(`/api/public/consents/${token}/sign${query}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

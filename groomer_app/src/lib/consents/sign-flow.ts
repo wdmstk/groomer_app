@@ -1,7 +1,9 @@
 import type { Json } from '@/lib/supabase/database.types'
 import type { UnknownObject } from '@/lib/object-utils'
 import { buildSimpleConsentPdf } from '@/lib/consents/pdf'
+import { formatConsentDateJst, renderConsentTemplateText } from '@/lib/consents/template-render'
 import { buildConsentPdfLines, buildConsentPdfPath, buildConsentSignaturePath } from '@/lib/consents/sign-core'
+import { createHash } from 'node:crypto'
 
 type ConsentDocumentRow = {
   id: string
@@ -16,6 +18,7 @@ type ConsentDocumentRow = {
 type TemplateVersionRow = {
   title: string | null
   version_no: number | null
+  body_text: string | null
 }
 
 type SimpleNameRow = {
@@ -23,11 +26,16 @@ type SimpleNameRow = {
   name?: string | null
 }
 
+type StoreRow = {
+  name: string | null
+}
+
 export type SignConsentDeps = {
   uploadSignature: (params: { path: string; bytes: Buffer }) => Promise<void>
   getTemplateVersion: (params: { templateVersionId: string }) => Promise<TemplateVersionRow | null>
   getCustomer: (params: { customerId: string }) => Promise<SimpleNameRow | null>
   getPet: (params: { petId: string }) => Promise<SimpleNameRow | null>
+  getStore: (params: { storeId: string }) => Promise<StoreRow | null>
   uploadPdf: (params: { path: string; bytes: Buffer }) => Promise<void>
   insertSignature: (params: { payload: UnknownObject }) => Promise<void>
   updateDocumentAsSigned: (params: {
@@ -57,6 +65,8 @@ export async function signConsentWithDeps(params: {
   deviceType: string | null
   deviceOs: string | null
   browser: string | null
+  appointmentId?: string | null
+  serviceName?: string | null
   nowIso?: string
 }) {
   const nowIso = params.nowIso ?? new Date().toISOString()
@@ -66,11 +76,21 @@ export async function signConsentWithDeps(params: {
   })
   await params.deps.uploadSignature({ path: signaturePath, bytes: params.signatureBuffer })
 
-  const [version, customer, pet] = await Promise.all([
+  const [version, customer, pet, store] = await Promise.all([
     params.deps.getTemplateVersion({ templateVersionId: params.document.template_version_id }),
     params.deps.getCustomer({ customerId: params.document.customer_id }),
     params.deps.getPet({ petId: params.document.pet_id }),
+    params.deps.getStore({ storeId: params.document.store_id }),
   ])
+
+  const renderedBodyText = renderConsentTemplateText(String(version?.body_text ?? ''), {
+    store_name: String(store?.name ?? ''),
+    customer_name: String(customer?.full_name ?? ''),
+    pet_name: String(pet?.name ?? ''),
+    service_name: params.serviceName ?? '',
+    consent_date: formatConsentDateJst(new Date(nowIso)),
+  })
+  const signatureDigest = createHash('sha256').update(params.signatureBuffer).digest('hex')
 
   const pdfPath = buildConsentPdfPath({
     storeId: params.document.store_id,
@@ -80,11 +100,15 @@ export async function signConsentWithDeps(params: {
     title: `施術同意書: ${version?.title ?? '同意書'}`,
     lines: buildConsentPdfLines({
       documentId: params.document.id,
+      appointmentId: params.appointmentId ?? null,
       versionNo: version?.version_no ?? null,
       customerName: customer?.full_name ?? null,
       petName: pet?.name ?? null,
       signerName: params.signerName,
       signedAt: nowIso,
+      signatureMethod: 'draw',
+      signatureDigest,
+      consentBodyText: renderedBodyText,
       signaturePath,
     }),
   })

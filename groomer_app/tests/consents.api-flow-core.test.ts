@@ -64,17 +64,21 @@ test('consent api flow core: create -> sign -> pdf artifacts', () => {
   const lines = buildConsentPdfLines({
     documentId: 'doc-1',
     versionNo: 1,
+    consentBodyText: '同意本文テスト',
     customerName: '山田 花子',
     petName: 'こむぎ',
     signerName: signParsed.signerName,
     signedAt: '2026-03-26T00:10:00.000Z',
+    signatureMethod: 'draw',
+    signatureDigest: 'digest',
     signaturePath,
   })
 
   assert.equal(signaturePath, 'store-1/consents/signatures/doc-1-1234567890.png')
   assert.equal(pdfPath, 'store-1/consents/pdfs/doc-1.pdf')
-  assert.equal(lines[0], 'Document ID: doc-1')
-  assert.equal(lines[6], `Signature Path: ${signaturePath}`)
+  assert.equal(lines[0], '同意本文')
+  assert.equal(lines.includes('Document ID: doc-1'), true)
+  assert.equal(lines.includes(`Signature Path: ${signaturePath}`), true)
   assert.equal(isConsentTokenExpired(seed.tokenExpiresAt, Date.parse('2026-03-26T12:00:00.000Z')), false)
 })
 

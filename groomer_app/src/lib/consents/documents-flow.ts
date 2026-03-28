@@ -1,6 +1,6 @@
 import type { Json } from '@/lib/supabase/database.types'
 import type { UnknownObject } from '@/lib/object-utils'
-import { buildConsentDocumentSeed, buildConsentLineMessage, buildConsentSignUrl } from '@/lib/consents/documents-core'
+import { buildConsentDocumentSeed, buildConsentLineMessage, buildConsentSignUrlWithServiceName } from '@/lib/consents/documents-core'
 
 type InsertedDocumentRow = {
   id: string
@@ -46,8 +46,10 @@ export async function createConsentDocumentWithDeps(params: {
   petId: string
   templateId: string
   versionId: string
+  appointmentId?: string | null
   deliveryChannel: string
   expiresInHours: number
+  serviceName?: string | null
 }) {
   const seed = buildConsentDocumentSeed({
     storeId: params.storeId,
@@ -73,11 +75,17 @@ export async function createConsentDocumentWithDeps(params: {
       pet_id: params.petId,
       template_id: params.templateId,
       template_version_id: params.versionId,
+      appointment_id: params.appointmentId ?? null,
       delivery_channel: params.deliveryChannel,
     },
   })
 
-  const signUrl = buildConsentSignUrl(params.requestUrl, seed.token)
+  const signUrl = buildConsentSignUrlWithServiceName({
+    requestUrl: params.requestUrl,
+    token: seed.token,
+    serviceName: params.serviceName,
+    appointmentId: params.appointmentId,
+  })
 
   if (params.deliveryChannel === 'line') {
     const customer = await params.deps.getCustomer({

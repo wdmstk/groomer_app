@@ -13,6 +13,8 @@ export function validateConsentDocumentCreateInput(body: UnknownObject | null) {
   const petId = parseString(body.pet_id)
   const templateId = parseString(body.template_id)
   const requestedVersionId = parseString(body.template_version_id)
+  const appointmentId = parseString(body.appointment_id)
+  const serviceName = parseString(body.service_name)
   const deliveryChannel = parseString(body.delivery_channel) ?? 'in_person'
   const expiresInHours = parseIntWithMin(body.expires_in_hours, 1) ?? 72
   if (!customerId || !petId || !templateId) {
@@ -25,6 +27,8 @@ export function validateConsentDocumentCreateInput(body: UnknownObject | null) {
     petId,
     templateId,
     requestedVersionId,
+    appointmentId,
+    serviceName,
     deliveryChannel,
     expiresInHours,
   }
@@ -77,6 +81,22 @@ export function buildConsentDocumentSeed(params: {
 
 export function buildConsentSignUrl(requestUrl: string, token: string) {
   return `${new URL(requestUrl).origin}/consent/sign/${token}`
+}
+
+export function buildConsentSignUrlWithServiceName(params: {
+  requestUrl: string
+  token: string
+  serviceName?: string | null
+  appointmentId?: string | null
+}) {
+  const url = new URL(`/consent/sign/${params.token}`, new URL(params.requestUrl).origin)
+  if (params.serviceName?.trim()) {
+    url.searchParams.set('service_name', params.serviceName.trim())
+  }
+  if (params.appointmentId?.trim()) {
+    url.searchParams.set('appointment_id', params.appointmentId.trim())
+  }
+  return url.toString()
 }
 
 export function buildConsentLineMessage(params: {

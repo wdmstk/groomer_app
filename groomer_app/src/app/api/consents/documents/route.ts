@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   const body = asObjectOrNull(await request.json().catch(() => null))
   const parsed = validateConsentDocumentCreateInput(body)
   if (!parsed.ok) return NextResponse.json({ message: parsed.message }, { status: 400 })
-  const { customerId, petId, templateId, requestedVersionId, deliveryChannel, expiresInHours } = parsed
+  const { customerId, petId, templateId, requestedVersionId, appointmentId, deliveryChannel, expiresInHours, serviceName } = parsed
 
   const { supabase, storeId } = await createStoreScopedClient()
   const {
@@ -69,6 +69,27 @@ export async function POST(request: Request) {
     .maybeSingle()
   if (versionError) return NextResponse.json({ message: versionError.message }, { status: 500 })
   if (!version) return NextResponse.json({ message: 'template version not found.' }, { status: 404 })
+
+  let effectiveServiceName = serviceName ?? null
+  if (appointmentId) {
+    const { data: appointment, error: appointmentError } = await supabase
+      .from('appointments')
+      .select('id, customer_id, pet_id, menu')
+      .eq('store_id', storeId)
+      .eq('id', appointmentId)
+      .maybeSingle()
+    if (appointmentError) return NextResponse.json({ message: appointmentError.message }, { status: 500 })
+    if (!appointment) return NextResponse.json({ message: 'appointment not found.' }, { status: 404 })
+    if (appointment.customer_id !== customerId || appointment.pet_id !== petId) {
+      return NextResponse.json(
+        { message: 'appointment/customer/pet mismatch.' },
+        { status: 409 }
+      )
+    }
+    if (!effectiveServiceName?.trim()) {
+      effectiveServiceName = String(appointment.menu ?? '')
+    }
+  }
 
   const { inserted, signUrl } = await createConsentDocumentWithDeps({
     deps: {
@@ -127,8 +148,10 @@ export async function POST(request: Request) {
     petId,
     templateId,
     versionId,
+    appointmentId,
     deliveryChannel,
     expiresInHours,
+    serviceName: effectiveServiceName,
   })
 
   return NextResponse.json({

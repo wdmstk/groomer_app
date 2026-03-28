@@ -58,9 +58,10 @@ test('consent full flow integration: create -> sign -> pdf url', async () => {
       uploadSignature: async ({ path }) => {
         state.signatureUploads.push(path)
       },
-      getTemplateVersion: async () => ({ title: '施術前同意書', version_no: 2 }),
+      getTemplateVersion: async () => ({ title: '施術前同意書', version_no: 2, body_text: '同意文 {{customer_name}}' }),
       getCustomer: async () => ({ full_name: '山田 花子' }),
       getPet: async () => ({ name: 'こむぎ' }),
+      getStore: async () => ({ name: 'テスト店舗' }),
       uploadPdf: async ({ path }) => {
         state.pdfUploads.push(path)
       },
