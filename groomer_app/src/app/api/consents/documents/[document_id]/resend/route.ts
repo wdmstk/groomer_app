@@ -22,6 +22,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const overrideChannel = parseString(body?.channel)
   const appointmentId = parseString(body?.appointment_id)
   const serviceName = parseString(body?.service_name)
+  const snsUsagePreference = parseString(body?.sns_usage_preference)
 
   const { supabase, storeId } = await createStoreScopedClient()
   const {
@@ -48,6 +49,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     token,
     appointmentId,
     serviceName,
+    snsUsagePreference,
   })
 
   const { error: updateError } = await supabase

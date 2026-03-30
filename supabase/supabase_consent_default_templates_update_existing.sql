@@ -1,17 +1,17 @@
 -- =========================================================
--- Groomer App: Electronic Consent Default Template Auto Seed
--- Task: TASK-423
+-- Groomer App: Existing Store Consent Template Upgrade
+-- Task: TASK-434
 -- =========================================================
 -- Purpose:
--- 1) Backfill standard consent template for existing stores
--- 2) Auto-seed the same template when a new store is created
+-- 1) Upgrade existing stores that already have the standard consent template
+-- 2) Publish the new full-version body as a new template version
 -- =========================================================
 
 begin;
 
 create extension if not exists pgcrypto;
 
-create or replace function public.seed_default_consent_template_for_store(target_store_id uuid)
+create or replace function public.upgrade_full_consent_template_for_store(target_store_id uuid)
 returns void
 language plpgsql
 security definer
@@ -197,7 +197,8 @@ $html$;
 - IPアドレス・端末情報（自動記録）
 $txt$;
   existing_template_id uuid;
-  inserted_template_id uuid;
+  current_version_no integer;
+  current_body_text text;
   inserted_version_id uuid;
 begin
   if target_store_id is null then
@@ -212,25 +213,21 @@ begin
    order by created_at asc
    limit 1;
 
-  if existing_template_id is not null then
+  if existing_template_id is null then
+    perform public.seed_default_consent_template_for_store(target_store_id);
     return;
   end if;
 
-  insert into public.consent_templates (
-    store_id,
-    name,
-    category,
-    description,
-    status
-  )
-  values (
-    target_store_id,
-    template_name,
-    'grooming',
-    '施術同意書の標準テンプレート（初期登録）',
-    'draft'
-  )
-  returning id into inserted_template_id;
+  select ctv.version_no, ctv.body_text
+    into current_version_no, current_body_text
+    from public.consent_templates ct
+    left join public.consent_template_versions ctv
+      on ctv.id = ct.current_version_id
+   where ct.id = existing_template_id;
+
+  if coalesce(current_body_text, '') = body_text_value then
+    return;
+  end if;
 
   insert into public.consent_template_versions (
     store_id,
@@ -244,8 +241,8 @@ begin
   )
   values (
     target_store_id,
-    inserted_template_id,
-    1,
+    existing_template_id,
+    coalesce(current_version_no, 0) + 1,
     template_title,
     body_html_value,
     body_text_value,
@@ -258,7 +255,7 @@ begin
      set current_version_id = inserted_version_id,
          status = 'published',
          updated_at = now()
-   where id = inserted_template_id;
+   where id = existing_template_id;
 end;
 $$;
 
@@ -268,25 +265,8 @@ declare
 begin
   for store_row in select id from public.stores
   loop
-    perform public.seed_default_consent_template_for_store(store_row.id);
+    perform public.upgrade_full_consent_template_for_store(store_row.id);
   end loop;
 end $$;
-
-create or replace function public.seed_default_consent_template_on_store_insert()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  perform public.seed_default_consent_template_for_store(new.id);
-  return new;
-end;
-$$;
-
-drop trigger if exists trg_seed_default_consent_template_on_store_insert on public.stores;
-create trigger trg_seed_default_consent_template_on_store_insert
-after insert on public.stores
-for each row execute function public.seed_default_consent_template_on_store_insert();
 
 commit;

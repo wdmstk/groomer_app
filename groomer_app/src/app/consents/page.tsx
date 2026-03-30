@@ -1,5 +1,9 @@
 import { ConsentManagementPanel } from '@/components/consents/ConsentManagementPanel'
-import { formatConsentDateJst, renderConsentTemplateHtml } from '@/lib/consents/template-render'
+import {
+  formatConsentDateJst,
+  formatPetAgeFromDateOfBirth,
+  renderConsentTemplateHtml,
+} from '@/lib/consents/template-render'
 import { consentsPageFixtures } from '@/lib/e2e/consents-page-fixtures'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
@@ -51,12 +55,12 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
           .order('updated_at', { ascending: false }),
         supabase
           .from('customers')
-          .select('id, full_name')
+          .select('id, full_name, address, phone_number')
           .eq('store_id', storeId)
           .order('created_at', { ascending: false }),
         supabase
           .from('pets')
-          .select('id, customer_id, name')
+          .select('id, customer_id, name, breed, gender, date_of_birth')
           .eq('store_id', storeId)
           .order('created_at', { ascending: false }),
         (() => {
@@ -130,11 +134,31 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
         }))}
         documents={(documentsQuery.data as Array<{ id: string; customer_id: string; pet_id: string; status: string; signed_at: string | null; created_at: string }>) ?? []}
         storeName={String((store as { name?: string | null } | null)?.name ?? '')}
-        customers={((customers ?? []) as Array<{ id: string; full_name: string }>).map((row) => ({ id: row.id, label: row.full_name }))}
-        pets={((pets ?? []) as Array<{ id: string; customer_id: string; name: string }>).map((row) => ({
+        customers={((customers ?? []) as Array<{
+          id: string
+          full_name: string
+          address: string | null
+          phone_number: string | null
+        }>).map((row) => ({
+          id: row.id,
+          label: row.full_name,
+          address: row.address,
+          phone_number: row.phone_number,
+        }))}
+        pets={((pets ?? []) as Array<{
+          id: string
+          customer_id: string
+          name: string
+          breed: string | null
+          gender: string | null
+          date_of_birth: string | null
+        }>).map((row) => ({
           id: row.id,
           customer_id: row.customer_id,
           label: row.name,
+          breed: row.breed,
+          gender: row.gender,
+          age: formatPetAgeFromDateOfBirth(row.date_of_birth),
         }))}
         initialAppointmentId={appointment?.id ?? appointmentId ?? ''}
         initialDocCustomerId={resolvedInitialCustomerId}

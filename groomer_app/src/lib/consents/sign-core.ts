@@ -6,15 +6,22 @@ export function validateConsentSignInput(body: UnknownObject | null) {
 
   const signerName = parseString(body.signer_name)
   const signatureBase64 = parseString(body.signature_image_base64)
+  const snsUsagePreference = parseString(body.sns_usage_preference)
   const consentChecked = body.consent_checked === true
   if (!signerName || !signatureBase64 || !consentChecked) {
     return { ok: false as const, message: 'signer_name/signature/consent_checked are required.' }
   }
 
+  const normalizedSnsUsagePreference =
+    snsUsagePreference === '許可する' || snsUsagePreference === 'ペットのみなら許可'
+      ? snsUsagePreference
+      : '許可しない'
+
   return {
     ok: true as const,
     signerName,
     signatureBase64,
+    snsUsagePreference: normalizedSnsUsagePreference,
   }
 }
 
@@ -49,45 +56,66 @@ export function buildConsentPdfLines(params: {
   signatureDigest: string
   signaturePath: string
 }) {
+  const fallback = (value: string | null | undefined) => (value && value.trim() ? value : 'ー')
+  const block = (label: string, value: string) => [`${label}:`, `  ${value}`, '']
   return [
-    `Document ID: ${params.documentId}`,
-    `Appointment ID: ${params.appointmentId ?? '-'}`,
-    `Template: ${params.templateTitle ?? '-'}`,
-    `Version: ${params.versionNo ?? '-'}`,
-    `Customer: ${params.customerName ?? '-'}`,
-    `Pet: ${params.petName ?? '-'}`,
-    `Signer: ${params.signerName}`,
-    `Signed At: ${params.signedAt}`,
-    `Signature Method: ${params.signatureMethod}`,
-    `Signature Digest (sha256): ${params.signatureDigest}`,
-    `Signature Path: ${params.signaturePath}`,
+    ...block('Document ID', params.documentId),
+    ...block('Appointment ID', fallback(params.appointmentId)),
+    ...block('Template', fallback(params.templateTitle)),
+    ...block('Version', fallback(String(params.versionNo ?? ''))),
+    ...block('Customer', fallback(params.customerName)),
+    ...block('Pet', fallback(params.petName)),
+    ...block('Signer', params.signerName),
+    ...block('Signed At', params.signedAt),
+    ...block('Signature Method', params.signatureMethod),
+    ...block('Signature Digest (sha256)', params.signatureDigest),
+    ...block('Signature Path', params.signaturePath),
   ]
 }
 
-export function buildConsentPrintableLines(params: {
-  customerName: string | null | undefined
-  petName: string | null | undefined
+export function formatConsentBodyLines(consentBodyText: string) {
+  const headingPattern = /^\d+\.\s/
+  const dashListPattern = /^[-・]\s*/
+  const bodyLines = consentBodyText
+    .split('\n')
+    .map((line) => line.trimEnd())
+
+  return bodyLines.map((line) => {
+    const trimmed = line.trim()
+    if (!trimmed) return ''
+    if (headingPattern.test(trimmed)) return `  ${trimmed}`
+    if (dashListPattern.test(trimmed)) return `      ・ ${trimmed.replace(dashListPattern, '')}`
+    return `    ${trimmed}`
+  })
+}
+
+export function splitConsentBodyAtSection12(consentBodyText: string) {
+  const lines = consentBodyText.split('\n')
+  const section12Index = lines.findIndex((line) => /^\s*12\.\s/.test(line))
+  if (section12Index < 0) {
+    return { before12: consentBodyText, from12: '' }
+  }
+  return {
+    before12: lines.slice(0, section12Index).join('\n'),
+    from12: lines.slice(section12Index).join('\n'),
+  }
+}
+
+export function buildSignatureBlockLines(params: {
   signerName: string
   signedAt: string
   signatureMethod: 'draw' | 'typed'
-  consentBodyText: string
+  signatureDigest?: string
+  signaturePath?: string
 }) {
-  const bodyLines = params.consentBodyText
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .flatMap((line) => [`  ${line}`, ''])
-
+  const fallback = (value: string | null | undefined) => (value && value.trim() ? value : 'ー')
+  const block = (label: string, value: string) => [`    ${label}:`, `      ${value}`]
   return [
-    `顧客: ${params.customerName ?? '-'}`,
-    `ペット: ${params.petName ?? '-'}`,
-    '',
-    '【施術同意書 本文】',
-    '',
-    ...bodyLines,
-    '【電子署名】',
-    `  署名者: ${params.signerName}`,
-    `  署名日時: ${params.signedAt}`,
-    `  署名方式: ${params.signatureMethod}`,
+    '  【電子署名】',
+    ...block('署名者', fallback(params.signerName)),
+    ...block('署名日時', fallback(params.signedAt)),
+    ...block('署名方式', params.signatureMethod),
+    ...block('署名ダイジェスト', fallback(params.signatureDigest)),
+    ...block('署名データ保存先', fallback(params.signaturePath)),
   ]
 }

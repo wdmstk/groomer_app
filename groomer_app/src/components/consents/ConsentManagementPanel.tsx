@@ -3,7 +3,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { formatConsentDateJst, renderConsentTemplateHtml } from '@/lib/consents/template-render'
 
-type Option = { id: string; label: string; extra?: string | null }
+type CustomerOption = {
+  id: string
+  label: string
+  address?: string | null
+  phone_number?: string | null
+}
+type PetOption = {
+  id: string
+  customer_id: string
+  label: string
+  breed?: string | null
+  age?: string | null
+  gender?: string | null
+}
 type TemplateRow = {
   id: string
   name: string
@@ -31,8 +44,8 @@ type Props = {
   templates: TemplateRow[]
   documents: DocumentRow[]
   storeName: string
-  customers: Option[]
-  pets: Array<Option & { customer_id: string }>
+  customers: CustomerOption[]
+  pets: PetOption[]
   initialAppointmentId?: string
   initialDocCustomerId?: string
   initialDocPetId?: string
@@ -123,12 +136,29 @@ export function ConsentManagementPanel({
     if (!rawHtml) return ''
     return renderConsentTemplateHtml(rawHtml, {
       store_name: storeName,
-      customer_name: selectedCustomer?.label ?? '',
-      pet_name: selectedPet?.label ?? '',
+      customer_name: selectedCustomer?.label ?? 'ー',
+      pet_name: selectedPet?.label ?? 'ー',
       service_name: serviceName,
+      customer_address: selectedCustomer?.address ?? 'ー',
+      customer_phone: selectedCustomer?.phone_number ?? 'ー',
+      pet_species: 'ー',
+      pet_breed: selectedPet?.breed ?? 'ー',
+      pet_age: selectedPet?.age ?? 'ー',
+      pet_gender: selectedPet?.gender ?? 'ー',
       consent_date: formatConsentDateJst(),
     })
-  }, [selectedCustomer?.label, selectedPet?.label, selectedTemplate?.current_version?.body_html, serviceName, storeName])
+  }, [
+    selectedCustomer?.address,
+    selectedCustomer?.label,
+    selectedCustomer?.phone_number,
+    selectedPet?.age,
+    selectedPet?.breed,
+    selectedPet?.gender,
+    selectedPet?.label,
+    selectedTemplate?.current_version?.body_html,
+    serviceName,
+    storeName,
+  ])
 
   useEffect(() => {
     if (!versionTemplateId) return
@@ -260,6 +290,8 @@ export function ConsentManagementPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           channel: 'in_person',
+          service_name: serviceName.trim() || null,
+          appointment_id: appointmentId || null,
         }),
       })
       const body = (await response.json().catch(() => null)) as {

@@ -39,3 +39,24 @@ test('buildSimpleConsentPdf supports 2-page layout', () => {
   assert.match(content, /\/Count 2/)
   assert.match(content, /Document ID: doc-1/)
 })
+
+test('buildSimpleConsentPdf embeds signature image page when png is provided', () => {
+  const onePixelPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Zg7cAAAAASUVORK5CYII=',
+    'base64'
+  )
+  const buffer = buildSimpleConsentPdf({
+    title: 'Consent',
+    lines: ['Body 1'],
+    secondPageTitle: 'Second',
+    secondPageLines: ['Section 12'],
+    secondPageSignatureImagePng: onePixelPng,
+    thirdPageTitle: 'Audit',
+    thirdPageLines: ['Document ID:', '  doc-1'],
+  })
+
+  const content = buffer.toString('utf8')
+  assert.match(content, /\/Count 3/)
+  assert.match(content, /\/Subtype \/Image/)
+  assert.match(content, /\/Im1 Do/)
+})

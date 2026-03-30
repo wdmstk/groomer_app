@@ -15,6 +15,7 @@ export function validateConsentDocumentCreateInput(body: UnknownObject | null) {
   const requestedVersionId = parseString(body.template_version_id)
   const appointmentId = parseString(body.appointment_id)
   const serviceName = parseString(body.service_name)
+  const snsUsagePreference = parseString(body.sns_usage_preference)
   const deliveryChannel = parseString(body.delivery_channel) ?? 'in_person'
   const expiresInHours = parseIntWithMin(body.expires_in_hours, 1) ?? 72
   if (!customerId || !petId || !templateId) {
@@ -29,6 +30,7 @@ export function validateConsentDocumentCreateInput(body: UnknownObject | null) {
     requestedVersionId,
     appointmentId,
     serviceName,
+    snsUsagePreference,
     deliveryChannel,
     expiresInHours,
   }
@@ -88,6 +90,7 @@ export function buildConsentSignUrlWithServiceName(params: {
   token: string
   serviceName?: string | null
   appointmentId?: string | null
+  snsUsagePreference?: string | null
 }) {
   const url = new URL(`/consent/sign/${params.token}`, new URL(params.requestUrl).origin)
   if (params.serviceName?.trim()) {
@@ -95,6 +98,9 @@ export function buildConsentSignUrlWithServiceName(params: {
   }
   if (params.appointmentId?.trim()) {
     url.searchParams.set('appointment_id', params.appointmentId.trim())
+  }
+  if (params.snsUsagePreference?.trim()) {
+    url.searchParams.set('sns_usage_preference', params.snsUsagePreference.trim())
   }
   return url.toString()
 }
