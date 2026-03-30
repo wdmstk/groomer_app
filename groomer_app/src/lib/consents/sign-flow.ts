@@ -1,12 +1,18 @@
 import type { Json } from '@/lib/supabase/database.types'
 import type { UnknownObject } from '@/lib/object-utils'
 import { buildSimpleConsentPdf } from '@/lib/consents/pdf'
-import { formatConsentDateJst, renderConsentTemplateText } from '@/lib/consents/template-render'
+import {
+  formatConsentDateJst,
+  formatPetAgeFromDateOfBirth,
+  renderConsentTemplateText,
+} from '@/lib/consents/template-render'
 import {
   buildConsentPdfLines,
   buildConsentPdfPath,
-  buildConsentPrintableLines,
+  buildSignatureBlockLines,
   buildConsentSignaturePath,
+  formatConsentBodyLines,
+  splitConsentBodyAtSection12,
 } from '@/lib/consents/sign-core'
 import { createHash } from 'node:crypto'
 
@@ -28,7 +34,12 @@ type TemplateVersionRow = {
 
 type SimpleNameRow = {
   full_name?: string | null
+  address?: string | null
+  phone_number?: string | null
   name?: string | null
+  breed?: string | null
+  gender?: string | null
+  date_of_birth?: string | null
 }
 
 type StoreRow = {
@@ -72,6 +83,7 @@ export async function signConsentWithDeps(params: {
   browser: string | null
   appointmentId?: string | null
   serviceName?: string | null
+  snsUsagePreference?: string | null
   nowIso?: string
 }) {
   const nowIso = params.nowIso ?? new Date().toISOString()
@@ -90,9 +102,18 @@ export async function signConsentWithDeps(params: {
 
   const renderedBodyText = renderConsentTemplateText(String(version?.body_text ?? ''), {
     store_name: String(store?.name ?? ''),
-    customer_name: String(customer?.full_name ?? ''),
-    pet_name: String(pet?.name ?? ''),
+    customer_name: String(customer?.full_name ?? 'ー'),
+    customer_address: String(customer?.address ?? 'ー'),
+    customer_phone: String(customer?.phone_number ?? 'ー'),
+    pet_name: String(pet?.name ?? 'ー'),
+    pet_species: 'ー',
+    pet_breed: String(pet?.breed ?? 'ー'),
+    pet_age: formatPetAgeFromDateOfBirth(
+      typeof pet?.date_of_birth === 'string' ? pet.date_of_birth : null
+    ) || 'ー',
+    pet_gender: String(pet?.gender ?? 'ー'),
     service_name: params.serviceName ?? '',
+    sns_usage_preference: params.snsUsagePreference ?? '',
     consent_date: formatConsentDateJst(new Date(nowIso)),
   })
   const signatureDigest = createHash('sha256').update(params.signatureBuffer).digest('hex')
@@ -101,30 +122,41 @@ export async function signConsentWithDeps(params: {
     storeId: params.document.store_id,
     documentId: params.document.id,
   })
+  const splitBody = splitConsentBodyAtSection12(renderedBodyText)
+  const firstPageBodyLines = formatConsentBodyLines(splitBody.before12)
+  const secondPageBodyLines = formatConsentBodyLines(splitBody.from12)
+  const signatureBlockLines = buildSignatureBlockLines({
+    signerName: params.signerName,
+    signedAt: nowIso,
+    signatureMethod: 'draw',
+    signatureDigest,
+    signaturePath,
+  })
+  const auditLines = buildConsentPdfLines({
+    documentId: params.document.id,
+    appointmentId: params.appointmentId ?? null,
+    templateTitle: version?.title ?? null,
+    versionNo: version?.version_no ?? null,
+    customerName: customer?.full_name ?? null,
+    petName: pet?.name ?? null,
+    signerName: params.signerName,
+    signedAt: nowIso,
+    signatureMethod: 'draw',
+    signatureDigest,
+    signaturePath,
+  })
   const pdfBuffer = buildSimpleConsentPdf({
     title: '施術同意書',
-    lines: buildConsentPrintableLines({
-      customerName: customer?.full_name ?? null,
-      petName: pet?.name ?? null,
-      signerName: params.signerName,
-      signedAt: nowIso,
-      signatureMethod: 'draw',
-      consentBodyText: renderedBodyText,
-    }),
-    secondPageTitle: '施術同意書 監査情報',
-    secondPageLines: buildConsentPdfLines({
-      documentId: params.document.id,
-      appointmentId: params.appointmentId ?? null,
-      templateTitle: version?.title ?? null,
-      versionNo: version?.version_no ?? null,
-      customerName: customer?.full_name ?? null,
-      petName: pet?.name ?? null,
-      signerName: params.signerName,
-      signedAt: nowIso,
-      signatureMethod: 'draw',
-      signatureDigest,
-      signaturePath,
-    }),
+    lines: firstPageBodyLines,
+    secondPageTitle: '施術同意書（電子署名）',
+    secondPageLines: [
+      ...secondPageBodyLines,
+      '',
+      ...signatureBlockLines,
+    ],
+    secondPageSignatureImagePng: params.signatureBuffer,
+    thirdPageTitle: '施術同意書（監査情報）',
+    thirdPageLines: auditLines.map((line) => (line ? `    ${line}` : '')),
   })
   await params.deps.uploadPdf({ path: pdfPath, bytes: pdfBuffer })
 
@@ -162,6 +194,7 @@ export async function signConsentWithDeps(params: {
       signature_path: signaturePath,
       ip_hash: params.ipHash,
       ua_hash: params.uaHash,
+      sns_usage_preference: params.snsUsagePreference ?? null,
     } as Json,
   })
 

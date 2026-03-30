@@ -50,6 +50,7 @@ export async function createConsentDocumentWithDeps(params: {
   deliveryChannel: string
   expiresInHours: number
   serviceName?: string | null
+  snsUsagePreference?: string | null
 }) {
   const seed = buildConsentDocumentSeed({
     storeId: params.storeId,
@@ -85,6 +86,7 @@ export async function createConsentDocumentWithDeps(params: {
     token: seed.token,
     serviceName: params.serviceName,
     appointmentId: params.appointmentId,
+    snsUsagePreference: params.snsUsagePreference,
   })
 
   if (params.deliveryChannel === 'line') {

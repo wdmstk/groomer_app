@@ -123,17 +123,18 @@ Completed tasks should be marked:
 ## TASK INDEX（正式タスクの正規順序）
 
 ### in_progress
-1. `TASK-417` AI動画段階実装（2026-03-21）
-2. `TASK-414` 顧客LTV分析
-3. `TASK-412` AIタグ活用導線の改善
-4. `TASK-411` 写真カルテのAIタグ付け
-5. `TASK-410` LINEの自動マーケ
-6. `TASK-409` 事前決済
-7. `TASK-408` POS機能導入計画（要件定義〜実装）
-8. `TASK-401` 統合会計（Invoice方式）
-9. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
-10. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
-11. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
+1. `TASK-434` 既存店舗向け同意書テンプレ更新SQL作成（2026-03-29・再オープン）
+2. `TASK-417` AI動画段階実装（2026-03-21）
+3. `TASK-414` 顧客LTV分析
+4. `TASK-412` AIタグ活用導線の改善
+5. `TASK-411` 写真カルテのAIタグ付け
+6. `TASK-410` LINEの自動マーケ
+7. `TASK-409` 事前決済
+8. `TASK-408` POS機能導入計画（要件定義〜実装）
+9. `TASK-401` 統合会計（Invoice方式）
+10. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
+11. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
+12. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
 
 ### todo
 （なし）
@@ -171,6 +172,29 @@ Completed tasks should be marked:
 27. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
 
 ## 正式タスク詳細（Task ID採番済み）
+
+## 既存店舗向け同意書テンプレ更新SQL作成
+- Task ID: `TASK-434`
+- ブランチ: `fix/TASK-434-consent-template-existing-store-update`
+- ステータス: `in_progress`
+- 概要: 既存店舗で既に作成済みの「施術同意書（標準）」を新仕様テンプレートへ切り替え、SNS利用選択の別入力実装と顧客/ペット情報の自動差し込みを反映する
+- 影響範囲: Supabase SQL（`supabase_consent_default_templates_update_existing.sql`/`supabase_consent_default_templates.sql`）/ 同意書管理UI（`/consents`）/ 同意書API / 公開署名API / TASKS
+- リスク: 既存店舗で current_version が新バージョンへ更新されることによる運用差分
+- 完了条件:
+  - 既存店舗テンプレートを新バージョン追加+current_version切替で更新できる
+  - SNS利用選択を同意書作成時の別入力として受け取り、テンプレへ差し込みできる
+  - 住所/電話/犬種/年齢/性別を顧客・ペット情報から自動差し込みできる
+  - 体重項目をテンプレートから削除する
+  - 再実行しても同一本文なら重複更新しない
+- 進捗:
+  - [x] ブランチ作成・タスク登録
+  - [x] 更新SQLの初版作成
+  - [x] 要件8項目の方針確定
+  - [ ] SNS利用選択の別入力実装（UI/API）
+  - [ ] 自動差し込み変数の拡張（住所/電話/犬種/年齢/性別）
+  - [ ] 標準テンプレート文面再調整（体重削除含む）
+  - [ ] 動作確認（lint/test）
+  - [x] TASKS更新（in_progressへ再オープン）
 
 ## 施術同意書標準テンプレート完全版差し替え
 - Task ID: `TASK-433`

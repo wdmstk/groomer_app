@@ -2,7 +2,7 @@ import { ConsentSignClient } from '@/components/consents/ConsentSignClient'
 
 type PageProps = {
   params: Promise<{ token: string }>
-  searchParams?: Promise<{ service_name?: string; appointment_id?: string }>
+  searchParams?: Promise<{ service_name?: string; appointment_id?: string; sns_usage_preference?: string }>
 }
 
 export default async function ConsentSignPage({ params, searchParams }: PageProps) {
@@ -15,6 +15,7 @@ export default async function ConsentSignPage({ params, searchParams }: PageProp
         token={token}
         serviceName={resolvedSearchParams?.service_name ?? ''}
         appointmentId={resolvedSearchParams?.appointment_id ?? ''}
+        snsUsagePreference={resolvedSearchParams?.sns_usage_preference ?? ''}
       />
     </main>
   )

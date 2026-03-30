@@ -38,7 +38,17 @@ export async function POST(request: Request) {
   const body = asObjectOrNull(await request.json().catch(() => null))
   const parsed = validateConsentDocumentCreateInput(body)
   if (!parsed.ok) return NextResponse.json({ message: parsed.message }, { status: 400 })
-  const { customerId, petId, templateId, requestedVersionId, appointmentId, deliveryChannel, expiresInHours, serviceName } = parsed
+  const {
+    customerId,
+    petId,
+    templateId,
+    requestedVersionId,
+    appointmentId,
+    deliveryChannel,
+    expiresInHours,
+    serviceName,
+    snsUsagePreference,
+  } = parsed
 
   const { supabase, storeId } = await createStoreScopedClient()
   const {
@@ -152,6 +162,7 @@ export async function POST(request: Request) {
     deliveryChannel,
     expiresInHours,
     serviceName: effectiveServiceName,
+    snsUsagePreference,
   })
 
   return NextResponse.json({

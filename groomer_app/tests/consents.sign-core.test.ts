@@ -15,6 +15,7 @@ test('validateConsentSignInput validates signer/consent/signature fields', () =>
       signer_name: '山田 花子',
       signature_image_base64: 'data:image/png;base64,abcd',
       consent_checked: true,
+      sns_usage_preference: '許可しない',
     }).ok,
     true
   )
@@ -50,13 +51,16 @@ test('buildConsentPdfLines includes required audit lines', () => {
     signaturePath: 'store-1/consents/signatures/doc-1-12345.png',
   })
 
-  assert.equal(lines[0], 'Document ID: doc-1')
-  assert.equal(lines[1], 'Appointment ID: appt-1')
-  assert.equal(lines[2], 'Template: 標準施術同意書')
-  assert.equal(lines.includes('Document ID: doc-1'), true)
-  assert.equal(lines.includes('Appointment ID: appt-1'), true)
-  assert.equal(lines.includes('Version: 2'), true)
-  assert.equal(lines.includes('Signature Method: draw'), true)
-  assert.equal(lines.includes('Signature Digest (sha256): abc123'), true)
-  assert.equal(lines.at(-1), 'Signature Path: store-1/consents/signatures/doc-1-12345.png')
+  assert.equal(lines[0], 'Document ID:')
+  assert.equal(lines[1], '  doc-1')
+  assert.equal(lines.includes('Appointment ID:'), true)
+  assert.equal(lines.includes('  appt-1'), true)
+  assert.equal(lines.includes('Version:'), true)
+  assert.equal(lines.includes('  2'), true)
+  assert.equal(lines.includes('Signature Method:'), true)
+  assert.equal(lines.includes('  draw'), true)
+  assert.equal(lines.includes('Signature Digest (sha256):'), true)
+  assert.equal(lines.includes('  abc123'), true)
+  assert.equal(lines.includes('Signature Path:'), true)
+  assert.equal(lines.includes('  store-1/consents/signatures/doc-1-12345.png'), true)
 })
