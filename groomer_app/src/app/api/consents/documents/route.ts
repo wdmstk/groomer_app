@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   let query = supabase
     .from('consent_documents' as never)
     .select(
-      'id, customer_id, pet_id, template_id, template_version_id, status, delivery_channel, signed_at, signed_by_name, expires_at, created_at, pdf_path'
+      'id, customer_id, pet_id, appointment_id, template_id, template_version_id, status, delivery_channel, signed_at, signed_by_name, expires_at, created_at, pdf_path'
     )
     .eq('store_id', storeId)
     .order('created_at', { ascending: false })
@@ -61,12 +61,13 @@ export async function POST(request: Request) {
     .eq('store_id', storeId)
     .eq('id', templateId)
     .maybeSingle()
+  const resolvedTemplate = (template as { id: string; current_version_id: string | null; status: string } | null) ?? null
   if (templateError) return NextResponse.json({ message: templateError.message }, { status: 500 })
-  if (!template) return NextResponse.json({ message: 'template not found.' }, { status: 404 })
+  if (!resolvedTemplate) return NextResponse.json({ message: 'template not found.' }, { status: 404 })
 
   const versionId = resolveConsentVersionId({
     requestedVersionId,
-    currentVersionId: template.current_version_id as string | null,
+    currentVersionId: resolvedTemplate.current_version_id,
   })
   if (!versionId) return NextResponse.json({ message: 'template version is missing.' }, { status: 409 })
 
@@ -77,8 +78,9 @@ export async function POST(request: Request) {
     .eq('template_id', templateId)
     .eq('id', versionId)
     .maybeSingle()
+  const resolvedVersion = (version as { id: string } | null) ?? null
   if (versionError) return NextResponse.json({ message: versionError.message }, { status: 500 })
-  if (!version) return NextResponse.json({ message: 'template version not found.' }, { status: 404 })
+  if (!resolvedVersion) return NextResponse.json({ message: 'template version not found.' }, { status: 404 })
 
   let effectiveServiceName = serviceName ?? null
   if (appointmentId) {
@@ -88,16 +90,17 @@ export async function POST(request: Request) {
       .eq('store_id', storeId)
       .eq('id', appointmentId)
       .maybeSingle()
+    const resolvedAppointment = (appointment as { id: string; customer_id: string; pet_id: string; menu: string | null } | null) ?? null
     if (appointmentError) return NextResponse.json({ message: appointmentError.message }, { status: 500 })
-    if (!appointment) return NextResponse.json({ message: 'appointment not found.' }, { status: 404 })
-    if (appointment.customer_id !== customerId || appointment.pet_id !== petId) {
+    if (!resolvedAppointment) return NextResponse.json({ message: 'appointment not found.' }, { status: 404 })
+    if (resolvedAppointment.customer_id !== customerId || resolvedAppointment.pet_id !== petId) {
       return NextResponse.json(
         { message: 'appointment/customer/pet mismatch.' },
         { status: 409 }
       )
     }
     if (!effectiveServiceName?.trim()) {
-      effectiveServiceName = String(appointment.menu ?? '')
+      effectiveServiceName = String(resolvedAppointment.menu ?? '')
     }
   }
 
@@ -140,7 +143,7 @@ export async function POST(request: Request) {
       },
       insertAuditLog: async ({ storeId: sid, entityType, entityId, action, actorUserId, after, payload }) => {
         await insertConsentAuditLogBestEffort({
-          supabase,
+          supabase: supabase as never,
           storeId: sid,
           entityType,
           entityId,

@@ -58,6 +58,7 @@ export async function createConsentDocumentWithDeps(params: {
     petId: params.petId,
     templateId: params.templateId,
     versionId: params.versionId,
+    appointmentId: params.appointmentId,
     deliveryChannel: params.deliveryChannel,
     expiresInHours: params.expiresInHours,
     actorUserId: params.actorUserId,

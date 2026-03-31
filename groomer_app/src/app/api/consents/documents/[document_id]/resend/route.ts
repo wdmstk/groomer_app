@@ -15,6 +15,13 @@ type RouteParams = {
   params: Promise<{ document_id: string }>
 }
 
+type ConsentDocumentRow = {
+  id: string
+  status: string
+  customer_id: string
+  delivery_channel: string | null
+}
+
 export async function POST(request: Request, { params }: RouteParams) {
   const { document_id: documentId } = await params
   const body = asObjectOrNull(await request.json().catch(() => ({})))
@@ -34,16 +41,17 @@ export async function POST(request: Request, { params }: RouteParams) {
     .eq('store_id', storeId)
     .eq('id', documentId)
     .maybeSingle()
+  const resolvedDocument = (document as ConsentDocumentRow | null) ?? null
   if (documentError) return NextResponse.json({ message: documentError.message }, { status: 500 })
-  if (!document) return NextResponse.json({ message: 'document not found.' }, { status: 404 })
-  if (document.status === 'signed' || document.status === 'revoked') {
-    return NextResponse.json({ message: `cannot resend in status=${document.status}` }, { status: 409 })
+  if (!resolvedDocument) return NextResponse.json({ message: 'document not found.' }, { status: 404 })
+  if (resolvedDocument.status === 'signed' || resolvedDocument.status === 'revoked') {
+    return NextResponse.json({ message: `cannot resend in status=${resolvedDocument.status}` }, { status: 409 })
   }
 
   const token = createConsentToken()
   const tokenHash = hashConsentToken(token)
   const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000).toISOString()
-  const nextChannel = overrideChannel ?? (document.delivery_channel as string | null) ?? 'line'
+  const nextChannel = overrideChannel ?? resolvedDocument.delivery_channel ?? 'line'
   const signUrl = buildConsentSignUrlWithServiceName({
     requestUrl: request.url,
     token,
@@ -72,7 +80,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       .from('customers')
       .select('line_id, full_name')
       .eq('store_id', storeId)
-      .eq('id', document.customer_id)
+      .eq('id', resolvedDocument.customer_id)
       .maybeSingle()
     if (customer?.line_id) {
       const sendResult = await sendLineMessage({
@@ -101,15 +109,15 @@ export async function POST(request: Request, { params }: RouteParams) {
   } as never)
 
   await insertConsentAuditLogBestEffort({
-    supabase,
+    supabase: supabase as never,
     storeId,
     entityType: 'document',
     entityId: documentId,
     action: status === 'sent' ? 'resent' : 'resend_failed',
     actorUserId: user?.id ?? null,
-    before: document,
+    before: resolvedDocument,
     after: {
-      ...document,
+      ...resolvedDocument,
       status: 'sent',
       delivery_channel: nextChannel,
       token_expires_at: expiresAt,

@@ -49,6 +49,7 @@ export function buildConsentDocumentSeed(params: {
   petId: string
   templateId: string
   versionId: string
+  appointmentId?: string | null
   deliveryChannel: string
   expiresInHours: number
   actorUserId: string | null
@@ -69,6 +70,7 @@ export function buildConsentDocumentSeed(params: {
       store_id: params.storeId,
       customer_id: params.customerId,
       pet_id: params.petId,
+      appointment_id: params.appointmentId ?? null,
       template_id: params.templateId,
       template_version_id: params.versionId,
       status: nextStatus,

@@ -1,24 +1,23 @@
 import { NextResponse } from 'next/server'
-import { asObjectOrNull } from '@/lib/object-utils'
 import { insertConsentAuditLogBestEffort } from '@/lib/consents/audit'
-import { parseString } from '@/lib/consents/shared'
+import { CONSENT_PDF_BUCKET } from '@/lib/consents/shared'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
 type RouteParams = {
   params: Promise<{ document_id: string }>
 }
 
-type ConsentDocumentRevokeRow = {
+type ConsentDocumentDeleteRow = {
   id: string
   status: string
-  revoked_at: string | null
+  pdf_path: string | null
+  appointment_id: string | null
+  customer_id: string
+  pet_id: string
 }
 
-export async function POST(request: Request, { params }: RouteParams) {
+export async function DELETE(_request: Request, { params }: RouteParams) {
   const { document_id: documentId } = await params
-  const body = asObjectOrNull(await request.json().catch(() => ({})))
-  const reason = parseString(body?.reason) ?? 'manual revoke'
-
   const { supabase, storeId } = await createStoreScopedClient()
   const {
     data: { user },
@@ -26,27 +25,21 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   const { data: current, error: currentError } = await supabase
     .from('consent_documents' as never)
-    .select('id, status, revoked_at')
+    .select('id, status, pdf_path, appointment_id, customer_id, pet_id')
     .eq('store_id', storeId)
     .eq('id', documentId)
     .maybeSingle()
-  const resolvedCurrent = (current as ConsentDocumentRevokeRow | null) ?? null
+  const resolvedCurrent = (current as ConsentDocumentDeleteRow | null) ?? null
   if (currentError) return NextResponse.json({ message: currentError.message }, { status: 500 })
   if (!resolvedCurrent) return NextResponse.json({ message: 'document not found.' }, { status: 404 })
-  if (resolvedCurrent.status === 'revoked') return NextResponse.json({ ok: true, reused: true })
 
-  const nowIso = new Date().toISOString()
+  if (resolvedCurrent.pdf_path) {
+    await supabase.storage.from(CONSENT_PDF_BUCKET).remove([resolvedCurrent.pdf_path]).catch(() => null)
+  }
+
   const { error } = await supabase
     .from('consent_documents' as never)
-    .update({
-      status: 'revoked',
-      revoked_at: nowIso,
-      revoked_reason: reason,
-      sign_token_hash: null,
-      token_expires_at: null,
-      updated_at: nowIso,
-      updated_by_user_id: user?.id ?? null,
-    } as never)
+    .delete()
     .eq('store_id', storeId)
     .eq('id', documentId)
   if (error) return NextResponse.json({ message: error.message }, { status: 500 })
@@ -56,17 +49,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     storeId,
     entityType: 'document',
     entityId: documentId,
-    action: 'revoked',
+    action: 'deleted',
     actorUserId: user?.id ?? null,
     before: resolvedCurrent,
-    after: {
-      ...resolvedCurrent,
-      status: 'revoked',
-      revoked_at: nowIso,
-      revoked_reason: reason,
-    },
-    payload: { reason },
+    after: null,
   })
 
-  return NextResponse.json({ ok: true, document_id: documentId, status: 'revoked' })
+  return NextResponse.json({ ok: true, document_id: documentId })
 }

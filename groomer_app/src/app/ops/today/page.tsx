@@ -39,6 +39,11 @@ type MedicalRecordRow = {
   appointment_id: string | null
 }
 
+type ConsentDocumentRow = {
+  appointment_id: string | null
+  status: string | null
+}
+
 const statusFlowActions = {
   予約済: { nextStatus: '受付', label: '受付開始' },
   受付: { nextStatus: '施術中', label: '施術開始' },
@@ -121,8 +126,8 @@ export default async function OpsTodayPage() {
   const appointments = (data ?? []) as AppointmentRow[]
   const appointmentIds = appointments.map((row) => row.id)
 
-  const [paymentRows, medicalRecordRows] = isPlaywrightE2E
-    ? [opsPageFixtures.payments, opsPageFixtures.medicalRecords]
+  const [paymentRows, medicalRecordRows, consentRows] = isPlaywrightE2E
+    ? [opsPageFixtures.payments, opsPageFixtures.medicalRecords, opsPageFixtures.consents]
     : await Promise.all([
         appointmentIds.length > 0
           ? db
@@ -140,6 +145,14 @@ export default async function OpsTodayPage() {
               .in('appointment_id', appointmentIds)
               .then((result) => result.data ?? [])
           : Promise.resolve([] as MedicalRecordRow[]),
+        appointmentIds.length > 0
+          ? db
+              .from('consent_documents' as never)
+              .select('appointment_id, status')
+              .eq('store_id', storeId)
+              .in('appointment_id', appointmentIds)
+              .then((result) => (result.data ?? []) as ConsentDocumentRow[])
+          : Promise.resolve([] as ConsentDocumentRow[]),
       ])
 
   const paidAppointmentIds = new Set(
@@ -150,6 +163,11 @@ export default async function OpsTodayPage() {
   const medicalRecordAppointmentIds = new Set(
     ((medicalRecordRows ?? []) as MedicalRecordRow[])
       .filter((row) => Boolean(row.appointment_id))
+      .map((row) => row.appointment_id as string)
+  )
+  const signedConsentAppointmentIds = new Set(
+    ((consentRows ?? []) as ConsentDocumentRow[])
+      .filter((row) => Boolean(row.appointment_id) && row.status === 'signed')
       .map((row) => row.appointment_id as string)
   )
   const revertedCount = isPlaywrightE2E
@@ -214,6 +232,7 @@ export default async function OpsTodayPage() {
             const normalizedStatus = normalizeStatus(appointment.status)
             const isPaid = paidAppointmentIds.has(appointment.id)
             const hasMedicalRecord = medicalRecordAppointmentIds.has(appointment.id)
+            const hasSignedConsent = signedConsentAppointmentIds.has(appointment.id)
             const customerLineId = getRelatedValue(appointment.customers, 'line_id')
             const hasLineId = customerLineId !== '未登録'
             return (
@@ -250,6 +269,11 @@ export default async function OpsTodayPage() {
                         カルテ未作成
                       </span>
                     ) : null}
+                    {!hasSignedConsent ? (
+                      <span className="rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-800">
+                        同意書未署名
+                      </span>
+                    ) : null}
                   </div>
                   {appointment.notes ? <p>備考: {appointment.notes}</p> : null}
                 </div>
@@ -276,6 +300,14 @@ export default async function OpsTodayPage() {
                   >
                     カルテ
                   </Link>
+                  {!hasSignedConsent ? (
+                    <Link
+                      href={`/consents?mode=customer-ops&tab=create-document&appointment_id=${appointment.id}`}
+                      className="rounded border border-rose-300 px-3 py-2 text-sm font-medium text-rose-700"
+                    >
+                      同意書を作成
+                    </Link>
+                  ) : null}
                   <Link
                     href={`/customers?tab=list&edit=${appointment.customer_id}`}
                     className="rounded border border-emerald-300 px-3 py-2 text-sm font-medium text-emerald-700"

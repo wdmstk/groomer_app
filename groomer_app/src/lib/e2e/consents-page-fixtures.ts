@@ -22,9 +22,11 @@ export const consentsPageFixtures = {
       id: 'consent-doc-001',
       customer_id: 'customer-001',
       pet_id: 'pet-001',
+      appointment_id: 'appt-001',
       status: 'draft',
       signed_at: null,
       created_at: '2026-03-26T08:00:00.000Z',
+      pdf_path: null,
     },
   ],
 } as const

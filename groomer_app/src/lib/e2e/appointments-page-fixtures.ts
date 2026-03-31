@@ -134,4 +134,20 @@ export const appointmentsPageFixtures = {
     { appointment_id: 'appt-booked-002', menu_id: 'menu-003' },
     { appointment_id: 'appt-completed-003', menu_id: 'menu-001' },
   ],
+  consents: [
+    {
+      id: 'consent-appt-002',
+      appointment_id: 'appt-booked-002',
+      status: 'draft',
+      pdf_path: null,
+      created_at: '2026-03-16T00:40:00.000Z',
+    },
+    {
+      id: 'consent-appt-003',
+      appointment_id: 'appt-completed-003',
+      status: 'signed',
+      pdf_path: 'store-e2e-demo/consent-appt-003.pdf',
+      created_at: '2026-02-01T03:40:00.000Z',
+    },
+  ],
 } as const

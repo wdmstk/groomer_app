@@ -334,12 +334,6 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                         編集
                       </Link>
                       <Link
-                        href={`/consents?customer_id=${customer.id}`}
-                        className="text-indigo-700 text-sm"
-                      >
-                        同意書
-                      </Link>
-                      <Link
                         href={`/customers?tab=list&modal=waitlist&waitlist_customer=${customer.id}`}
                         className="text-emerald-700 text-sm"
                       >
@@ -429,12 +423,6 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                               className="text-blue-600 text-sm"
                             >
                               編集
-                            </Link>
-                            <Link
-                              href={`/consents?customer_id=${customer.id}`}
-                              className="text-indigo-700 text-sm"
-                            >
-                              同意書
                             </Link>
                             <Link
                               href={`/customers?tab=list&modal=waitlist&waitlist_customer=${customer.id}`}
@@ -551,12 +539,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                 <div className="rounded border border-indigo-200 bg-indigo-50 p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-indigo-900">電子同意書（最新5件）</p>
-                    <Link
-                      href={`/consents?customer_id=${editCustomer.id}`}
-                      className="text-xs font-semibold text-indigo-700 hover:text-indigo-900"
-                    >
-                      一覧を開く
-                    </Link>
+                    <span className="text-xs text-indigo-700">同意書作成は予約管理から行ってください</span>
                   </div>
                   {editCustomerConsents.length === 0 ? (
                     <p className="text-sm text-indigo-900/80">同意書はまだありません。</p>

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState, useSyncExternalStore } from 'react'
 import { StoreSwitcher } from './StoreSwitcher'
 import {
@@ -77,7 +77,7 @@ const storeNavSections: NavSection[] = [
       { href: '/service-menus', label: '施術メニュー管理' },
       { href: '/appointments', label: '予約管理' },
       { href: '/medical-records', label: 'ペットカルテ管理' },
-      { href: '/consents', label: '電子同意書管理' },
+      { href: '/consents?mode=customer-ops&tab=create-document', label: '電子同意書管理' },
       { href: '/hotel', label: 'ペットホテル管理' },
       { href: '/visits', label: '来店履歴' },
     ],
@@ -103,6 +103,7 @@ const storeNavSections: NavSection[] = [
       { href: '/settings', label: '店舗設定', ownerOrAdminOnly: true, matchStartsWith: true },
       { href: '/billing', label: '決済管理', ownerOnly: true, matchStartsWith: true },
       { href: '/staffs', label: 'スタッフ管理' },
+      { href: '/consents?mode=store-admin&tab=create-template', label: '電子同意書テンプレ管理' },
     ],
   },
   {
@@ -130,6 +131,7 @@ const hqNavSections: NavSection[] = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
@@ -266,10 +268,21 @@ export function Sidebar() {
   }
 
   function isLinkActive(link: NavLink) {
+    const [targetPath, targetQuery = ''] = link.href.split('?')
+    const currentParams = new URLSearchParams(searchParams?.toString() ?? '')
+    const targetParams = new URLSearchParams(targetQuery)
     if (link.matchStartsWith) {
-      return pathname.startsWith(link.href)
+      if (!pathname.startsWith(targetPath)) return false
+      for (const [key, value] of targetParams.entries()) {
+        if (currentParams.get(key) !== value) return false
+      }
+      return true
     }
-    return pathname === link.href
+    if (pathname !== targetPath) return false
+    for (const [key, value] of targetParams.entries()) {
+      if (currentParams.get(key) !== value) return false
+    }
+    return true
   }
 
   function switchMode(nextMode: NavMode) {

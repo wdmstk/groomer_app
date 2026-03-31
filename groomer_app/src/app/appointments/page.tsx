@@ -43,6 +43,14 @@ type ServiceMenuOption = {
   is_active: boolean | null
 }
 
+type AppointmentConsentRow = {
+  id: string
+  appointment_id: string | null
+  status: string | null
+  pdf_path: string | null
+  created_at: string
+}
+
 type AppointmentsPageProps = {
   searchParams?: Promise<{
     tab?: string
@@ -74,6 +82,39 @@ const statusOptions = [
   'キャンセル',
   '無断キャンセル',
 ]
+
+function buildConsentSummary(appointmentId: string, latestConsent: AppointmentConsentRow | null) {
+  if (!latestConsent) {
+    return {
+      badgeLabel: '未作成',
+      badgeTone: 'bg-gray-100 text-gray-700',
+      actionLabel: '同意書を作成',
+      actionHref: `/consents?mode=customer-ops&tab=create-document&appointment_id=${appointmentId}`,
+      actionClass: 'text-indigo-700 text-sm',
+      openInNewTab: false,
+    }
+  }
+
+  if (latestConsent.status === 'signed' && latestConsent.pdf_path) {
+    return {
+      badgeLabel: '署名済み',
+      badgeTone: 'bg-emerald-100 text-emerald-700',
+      actionLabel: 'PDF表示',
+      actionHref: `/api/consents/documents/${latestConsent.id}/pdf?redirect=1`,
+      actionClass: 'text-emerald-700 text-sm',
+      openInNewTab: true,
+    }
+  }
+
+  return {
+    badgeLabel: '未署名',
+    badgeTone: 'bg-rose-100 text-rose-700',
+    actionLabel: '同意書を作成',
+    actionHref: `/consents?mode=customer-ops&tab=create-document&appointment_id=${appointmentId}`,
+    actionClass: 'text-indigo-700 text-sm',
+    openInNewTab: false,
+  }
+}
 function toDateTimeLocalValue(value: string | null | undefined) {
   if (!value) return ''
   const date = new Date(value)
@@ -269,6 +310,42 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
               .eq('store_id', storeId)
               .in('appointment_id', appointmentIds)
           ).data ?? []
+  const appointmentConsentRows =
+    appointmentIds.length === 0
+      ? ([] as AppointmentConsentRow[])
+      : isPlaywrightE2E
+        ? appointmentsPageFixtures.consents.filter((row) =>
+            appointmentIds.includes(String(row.appointment_id ?? ''))
+          )
+        : (
+            await db
+              .from('consent_documents' as never)
+              .select('id, appointment_id, status, pdf_path, created_at')
+              .eq('store_id', storeId)
+              .in('appointment_id', appointmentIds)
+          ).data ?? []
+
+  const latestConsentByAppointmentId = new Map<string, AppointmentConsentRow>()
+  ;(appointmentConsentRows as AppointmentConsentRow[]).forEach((row) => {
+    if (!row.appointment_id) return
+    const current = latestConsentByAppointmentId.get(row.appointment_id)
+    if (!current) {
+      latestConsentByAppointmentId.set(row.appointment_id, row)
+      return
+    }
+    const currentTime = new Date(current.created_at).getTime()
+    const nextTime = new Date(row.created_at).getTime()
+    if (Number.isFinite(nextTime) && (!Number.isFinite(currentTime) || nextTime > currentTime)) {
+      latestConsentByAppointmentId.set(row.appointment_id, row)
+    }
+  })
+
+  const consentSummaryByAppointmentId = new Map(
+    appointmentList.map((appointment) => [
+      appointment.id,
+      buildConsentSummary(appointment.id, latestConsentByAppointmentId.get(appointment.id) ?? null),
+    ])
+  )
   const appointmentMenuMap = new Map<string, string[]>()
   appointmentMenuRows.forEach((row) => {
     const list = appointmentMenuMap.get(row.appointment_id) ?? []
@@ -404,7 +481,9 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
           ) : (
             <>
               <div className="space-y-3 md:hidden" data-testid="appointments-list-mobile">
-                {appointmentList.map((appointment) => (
+                {appointmentList.map((appointment) => {
+                  const consentSummary = consentSummaryByAppointmentId.get(appointment.id) ?? buildConsentSummary(appointment.id, null)
+                  return (
                   <article
                     key={appointment.id}
                     className="rounded border p-3 text-sm text-gray-700"
@@ -420,6 +499,12 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                     <p>メニュー: {appointment.menu}</p>
                     <p>所要時間: {appointment.duration} 分</p>
                     <p>ステータス: {appointment.status ?? '予約済'}</p>
+                    <p>
+                      同意書:{' '}
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${consentSummary.badgeTone}`}>
+                        {consentSummary.badgeLabel}
+                      </span>
+                    </p>
                     {(() => {
                       const transition = getAppointmentStatusTransitionTime(appointment.status, appointment)
                       if (!transition?.value) return null
@@ -438,10 +523,12 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                         編集
                       </Link>
                       <Link
-                        href={`/consents?appointment_id=${appointment.id}`}
-                        className="text-indigo-700 text-sm"
+                        href={consentSummary.actionHref}
+                        className={consentSummary.actionClass}
+                        target={consentSummary.openInNewTab ? '_blank' : undefined}
+                        rel={consentSummary.openInNewTab ? 'noopener noreferrer' : undefined}
                       >
-                        同意書
+                        {consentSummary.actionLabel}
                       </Link>
                       {appointment.status === '予約申請' ? (
                         <form action={`/api/appointments/${appointment.id}/confirm`} method="post">
@@ -488,7 +575,8 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                       </form>
                     </div>
                   </article>
-                ))}
+                  )
+                })}
               </div>
 
               <div className="hidden overflow-x-auto md:block">
@@ -506,7 +594,9 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                       <th className="py-2 px-2">備考</th>
                       <th className="py-2 px-2">操作</th>
                     </tr>
-                    {appointmentList.map((appointment) => (
+                    {appointmentList.map((appointment) => {
+                      const consentSummary = consentSummaryByAppointmentId.get(appointment.id) ?? buildConsentSummary(appointment.id, null)
+                      return (
                       <tr
                         key={appointment.id}
                         className="text-gray-700"
@@ -525,6 +615,11 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                         <td className="py-3 px-2">{appointment.duration} 分</td>
                         <td className="py-3 px-2">
                           <p>{appointment.status ?? '予約済'}</p>
+                          <p className="mt-1">
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${consentSummary.badgeTone}`}>
+                              {consentSummary.badgeLabel}
+                            </span>
+                          </p>
                           {(() => {
                             const transition = getAppointmentStatusTransitionTime(appointment.status, appointment)
                             if (!transition?.value) return null
@@ -545,10 +640,12 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                               編集
                             </Link>
                             <Link
-                              href={`/consents?appointment_id=${appointment.id}`}
-                              className="text-indigo-700 text-sm"
+                              href={consentSummary.actionHref}
+                              className={consentSummary.actionClass}
+                              target={consentSummary.openInNewTab ? '_blank' : undefined}
+                              rel={consentSummary.openInNewTab ? 'noopener noreferrer' : undefined}
                             >
-                              同意書
+                              {consentSummary.actionLabel}
                             </Link>
                             {appointment.status === '予約申請' ? (
                               <form action={`/api/appointments/${appointment.id}/confirm`} method="post">
@@ -596,7 +693,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>

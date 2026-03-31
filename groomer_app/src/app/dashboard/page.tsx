@@ -374,6 +374,7 @@ function AppointmentWorkflowActions({
   isPaid,
   canQuickPay,
   linkedPaymentId,
+  hasSignedConsent,
   compact = false,
 }: {
   appointment: AppointmentRow
@@ -381,6 +382,7 @@ function AppointmentWorkflowActions({
   isPaid: boolean
   canQuickPay: boolean
   linkedPaymentId: string
+  hasSignedConsent: boolean
   compact?: boolean
 }) {
   const primaryButtonClass = compact
@@ -432,6 +434,14 @@ function AppointmentWorkflowActions({
       >
         カルテ入力
       </Link>
+      {!hasSignedConsent ? (
+        <Link
+          href={`/consents?mode=customer-ops&tab=create-document&appointment_id=${appointment.id}`}
+          className={secondaryLinkClass}
+        >
+          同意書を作成
+        </Link>
+      ) : null}
     </div>
   )
 }
@@ -443,6 +453,7 @@ function AppointmentTable({
   showWorkflow = false,
   paidAppointmentIds = new Set<string>(),
   paymentIdByAppointmentId = new Map<string, string>(),
+  signedConsentAppointmentIds = new Set<string>(),
 }: {
   title: string
   appointments: AppointmentRow[]
@@ -450,6 +461,7 @@ function AppointmentTable({
   showWorkflow?: boolean
   paidAppointmentIds?: Set<string>
   paymentIdByAppointmentId?: Map<string, string>
+  signedConsentAppointmentIds?: Set<string>
 }) {
   return (
     <Card>
@@ -480,6 +492,7 @@ function AppointmentTable({
               const isPaid = paidAppointmentIds.has(appointment.id)
               const canQuickPay = normalizedStatus === '会計待ち' || normalizedStatus === '完了'
               const linkedPaymentId = paymentIdByAppointmentId.get(appointment.id) ?? ''
+              const hasSignedConsent = signedConsentAppointmentIds.has(appointment.id)
 
               return (
                 <article key={appointment.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -517,6 +530,7 @@ function AppointmentTable({
                           isPaid={isPaid}
                           canQuickPay={canQuickPay}
                           linkedPaymentId={linkedPaymentId}
+                          hasSignedConsent={hasSignedConsent}
                         />
                       </div>
                     ) : null}
@@ -573,6 +587,7 @@ function AppointmentTable({
                 const isPaid = paidAppointmentIds.has(appointment.id)
                 const canQuickPay = normalizedStatus === '会計待ち' || normalizedStatus === '完了'
                 const linkedPaymentId = paymentIdByAppointmentId.get(appointment.id) ?? ''
+                const hasSignedConsent = signedConsentAppointmentIds.has(appointment.id)
 
                 return (
                   <tr key={appointment.id} className="align-top text-gray-700">
@@ -613,6 +628,7 @@ function AppointmentTable({
                           isPaid={isPaid}
                           canQuickPay={canQuickPay}
                           linkedPaymentId={linkedPaymentId}
+                          hasSignedConsent={hasSignedConsent}
                           compact
                         />
                       </td>
@@ -943,6 +959,18 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         ).data
       : []
 
+  const todayConsentDocuments = isPlaywrightE2E
+    ? dashboardPageFixtures.todayConsentDocuments
+    : todayAppointmentIds.length > 0
+      ? (
+          await supabase!
+            .from('consent_documents' as never)
+            .select('appointment_id, status')
+            .eq('store_id', storeId)
+            .in('appointment_id', todayAppointmentIds)
+        ).data
+      : []
+
   const publicReservationSubmittedTodayCount = isPlaywrightE2E
     ? dashboardPageFixtures.publicReservationSubmittedTodayCount
     : (
@@ -1064,6 +1092,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         paidPaymentIdByAppointmentId.set(payment.appointment_id, payment.id)
       }
     })
+  const signedConsentAppointmentIds = new Set(
+    ((todayConsentDocuments ?? []) as Array<{ appointment_id: string | null; status: string | null }>)
+      .filter((row) => row.appointment_id && row.status === 'signed')
+      .map((row) => row.appointment_id as string)
+  )
   const unpaidTodayAppointments = ((todayAppointments ?? []) as AppointmentRow[]).filter(
     (appointment) => !paidTodayAppointmentIds.has(appointment.id)
   )
@@ -1571,7 +1604,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-900">未会計アラート（本日）</h2><p className="text-sm text-gray-500">全 {unpaidTodayAppointments.length} 件</p></div>
             {unpaidTodayAppointments.length === 0 ? <p className="text-sm text-gray-500">本日の未会計予約はありません。</p> : <div className="space-y-2">{unpaidTodayAppointments.map((appointment) => (<div key={appointment.id} className="flex flex-col gap-2 rounded border border-amber-200 bg-amber-50 p-3 text-sm md:flex-row md:items-center md:justify-between"><div><p className="font-semibold text-gray-900">{formatTimeJst(appointment.start_time)} / {getRelatedValue(appointment.pets, 'name') ?? '未登録'}</p><p className="text-gray-700">顧客: {getRelatedValue(appointment.customers, 'full_name') ?? '未登録'} / 担当: {getRelatedValue(appointment.staffs, 'full_name') ?? '未登録'}</p></div><Link href="/payments?tab=list&modal=create" className="inline-flex items-center rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white">会計へ</Link></div>))}</div>}
           </Card>
-          <AppointmentTable title="当日の予約一覧" appointments={(todayAppointments as AppointmentRow[]) ?? []} latestRecordByPetId={latestRecordByPetId} showWorkflow paidAppointmentIds={paidTodayAppointmentIds} paymentIdByAppointmentId={paidPaymentIdByAppointmentId} />
+          <AppointmentTable title="当日の予約一覧" appointments={(todayAppointments as AppointmentRow[]) ?? []} latestRecordByPetId={latestRecordByPetId} showWorkflow paidAppointmentIds={paidTodayAppointmentIds} paymentIdByAppointmentId={paidPaymentIdByAppointmentId} signedConsentAppointmentIds={signedConsentAppointmentIds} />
           <AppointmentTable title="今後1週間の予約一覧" appointments={(upcomingAppointments as AppointmentRow[]) ?? []} latestRecordByPetId={latestRecordByPetId} />
         </>
       ) : null}
