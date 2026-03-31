@@ -70,6 +70,7 @@ create table if not exists public.consent_documents (
   store_id uuid not null references public.stores(id) on delete cascade,
   customer_id uuid not null references public.customers(id) on delete cascade,
   pet_id uuid not null references public.pets(id) on delete cascade,
+  appointment_id uuid references public.appointments(id) on delete set null,
   template_id uuid not null references public.consent_templates(id) on delete restrict,
   template_version_id uuid not null references public.consent_template_versions(id) on delete restrict,
   status text not null default 'draft' check (status in ('draft', 'sent', 'signed', 'expired', 'canceled', 'revoked')),
@@ -89,6 +90,10 @@ create table if not exists public.consent_documents (
 
 create index if not exists idx_consent_documents_store_customer_pet
   on public.consent_documents(store_id, customer_id, pet_id, created_at desc);
+
+create index if not exists idx_consent_documents_store_appointment
+  on public.consent_documents(store_id, appointment_id, created_at desc)
+  where appointment_id is not null;
 
 create index if not exists idx_consent_documents_store_status
   on public.consent_documents(store_id, status, created_at desc);
@@ -206,4 +211,3 @@ begin
 end $$;
 
 commit;
-

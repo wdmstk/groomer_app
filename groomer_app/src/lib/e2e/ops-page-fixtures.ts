@@ -61,5 +61,9 @@ export const opsPageFixtures = {
     { appointment_id: 'ops-appt-003', paid_at: '2026-03-16T07:40:00.000Z' },
   ],
   medicalRecords: [{ appointment_id: 'ops-appt-003' }],
+  consents: [
+    { appointment_id: 'ops-appt-003', status: 'signed' },
+    { appointment_id: 'ops-appt-002', status: 'draft' },
+  ],
   revertedCount: 1,
 } as const

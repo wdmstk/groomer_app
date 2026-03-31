@@ -16,6 +16,8 @@ type PageProps = {
     customer_id?: string
     pet_id?: string
     service_name?: string
+    tab?: string
+    mode?: string
   }>
 }
 
@@ -29,6 +31,15 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
   const customerId = resolvedSearchParams?.customer_id
   const petId = resolvedSearchParams?.pet_id
   const serviceName = resolvedSearchParams?.service_name
+  const requestedTab = resolvedSearchParams?.tab
+  const requestedMode = resolvedSearchParams?.mode
+  const pageTitle = requestedMode === 'store-admin' ? '電子同意書テンプレ管理' : '電子同意書管理'
+  const pageSummary =
+    requestedMode === 'store-admin'
+      ? '店舗向けの同意書テンプレート作成と同意文の有効化を行います。'
+      : requestedMode === 'customer-ops'
+        ? '顧客向けの同意書作成・署名依頼と履歴確認を行います。'
+        : '店舗向けテンプレ管理と顧客向け同意書運用を行います。'
 
   const [{ data: templates }, { data: customers }, { data: pets }, documentsQuery, { data: store }, appointmentQuery] = isPlaywrightE2E
     ? [
@@ -66,7 +77,7 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
         (() => {
           let query = supabase
             .from('consent_documents' as never)
-            .select('id, customer_id, pet_id, status, signed_at, created_at')
+            .select('id, customer_id, pet_id, appointment_id, status, signed_at, created_at, pdf_path')
             .eq('store_id', storeId)
             .order('created_at', { ascending: false })
           if (customerId) query = query.eq('customer_id', customerId)
@@ -103,8 +114,8 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
   return (
     <section className="space-y-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold text-gray-900">電子同意書管理</h1>
-        <p className="text-sm text-gray-600">同意書テンプレート管理、署名依頼、履歴確認を行います。</p>
+        <h1 className="text-2xl font-semibold text-gray-900">{pageTitle}</h1>
+        <p className="text-sm text-gray-600">{pageSummary}</p>
       </div>
       <ConsentManagementPanel
         templates={((templates as Array<{
@@ -132,7 +143,16 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
               }
             : null,
         }))}
-        documents={(documentsQuery.data as Array<{ id: string; customer_id: string; pet_id: string; status: string; signed_at: string | null; created_at: string }>) ?? []}
+        documents={(documentsQuery.data as Array<{
+          id: string
+          customer_id: string
+          pet_id: string
+          appointment_id?: string | null
+          status: string
+          signed_at: string | null
+          created_at: string
+          pdf_path?: string | null
+        }>) ?? []}
         storeName={String((store as { name?: string | null } | null)?.name ?? '')}
         customers={((customers ?? []) as Array<{
           id: string
@@ -164,6 +184,8 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
         initialDocCustomerId={resolvedInitialCustomerId}
         initialDocPetId={resolvedInitialPetId}
         initialServiceName={resolvedInitialServiceName}
+        initialTab={requestedTab}
+        initialMode={requestedMode}
       />
     </section>
   )

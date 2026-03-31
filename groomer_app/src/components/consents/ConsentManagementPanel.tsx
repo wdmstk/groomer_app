@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { formatConsentDateJst, renderConsentTemplateHtml } from '@/lib/consents/template-render'
 
@@ -35,10 +37,15 @@ type DocumentRow = {
   id: string
   customer_id: string
   pet_id: string
+  appointment_id?: string | null
   status: string
   signed_at: string | null
   created_at: string
+  pdf_path?: string | null
 }
+
+type TabId = 'create-template' | 'publish-version' | 'create-document' | 'history'
+type ConsentMode = 'all' | 'customer-ops' | 'store-admin'
 
 type Props = {
   templates: TemplateRow[]
@@ -50,6 +57,29 @@ type Props = {
   initialDocCustomerId?: string
   initialDocPetId?: string
   initialServiceName?: string
+  initialTab?: string
+  initialMode?: string
+}
+
+const allowedTabs: TabId[] = ['create-template', 'publish-version', 'create-document', 'history']
+
+function resolveMode(value: string | undefined): ConsentMode {
+  if (value === 'customer-ops' || value === 'store-admin') return value
+  return 'all'
+}
+
+function getAllowedTabsByMode(mode: ConsentMode): TabId[] {
+  if (mode === 'customer-ops') return ['create-document', 'history']
+  if (mode === 'store-admin') return ['create-template', 'publish-version']
+  return allowedTabs
+}
+
+function resolveTab(value: string | undefined, mode: ConsentMode): TabId {
+  const allowed = getAllowedTabsByMode(mode)
+  if (value && allowed.includes(value as TabId)) {
+    return value as TabId
+  }
+  return mode === 'store-admin' ? 'create-template' : 'create-document'
 }
 
 function formatDate(value: string | null) {
@@ -102,7 +132,12 @@ export function ConsentManagementPanel({
   initialDocCustomerId = '',
   initialDocPetId = '',
   initialServiceName = '',
+  initialTab,
+  initialMode,
 }: Props) {
+  const router = useRouter()
+  const mode = resolveMode(initialMode)
+  const modeAllowedTabs = getAllowedTabsByMode(mode)
   const [templates, setTemplates] = useState(initialTemplates)
   const [documents, setDocuments] = useState(initialDocuments)
   const [message, setMessage] = useState<string | null>(null)
@@ -120,7 +155,10 @@ export function ConsentManagementPanel({
   const [serviceName, setServiceName] = useState(initialServiceName)
   const [docChannel, setDocChannel] = useState<'in_person' | 'line'>('in_person')
   const [resendingDocumentId, setResendingDocumentId] = useState<string | null>(null)
+  const [pdfLoadingDocumentId, setPdfLoadingDocumentId] = useState<string | null>(null)
+  const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null)
   const [signUrlByDocumentId, setSignUrlByDocumentId] = useState<Record<string, string>>({})
+  const activeTab = resolveTab(initialTab, mode)
 
   const filteredPets = useMemo(() => {
     if (!docCustomerId) return pets
@@ -168,7 +206,11 @@ export function ConsentManagementPanel({
   }, [templates, versionTemplateId])
 
   async function refreshDocuments() {
-    const response = await fetch('/api/consents/documents', { cache: 'no-store' })
+    const params = new URLSearchParams()
+    if (initialDocCustomerId) params.set('customer_id', initialDocCustomerId)
+    if (initialDocPetId) params.set('pet_id', initialDocPetId)
+    const path = params.toString() ? `/api/consents/documents?${params.toString()}` : '/api/consents/documents'
+    const response = await fetch(path, { cache: 'no-store' })
     const body = (await response.json().catch(() => null)) as { items?: DocumentRow[]; message?: string } | null
     if (!response.ok) throw new Error(body?.message ?? '同意書一覧の更新に失敗しました。')
     setDocuments(body?.items ?? [])
@@ -213,8 +255,8 @@ export function ConsentManagementPanel({
       setError('文面を入力してから有効化してください。')
       return
     }
-    const selectedTemplate = templates.find((row) => row.id === versionTemplateId)
-    const resolvedTitle = versionTitle.trim() || `${selectedTemplate?.name ?? '同意書'} 初版`
+    const selectedVersionTemplate = templates.find((row) => row.id === versionTemplateId)
+    const resolvedTitle = versionTitle.trim() || `${selectedVersionTemplate?.name ?? '同意書'} 初版`
     setSubmitting(true)
     setError(null)
     setMessage(null)
@@ -272,7 +314,13 @@ export function ConsentManagementPanel({
       if (body?.sign_url && body?.document?.id) {
         setSignUrlByDocumentId((current) => ({ ...current, [body.document?.id as string]: body.sign_url as string }))
       }
-      setMessage(docChannel === 'line' ? '同意書を作成し、LINE送信しました。' : `同意書を作成しました。署名URL: ${body?.sign_url ?? '-'}`)
+      if (docChannel === 'in_person' && body?.sign_url) {
+        window.open(body.sign_url, '_blank', 'noopener,noreferrer')
+      }
+      setMessage(docChannel === 'line' ? '同意書を作成し、LINE送信しました。' : '同意書を作成しました。署名画面を別タブで開きました。')
+      if (modeAllowedTabs.includes('history')) {
+        router.push(buildTabHref('history'))
+      }
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : '同意書作成に失敗しました。')
     } finally {
@@ -313,159 +361,270 @@ export function ConsentManagementPanel({
     }
   }
 
+  async function openPdf(documentId: string) {
+    setPdfLoadingDocumentId(documentId)
+    setError(null)
+    try {
+      const response = await fetch(`/api/consents/documents/${documentId}/pdf`, { method: 'GET' })
+      const body = (await response.json().catch(() => null)) as { signed_url?: string; message?: string } | null
+      if (!response.ok) throw new Error(body?.message ?? 'PDF参照に失敗しました。')
+      if (!body?.signed_url) throw new Error('PDF URLの取得に失敗しました。')
+      window.open(body.signed_url, '_blank', 'noopener,noreferrer')
+    } catch (openError) {
+      setError(openError instanceof Error ? openError.message : 'PDF参照に失敗しました。')
+    } finally {
+      setPdfLoadingDocumentId(null)
+    }
+  }
+
+  async function deleteDocument(documentId: string) {
+    const shouldDelete = window.confirm('この同意書履歴を削除します。よろしいですか？')
+    if (!shouldDelete) return
+
+    setDeletingDocumentId(documentId)
+    setError(null)
+    setMessage(null)
+    try {
+      const response = await fetch(`/api/consents/documents/${documentId}`, {
+        method: 'DELETE',
+      })
+      const body = (await response.json().catch(() => null)) as { message?: string } | null
+      if (!response.ok) throw new Error(body?.message ?? '同意書の削除に失敗しました。')
+      await refreshDocuments()
+      setSignUrlByDocumentId((current) => {
+        const next = { ...current }
+        delete next[documentId]
+        return next
+      })
+      setMessage('同意書履歴を削除しました。')
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : '同意書の削除に失敗しました。')
+    } finally {
+      setDeletingDocumentId(null)
+    }
+  }
+
+  const visibleTabs: Array<{ id: TabId; label: string }> =
+    mode === 'store-admin'
+      ? [
+          { id: 'create-template', label: 'テンプレ作成' },
+          { id: 'publish-version', label: '同意文を有効化' },
+        ]
+      : mode === 'customer-ops'
+        ? [
+            { id: 'create-document', label: '同意書を作成・署名依頼' },
+            { id: 'history', label: '同意書履歴' },
+          ]
+        : [
+            { id: 'create-template', label: 'テンプレ作成' },
+            { id: 'publish-version', label: '同意文を有効化' },
+            { id: 'create-document', label: '同意書を作成・署名依頼' },
+            { id: 'history', label: '同意書履歴' },
+          ]
+
+  function buildTabHref(tab: TabId) {
+    const params = new URLSearchParams()
+    params.set('mode', mode)
+    params.set('tab', tab)
+    if (appointmentId) params.set('appointment_id', appointmentId)
+    if (initialDocCustomerId) params.set('customer_id', initialDocCustomerId)
+    if (initialDocPetId) params.set('pet_id', initialDocPetId)
+    if (initialServiceName) params.set('service_name', initialServiceName)
+    return `/consents?${params.toString()}`
+  }
+
   return (
     <div className="space-y-6">
       {message ? <p data-testid="consent-message" className="rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p> : null}
       {error ? <p data-testid="consent-error" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
-      <section className="rounded border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
-        <p className="font-semibold">この画面の使い方（最短）</p>
-        <p className="mt-1">1) まず「テンプレートを作成」→ 2) 「同意文を有効化」→ 3) 「同意書を作成・署名依頼」の順で進めます。</p>
-      </section>
 
-      <section className="rounded border bg-white p-4">
-        <h2 className="text-lg font-semibold text-gray-900">1) テンプレートを作成</h2>
-        <p className="mt-1 text-sm text-gray-600">テンプレート名は「何の同意書か」を識別するための名前です（例: 施術同意書 標準）。</p>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <input className="rounded border px-3 py-2 text-sm" placeholder="テンプレート名" value={templateName} onChange={(e) => setTemplateName(e.target.value)} />
-          <select className="rounded border px-3 py-2 text-sm" value={templateCategory} onChange={(e) => setTemplateCategory(e.target.value)}>
-            <option value="grooming">施術（grooming）</option>
-            <option value="hotel">ホテル（hotel）</option>
-            <option value="medical">医療/注意（medical）</option>
-          </select>
-          <button type="button" onClick={() => void createTemplate()} disabled={submitting} className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-blue-300">
-            テンプレート作成
-          </button>
-        </div>
-        <p className="mt-2 text-xs text-gray-500">カテゴリは将来の絞り込み用です。今は運用しやすい分類を選べばOKです。</p>
-      </section>
+      <div className="flex items-center gap-4 border-b">
+        {visibleTabs.map((tab) => (
+          <Link
+            key={tab.id}
+            href={buildTabHref(tab.id)}
+            className={`pb-2 text-sm font-semibold ${
+              activeTab === tab.id ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'
+            }`}
+          >
+            {tab.label}
+          </Link>
+        ))}
+      </div>
 
-      <section className="rounded border bg-white p-4">
-        <h2 className="text-lg font-semibold text-gray-900">2) 同意文を有効化</h2>
-        <p className="mt-1 text-sm text-gray-600">「版」は改訂履歴です。文面を変えるたびに新しい版として有効化します。</p>
-        <div className="mt-3 space-y-3">
-          <select className="w-full rounded border px-3 py-2 text-sm" value={versionTemplateId} onChange={(e) => setVersionTemplateId(e.target.value)}>
-            <option value="">テンプレートを選択</option>
-            {templates.map((row) => (
-              <option key={row.id} value={row.id}>{row.name} ({row.status})</option>
-            ))}
-          </select>
-          <input className="w-full rounded border px-3 py-2 text-sm" placeholder="版名（任意。未入力なら「初版」）" value={versionTitle} onChange={(e) => setVersionTitle(e.target.value)} />
-          <textarea
-            className="min-h-32 w-full rounded border px-3 py-2 text-sm"
-            placeholder="同意文をそのまま入力してください（通常入力のみでOK）"
-            value={versionBody}
-            onChange={(e) => setVersionBody(e.target.value)}
-          />
-          <button type="button" onClick={() => void publishVersion()} disabled={submitting} className="rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:bg-indigo-300">
-            この文面を有効化
-          </button>
-          <p className="text-xs text-gray-500">内部でHTML本文/本文プレーンテキストへ自動変換して保存します。</p>
-        </div>
-      </section>
+      {activeTab === 'create-template' ? (
+        <section className="rounded border bg-white p-4">
+          <h2 className="text-lg font-semibold text-gray-900">テンプレートを作成</h2>
+          <p className="mt-1 text-sm text-gray-600">テンプレート名は「何の同意書か」を識別するための名前です（例: 施術同意書 標準）。</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <input className="rounded border px-3 py-2 text-sm" placeholder="テンプレート名" value={templateName} onChange={(e) => setTemplateName(e.target.value)} />
+            <select className="rounded border px-3 py-2 text-sm" value={templateCategory} onChange={(e) => setTemplateCategory(e.target.value)}>
+              <option value="grooming">施術（grooming）</option>
+              <option value="hotel">ホテル（hotel）</option>
+              <option value="medical">医療/注意（medical）</option>
+            </select>
+            <button type="button" onClick={() => void createTemplate()} disabled={submitting} className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-blue-300">
+              テンプレート作成
+            </button>
+          </div>
+        </section>
+      ) : null}
 
-      <section className="rounded border bg-white p-4">
-        <h2 className="text-lg font-semibold text-gray-900">3) 同意書を作成・署名依頼</h2>
-        <p className="mt-1 text-sm text-gray-600">日々の運用で主に使うのはこのブロックです。</p>
-        {appointmentId ? (
-          <p className="mt-2 rounded border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
-            予約起点プリセット適用中（予約ID: {appointmentId}）
-          </p>
-        ) : null}
-        <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <select data-testid="consent-doc-template" className="rounded border px-3 py-2 text-sm" value={docTemplateId} onChange={(e) => setDocTemplateId(e.target.value)}>
-            <option value="">テンプレートを選択</option>
-            {templates.filter((row) => row.current_version_id).map((row) => (
-              <option key={row.id} value={row.id}>{row.name}</option>
-            ))}
-          </select>
-          <select data-testid="consent-doc-customer" className="rounded border px-3 py-2 text-sm" value={docCustomerId} onChange={(e) => { setDocCustomerId(e.target.value); setDocPetId('') }}>
-            <option value="">顧客を選択</option>
-            {customers.map((row) => (
-              <option key={row.id} value={row.id}>{row.label}</option>
-            ))}
-          </select>
-          <select data-testid="consent-doc-pet" className="rounded border px-3 py-2 text-sm" value={docPetId} onChange={(e) => setDocPetId(e.target.value)}>
-            <option value="">ペットを選択</option>
-            {filteredPets.map((row) => (
-              <option key={row.id} value={row.id}>{row.label}</option>
-            ))}
-          </select>
-          <select data-testid="consent-doc-channel" className="rounded border px-3 py-2 text-sm" value={docChannel} onChange={(e) => setDocChannel(e.target.value === 'line' ? 'line' : 'in_person')}>
-            <option value="in_person">店頭署名</option>
-            <option value="line">LINE送信</option>
-          </select>
-          <input
-            className="rounded border px-3 py-2 text-sm md:col-span-2"
-            placeholder="希望施術内容（例: シャンプー + カット）"
-            value={serviceName}
-            onChange={(e) => setServiceName(e.target.value)}
-          />
-        </div>
-        <button data-testid="consent-doc-submit" type="button" onClick={() => void createDocument()} disabled={submitting} className="mt-3 rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:bg-emerald-300">
-          同意書を作成
-        </button>
-        <div className="mt-4 rounded border border-gray-200 bg-gray-50 p-3">
-          <p className="text-sm font-semibold text-gray-800">本文プレビュー（差し込み後）</p>
-          {renderedPreviewHtml ? (
-            <div
-              className="prose prose-sm mt-2 max-w-none rounded bg-white p-3"
-              dangerouslySetInnerHTML={{ __html: renderedPreviewHtml }}
+      {activeTab === 'publish-version' ? (
+        <section className="rounded border bg-white p-4">
+          <h2 className="text-lg font-semibold text-gray-900">同意文を有効化</h2>
+          <p className="mt-1 text-sm text-gray-600">文面を変えるたびに新しい版として有効化します。</p>
+          <div className="mt-3 space-y-3">
+            <select className="w-full rounded border px-3 py-2 text-sm" value={versionTemplateId} onChange={(e) => setVersionTemplateId(e.target.value)}>
+              <option value="">テンプレートを選択</option>
+              {templates.map((row) => (
+                <option key={row.id} value={row.id}>{row.name} ({row.status})</option>
+              ))}
+            </select>
+            <input className="w-full rounded border px-3 py-2 text-sm" placeholder="版名（任意。未入力なら「初版」）" value={versionTitle} onChange={(e) => setVersionTitle(e.target.value)} />
+            <textarea
+              className="min-h-32 w-full rounded border px-3 py-2 text-sm"
+              placeholder="同意文をそのまま入力してください（通常入力のみでOK）"
+              value={versionBody}
+              onChange={(e) => setVersionBody(e.target.value)}
             />
-          ) : (
-            <p className="mt-2 text-xs text-gray-500">テンプレートを選択すると本文が表示されます。</p>
-          )}
-        </div>
-      </section>
+            <button type="button" onClick={() => void publishVersion()} disabled={submitting} className="rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:bg-indigo-300">
+              この文面を有効化
+            </button>
+            <p className="text-xs text-gray-500">内部でHTML本文/本文プレーンテキストへ自動変換して保存します。</p>
+          </div>
+        </section>
+      ) : null}
 
-      <section className="rounded border bg-white p-4">
-        <h2 className="text-lg font-semibold text-gray-900">同意書履歴</h2>
-        <p className="mt-1 text-xs text-gray-500">現在、テンプレートの編集/削除UIは未対応です（新しい版を追加して運用してください）。</p>
-        {documents.length === 0 ? <p className="mt-2 text-sm text-gray-500">同意書がまだ作成されていません。</p> : null}
-        {documents.length > 0 ? (
-          <div className="mt-2 overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b text-gray-500">
-                <tr>
-                  <th className="px-2 py-2">同意書ID</th>
-                  <th className="px-2 py-2">ステータス</th>
-                  <th className="px-2 py-2">署名日時</th>
-                  <th className="px-2 py-2">作成日時</th>
-                  <th className="px-2 py-2">署名URL</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {documents.map((row) => (
-                  <tr key={row.id}>
-                    <td className="px-2 py-2 font-mono text-xs">{row.id}</td>
-                    <td className="px-2 py-2">{row.status}</td>
-                    <td className="px-2 py-2">{formatDate(row.signed_at)}</td>
-                    <td className="px-2 py-2">{formatDate(row.created_at)}</td>
-                    <td className="px-2 py-2">
-                      <div className="flex flex-col gap-2">
+      {activeTab === 'create-document' ? (
+        <section className="rounded border bg-white p-4">
+          <h2 className="text-lg font-semibold text-gray-900">同意書を作成・署名依頼</h2>
+          {appointmentId ? (
+            <p className="mt-2 rounded border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+              予約起点プリセット適用中（予約ID: {appointmentId}）
+            </p>
+          ) : null}
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <select data-testid="consent-doc-template" className="rounded border px-3 py-2 text-sm" value={docTemplateId} onChange={(e) => setDocTemplateId(e.target.value)}>
+              <option value="">テンプレートを選択</option>
+              {templates.filter((row) => row.current_version_id).map((row) => (
+                <option key={row.id} value={row.id}>{row.name}</option>
+              ))}
+            </select>
+            <select data-testid="consent-doc-customer" className="rounded border px-3 py-2 text-sm" value={docCustomerId} onChange={(e) => { setDocCustomerId(e.target.value); setDocPetId('') }}>
+              <option value="">顧客を選択</option>
+              {customers.map((row) => (
+                <option key={row.id} value={row.id}>{row.label}</option>
+              ))}
+            </select>
+            <select data-testid="consent-doc-pet" className="rounded border px-3 py-2 text-sm" value={docPetId} onChange={(e) => setDocPetId(e.target.value)}>
+              <option value="">ペットを選択</option>
+              {filteredPets.map((row) => (
+                <option key={row.id} value={row.id}>{row.label}</option>
+              ))}
+            </select>
+            <select data-testid="consent-doc-channel" className="rounded border px-3 py-2 text-sm" value={docChannel} onChange={(e) => setDocChannel(e.target.value === 'line' ? 'line' : 'in_person')}>
+              <option value="in_person">店頭署名</option>
+              <option value="line">LINE送信</option>
+            </select>
+            <input
+              className="rounded border px-3 py-2 text-sm md:col-span-2"
+              placeholder="希望施術内容（例: シャンプー + カット）"
+              value={serviceName}
+              onChange={(e) => setServiceName(e.target.value)}
+            />
+          </div>
+          <button data-testid="consent-doc-submit" type="button" onClick={() => void createDocument()} disabled={submitting} className="mt-3 rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:bg-emerald-300">
+            同意書を作成
+          </button>
+          <div className="mt-4 rounded border border-gray-200 bg-gray-50 p-3">
+            <p className="text-sm font-semibold text-gray-800">本文プレビュー（差し込み後）</p>
+            {renderedPreviewHtml ? (
+              <div
+                className="prose prose-sm mt-2 max-w-none rounded bg-white p-3"
+                dangerouslySetInnerHTML={{ __html: renderedPreviewHtml }}
+              />
+            ) : (
+              <p className="mt-2 text-xs text-gray-500">テンプレートを選択すると本文が表示されます。</p>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === 'history' ? (
+        <section className="rounded border bg-white p-4">
+          <h2 className="text-lg font-semibold text-gray-900">同意書履歴</h2>
+          {documents.length === 0 ? <p className="mt-2 text-sm text-gray-500">同意書がまだ作成されていません。</p> : null}
+          {documents.length > 0 ? (
+            <div className="mt-2 overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="border-b text-gray-500">
+                  <tr>
+                    <th className="px-2 py-2">同意書ID</th>
+                    <th className="px-2 py-2">予約ID</th>
+                    <th className="px-2 py-2">ステータス</th>
+                    <th className="px-2 py-2">署名日時</th>
+                    <th className="px-2 py-2">作成日時</th>
+                    <th className="px-2 py-2">PDF</th>
+                    <th className="px-2 py-2">署名URL</th>
+                    <th className="px-2 py-2">削除</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {documents.map((row) => (
+                    <tr key={row.id}>
+                      <td className="px-2 py-2 font-mono text-xs">{row.id}</td>
+                      <td className="px-2 py-2 font-mono text-xs">{row.appointment_id ?? '-'}</td>
+                      <td className="px-2 py-2">{row.status}</td>
+                      <td className="px-2 py-2">{formatDate(row.signed_at)}</td>
+                      <td className="px-2 py-2">{formatDate(row.created_at)}</td>
+                      <td className="px-2 py-2">
                         <button
                           type="button"
-                          onClick={() => void regenerateSignUrl(row.id)}
-                          disabled={resendingDocumentId === row.id || row.status === 'signed' || row.status === 'revoked'}
-                          className="rounded border border-indigo-300 px-2 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+                          onClick={() => void openPdf(row.id)}
+                          disabled={pdfLoadingDocumentId === row.id || !row.pdf_path}
+                          className="rounded border border-sky-300 px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
                         >
-                          {resendingDocumentId === row.id ? '再発行中...' : '署名URLを再発行'}
+                          {pdfLoadingDocumentId === row.id ? '取得中...' : 'PDFを開く'}
                         </button>
-                        {signUrlByDocumentId[row.id] ? (
-                          <code className="break-all rounded bg-gray-50 px-2 py-1 text-[11px] text-gray-700">
-                            {signUrlByDocumentId[row.id]}
-                          </code>
-                        ) : (
-                          <p className="text-[11px] text-gray-500">未表示（再発行で表示）</p>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-      </section>
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="flex flex-col gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void regenerateSignUrl(row.id)}
+                            disabled={resendingDocumentId === row.id || row.status === 'signed' || row.status === 'revoked'}
+                            className="rounded border border-indigo-300 px-2 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+                          >
+                            {resendingDocumentId === row.id ? '再発行中...' : '署名URLを再発行'}
+                          </button>
+                          {signUrlByDocumentId[row.id] ? (
+                            <code className="break-all rounded bg-gray-50 px-2 py-1 text-[11px] text-gray-700">
+                              {signUrlByDocumentId[row.id]}
+                            </code>
+                          ) : (
+                            <p className="text-[11px] text-gray-500">未表示（再発行で表示）</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-2 py-2">
+                        <button
+                          type="button"
+                          onClick={() => void deleteDocument(row.id)}
+                          disabled={deletingDocumentId === row.id}
+                          className="rounded border border-red-300 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+                        >
+                          {deletingDocumentId === row.id ? '削除中...' : '削除'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
     </div>
   )
 }

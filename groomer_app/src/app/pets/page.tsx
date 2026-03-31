@@ -178,9 +178,6 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                       <Link href={`/pets?tab=list&edit=${pet.id}`} className="text-blue-600 text-sm">
                         編集
                       </Link>
-                      <Link href={`/consents?customer_id=${pet.customer_id}&pet_id=${pet.id}`} className="text-indigo-700 text-sm">
-                        同意書
-                      </Link>
                       <form action={`/api/pets/${pet.id}`} method="post">
                         <input type="hidden" name="_method" value="delete" />
                         <Button type="submit" className="bg-red-500 hover:bg-red-600">
@@ -231,12 +228,6 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                               className="text-blue-600 text-sm"
                             >
                               編集
-                            </Link>
-                            <Link
-                              href={`/consents?customer_id=${pet.customer_id}&pet_id=${pet.id}`}
-                              className="text-indigo-700 text-sm"
-                            >
-                              同意書
                             </Link>
                             <form action={`/api/pets/${pet.id}`} method="post">
                               <input type="hidden" name="_method" value="delete" />
@@ -365,12 +356,7 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
               <div className="rounded border border-indigo-200 bg-indigo-50 p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-indigo-900">電子同意書（最新5件）</p>
-                  <Link
-                    href={`/consents?customer_id=${editPetData.customer_id}&pet_id=${editPetData.id}`}
-                    className="text-xs font-semibold text-indigo-700 hover:text-indigo-900"
-                  >
-                    一覧を開く
-                  </Link>
+                  <span className="text-xs text-indigo-700">同意書作成は予約管理から行ってください</span>
                 </div>
                 {editPetConsents.length === 0 ? (
                   <p className="text-sm text-indigo-900/80">同意書はまだありません。</p>

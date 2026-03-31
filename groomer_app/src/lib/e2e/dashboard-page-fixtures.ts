@@ -262,6 +262,10 @@ export const dashboardPageFixtures = {
     { appointment_id: 'dash-appt-002', price: 4600, tax_rate: 0.1, tax_included: true },
     { appointment_id: 'dash-appt-003', price: 4400, tax_rate: 0.1, tax_included: true },
   ],
+  todayConsentDocuments: [
+    { appointment_id: 'dash-appt-003', status: 'signed' },
+    { appointment_id: 'dash-appt-002', status: 'draft' },
+  ],
   publicReservationSubmittedTodayCount: 4,
   publicReservationInstantConfirmedTodayCount: 3,
   publicReservationConflictRejectedTodayCount: 1,
