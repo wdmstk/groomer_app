@@ -248,6 +248,24 @@ export default async function SharedMemberPortalPage({
 
         <Card className="space-y-3 border border-slate-200">
           <div>
+            <p className="text-xs font-semibold tracking-[0.08em] text-slate-500">日誌</p>
+            <h2 className="text-xl font-semibold text-slate-900">お預かり中の様子</h2>
+          </div>
+          <p className="text-sm text-slate-600">
+            トリマーが公開した日誌（写真・動画・コメント）を確認できます。
+          </p>
+          <p>
+            <Link
+              href={`/shared/journal/${encodeURIComponent(token)}`}
+              className="inline-flex items-center rounded bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+            >
+              日誌アルバムを見る
+            </Link>
+          </p>
+        </Card>
+
+        <Card className="space-y-3 border border-slate-200">
+          <div>
             <p className="text-xs font-semibold tracking-[0.08em] text-slate-500">お知らせ</p>
             <h2 className="text-xl font-semibold text-slate-900">お知らせ</h2>
           </div>

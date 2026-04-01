@@ -123,18 +123,19 @@ Completed tasks should be marked:
 ## TASK INDEX（正式タスクの正規順序）
 
 ### in_progress
-1. `TASK-434` 既存店舗向け同意書テンプレ更新SQL作成（2026-03-29・再オープン）
-2. `TASK-417` AI動画段階実装（2026-03-21）
-3. `TASK-414` 顧客LTV分析
-4. `TASK-412` AIタグ活用導線の改善
-5. `TASK-411` 写真カルテのAIタグ付け
-6. `TASK-410` LINEの自動マーケ
-7. `TASK-409` 事前決済
-8. `TASK-408` POS機能導入計画（要件定義〜実装）
-9. `TASK-401` 統合会計（Invoice方式）
-10. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
-11. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
-12. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
+1. `TASK-437` 日誌機能（非破壊追加）仕様策定と実装管理（2026-03-31）
+2. `TASK-434` 既存店舗向け同意書テンプレ更新SQL作成（2026-03-29・再オープン）
+3. `TASK-417` AI動画段階実装（2026-03-21）
+4. `TASK-414` 顧客LTV分析
+5. `TASK-412` AIタグ活用導線の改善
+6. `TASK-411` 写真カルテのAIタグ付け
+7. `TASK-410` LINEの自動マーケ
+8. `TASK-409` 事前決済
+9. `TASK-408` POS機能導入計画（要件定義〜実装）
+10. `TASK-401` 統合会計（Invoice方式）
+11. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
+12. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
+13. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
 
 ### todo
 （なし）
@@ -174,6 +175,42 @@ Completed tasks should be marked:
 29. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
 
 ## 正式タスク詳細（Task ID採番済み）
+
+## 日誌機能（非破壊追加）仕様策定と実装管理
+- Task ID: `TASK-437`
+- ブランチ: `feat/TASK-437-journal-module-spec`
+- ステータス: `in_progress`
+- 概要: 既存DB/既存API/既存写真カルテ・動画カルテを壊さず、日誌機能を新規モジュールとして追加する仕様・UI・APIを確定する（段階リリースは実施しない）
+- 影響範囲: 日誌仕様書 / 新規DBテーブル設計 / 新規API契約（既存準拠: `/api/journal/*`）/ 新規UIコンポーネント / TASKS
+- リスク: 既存カルテ連携時の参照不整合、通知キュー遅延による体験劣化
+- 完了条件:
+  - 既存DB/既存APIレスポンス/既存写真カルテ・動画カルテに破壊的変更がない
+  - 日誌機能のMVP仕様（UI/API/データ構造/通知/権限/多頭飼い）が確定している
+  - `TASKS.md` で実装タスクに分解可能な粒度まで管理されている
+- 進捗:
+  - [x] ブランチ作成・タスク登録
+  - [x] 非破壊要件ベースで日誌機能の完全仕様作成
+  - [x] 段階リリース要件を撤回し、TASKS管理へ統一
+  - [x] 実装タスク分割（API/UI/通知/権限/テスト）
+  - [x] API実装（`/api/journal/entries` 一覧/作成、`/api/journal/entries/[entry_id]` 詳細/更新）
+  - [x] API実装（`/api/journal/pets/[pet_id]/timeline`、`/api/journal/entries/[entry_id]/notify`）
+  - [x] DB実装（新規テーブル migration: entries/pets/media/health_checks/notifications/links/permissions）
+  - [x] UI実装（スタッフ向け日誌作成画面・ペット別アルバム・飼い主向け閲覧画面）
+  - [x] UI実装（スタッフ向け日誌作成画面 `/journal`）
+  - [x] UI実装（ペット別アルバム画面の導線/表示）
+  - [x] UI実装（飼い主向け閲覧画面）
+  - [x] UI導線改善（サイドバー/主要画面から日誌への到達性とヘッダー表示崩れの修正）
+  - [x] 投稿機能拡張（`/journal` で写真・動画添付を可能にし、`journal_media` とアルバム表示を一貫連携）
+  - [x] 権限実装（既存ロール参照+`journal_permissions_override`）
+  - [x] LINE通知実装（既存送信基盤を利用した日誌公開通知）
+  - [x] 統合実装（写真カルテ/動画カルテとの非破壊リンク）
+  - [x] テスト実装（API単体/権限/通知キュー/UI主要導線）
+  - [x] 単体テスト追加（`journal.permissions.test.ts`）
+  - [x] 単体テスト追加（`journal.notifications.test.ts`）
+  - [x] 単体テスト追加（`journal.cron-line-notifications.test.ts`）
+  - [x] E2Eテスト追加（`e2e/journal-pages.spec.ts`）
+  - [x] CI連携（GitHub Actions: `journal-e2e.yml` で日誌 `lint` / 単体 / E2E を自動実行）
+  - [x] lint/test実行確認（`npm run lint` / `npm test -- tests/journal.*.test.ts`）
 
 ## 予約管理の同意書ステータスバッジと状態別導線追加
 - Task ID: `TASK-436`
@@ -1291,6 +1328,7 @@ Completed tasks should be marked:
 ### POS実装タスク分解
 
 #### TASK-POS-001 要件定義・業務フロー確定
+- Task ID: `TASK-POS-001`
 - ブランチ: `feat/TASK-POS-001-pos-requirements`
 - ステータス: `in_progress`
 - 目的: 店舗運用に必要なPOS業務（通常会計/返品/取消/締め）を仕様化する
@@ -1313,6 +1351,7 @@ Completed tasks should be marked:
   - [ ] レビュー反映と確定版化
 
 #### TASK-POS-002 データモデル・API契約設計
+- Task ID: `TASK-POS-002`
 - ブランチ: `feat/TASK-POS-002-pos-data-contract`
 - ステータス: `in_progress`
 - 目的: POS伝票・レジ締め・返金を扱うDB/API基盤を設計する
@@ -1335,6 +1374,7 @@ Completed tasks should be marked:
   - [x] APIレスポンス契約の最終化（status/code/response schema を明記）
 
 #### TASK-POS-003 POS会計画面（MVP）実装
+- Task ID: `TASK-POS-003`
 - ブランチ: `feat/TASK-POS-003-pos-checkout-ui`
 - ステータス: `done`
 - 目的: サービス＋物販を1画面で会計確定できるPOS UIを実装する
@@ -1359,6 +1399,7 @@ Completed tasks should be marked:
   - [x] 取消導線（`/receipts/[payment_id]` から `/api/pos/orders/:order_id/void` 実行）を実装
 
 #### TASK-POS-004 在庫連動（自動出庫/返品戻し）実装
+- Task ID: `TASK-POS-004`
 - ブランチ: `feat/TASK-POS-004-pos-inventory-link`
 - ステータス: `done`
 - 目的: 物販会計・返品時に在庫を自動で増減させる
@@ -1381,6 +1422,7 @@ Completed tasks should be marked:
   - [x] 在庫履歴画面でPOS自動起票フィルタを追加（`/inventory/history?source=pos_auto`）
 
 #### TASK-POS-005 レジ開閉局・日次締め実装
+- Task ID: `TASK-POS-005`
 - ブランチ: `feat/TASK-POS-005-pos-day-close`
 - ステータス: `done`
 - 目的: 現場で必要なレジ開局/中間入出金/締め処理を追加する
@@ -1403,6 +1445,7 @@ Completed tasks should be marked:
   - [x] 締め処理の画面導線実装（`/payments` POSパネルで開局→会計→締め）
 
 #### TASK-POS-006 受入試験・移行・運用ドキュメント整備
+- Task ID: `TASK-POS-006`
 - ブランチ: `feat/TASK-POS-006-pos-uat-rollout`
 - ステータス: `in_progress`
 - 目的: パイロット導入に必要な検証・運用資料を完了する

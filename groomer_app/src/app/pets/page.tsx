@@ -175,6 +175,9 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                     <p>持病: {formatPetList(pet.chronic_diseases)}</p>
                     <p>注意事項: {formatPetFallback(pet.notes)}</p>
                     <div className="mt-2 flex items-center gap-2">
+                      <Link href={`/journal/pets/${pet.id}`} className="text-emerald-700 text-sm">
+                        日誌アルバム
+                      </Link>
                       <Link href={`/pets?tab=list&edit=${pet.id}`} className="text-blue-600 text-sm">
                         編集
                       </Link>
@@ -223,6 +226,9 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                         <td className="py-3 px-2">{formatPetFallback(pet.notes)}</td>
                         <td className="py-3 px-2">
                           <div className="flex items-center gap-2">
+                            <Link href={`/journal/pets/${pet.id}`} className="text-emerald-700 text-sm">
+                              日誌アルバム
+                            </Link>
                             <Link
                               href={`/pets?tab=list&edit=${pet.id}`}
                               className="text-blue-600 text-sm"
