@@ -172,6 +172,7 @@ Completed tasks should be marked:
 27. `TASK-POS-003` POS会計画面（MVP）実装（`TASK-408`配下）
 28. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
 29. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
+30. `TASK-POS-007` POS一本化（トリミング/ホテル会計統合）（`TASK-408`配下）
 
 ## 正式タスク詳細（Task ID採番済み）
 
@@ -1429,6 +1430,31 @@ Completed tasks should be marked:
   - [x] payments E2Eの前提調整と再実行（`e2e/payments-list.spec.ts` 3件pass）
   - [ ] 実店舗パイロット（2営業日）実測と最終サインオフ
 
+#### TASK-POS-007 POS一本化（トリミング/ホテル会計統合）
+- ブランチ: `feat/TASK-POS-007-pos-unification`
+- ステータス: `done`
+- 目的: 既存のInvoice中心導線をPOS中心導線へ段階統合し、会計画面を一本化する
+- スコープ:
+  - 予約メニュー（トリミング）明細のPOS取り込み
+  - ホテル明細のPOS取り込み
+  - POS会計APIで `service` 明細を正式処理
+  - 既存Invoice導線との整合（段階的縮退）
+- DoD:
+  - `/payments` のPOSでトリミング/ホテル/店販を同一カートで会計確定できる
+  - 既存在庫連動・取消・締め処理と矛盾しない
+  - 運用マニュアルと契約書が一本化方針へ更新されている
+- テスト観点:
+  - 単体: カート合計（service+product混在）
+  - E2E: 開局→明細取込→会計確定→領収書→取消→締め
+- 進捗:
+  - [x] TASK登録・ブランチ作成
+  - [x] POSカートで `line_type=service|product` を扱えるように改修
+  - [x] 予約メニュー取込ボタンを追加
+  - [x] ホテル明細取込ボタンを追加
+  - [x] API契約・運用マニュアル更新
+  - [x] E2Eケース追加（`e2e/payments-list.spec.ts`）
+  - [x] E2E実行の安定化（webServer起動失敗/ブラウザインストール問題を解消）
+
 ### 依存順
 1. `TASK-POS-001`
 2. `TASK-POS-002`
@@ -1436,3 +1462,4 @@ Completed tasks should be marked:
 4. `TASK-POS-004`
 5. `TASK-POS-005`
 6. `TASK-POS-006`
+7. `TASK-POS-007`

@@ -145,6 +145,15 @@ Parent Task: `TASK-408`
   "session_id": "uuid-or-null",
   "lines": [
     {
+      "line_type": "service",
+      "source_id": "appointment_menu_or_hotel_charge_uuid",
+      "label": "施術: トリミングコース",
+      "quantity": 1,
+      "unit_amount": 6800,
+      "tax_rate": 0.1,
+      "tax_included": true
+    },
+    {
       "line_type": "product",
       "source_id": "inventory_item_uuid",
       "label": "シャンプー",
@@ -157,6 +166,9 @@ Parent Task: `TASK-408`
   "discount_amount": 0
 }
 ```
+- Notes:
+  - `line_type=service` は在庫連動対象外（会計のみ）
+  - `line_type=product` のみ在庫出庫/戻し対象
 - Response 201:
 ```json
 {

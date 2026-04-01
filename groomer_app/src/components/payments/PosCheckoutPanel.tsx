@@ -22,9 +22,28 @@ type AppointmentOption = {
   customerId: string | null
 }
 
+type ServiceLineOption = {
+  id: string
+  appointmentId: string
+  label: string
+  amount: number
+  taxRate: number
+  taxIncluded: boolean
+}
+
+type HotelLineOption = {
+  id: string
+  appointmentId: string
+  label: string
+  amount: number
+  taxRate: number
+  taxIncluded: boolean
+}
+
 type CartLine = {
   id: string
-  productId: string
+  lineType: 'product' | 'service'
+  sourceId: string | null
   label: string
   unit: string
   quantity: number
@@ -37,6 +56,8 @@ type PosCheckoutPanelProps = {
   customers: CustomerOption[]
   products: ProductOption[]
   appointments: AppointmentOption[]
+  serviceLines: ServiceLineOption[]
+  hotelLines: HotelLineOption[]
 }
 
 type PosSessionSummary = {
@@ -50,7 +71,7 @@ function formatYen(value: number) {
   return `${Math.round(value).toLocaleString()} 円`
 }
 
-export function PosCheckoutPanel({ customers, products, appointments }: PosCheckoutPanelProps) {
+export function PosCheckoutPanel({ customers, products, appointments, serviceLines, hotelLines }: PosCheckoutPanelProps) {
   const router = useRouter()
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [sessionOpenedAt, setSessionOpenedAt] = useState<string | null>(null)
@@ -76,6 +97,8 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
 
   const customerName = customers.find((c) => c.id === customerId)?.full_name ?? '未選択'
   const selectedAppointment = appointments.find((row) => row.id === appointmentId)
+  const selectableServiceLines = serviceLines.filter((line) => line.appointmentId === appointmentId)
+  const selectableHotelLines = hotelLines.filter((line) => line.appointmentId === appointmentId)
 
   const totals = useMemo(() => {
     return calculatePosCartTotals(
@@ -122,9 +145,16 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
         body: JSON.stringify({ notes: 'POS会計画面から開局' }),
       })
       const body = (await response.json().catch(() => null)) as
-        | { ok?: boolean; data?: { session?: { id?: string; opened_at?: string } }; message?: string }
+        | { ok?: boolean; code?: string; data?: { session?: { id?: string; opened_at?: string } }; message?: string }
         | null
       if (!response.ok || !body?.ok) {
+        if (body?.code === 'POS_SESSION_ALREADY_OPEN' && body.data?.session?.id) {
+          setSessionId(body.data.session.id)
+          setSessionOpenedAt(body.data.session.opened_at ?? null)
+          setSessionSummary(null)
+          setSessionMessage('既に開局中のレジセッションへ接続しました。')
+          return
+        }
         throw new Error(body?.message ?? '開局に失敗しました。')
       }
       setSessionId(body.data?.session?.id ?? null)
@@ -219,7 +249,8 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
       ...prev,
       {
         id,
-        productId: product.id,
+        lineType: 'product',
+        sourceId: product.id,
         label: product.name,
         unit: product.unit,
         quantity: qty,
@@ -227,6 +258,48 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
         taxRate: 0.1,
         taxIncluded: true,
       },
+    ])
+  }
+
+  function addServiceLines() {
+    if (!appointmentId) return
+    const idPrefix = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `svc-${Date.now()}-${Math.random()}`
+    setCart((prev) => [
+      ...prev,
+      ...selectableServiceLines.map((line, index) => ({
+        id: `${idPrefix}-service-${index}`,
+        lineType: 'service' as const,
+        sourceId: line.id,
+        label: `施術: ${line.label}`,
+        unit: '式',
+        quantity: 1,
+        unitAmount: Math.max(0, Number(line.amount) || 0),
+        taxRate: line.taxRate,
+        taxIncluded: line.taxIncluded,
+      })),
+    ])
+  }
+
+  function addHotelLines() {
+    if (!appointmentId) return
+    const idPrefix = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `hotel-${Date.now()}-${Math.random()}`
+    setCart((prev) => [
+      ...prev,
+      ...selectableHotelLines.map((line, index) => ({
+        id: `${idPrefix}-hotel-${index}`,
+        lineType: 'service' as const,
+        sourceId: line.id,
+        label: `ホテル: ${line.label}`,
+        unit: '式',
+        quantity: 1,
+        unitAmount: Math.max(0, Number(line.amount) || 0),
+        taxRate: line.taxRate,
+        taxIncluded: line.taxIncluded,
+      })),
     ])
   }
 
@@ -254,8 +327,8 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
           appointment_id: appointmentId,
           session_id: sessionId,
           lines: cart.map((line) => ({
-            line_type: 'product',
-            source_id: line.productId,
+            line_type: line.lineType,
+            source_id: line.sourceId,
             label: line.label,
             quantity: line.quantity,
             unit_amount: line.unitAmount,
@@ -316,7 +389,7 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-amber-900">POS会計（β）</p>
-          <p className="text-xs text-amber-800">店販を含む会計を予約に紐づけて確定できます。</p>
+          <p className="text-xs text-amber-800">施術・ホテル・店販を1つの会計として予約に紐づけて確定できます。</p>
         </div>
       </div>
 
@@ -471,6 +544,15 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
         <p className="mt-2 text-xs text-slate-600">対象予約: {selectedAppointment.label}</p>
       ) : null}
 
+      <div className="mt-2 flex flex-wrap gap-2">
+        <Button type="button" onClick={addServiceLines} disabled={!appointmentId || selectableServiceLines.length === 0}>
+          施術明細を取込（{selectableServiceLines.length}件）
+        </Button>
+        <Button type="button" onClick={addHotelLines} disabled={!appointmentId || selectableHotelLines.length === 0}>
+          ホテル明細を取込（{selectableHotelLines.length}件）
+        </Button>
+      </div>
+
       <div className="mt-3 grid grid-cols-1 gap-2 rounded border border-slate-200 bg-white p-3 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
         <label className="text-xs text-slate-700">
           商品
@@ -518,7 +600,8 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
         <table className="min-w-full text-left text-sm">
           <thead className="border-b text-slate-500">
             <tr>
-              <th className="px-2 py-2">商品</th>
+              <th className="px-2 py-2">区分</th>
+              <th className="px-2 py-2">明細</th>
               <th className="px-2 py-2">数量</th>
               <th className="px-2 py-2">単価</th>
               <th className="px-2 py-2">小計</th>
@@ -528,6 +611,9 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
           <tbody className="divide-y">
             {cart.map((line) => (
               <tr key={line.id} className="text-slate-700">
+                <td className="px-2 py-2">
+                  {line.lineType === 'product' ? '店販' : 'サービス'}
+                </td>
                 <td className="px-2 py-2">
                   {line.label} ({line.unit})
                 </td>
@@ -547,7 +633,7 @@ export function PosCheckoutPanel({ customers, products, appointments }: PosCheck
             ))}
             {cart.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-2 py-4 text-center text-slate-500">
+                <td colSpan={6} className="px-2 py-4 text-center text-slate-500">
                   明細がありません。
                 </td>
               </tr>
