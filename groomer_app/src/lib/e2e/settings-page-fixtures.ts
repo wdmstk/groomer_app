@@ -50,6 +50,10 @@ export const settingsPageFixtures = {
     ltv_bronze_visit_count_threshold: 3,
   },
   blockedDates: [{ date_key: '2026-03-20' }, { date_key: '2026-03-21' }],
+  customerManagementSettings: {
+    medical_record_list_limit: 12,
+    journal_visibility_mode: 'include_drafts',
+  },
   storageQuota: {
     storeId: 'store-e2e-demo',
     planCode: 'standard',

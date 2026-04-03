@@ -171,7 +171,13 @@ export default async function PetJournalAlbumPage({ params }: RouteProps) {
                       if (!signedUrl) return null
                       return item.media_type === 'photo' ? (
                         <div key={item.id} className="relative aspect-square overflow-hidden rounded border border-gray-200">
-                          <Image src={signedUrl} alt="日誌写真" fill className="object-cover" />
+                          <Image
+                            src={signedUrl}
+                            alt="日誌写真"
+                            fill
+                            sizes="(max-width: 768px) 50vw, 25vw"
+                            className="object-cover"
+                          />
                         </div>
                       ) : (
                         <video

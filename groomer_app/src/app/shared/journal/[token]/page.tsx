@@ -118,7 +118,13 @@ export default async function SharedJournalPage({ params }: SharedJournalPagePro
                         if (!media.signed_url) return null
                         return media.media_type === 'photo' ? (
                           <div key={media.id} className="relative aspect-square overflow-hidden rounded border border-slate-200">
-                            <Image src={media.signed_url} alt="日誌写真" fill className="object-cover" />
+                            <Image
+                              src={media.signed_url}
+                              alt="日誌写真"
+                              fill
+                              sizes="(max-width: 768px) 50vw, 25vw"
+                              className="object-cover"
+                            />
                           </div>
                         ) : (
                           <video

@@ -76,6 +76,7 @@ type Props = {
   pets: Option[]
   menuItems: HotelMenuItemRow[]
   initialSettings: HotelSettingsRow
+  initialStayId?: string
 }
 
 type ViewMode = 'week' | 'day' | 'month'
@@ -375,12 +376,17 @@ export function HotelStaysManager({
   pets,
   menuItems: initialMenuItems,
   initialSettings,
+  initialStayId,
 }: Props) {
+  const initialSelectedStayId =
+    (initialStayId && initialStays.some((stay) => stay.id === initialStayId) ? initialStayId : null) ??
+    initialStays[0]?.id ??
+    null
   const [stays, setStays] = useState<StayRow[]>(initialStays)
   const [menuItems, setMenuItems] = useState<HotelMenuItemRow[]>(initialMenuItems)
   const [settings, setSettings] = useState<HotelSettingsRow>(initialSettings)
   const [activeTab, setActiveTab] = useState<TabId>('list')
-  const [selectedStayId, setSelectedStayId] = useState<string | null>(initialStays[0]?.id ?? null)
+  const [selectedStayId, setSelectedStayId] = useState<string | null>(initialSelectedStayId)
   const [reservationMode, setReservationMode] = useState<ReservationMode>(null)
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
@@ -505,6 +511,13 @@ export function HotelStaysManager({
       }
     })
   }, [form.planned_check_in_at, form.planned_check_out_at, selectedTimePack?.duration_minutes])
+
+  useEffect(() => {
+    if (!initialStayId) return
+    if (!stays.some((stay) => stay.id === initialStayId)) return
+    setSelectedStayId(initialStayId)
+    setActiveTab('list')
+  }, [initialStayId, stays])
 
   async function reloadAll() {
     const [staysResponse, itemsResponse, settingsResponse] = await Promise.all([

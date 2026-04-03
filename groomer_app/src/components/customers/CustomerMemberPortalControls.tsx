@@ -31,6 +31,7 @@ export function CustomerMemberPortalControls({
   customerName,
   activeExpiresAt,
   lastUsedAt,
+  compact = false,
 }: CustomerMemberPortalControlsProps) {
   const [loading, setLoading] = useState(false)
   const [revoking, setRevoking] = useState(false)
@@ -90,9 +91,13 @@ export function CustomerMemberPortalControls({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-gray-500">会員証: {formatDateTimeJst(expiresAt)}</p>
-      <p className="text-xs text-gray-500">最終アクセス: {formatDateTimeJst(lastUsedAt)}</p>
-      <p className="text-xs text-gray-500">有効期限: 発行から90日固定（アクセスで延長しない）</p>
+      {!compact ? (
+        <>
+          <p className="text-xs text-gray-500">会員証: {formatDateTimeJst(expiresAt)}</p>
+          <p className="text-xs text-gray-500">最終アクセス: {formatDateTimeJst(lastUsedAt)}</p>
+          <p className="text-xs text-gray-500">有効期限: 発行から90日固定（アクセスで延長しない）</p>
+        </>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"

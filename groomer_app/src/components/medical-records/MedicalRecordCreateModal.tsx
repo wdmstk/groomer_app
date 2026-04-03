@@ -967,6 +967,7 @@ export function MedicalRecordCreateModal({
                                 src={photo.signedUrl}
                                 alt={`カルテ写真 ${index + 1}`}
                                 fill
+                                sizes="160px"
                                 className="object-cover"
                               />
                             ) : (
@@ -1122,7 +1123,13 @@ export function MedicalRecordCreateModal({
                         <article key={entry.id} className="overflow-hidden rounded border">
                           <div className="relative aspect-[4/3] bg-slate-50">
                             {entry.signedUrl ? (
-                              <Image src={entry.signedUrl} alt="過去カルテ写真" fill className="object-cover" />
+                              <Image
+                                src={entry.signedUrl}
+                                alt="過去カルテ写真"
+                                fill
+                                sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                                className="object-cover"
+                              />
                             ) : (
                               <div className="flex h-full items-center justify-center text-xs text-gray-500">画像なし</div>
                             )}

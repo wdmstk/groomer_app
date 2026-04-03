@@ -259,7 +259,13 @@ export default function JournalComposer({ customers, pets }: JournalComposerProp
                     {item.preview_url ? (
                       item.media_type === 'photo' ? (
                         <div className="relative mt-1 h-12 w-12 overflow-hidden rounded border border-gray-200">
-                          <Image src={item.preview_url} alt="日誌写真プレビュー" fill className="object-cover" />
+                          <Image
+                            src={item.preview_url}
+                            alt="日誌写真プレビュー"
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                          />
                         </div>
                       ) : (
                         <video
