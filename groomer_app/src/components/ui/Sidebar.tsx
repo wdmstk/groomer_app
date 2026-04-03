@@ -73,6 +73,7 @@ const storeNavSections: NavSection[] = [
     title: '顧客業務',
     links: [
       { href: '/customers', label: '顧客管理' },
+      { href: '/customers/manage', label: '顧客管理（β）' },
       { href: '/pets', label: 'ペット管理' },
       { href: '/service-menus', label: '施術メニュー管理' },
       { href: '/appointments', label: '予約管理' },

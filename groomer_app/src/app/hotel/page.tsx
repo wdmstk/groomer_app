@@ -89,7 +89,19 @@ type HotelMenuItemRow = {
   notes: string | null
 }
 
-export default async function HotelPage() {
+type RawSearchParams = Record<string, string | string[] | undefined>
+type HotelPageProps = {
+  searchParams?: Promise<RawSearchParams>
+}
+
+function firstParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0]
+  return value
+}
+
+export default async function HotelPage({ searchParams }: HotelPageProps) {
+  const resolvedSearchParams = (await searchParams) ?? {}
+  const initialStayId = firstParam(resolvedSearchParams.stay_id) ?? null
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: hotelPageFixtures.storeId }
     : await createStoreScopedClient()
@@ -299,6 +311,7 @@ export default async function HotelPage() {
         customers={customerOptions}
         pets={petOptions}
         menuItems={(menuItems ?? []) as HotelMenuItemRow[]}
+        initialStayId={initialStayId}
         initialSettings={
           (hotelSettings as HotelSettingsRow | null) ?? {
             id: null,

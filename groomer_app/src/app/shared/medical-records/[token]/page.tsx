@@ -93,7 +93,13 @@ export default async function SharedMedicalRecordPage({ params }: SharedRecordPa
                     <article key={photo.id} className="overflow-hidden rounded border">
                       <div className="relative aspect-[4/3] bg-slate-50">
                         {signedUrl ? (
-                          <Image src={signedUrl} alt="施術前写真" fill className="object-cover" />
+                          <Image
+                            src={signedUrl}
+                            alt="施術前写真"
+                            fill
+                            sizes="(max-width: 1024px) 100vw, 50vw"
+                            className="object-cover"
+                          />
                         ) : null}
                       </div>
                       <div className="space-y-1 p-3 text-sm text-slate-700">
@@ -121,7 +127,13 @@ export default async function SharedMedicalRecordPage({ params }: SharedRecordPa
                     <article key={photo.id} className="overflow-hidden rounded border">
                       <div className="relative aspect-[4/3] bg-slate-50">
                         {signedUrl ? (
-                          <Image src={signedUrl} alt="施術後写真" fill className="object-cover" />
+                          <Image
+                            src={signedUrl}
+                            alt="施術後写真"
+                            fill
+                            sizes="(max-width: 1024px) 100vw, 50vw"
+                            className="object-cover"
+                          />
                         ) : null}
                       </div>
                       <div className="space-y-1 p-3 text-sm text-slate-700">

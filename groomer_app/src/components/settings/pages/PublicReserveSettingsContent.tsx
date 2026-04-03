@@ -59,6 +59,15 @@ export default async function PublicReserveSettingsPage() {
           .eq('is_active', true)
           .order('date_key', { ascending: true })
       ).data
+  const customerManagementSettings = isPlaywrightE2E
+    ? settingsPageFixtures.customerManagementSettings
+    : (
+        await db
+          .from('store_customer_management_settings' as never)
+          .select('medical_record_list_limit, journal_visibility_mode')
+          .eq('store_id', storeId)
+          .maybeSingle()
+      ).data as { medical_record_list_limit?: number | null; journal_visibility_mode?: string | null } | null
 
   const publicConflictWarnThreshold =
     Number(storeSettings?.public_reserve_conflict_warn_threshold_percent ?? 10) || 10
@@ -84,6 +93,14 @@ export default async function PublicReserveSettingsPage() {
   const ltvGoldVisitCountThreshold = Number(storeSettings?.ltv_gold_visit_count_threshold ?? 12) || 12
   const ltvSilverVisitCountThreshold = Number(storeSettings?.ltv_silver_visit_count_threshold ?? 6) || 6
   const ltvBronzeVisitCountThreshold = Number(storeSettings?.ltv_bronze_visit_count_threshold ?? 3) || 3
+  const medicalRecordListLimit = Math.max(
+    5,
+    Math.min(100, Number(customerManagementSettings?.medical_record_list_limit ?? 10))
+  )
+  const journalVisibilityMode =
+    customerManagementSettings?.journal_visibility_mode === 'include_drafts'
+      ? 'include_drafts'
+      : 'published_only'
   const publicReserveBlockedDatesText = ((publicReserveBlockedDates ?? []) as Array<{
     date_key: string | null
   }>)
@@ -412,6 +429,53 @@ export default async function PublicReserveSettingsPage() {
                 className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 LTVランク初期値を保存
+              </button>
+            </div>
+          </form>
+        </div>
+      </details>
+
+      <details className="rounded border border-gray-200 bg-white p-3" open>
+        <summary className="cursor-pointer text-sm font-semibold text-gray-900">顧客管理（β）表示設定</summary>
+        <div className="mt-3 space-y-3">
+          <p className="text-xs text-gray-500">
+            顧客管理（β）で表示するカルテ件数と、日誌の表示対象を店舗単位で設定します。
+          </p>
+          <form action="/api/stores/customer-management-settings" method="post" className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <label className="text-xs text-gray-700">
+                カルテ一覧の表示件数（最新N件）
+                <input
+                  type="number"
+                  min={5}
+                  max={100}
+                  name="medical_record_list_limit"
+                  defaultValue={medicalRecordListLimit}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+              <label className="text-xs text-gray-700">
+                日誌の表示対象
+                <select
+                  name="journal_visibility_mode"
+                  defaultValue={journalVisibilityMode}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                >
+                  <option value="published_only">公開済みのみ</option>
+                  <option value="include_drafts">下書きを含む</option>
+                </select>
+              </label>
+            </div>
+            <div>
+              <input type="hidden" name="redirect_to" value="/settings/public-reserve" />
+              <button
+                type="submit"
+                disabled={!canManage}
+                className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                顧客管理（β）表示設定を保存
               </button>
             </div>
           </form>

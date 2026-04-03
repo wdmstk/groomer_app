@@ -113,6 +113,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   const patch: {
     body_text?: string
     status?: string
+    visibility?: string
     posted_at?: string
   } = {}
   const bodyText = parseOptionalString(body.body_text)
@@ -130,6 +131,19 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     if (status === 'published') {
       patch.posted_at = new Date().toISOString()
     }
+  }
+  const visibility = parseOptionalString(body.visibility)
+  if (visibility) {
+    if (visibility !== 'owner' && visibility !== 'internal') {
+      return NextResponse.json({ message: 'visibility must be owner or internal.' }, { status: 400 })
+    }
+    if (visibility === 'internal') {
+      const canViewInternal = requireJournalPermission(guard.permissions, 'canViewInternal')
+      if (!canViewInternal.ok) {
+        return NextResponse.json({ message: canViewInternal.message }, { status: canViewInternal.status })
+      }
+    }
+    patch.visibility = visibility
   }
 
   if (Object.keys(patch).length > 0) {

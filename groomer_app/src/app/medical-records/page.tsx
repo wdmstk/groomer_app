@@ -1199,7 +1199,13 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                           <div className="relative aspect-[4/3] bg-slate-50">
                             {entry.signedUrl ? (
                               entry.mediaType === 'photo' ? (
-                                <Image src={entry.signedUrl} alt="カルテ写真" fill className="object-cover" />
+                                <Image
+                                  src={entry.signedUrl}
+                                  alt="カルテ写真"
+                                  fill
+                                  sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                                  className="object-cover"
+                                />
                               ) : (
                                 <video
                                   src={entry.signedUrl}
