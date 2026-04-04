@@ -2,9 +2,8 @@ import { NextResponse } from 'next/server'
 import { insertAuditLogBestEffort } from '@/lib/audit-logs'
 import {
   generateMemberPortalToken,
-  getMemberPortalExpiresAt,
   hashMemberPortalToken,
-  MEMBER_PORTAL_LINK_DAYS,
+  normalizeMemberPortalTtlDays,
 } from '@/lib/member-portal'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createStoreScopedClient } from '@/lib/supabase/store'
@@ -57,8 +56,9 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { customer_id } = await params
   const { supabase, storeId, userId } = allowed
   const adminSupabase = createAdminSupabaseClient()
+  const body = (await request.json().catch(() => ({}))) as { resolveReissueRequest?: boolean }
+  const resolveReissueRequest = body.resolveReissueRequest === true
 
-  const expiresAt = getMemberPortalExpiresAt(MEMBER_PORTAL_LINK_DAYS)
   const nowIso = new Date().toISOString()
 
   const { data: customer, error: customerError } = await supabase
@@ -75,6 +75,36 @@ export async function POST(request: Request, { params }: RouteParams) {
   if (!customer) {
     return NextResponse.json({ message: '対象顧客が見つかりません。' }, { status: 404 })
   }
+
+  const [storeResult, latestVisitResult] = await Promise.all([
+    adminSupabase
+      .from('stores')
+      .select('member_portal_ttl_days')
+      .eq('id', storeId)
+      .maybeSingle(),
+    adminSupabase
+      .from('visits')
+      .select('visit_date')
+      .eq('store_id', storeId)
+      .eq('customer_id', customer_id)
+      .order('visit_date', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ])
+
+  if (storeResult.error) {
+    return NextResponse.json({ message: storeResult.error.message }, { status: 500 })
+  }
+  if (latestVisitResult.error) {
+    return NextResponse.json({ message: latestVisitResult.error.message }, { status: 500 })
+  }
+
+  const ttlDays = normalizeMemberPortalTtlDays(storeResult.data?.member_portal_ttl_days ?? null)
+  const anchorIso =
+    typeof latestVisitResult.data?.visit_date === 'string' && latestVisitResult.data.visit_date.length > 0
+      ? latestVisitResult.data.visit_date
+      : nowIso
+  const expiresAt = new Date(new Date(anchorIso).getTime() + ttlDays * 24 * 60 * 60 * 1000).toISOString()
 
   const { data: activeLinks, error: activeLinksError } = await adminSupabase
     .from('member_portal_links')
@@ -138,9 +168,26 @@ export async function POST(request: Request, { params }: RouteParams) {
       customer_id,
       customer_name: customer.full_name,
       expires_at: portalLink.expires_at,
+      ttl_days: ttlDays,
+      latest_visit_at: latestVisitResult.data?.visit_date ?? null,
       revoked_existing_count: activeLinkIds.length,
     },
   })
+
+  if (resolveReissueRequest) {
+    await adminSupabase
+      .from('member_portal_reissue_requests' as never)
+      .update({
+        status: 'issued',
+        resolved_at: nowIso,
+        resolved_by_user_id: userId,
+        resolution_note: 'member_portal_link_issued',
+        updated_at: nowIso,
+      } as never)
+      .eq('store_id', storeId)
+      .eq('customer_id', customer_id)
+      .eq('status', 'pending')
+  }
 
   const portalUrl = new URL(`/shared/member-portal/${portalToken}`, request.url).toString()
 

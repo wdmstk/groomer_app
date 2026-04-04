@@ -41,6 +41,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         label: payload.memberCard.label,
         expiresAt: payload.memberCard.expiresAt,
         rank: payload.memberCard.rank,
+        ttlDays: payload.memberCard.ttlDays,
       },
       nextAppointment: payload.nextAppointment
         ? {

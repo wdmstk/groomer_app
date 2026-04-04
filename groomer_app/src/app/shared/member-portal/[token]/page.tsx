@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { Card } from '@/components/ui/Card'
 import { MemberPortalWaitlistCard } from '@/components/member-portal/MemberPortalWaitlistCard'
+import { MemberPortalReissueRequestButton } from '@/components/member-portal/MemberPortalReissueRequestButton'
 import { getMemberPortalPayload, MemberPortalServiceError } from '@/lib/member-portal'
 
 export const metadata: Metadata = {
@@ -68,6 +69,7 @@ export default async function SharedMemberPortalPage({
   const { token } = await params
   let payload: Awaited<ReturnType<typeof getMemberPortalPayload>> | null = null
   let unavailableMessage = ''
+  let unavailableStatus: number | null = null
 
   try {
     payload = await getMemberPortalPayload(token)
@@ -77,6 +79,7 @@ export default async function SharedMemberPortalPage({
       [400, 404, 410].includes(error.status)
     ) {
       unavailableMessage = error.message
+      unavailableStatus = error.status
     } else {
       throw error
     }
@@ -97,6 +100,9 @@ export default async function SharedMemberPortalPage({
             <p className="text-sm text-slate-600">
               お手数ですが、最新の会員証URLの再発行について店舗へお問い合わせください。
             </p>
+            {unavailableStatus === 410 && unavailableMessage.includes('有効期限切れ') ? (
+              <MemberPortalReissueRequestButton token={token} />
+            ) : null}
             <p>
               <Link href="/" className="text-sm text-amber-700 underline hover:text-amber-800">
                 トップへ戻る

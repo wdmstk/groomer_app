@@ -27,6 +27,10 @@ test.describe('設定画面', () => {
     await expect(page.getByLabel('公開日数')).toHaveValue('5')
     await expect(page.getByLabel('バッファ（分）')).toHaveValue('20')
     await expect(page.getByLabel('最小リード時間（分）')).toHaveValue('120')
+    await expect(page.getByLabel('会員証TTL（日）')).toHaveValue('90')
+    await expect(
+      page.getByText('失効判定は「対象店舗の最終来店日 + TTL」（来店履歴がない場合は発行日 + TTL）です。')
+    ).toBeVisible()
     await expect(page.getByLabel('除外日（JST）')).toHaveValue('2026-03-20\n2026-03-21')
   })
 
