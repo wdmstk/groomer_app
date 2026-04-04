@@ -129,6 +129,17 @@ type CustomerOption = {
   full_name: string
 }
 
+type StaffOption = {
+  id: string
+  full_name: string
+}
+
+type ServiceMenuOption = {
+  id: string
+  name: string
+  duration: number | null
+}
+
 type JournalPreviewMedia = {
   mediaType: 'photo' | 'video'
   signedUrl: string | null
@@ -208,6 +219,8 @@ function buildManageHref(params: {
   q?: string
   customerEdit?: string
   petEdit?: string
+  modal?: string
+  waitlistCustomer?: string
 }) {
   const search = new URLSearchParams()
   if (params.customerId) search.set('customer_id', params.customerId)
@@ -215,6 +228,8 @@ function buildManageHref(params: {
   if (params.q) search.set('q', params.q)
   if (params.customerEdit) search.set('customer_edit', params.customerEdit)
   if (params.petEdit) search.set('pet_edit', params.petEdit)
+  if (params.modal) search.set('modal', params.modal)
+  if (params.waitlistCustomer) search.set('waitlist_customer', params.waitlistCustomer)
   const serialized = search.toString()
   return serialized ? `/customers/manage?${serialized}` : '/customers/manage'
 }
@@ -246,6 +261,8 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
   const rawTab = firstParam(params.tab) ?? 'basic'
   const customerEditId = firstParam(params.customer_edit) ?? ''
   const petEditId = firstParam(params.pet_edit) ?? ''
+  const rawModal = firstParam(params.modal) ?? ''
+  const rawWaitlistCustomerId = firstParam(params.waitlist_customer) ?? ''
 
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: customersPageFixtures.storeId }
@@ -275,7 +292,8 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
           .eq('store_id', storeId)
           .order('created_at', { ascending: false })
       ).data
-  const customers = ((customersData ?? []) as CustomerRow[]).filter((customer) => {
+  const allCustomers = (customersData ?? []) as CustomerRow[]
+  const customers = allCustomers.filter((customer) => {
     if (!q) return true
     const haystack = `${customer.full_name ?? ''} ${customer.phone_number ?? ''}`.toLowerCase()
     return haystack.includes(q.toLowerCase())
@@ -310,6 +328,37 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
   })()
   const activePetId = activeTab.startsWith('pet:') ? activeTab.slice(4) : ''
   const activePet = selectedCustomerPets.find((pet) => pet.id === activePetId) ?? null
+  const isWaitlistModalOpen = rawModal === 'waitlist'
+  const waitlistCustomer = isWaitlistModalOpen
+    ? allCustomers.find((customer) => customer.id === rawWaitlistCustomerId) ??
+      selectedCustomer ??
+      null
+    : null
+  const waitlistPets =
+    waitlistCustomer
+      ? allPets.filter((pet) => pet.customer_id === waitlistCustomer.id)
+      : []
+  const waitlistSupportRows = isWaitlistModalOpen && !isPlaywrightE2E
+    ? await Promise.all([
+        db
+          .from('staffs')
+          .select('id, full_name')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false }),
+        db
+          .from('service_menus')
+          .select('id, name, duration')
+          .eq('store_id', storeId)
+          .eq('is_active', true)
+          .order('display_order', { ascending: true }),
+      ])
+    : null
+  const waitlistStaffs = isWaitlistModalOpen
+    ? ((waitlistSupportRows?.[0].data ?? []) as StaffOption[])
+    : []
+  const waitlistServiceMenus = isWaitlistModalOpen
+    ? ((waitlistSupportRows?.[1].data ?? []) as ServiceMenuOption[])
+    : []
 
   const appointmentRows = isPlaywrightE2E
     ? customersPageFixtures.appointments
@@ -688,7 +737,13 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                   <span className="hidden sm:inline">顧客編集</span>
                 </Link>
                 <Link
-                  href={`/customers?tab=list&modal=waitlist&waitlist_customer=${selectedCustomer.id}`}
+                  href={buildManageHref({
+                    customerId: selectedCustomer.id,
+                    tab: activeTab,
+                    q: q || undefined,
+                    modal: 'waitlist',
+                    waitlistCustomer: selectedCustomer.id,
+                  })}
                   className="inline-flex h-9 w-full items-center justify-center whitespace-nowrap border-l border-gray-300 px-2 font-medium text-emerald-700 hover:bg-emerald-50 sm:w-auto sm:px-3"
                 >
                   <span className="sm:hidden">待ち</span>
@@ -1261,6 +1316,101 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
             </div>
           </form>
         </PetCreateModal>
+      ) : null}
+
+      {isWaitlistModalOpen && waitlistCustomer ? (
+        <CustomerCreateModal title="キャンセル枠 waitlist 登録" closeRedirectTo={modalCloseHref}>
+          <form action="/api/reoffers/waitlists" method="post" className="space-y-4">
+            <input type="hidden" name="customer_id" value={waitlistCustomer.id} />
+            <input type="hidden" name="redirect_to" value={modalCloseHref} />
+            <div className="rounded border bg-sky-50 p-3 text-sm text-gray-700">
+              <p className="font-semibold text-gray-900">{waitlistCustomer.full_name}</p>
+              <p>
+                電話: {waitlistCustomer.phone_number ?? '未登録'} / LINE: {waitlistCustomer.line_id ?? '未登録'}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="space-y-2 text-sm text-gray-700">
+                ペット
+                <select
+                  name="pet_id"
+                  className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-400"
+                  defaultValue={waitlistPets[0]?.id ?? ''}
+                >
+                  <option value="">未指定</option>
+                  {waitlistPets.map((pet) => (
+                    <option key={pet.id} value={pet.id}>
+                      {pet.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                希望メニュー
+                <div className="max-h-40 space-y-1 overflow-y-auto rounded border p-2">
+                  {waitlistServiceMenus.length === 0 ? (
+                    <p className="text-xs text-gray-500">選択可能なメニューがありません。</p>
+                  ) : (
+                    waitlistServiceMenus.map((menu) => (
+                      <label key={menu.id} className="flex items-center gap-2 text-sm text-gray-700">
+                        <input type="checkbox" name="preferred_menus" value={menu.name} />
+                        <span>
+                          {menu.name}
+                          {typeof menu.duration === 'number' && menu.duration > 0 ? ` (${menu.duration}分)` : ''}
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                希望担当
+                <select
+                  name="preferred_staff_id"
+                  className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-400"
+                  defaultValue=""
+                >
+                  <option value="">未指定</option>
+                  {waitlistStaffs.map((staff) => (
+                    <option key={staff.id} value={staff.id}>
+                      {staff.full_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                連絡方法
+                <select
+                  name="channel"
+                  defaultValue={waitlistCustomer.line_id ? 'line' : waitlistCustomer.phone_number ? 'phone' : 'manual'}
+                  className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value="manual">手動</option>
+                  <option value="line">LINE</option>
+                  <option value="phone">電話</option>
+                </select>
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                希望開始
+                <Input type="datetime-local" name="desired_from" />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                希望終了
+                <Input type="datetime-local" name="desired_to" />
+              </label>
+            </div>
+            <label className="space-y-2 text-sm text-gray-700">
+              メモ
+              <Input name="notes" placeholder="木曜午前の空き枠優先" />
+            </label>
+            <div className="flex items-center gap-2">
+              <Button type="submit">waitlist を登録</Button>
+              <Link href={modalCloseHref} className="text-sm text-gray-500">
+                閉じる
+              </Link>
+            </div>
+          </form>
+        </CustomerCreateModal>
       ) : null}
     </section>
   )

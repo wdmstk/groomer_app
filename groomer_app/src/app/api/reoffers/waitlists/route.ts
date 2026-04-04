@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createStoreScopedClient } from '@/lib/supabase/store'
+import { encodePreferredMenus } from '@/lib/waitlist-preferred-menus'
 
 export async function POST(request: Request) {
   const { supabase, storeId } = await createStoreScopedClient()
@@ -9,7 +10,11 @@ export async function POST(request: Request) {
   const petId = String(formData.get('pet_id') ?? '').trim() || null
   const desiredFrom = String(formData.get('desired_from') ?? '').trim() || null
   const desiredTo = String(formData.get('desired_to') ?? '').trim() || null
-  const preferredMenu = String(formData.get('preferred_menu') ?? '').trim() || null
+  const preferredMenus = formData.getAll('preferred_menus')
+  const preferredMenuSingle = String(formData.get('preferred_menu') ?? '').trim()
+  const preferredMenu = encodePreferredMenus(
+    preferredMenus.length > 0 ? preferredMenus : preferredMenuSingle ? [preferredMenuSingle] : []
+  )
   const preferredStaffId = String(formData.get('preferred_staff_id') ?? '').trim() || null
   const channel = String(formData.get('channel') ?? 'manual').trim()
   const notes = String(formData.get('notes') ?? '').trim() || null
