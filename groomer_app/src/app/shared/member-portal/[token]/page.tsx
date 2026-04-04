@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { Card } from '@/components/ui/Card'
+import { MemberPortalWaitlistCard } from '@/components/member-portal/MemberPortalWaitlistCard'
 import { getMemberPortalPayload, MemberPortalServiceError } from '@/lib/member-portal'
 
 export const metadata: Metadata = {
@@ -263,6 +264,8 @@ export default async function SharedMemberPortalPage({
             </Link>
           </p>
         </Card>
+
+        <MemberPortalWaitlistCard token={token} />
 
         <Card className="space-y-3 border border-slate-200">
           <div>

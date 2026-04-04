@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { formatPreferredMenusLabel } from '@/lib/waitlist-preferred-menus'
 
 type SlotCandidate = {
   source: 'waitlist' | 'history'
@@ -95,11 +96,18 @@ type StaffOption = {
   full_name: string
 }
 
+type ServiceMenuOption = {
+  id: string
+  name: string
+  duration: number | null
+}
+
 type ReofferPayload = {
   slots?: SlotRow[]
   waitlists?: WaitlistRow[]
   customers?: CustomerOption[]
   staffs?: StaffOption[]
+  service_menus?: ServiceMenuOption[]
   message?: string
 }
 
@@ -145,6 +153,7 @@ export function SlotReofferPanel() {
   const [waitlists, setWaitlists] = useState<WaitlistRow[]>([])
   const [customers, setCustomers] = useState<CustomerOption[]>([])
   const [staffs, setStaffs] = useState<StaffOption[]>([])
+  const [serviceMenus, setServiceMenus] = useState<ServiceMenuOption[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -158,9 +167,9 @@ export function SlotReofferPanel() {
   const [waitlistForm, setWaitlistForm] = useState({
     customerId: '',
     petId: '',
+    preferredMenus: [] as string[],
     desiredFrom: '',
     desiredTo: '',
-    preferredMenu: '',
     preferredStaffId: '',
     channel: 'manual',
     notes: '',
@@ -185,6 +194,7 @@ export function SlotReofferPanel() {
       setWaitlists(payload?.waitlists ?? [])
       setCustomers(payload?.customers ?? [])
       setStaffs(payload?.staffs ?? [])
+      setServiceMenus(payload?.service_menus ?? [])
       if (payload?.customers?.[0]?.id) {
         const firstCustomer = payload.customers[0]
         setWaitlistForm((current) =>
@@ -366,7 +376,7 @@ export function SlotReofferPanel() {
           pet_id: waitlistForm.petId || null,
           desired_from: waitlistForm.desiredFrom || null,
           desired_to: waitlistForm.desiredTo || null,
-          preferred_menu: waitlistForm.preferredMenu || null,
+          preferred_menus: waitlistForm.preferredMenus,
           preferred_staff_id: waitlistForm.preferredStaffId || null,
           channel: waitlistForm.channel,
           notes: waitlistForm.notes || null,
@@ -382,7 +392,7 @@ export function SlotReofferPanel() {
         ...current,
         desiredFrom: '',
         desiredTo: '',
-        preferredMenu: '',
+        preferredMenus: [],
         preferredStaffId: '',
         notes: '',
       }))
@@ -454,16 +464,43 @@ export function SlotReofferPanel() {
               ))}
             </select>
           </label>
-          <label className="text-sm text-gray-700">
+          <label className="text-sm text-gray-700 md:col-span-2">
             希望メニュー
-            <input
-              value={waitlistForm.preferredMenu}
-              onChange={(event) =>
-                setWaitlistForm((current) => ({ ...current, preferredMenu: event.target.value }))
-              }
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-              placeholder="シャンプー"
-            />
+            <div className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded border border-gray-300 bg-white p-2">
+              {serviceMenus.length === 0 ? (
+                <p className="text-xs text-gray-500">選択可能なメニューがありません。</p>
+              ) : (
+                serviceMenus.map((menu) => {
+                  const checked = waitlistForm.preferredMenus.includes(menu.name)
+                  return (
+                    <label key={menu.id} className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) =>
+                          setWaitlistForm((current) => {
+                            if (event.target.checked) {
+                              return {
+                                ...current,
+                                preferredMenus: [...current.preferredMenus, menu.name],
+                              }
+                            }
+                            return {
+                              ...current,
+                              preferredMenus: current.preferredMenus.filter((name) => name !== menu.name),
+                            }
+                          })
+                        }
+                      />
+                      <span>
+                        {menu.name}
+                        {typeof menu.duration === 'number' && menu.duration > 0 ? ` (${menu.duration}分)` : ''}
+                      </span>
+                    </label>
+                  )
+                })
+              )}
+            </div>
           </label>
           <label className="text-sm text-gray-700">
             希望担当
@@ -551,7 +588,7 @@ export function SlotReofferPanel() {
                   {waitlist.customer_name} / {waitlist.pet_name ?? 'ペット未指定'}
                 </p>
                 <p className="text-gray-700">
-                  希望: {waitlist.preferred_menu ?? '未指定'} / 担当:{' '}
+                  希望: {formatPreferredMenusLabel(waitlist.preferred_menu)} / 担当:{' '}
                   {waitlist.preferred_staff_name ?? '未指定'} / チャネル: {waitlist.channel}
                 </p>
                 <p className="text-xs text-gray-500">

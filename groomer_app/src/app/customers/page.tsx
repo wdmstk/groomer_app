@@ -82,6 +82,12 @@ type StaffOption = {
   full_name: string
 }
 
+type ServiceMenuOption = {
+  id: string
+  name: string
+  duration: number | null
+}
+
 type MemberPortalLink = {
   id: string
   customer_id: string
@@ -155,6 +161,15 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
           .eq('store_id', storeId)
           .order('created_at', { ascending: false })
       : { data: [] }
+  const { data: serviceMenuRows } =
+    isWaitlistModalOpen && !isPlaywrightE2E
+      ? await db
+          .from('service_menus')
+          .select('id, name, duration')
+          .eq('store_id', storeId)
+          .eq('is_active', true)
+          .order('display_order', { ascending: true })
+      : { data: [] }
   const appointmentRows = needsListSupportData
     ? isPlaywrightE2E
       ? customersPageFixtures.appointments
@@ -216,6 +231,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   )
   const pets = (petRows as PetOption[]) ?? []
   const staffs = (staffRows as StaffOption[]) ?? []
+  const serviceMenus = (serviceMenuRows as ServiceMenuOption[]) ?? []
   const customerLtvByCustomerId = new Map<string, CustomerLtvSummaryRow>()
   ;((customerLtvRows as CustomerLtvSummaryRow[] | null) ?? []).forEach((row) => {
     if (!row.customer_id || customerLtvByCustomerId.has(row.customer_id)) return
@@ -611,7 +627,21 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
               </label>
               <label className="space-y-2 text-sm text-gray-700">
                 希望メニュー
-                <Input name="preferred_menu" placeholder="シャンプー" />
+                <div className="max-h-40 space-y-1 overflow-y-auto rounded border p-2">
+                  {serviceMenus.length === 0 ? (
+                    <p className="text-xs text-gray-500">選択可能なメニューがありません。</p>
+                  ) : (
+                    serviceMenus.map((menu) => (
+                      <label key={menu.id} className="flex items-center gap-2 text-sm text-gray-700">
+                        <input type="checkbox" name="preferred_menus" value={menu.name} />
+                        <span>
+                          {menu.name}
+                          {typeof menu.duration === 'number' && menu.duration > 0 ? ` (${menu.duration}分)` : ''}
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
               </label>
               <label className="space-y-2 text-sm text-gray-700">
                 希望担当

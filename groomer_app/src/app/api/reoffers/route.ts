@@ -7,6 +7,11 @@ import {
 } from '@/lib/reoffers/templates'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import type { Json } from '@/lib/supabase/database.types'
+import {
+  encodePreferredMenus,
+  formatPreferredMenusLabel,
+  matchPreferredMenu,
+} from '@/lib/waitlist-preferred-menus'
 
 function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
@@ -43,6 +48,12 @@ type StaffRow = {
   id: string
   user_id: string | null
   full_name: string
+}
+
+type ServiceMenuRow = {
+  id: string
+  name: string
+  duration: number | null
 }
 
 type ReofferRow = {
@@ -116,6 +127,7 @@ export async function GET() {
     { data: customers, error: customersError },
     { data: pets, error: petsError },
     { data: staffs, error: staffsError },
+    { data: serviceMenus, error: serviceMenusError },
     { data: existingReoffers, error: reoffersError },
     { data: waitlistRequests, error: waitlistError },
     { data: notificationLogs, error: notificationLogsError },
@@ -150,6 +162,12 @@ export async function GET() {
       .select('id, user_id, full_name')
       .eq('store_id', storeId)
       .order('full_name', { ascending: true }),
+    supabase
+      .from('service_menus')
+      .select('id, name, duration')
+      .eq('store_id', storeId)
+      .eq('is_active', true)
+      .order('display_order', { ascending: true }),
     supabase
       .from('slot_reoffers')
       .select(
@@ -188,6 +206,7 @@ export async function GET() {
     customersError ??
     petsError ??
     staffsError ??
+    serviceMenusError ??
     reoffersError ??
     waitlistError ??
     notificationLogsError ??
@@ -199,6 +218,7 @@ export async function GET() {
   const customerRows = (customers ?? []) as CustomerRow[]
   const petRows = (pets ?? []) as PetRow[]
   const staffRows = (staffs ?? []) as StaffRow[]
+  const serviceMenuRows = (serviceMenus ?? []) as ServiceMenuRow[]
   const recentAppointmentRows = (recentAppointments ?? []) as AppointmentRow[]
   const reofferRows = (existingReoffers ?? []) as ReofferRow[]
   const waitlistRows = (waitlistRequests ?? []) as WaitlistRow[]
@@ -361,7 +381,7 @@ export async function GET() {
         ) {
           return false
         }
-        if (request.preferred_menu && request.preferred_menu !== appointment.menu) return false
+        if (!matchPreferredMenu(request.preferred_menu, appointment.menu)) return false
         if (request.preferred_staff_id && request.preferred_staff_id !== appointment.staff_id) return false
         return true
       })
@@ -452,7 +472,7 @@ export async function GET() {
     pet_name: row.pet_id ? petById.get(row.pet_id)?.name ?? null : null,
     desired_from: row.desired_from,
     desired_to: row.desired_to,
-    preferred_menu: row.preferred_menu,
+    preferred_menu: formatPreferredMenusLabel(row.preferred_menu),
     preferred_staff_id: row.preferred_staff_id,
     preferred_staff_name: row.preferred_staff_id
       ? staffById.get(row.preferred_staff_id)?.full_name ?? null
@@ -474,12 +494,18 @@ export async function GET() {
     })),
   }))
   const staffOptions = staffRows.map((row) => ({ id: row.id, full_name: row.full_name }))
+  const serviceMenuOptions = serviceMenuRows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    duration: row.duration,
+  }))
 
   return NextResponse.json({
     slots,
     waitlists,
     customers: customerOptions,
     staffs: staffOptions,
+    service_menus: serviceMenuOptions,
   })
 }
 
@@ -503,6 +529,7 @@ export async function POST(request: Request) {
         desired_from?: string | null
         desired_to?: string | null
         preferred_menu?: string | null
+        preferred_menus?: string[] | null
         preferred_staff_id?: string | null
       }
     | null
@@ -512,10 +539,14 @@ export async function POST(request: Request) {
   if (kind === 'waitlist') {
     const customerId = typeof body?.customer_id === 'string' ? body.customer_id : ''
     const petId = typeof body?.pet_id === 'string' && body.pet_id ? body.pet_id : null
-    const preferredMenu =
+    const preferredMenuSingle =
       typeof body?.preferred_menu === 'string' && body.preferred_menu.trim()
         ? body.preferred_menu.trim()
         : null
+    const preferredMenuArray = Array.isArray(body?.preferred_menus) ? body.preferred_menus : []
+    const preferredMenu = encodePreferredMenus(
+      preferredMenuArray.length > 0 ? preferredMenuArray : preferredMenuSingle ? [preferredMenuSingle] : []
+    )
     const preferredStaffId =
       typeof body?.preferred_staff_id === 'string' && body.preferred_staff_id ? body.preferred_staff_id : null
     const channel =
