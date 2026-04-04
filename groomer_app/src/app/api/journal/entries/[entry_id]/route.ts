@@ -261,7 +261,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   let notificationStatus = 'not_requested'
   if (updated.status === 'published' && updated.customer_id) {
     const queued = await enqueueJournalLineNotification({
-      supabase: guard.supabase,
+      supabase: guard.supabase as never,
       storeId: guard.storeId,
       entryId,
       customerId: String(updated.customer_id),

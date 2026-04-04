@@ -35,6 +35,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     const appointmentId = parseString(requestUrl.searchParams.get('appointment_id'))
     const serviceName = parseString(requestUrl.searchParams.get('service_name'))
     const body = asObjectOrNull(await request.json().catch(() => null))
+    const requestBody = body ?? {}
     const parsed = validateConsentSignInput(body)
     if (!parsed.ok) {
       return NextResponse.json({ message: parsed.message }, { status: 400, headers: noStoreHeaders() })
@@ -50,8 +51,17 @@ export async function POST(request: Request, { params }: RouteParams) {
       .maybeSingle()
     if (documentError) return NextResponse.json({ message: documentError.message }, { status: 500, headers: noStoreHeaders() })
     if (!document) return NextResponse.json({ message: 'document not found.' }, { status: 404, headers: noStoreHeaders() })
-    if (document.status === 'signed') return NextResponse.json({ ok: true, reused: true }, { headers: noStoreHeaders() })
-    if (isConsentTokenExpired(document.token_expires_at as string | null | undefined)) {
+    const consentDocument = document as {
+      id: string
+      store_id: string
+      customer_id: string
+      pet_id: string
+      template_version_id: string
+      status: string
+      token_expires_at: string | null
+    }
+    if (consentDocument.status === 'signed') return NextResponse.json({ ok: true, reused: true }, { headers: noStoreHeaders() })
+    if (isConsentTokenExpired(consentDocument.token_expires_at)) {
       return NextResponse.json({ message: 'token expired.' }, { status: 410, headers: noStoreHeaders() })
     }
 
@@ -139,7 +149,7 @@ export async function POST(request: Request, { params }: RouteParams) {
           entityId,
           action,
           before: {
-            status: document.status,
+            status: consentDocument.status,
             signed_at: null,
             signed_by_name: null,
           },
@@ -155,22 +165,22 @@ export async function POST(request: Request, { params }: RouteParams) {
       },
     },
       document: {
-      id: String(document.id),
-      store_id: String(document.store_id),
-      customer_id: String(document.customer_id),
-      pet_id: String(document.pet_id),
-      template_version_id: String(document.template_version_id),
-      status: String(document.status),
-      token_expires_at: (document.token_expires_at as string | null) ?? null,
+      id: consentDocument.id,
+      store_id: consentDocument.store_id,
+      customer_id: consentDocument.customer_id,
+      pet_id: consentDocument.pet_id,
+      template_version_id: consentDocument.template_version_id,
+      status: consentDocument.status,
+      token_expires_at: consentDocument.token_expires_at,
     },
       signerName,
       signatureBuffer,
-      signatureStrokes: body.signature_strokes ?? [],
+      signatureStrokes: requestBody.signature_strokes ?? [],
       ipHash,
       uaHash,
-      deviceType: parseString(body.device_type),
-      deviceOs: parseString(body.device_os),
-      browser: parseString(body.browser),
+      deviceType: parseString(requestBody.device_type),
+      deviceOs: parseString(requestBody.device_os),
+      browser: parseString(requestBody.browser),
       appointmentId,
       serviceName,
       snsUsagePreference,

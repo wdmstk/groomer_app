@@ -5,7 +5,7 @@ export type JournalNotificationEnqueueResult =
 type CustomerLookupQuery = {
   eq: (column: string, value: string) => {
     eq: (column: string, value: string) => {
-      maybeSingle: () => Promise<{ data: unknown; error: { message: string } | null }>
+      maybeSingle: () => PromiseLike<{ data: unknown; error: { message: string } | null }>
     }
   }
 }
@@ -16,7 +16,7 @@ type ExistingNotificationLookupQuery = {
       eq: (column: string, value: string) => {
         eq: (column: string, value: string) => {
           in: (column: string, values: string[]) => {
-            limit: (n: number) => Promise<{ data: unknown[] | null; error: { message: string } | null }>
+            limit: (n: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>
           }
         }
       }
@@ -24,13 +24,13 @@ type ExistingNotificationLookupQuery = {
   }
 }
 
-interface NotificationSupabaseClient {
+export interface NotificationSupabaseClient {
   from(table: 'customers'): {
     select: (columns: string) => CustomerLookupQuery
   }
   from(table: 'journal_notifications'): {
     select: (columns: string) => ExistingNotificationLookupQuery
-    insert: (payload: unknown) => Promise<{ error: { message: string } | null }>
+    insert: (payload: unknown) => PromiseLike<{ error: { message: string } | null }>
   }
 }
 

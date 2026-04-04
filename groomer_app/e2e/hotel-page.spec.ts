@@ -201,7 +201,7 @@ test.describe('ペットホテル管理', () => {
     await page.getByLabel('顧客').selectOption('customer-002')
     await page.getByLabel('ペット').selectOption('pet-002')
     await page.getByLabel('台帳コード').fill('HT-20260318-003')
-    await page.getByRole('button', { name: '作成' }).click()
+    await page.getByRole('button', { name: '作成', exact: true }).click()
 
     await expect(page.getByText('ホテル台帳を作成しました。')).toBeVisible()
     await expect(page.getByRole('cell', { name: 'HT-20260318-003', exact: true })).toBeVisible()

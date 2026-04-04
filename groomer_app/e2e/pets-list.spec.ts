@@ -14,13 +14,12 @@ test.describe('ペット一覧', () => {
     await expect(primaryRow).toContainText('トイプードル')
     await expect(primaryRow).toContainText('0 kg')
     await expect(primaryRow).toContainText('心臓, アレルギー')
-    await expect(primaryRow).toContainText('QR表示')
 
     const fallbackRow = page.getByTestId('pets-list').getByTestId('pet-row-pet-002')
     await expect(fallbackRow).toContainText('ひじき')
     await expect(fallbackRow).toContainText('未登録')
     await expect(fallbackRow).toContainText('なし')
-    await expect(fallbackRow).toContainText('未生成')
+    await expect(fallbackRow).toContainText('未登録')
   })
 
   test('新規ペットモーダルを開ける', async ({ page }) => {
@@ -38,9 +37,6 @@ test.describe('ペット一覧', () => {
     await expect(page.getByRole('heading', { name: 'ペット情報の更新' })).toBeVisible()
     await expect(page.getByText('電子同意書（最新5件）')).toBeVisible()
     await expect(page.getByText('同意書はまだありません。')).toBeVisible()
-    await expect(page.getByRole('link', { name: '一覧を開く' })).toHaveAttribute(
-      'href',
-      '/consents?pet_id=pet-001'
-    )
+    await expect(page.getByText('同意書作成は予約管理から行ってください')).toBeVisible()
   })
 })

@@ -67,3 +67,17 @@ test('validateMemberPortalWaitlistInput accepts empty date range', () => {
 
   assert.equal(message, null)
 })
+
+test('validateMemberPortalWaitlistInput accepts same datetime range', () => {
+  const message = validateMemberPortalWaitlistInput({
+    pet_id: null,
+    preferred_menu: null,
+    preferred_staff_id: null,
+    channel: 'manual',
+    desired_from: '2026-04-06T11:00',
+    desired_to: '2026-04-06T11:00',
+    notes: null,
+  })
+
+  assert.equal(message, null)
+})

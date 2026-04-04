@@ -890,7 +890,7 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                       </div>
                       <div className="grid grid-cols-[7.5rem_1fr] items-start gap-3">
                         <dt className="text-amber-800">運用ルール</dt>
-                        <dd className="font-medium text-amber-900">発行から90日固定（アクセスで延長なし）</dd>
+                        <dd className="font-medium text-amber-900">対象店舗の最終来店日 + 設定TTL（来店なしは発行日基準）</dd>
                       </div>
                     </dl>
                     <div className="mt-3">

@@ -4,7 +4,7 @@ type ConsentAuditClient = {
   from: (
     table: string
   ) => {
-    insert: (values: unknown) => Promise<{ error: { message: string } | null }>
+    insert: (values: unknown) => PromiseLike<{ error: { message: string } | null }>
   }
 }
 

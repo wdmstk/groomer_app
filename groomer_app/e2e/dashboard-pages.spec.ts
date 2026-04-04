@@ -1,8 +1,24 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+async function gotoStable(page: Page, url: string) {
+  let lastError: unknown = null
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded' })
+      return
+    } catch (error) {
+      lastError = error
+      const message = error instanceof Error ? error.message : String(error)
+      if (!message.includes('net::ERR_ABORTED') || attempt === 2) throw error
+      await page.waitForTimeout(300)
+    }
+  }
+  throw lastError
+}
 
 test.describe('ダッシュボード画面', () => {
   test('overview と followups タブで主要KPIと優先顧客を表示できる', async ({ page }) => {
-    await page.goto('/dashboard')
+    await gotoStable(page, '/dashboard')
 
     await expect(page.getByRole('heading', { name: 'ダッシュボード' })).toBeVisible()
     await expect(page.getByText('本日の予約件数')).toBeVisible()
@@ -12,7 +28,7 @@ test.describe('ダッシュボード画面', () => {
     await expect(page.getByText('高リスク 1 件 / 未着手 1 件')).toBeVisible()
     await expect(page.getByText('近接予約 2 件 / 遅延注意時間帯 1 件')).toBeVisible()
 
-    await page.goto('/dashboard?tab=followups', { waitUntil: 'domcontentloaded' })
+    await gotoStable(page, '/dashboard?tab=followups')
 
     await expect(page.getByText('再来店フォロー未着手')).toBeVisible()
     await expect(page.getByText('無断キャンセル予兆（店舗）')).toBeVisible()
@@ -122,7 +138,7 @@ test.describe('ダッシュボード画面', () => {
       })
     })
 
-    await page.goto('/dashboard?tab=operations', { waitUntil: 'domcontentloaded' })
+    await gotoStable(page, '/dashboard?tab=operations')
 
     await expect(page.getByText('遅延しやすい時間帯（直近30日）')).toBeVisible()
     await expect(page.getByText('10:00 台')).toBeVisible()
@@ -133,7 +149,7 @@ test.describe('ダッシュボード画面', () => {
     await expect(page.getByText('11:00 / レオ')).toBeVisible()
     await expect(page.getByRole('link', { name: 'モバイル当日運用へ' })).toBeVisible()
 
-    await page.goto('/dashboard?tab=reoffers', { waitUntil: 'domcontentloaded' })
+    await gotoStable(page, '/dashboard?tab=reoffers')
 
     await expect(page.getByText('即時確定対象メニュー', { exact: true })).toBeVisible()
     await expect(page.getByText('現在の対象件数: 1 件')).toBeVisible()
@@ -153,7 +169,7 @@ test.describe('ダッシュボード画面', () => {
   })
 
   test('KPI レポートで集計カードを表示できる', async ({ page }) => {
-    await page.goto('/dashboard/appointments-kpi', { waitUntil: 'domcontentloaded' })
+    await gotoStable(page, '/dashboard/appointments-kpi')
 
     await expect(page.getByRole('heading', { name: 'KPIレポート' })).toBeVisible()
     await expect(page.getByText('直近30日集計（新規優先）')).toBeVisible()

@@ -27,7 +27,9 @@ test('validateMedicalRecordWriteInput rejects missing required fields', () => {
         skinCondition: null,
         behaviorNotes: null,
         cautionNotes: null,
+        tags: [],
         photoDrafts: [],
+        videoDrafts: [],
       }),
     /ペットの選択は必須です/
   )

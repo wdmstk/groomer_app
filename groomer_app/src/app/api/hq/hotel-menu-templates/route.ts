@@ -233,16 +233,24 @@ export async function POST(request: Request) {
   if (insertError) {
     return NextResponse.json({ message: insertError.message }, { status: 500 })
   }
+  const insertedDelivery = inserted as {
+    id: string
+    source_store_id: string
+    target_store_ids: string[]
+    overwrite_scope: HotelMenuTemplateOverwriteScope
+    status: string
+    created_at: string
+  }
 
   await writeAuditLog({
     supabase,
     storeId: sourceStoreId,
     actorUserId: user.id,
-    entityId: inserted.id as string,
+    entityId: insertedDelivery.id,
     action: 'hq_hotel_menu_template_delivery_requested',
     before: null,
     after: {
-      status: inserted.status,
+      status: insertedDelivery.status,
       source_store_id: sourceStoreId,
       target_store_ids: targetStoreIds,
       overwrite_scope: overwriteScope,
@@ -255,6 +263,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     message: 'ホテルメニューテンプレ配信リクエストを作成しました。owner 承認後に適用されます。',
-    delivery: inserted,
+    delivery: insertedDelivery,
   })
 }

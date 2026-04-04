@@ -311,7 +311,7 @@ export default async function HotelPage({ searchParams }: HotelPageProps) {
         customers={customerOptions}
         pets={petOptions}
         menuItems={(menuItems ?? []) as HotelMenuItemRow[]}
-        initialStayId={initialStayId}
+        initialStayId={initialStayId ?? undefined}
         initialSettings={
           (hotelSettings as HotelSettingsRow | null) ?? {
             id: null,
