@@ -3,6 +3,8 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { Json } from '@/lib/supabase/database.types'
 
 export const MEMBER_PORTAL_LINK_DAYS = 90
+export const MEMBER_PORTAL_TTL_OPTIONS = [30, 90, 180] as const
+export type MemberPortalTtlDays = (typeof MEMBER_PORTAL_TTL_OPTIONS)[number]
 const REVISIT_RECOMMEND_DAYS = 45
 
 export class MemberPortalServiceError extends Error {
@@ -19,6 +21,7 @@ type MemberPortalLinkRow = {
   id: string
   store_id: string
   customer_id: string
+  created_at: string
   expires_at: string
   revoked_at: string | null
   last_used_at: string | null
@@ -80,6 +83,7 @@ type StoreRow = {
   id: string
   name: string
   member_card_rank_visible: boolean | null
+  member_portal_ttl_days: number | null
 }
 
 type PetRow = {
@@ -128,6 +132,37 @@ export function getMemberPortalExpiresAt(days = MEMBER_PORTAL_LINK_DAYS) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
 }
 
+export function normalizeMemberPortalTtlDays(value: number | null | undefined): MemberPortalTtlDays {
+  return value === 30 || value === 180 ? value : 90
+}
+
+function toIsoIfValid(value: string | null | undefined) {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toISOString()
+}
+
+export function resolveMemberPortalEffectiveExpiresAt(params: {
+  issuedAt: string
+  currentExpiresAt: string
+  latestVisitAt?: string | null
+  ttlDays: MemberPortalTtlDays
+}) {
+  const issuedAtIso = toIsoIfValid(params.issuedAt) ?? new Date().toISOString()
+  const currentExpiresAtIso =
+    toIsoIfValid(params.currentExpiresAt) ?? getMemberPortalExpiresAt(params.ttlDays)
+  const issuedBased = new Date(new Date(issuedAtIso).getTime() + params.ttlDays * 24 * 60 * 60 * 1000).toISOString()
+  const latestVisitIso = toIsoIfValid(params.latestVisitAt)
+  const visitBased = latestVisitIso
+    ? new Date(new Date(latestVisitIso).getTime() + params.ttlDays * 24 * 60 * 60 * 1000).toISOString()
+    : null
+  const candidates = [currentExpiresAtIso, issuedBased, visitBased].filter(
+    (value): value is string => typeof value === 'string' && value.length > 0
+  )
+  return candidates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? currentExpiresAtIso
+}
+
 export async function getMemberPortalPayload(
   token: string,
   options: {
@@ -147,7 +182,7 @@ export async function getMemberPortalPayload(
 
   const { data: link, error: linkError } = await adminSupabase
     .from('member_portal_links')
-    .select('id, store_id, customer_id, expires_at, revoked_at, last_used_at')
+    .select('id, store_id, customer_id, created_at, expires_at, revoked_at, last_used_at')
     .eq('token_hash', tokenHash)
     .eq('purpose', 'member_portal')
     .maybeSingle()
@@ -184,6 +219,53 @@ export async function getMemberPortalPayload(
   }
 
   const nowIso = new Date().toISOString()
+  const [storeSettingsResult, latestVisitResult] = await Promise.all([
+    adminSupabase
+      .from('stores')
+      .select('member_portal_ttl_days')
+      .eq('id', portalLink.store_id)
+      .maybeSingle(),
+    adminSupabase
+      .from('visits')
+      .select('visit_date')
+      .eq('store_id', portalLink.store_id)
+      .eq('customer_id', portalLink.customer_id)
+      .order('visit_date', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ])
+
+  if (storeSettingsResult.error) {
+    throw new MemberPortalServiceError(storeSettingsResult.error.message, 500)
+  }
+  if (latestVisitResult.error) {
+    throw new MemberPortalServiceError(latestVisitResult.error.message, 500)
+  }
+
+  const ttlDays = normalizeMemberPortalTtlDays(storeSettingsResult.data?.member_portal_ttl_days ?? null)
+  const latestVisitAt =
+    typeof latestVisitResult.data?.visit_date === 'string'
+      ? latestVisitResult.data.visit_date
+      : null
+  const effectiveExpiresAt = resolveMemberPortalEffectiveExpiresAt({
+    issuedAt: portalLink.created_at,
+    currentExpiresAt: portalLink.expires_at,
+    latestVisitAt,
+    ttlDays,
+  })
+
+  if (effectiveExpiresAt !== portalLink.expires_at) {
+    await adminSupabase
+      .from('member_portal_links')
+      .update({
+        expires_at: effectiveExpiresAt,
+        updated_at: nowIso,
+      })
+      .eq('id', portalLink.id)
+  }
+
+  portalLink.expires_at = effectiveExpiresAt
+
   if (portalLink.expires_at <= nowIso) {
     await insertMemberPortalAuditLogBestEffort({
       storeId: portalLink.store_id,
@@ -192,6 +274,9 @@ export async function getMemberPortalPayload(
       payload: {
         ...accessPayload,
         result: 'expired',
+        ttl_days: ttlDays,
+        latest_visit_at: latestVisitAt,
+        effective_expires_at: portalLink.expires_at,
         expires_at: portalLink.expires_at,
       },
     })
@@ -237,7 +322,7 @@ export async function getMemberPortalPayload(
       .maybeSingle(),
     adminSupabase
       .from('stores')
-      .select('id, name, member_card_rank_visible')
+      .select('id, name, member_card_rank_visible, member_portal_ttl_days')
       .eq('id', portalLink.store_id)
       .maybeSingle(),
     adminSupabase
@@ -363,6 +448,7 @@ export async function getMemberPortalPayload(
       label: '会員証',
       expiresAt: portalLink.expires_at,
       rank: store.member_card_rank_visible === false ? null : memberRank,
+      ttlDays: normalizeMemberPortalTtlDays(store.member_portal_ttl_days),
     },
     nextAppointment: appointment
       ? {

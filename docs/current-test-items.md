@@ -520,6 +520,10 @@
 - 権限値と真偽値の正規化を検証
 - 数値項目とフォローアップ日数の範囲補正を検証
 
+### member-portal-expiry.test.ts
+- 会員証TTL（30/90/180）の正規化を検証
+- 失効判定が `max(発行基準, 最終来店基準, 現在expires_at)` で算出されることを検証
+
 ### staffs.presentation.test.ts
 - 所属ラベル整形とライトプラン上限表示を検証
 - 招待期限のJST整形を検証
@@ -535,6 +539,17 @@
 - 店舗作成入力のトリム・検証を検証
 - 店舗とオーナー情報の初期作成を検証
 - 既存所属がある非オーナーの作成拒否を検証
+
+## 5.2 E2E 追加（Phase2）
+
+### settings-pages.spec.ts
+- 公開予約設定で会員証TTLセレクト（30/90/180）初期値と説明文を検証
+
+### member-portal-phase2.spec.ts
+- 顧客管理βで pending 再発行リクエストを検知し、`resolveReissueRequest=true` で再発行APIを実行することを検証
+
+### member-portal-reissue.spec.ts
+- 期限切れ画面想定の再発行依頼ボタンから、公開API `/api/public/member-portal/[token]/reissue-request` を呼び出せることを検証
 
 ## 6. 補足
 

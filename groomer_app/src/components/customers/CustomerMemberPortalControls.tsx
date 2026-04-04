@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 
 type CustomerMemberPortalControlsProps = {
@@ -39,6 +40,7 @@ export function CustomerMemberPortalControls({
   const [expiresAt, setExpiresAt] = useState(activeExpiresAt ?? '')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [pendingRequestedAt, setPendingRequestedAt] = useState<string | null>(null)
 
   async function handleIssue() {
     setLoading(true)
@@ -47,6 +49,10 @@ export function CustomerMemberPortalControls({
     try {
       const response = await fetch(`/api/customers/${customerId}/member-portal-link`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resolveReissueRequest: Boolean(pendingRequestedAt),
+        }),
       })
       const payload = (await response.json().catch(() => null)) as
         | { portalUrl?: string; expiresAt?: string; message?: string }
@@ -56,6 +62,7 @@ export function CustomerMemberPortalControls({
       }
       setPortalUrl(payload.portalUrl)
       setExpiresAt(payload.expiresAt)
+      setPendingRequestedAt(null)
       setMessage('会員証URLを発行し、クリップボードへコピーしました。')
       await navigator.clipboard.writeText(payload.portalUrl).catch(() => undefined)
     } catch (cause) {
@@ -87,6 +94,29 @@ export function CustomerMemberPortalControls({
     }
   }
 
+  useEffect(() => {
+    let cancelled = false
+    async function loadPendingRequest() {
+      try {
+        const response = await fetch(`/api/customers/${customerId}/member-portal-reissue-requests`, {
+          method: 'GET',
+        })
+        if (!response.ok) return
+        const payload = (await response.json().catch(() => null)) as
+          | { pendingRequest?: { requestedAt?: string | null } | null }
+          | null
+        if (cancelled) return
+        setPendingRequestedAt(payload?.pendingRequest?.requestedAt ?? null)
+      } catch {
+        if (cancelled) return
+      }
+    }
+    void loadPendingRequest()
+    return () => {
+      cancelled = true
+    }
+  }, [customerId])
+
   const hasActiveLink = Boolean(expiresAt)
 
   return (
@@ -95,7 +125,14 @@ export function CustomerMemberPortalControls({
         <>
           <p className="text-xs text-gray-500">会員証: {formatDateTimeJst(expiresAt)}</p>
           <p className="text-xs text-gray-500">最終アクセス: {formatDateTimeJst(lastUsedAt)}</p>
-          <p className="text-xs text-gray-500">有効期限: 発行から90日固定（アクセスで延長しない）</p>
+          <p className="text-xs text-gray-500">
+            有効期限: 対象店舗の最終来店日 + 設定TTL（来店履歴なしは発行日基準）
+          </p>
+          {pendingRequestedAt ? (
+            <p className="text-xs text-amber-700">
+              再発行リクエスト受付: {formatDateTimeJst(pendingRequestedAt)}
+            </p>
+          ) : null}
         </>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
@@ -107,7 +144,7 @@ export function CustomerMemberPortalControls({
           disabled={loading}
           className="bg-amber-600 hover:bg-amber-700"
         >
-          {loading ? '発行中...' : hasActiveLink ? '再発行' : '会員証URL'}
+          {loading ? '発行中...' : pendingRequestedAt ? 'リクエスト対応で再発行' : hasActiveLink ? '再発行' : '会員証URL'}
         </Button>
         {hasActiveLink ? (
           <Button

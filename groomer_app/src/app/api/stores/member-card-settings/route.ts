@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { normalizeMemberPortalTtlDays } from '@/lib/member-portal'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
 function resolveSafeRedirectTo(value: string | null) {
@@ -35,11 +36,13 @@ export async function POST(request: Request) {
   }
 
   const memberCardRankVisible = formData.get('member_card_rank_visible')?.toString() === 'on'
+  const memberPortalTtlDays = normalizeMemberPortalTtlDays(Number(formData.get('member_portal_ttl_days') ?? 90))
 
   const { error: updateError } = await supabase
     .from('stores')
     .update({
       member_card_rank_visible: memberCardRankVisible,
+      member_portal_ttl_days: memberPortalTtlDays,
     })
     .eq('id', storeId)
 

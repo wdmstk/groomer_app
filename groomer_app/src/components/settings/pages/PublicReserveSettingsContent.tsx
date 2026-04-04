@@ -43,7 +43,7 @@ export default async function PublicReserveSettingsPage() {
         await db
           .from('stores')
           .select(
-            'public_reserve_conflict_warn_threshold_percent, public_reserve_staff_bias_warn_threshold_percent, public_reserve_slot_days, public_reserve_slot_interval_minutes, public_reserve_slot_buffer_minutes, public_reserve_business_start_hour_jst, public_reserve_business_end_hour_jst, public_reserve_min_lead_minutes, member_card_rank_visible, ltv_gold_annual_sales_threshold, ltv_silver_annual_sales_threshold, ltv_bronze_annual_sales_threshold, ltv_gold_visit_count_threshold, ltv_silver_visit_count_threshold, ltv_bronze_visit_count_threshold'
+            'public_reserve_conflict_warn_threshold_percent, public_reserve_staff_bias_warn_threshold_percent, public_reserve_slot_days, public_reserve_slot_interval_minutes, public_reserve_slot_buffer_minutes, public_reserve_business_start_hour_jst, public_reserve_business_end_hour_jst, public_reserve_min_lead_minutes, member_card_rank_visible, member_portal_ttl_days, ltv_gold_annual_sales_threshold, ltv_silver_annual_sales_threshold, ltv_bronze_annual_sales_threshold, ltv_gold_visit_count_threshold, ltv_silver_visit_count_threshold, ltv_bronze_visit_count_threshold'
           )
           .eq('id', storeId)
           .maybeSingle()
@@ -85,6 +85,10 @@ export default async function PublicReserveSettingsPage() {
   const publicReserveMinLeadMinutes =
     Number(storeSettings?.public_reserve_min_lead_minutes ?? 60) || 60
   const memberCardRankVisible = storeSettings?.member_card_rank_visible !== false
+  const memberPortalTtlDays = (() => {
+    const raw = Number(storeSettings?.member_portal_ttl_days ?? 90)
+    return raw === 30 || raw === 180 ? raw : 90
+  })()
   const ltvGoldAnnualSalesThreshold = Number(storeSettings?.ltv_gold_annual_sales_threshold ?? 120000) || 120000
   const ltvSilverAnnualSalesThreshold =
     Number(storeSettings?.ltv_silver_annual_sales_threshold ?? 60000) || 60000
@@ -313,7 +317,7 @@ export default async function PublicReserveSettingsPage() {
       <details className="rounded border border-gray-200 bg-white p-3" open>
         <summary className="cursor-pointer text-sm font-semibold text-gray-900">会員証表示設定</summary>
         <div className="mt-3">
-          <p className="mb-3 text-xs text-gray-500">会員証にランク表示を出すか、店舗ごとに切り替えます。</p>
+          <p className="mb-3 text-xs text-gray-500">会員証の表示と有効期限ルールを店舗ごとに設定します。</p>
           <form action="/api/stores/member-card-settings" method="post" className="space-y-3">
             <label className="inline-flex items-center gap-2 text-sm text-gray-700">
               <input
@@ -324,6 +328,22 @@ export default async function PublicReserveSettingsPage() {
               />
               会員証にランクを表示する
             </label>
+            <label className="block text-sm text-gray-700">
+              会員証TTL（日）
+              <select
+                name="member_portal_ttl_days"
+                defaultValue={memberPortalTtlDays}
+                disabled={!canManage}
+                className="mt-1 w-full rounded border p-2 text-sm"
+              >
+                <option value={30}>30日</option>
+                <option value={90}>90日</option>
+                <option value={180}>180日</option>
+              </select>
+            </label>
+            <p className="text-xs text-gray-500">
+              失効判定は「対象店舗の最終来店日 + TTL」（来店履歴がない場合は発行日 + TTL）です。
+            </p>
             <div>
               <input type="hidden" name="redirect_to" value="/settings/public-reserve" />
               <button

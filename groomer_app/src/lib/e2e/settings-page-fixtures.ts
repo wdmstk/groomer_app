@@ -42,6 +42,7 @@ export const settingsPageFixtures = {
     public_reserve_business_end_hour_jst: 19,
     public_reserve_min_lead_minutes: 120,
     member_card_rank_visible: true,
+    member_portal_ttl_days: 90,
     ltv_gold_annual_sales_threshold: 120000,
     ltv_silver_annual_sales_threshold: 60000,
     ltv_bronze_annual_sales_threshold: 30000,

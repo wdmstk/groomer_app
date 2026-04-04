@@ -3621,6 +3621,7 @@ export type Database = {
           ltv_silver_annual_sales_threshold: number
           ltv_silver_visit_count_threshold: number
           member_card_rank_visible: boolean
+          member_portal_ttl_days: number
           name: string
           public_reserve_business_end_hour_jst: number
           public_reserve_business_start_hour_jst: number
@@ -3645,6 +3646,7 @@ export type Database = {
           ltv_silver_annual_sales_threshold?: number
           ltv_silver_visit_count_threshold?: number
           member_card_rank_visible?: boolean
+          member_portal_ttl_days?: number
           name: string
           public_reserve_business_end_hour_jst?: number
           public_reserve_business_start_hour_jst?: number
@@ -3669,6 +3671,7 @@ export type Database = {
           ltv_silver_annual_sales_threshold?: number
           ltv_silver_visit_count_threshold?: number
           member_card_rank_visible?: boolean
+          member_portal_ttl_days?: number
           name?: string
           public_reserve_business_end_hour_jst?: number
           public_reserve_business_start_hour_jst?: number
