@@ -27,39 +27,55 @@ export async function GET(_request: Request, { params }: RouteParams) {
     .maybeSingle()
   if (error) return NextResponse.json({ message: error.message }, { status: 500, headers: noStoreHeaders() })
   if (!document) return NextResponse.json({ message: 'document not found.' }, { status: 404, headers: noStoreHeaders() })
+  const consentDocument = document as {
+    id: string
+    store_id: string
+    status: string
+    token_expires_at: string | null
+    template_version_id: string
+    customer_id: string
+    pet_id: string
+  }
 
-  const expired = document.token_expires_at && new Date(document.token_expires_at).getTime() < Date.now()
+  const expired = consentDocument.token_expires_at && new Date(consentDocument.token_expires_at).getTime() < Date.now()
   if (expired) return NextResponse.json({ message: 'token expired.' }, { status: 410, headers: noStoreHeaders() })
 
   const [{ data: version }, { data: customer }, { data: pet }] = await Promise.all([
     admin
       .from('consent_template_versions' as never)
       .select('id, title, body_html, body_text, version_no')
-      .eq('id', document.template_version_id)
+      .eq('id', consentDocument.template_version_id)
       .maybeSingle(),
     admin
       .from('customers')
       .select('id, full_name, address, phone_number')
-      .eq('id', document.customer_id)
+      .eq('id', consentDocument.customer_id)
       .maybeSingle(),
     admin
       .from('pets')
       .select('id, name, breed, gender, date_of_birth')
-      .eq('id', document.pet_id)
+      .eq('id', consentDocument.pet_id)
       .maybeSingle(),
   ])
 
   const { data: store } = await admin
     .from('stores')
     .select('id, name')
-    .eq('id', document.store_id)
+    .eq('id', consentDocument.store_id)
     .maybeSingle()
 
+  const templateVersion = version as {
+    id: string
+    title: string | null
+    body_html: string | null
+    body_text: string | null
+    version_no: number | null
+  } | null
   const renderedVersion =
-    version && typeof version === 'object'
+    templateVersion
       ? {
-          ...version,
-          body_html: renderConsentTemplateHtml(String(version.body_html ?? ''), {
+          ...templateVersion,
+          body_html: renderConsentTemplateHtml(String(templateVersion.body_html ?? ''), {
             store_name: String(store?.name ?? ''),
             customer_name: String(customer?.full_name ?? 'ー'),
             customer_address: String(customer?.address ?? 'ー'),
@@ -75,7 +91,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
             sns_usage_preference: snsUsagePreference,
             consent_date: formatConsentDateJst(),
           }),
-          body_text: renderConsentTemplateText(String(version.body_text ?? ''), {
+          body_text: renderConsentTemplateText(String(templateVersion.body_text ?? ''), {
             store_name: String(store?.name ?? ''),
             customer_name: String(customer?.full_name ?? 'ー'),
             customer_address: String(customer?.address ?? 'ー'),
@@ -97,9 +113,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
   return NextResponse.json({
     ok: true,
     document: {
-      id: document.id,
-      status: document.status,
-      expires_at: document.token_expires_at,
+      id: consentDocument.id,
+      status: consentDocument.status,
+      expires_at: consentDocument.token_expires_at,
     },
     template_version: renderedVersion,
     customer: customer ?? null,

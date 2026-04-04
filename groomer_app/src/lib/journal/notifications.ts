@@ -1,13 +1,11 @@
-import { createStoreScopedClient } from '@/lib/supabase/store'
 import {
   enqueueJournalLineNotificationCore,
   type JournalNotificationEnqueueResult,
+  type NotificationSupabaseClient,
 } from '@/lib/journal/notifications-core'
 
-type StoreScopedSupabase = Awaited<ReturnType<typeof createStoreScopedClient>>['supabase']
-
 export async function enqueueJournalLineNotification(params: {
-  supabase: StoreScopedSupabase
+  supabase: NotificationSupabaseClient
   storeId: string
   entryId: string
   customerId: string

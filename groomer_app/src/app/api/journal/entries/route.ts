@@ -236,7 +236,7 @@ export async function POST(request: Request) {
   let notificationStatus = 'not_requested'
   if (publish) {
     const queued = await enqueueJournalLineNotification({
-      supabase: guard.supabase,
+      supabase: guard.supabase as never,
       storeId: guard.storeId,
       entryId: created.id,
       customerId,

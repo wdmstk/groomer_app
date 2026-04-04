@@ -26,6 +26,13 @@ export async function POST(request: Request) {
   if (!name) return NextResponse.json({ message: 'name is required.' }, { status: 400 })
 
   const { supabase, storeId } = await createStoreScopedClient()
+  const consentAuditSupabase = supabase as unknown as {
+    from: (
+      table: string
+    ) => {
+      insert: (values: unknown) => Promise<{ error: { message: string } | null }>
+    }
+  }
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -45,16 +52,23 @@ export async function POST(request: Request) {
     .single()
 
   if (error) return NextResponse.json({ message: error.message }, { status: 500 })
+  const createdTemplate = data as {
+    id: string
+    name: string
+    category: string
+    status: string
+    created_at: string
+  }
 
   await insertConsentAuditLogBestEffort({
-    supabase,
+    supabase: consentAuditSupabase,
     storeId,
     entityType: 'template',
-    entityId: data.id,
+    entityId: createdTemplate.id,
     action: 'created',
     actorUserId: user?.id ?? null,
-    after: data,
+    after: createdTemplate,
   })
 
-  return NextResponse.json({ ok: true, template: data }, { status: 201 })
+  return NextResponse.json({ ok: true, template: createdTemplate }, { status: 201 })
 }

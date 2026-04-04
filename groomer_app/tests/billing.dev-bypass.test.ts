@@ -4,15 +4,14 @@ import { isDevBillingBypassEnabled } from '../src/lib/billing/dev-bypass.ts'
 
 test('isDevBillingBypassEnabled returns false in production', () => {
   const before = process.env.NODE_ENV
-  process.env.NODE_ENV = 'production'
+  ;(process.env as Record<string, string | undefined>).NODE_ENV = 'production'
   assert.equal(isDevBillingBypassEnabled(), false)
-  process.env.NODE_ENV = before
+  ;(process.env as Record<string, string | undefined>).NODE_ENV = before
 })
 
 test('isDevBillingBypassEnabled returns true outside production', () => {
   const before = process.env.NODE_ENV
-  process.env.NODE_ENV = 'development'
+  ;(process.env as Record<string, string | undefined>).NODE_ENV = 'development'
   assert.equal(isDevBillingBypassEnabled(), true)
-  process.env.NODE_ENV = before
+  ;(process.env as Record<string, string | undefined>).NODE_ENV = before
 })
-

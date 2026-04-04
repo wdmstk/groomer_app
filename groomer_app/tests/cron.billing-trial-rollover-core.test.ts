@@ -4,13 +4,7 @@ import { resolveTrialRolloverBillingOptions } from '../src/lib/cron/services/bil
 
 test('resolveTrialRolloverBillingOptions uses effective values first', () => {
   const options = resolveTrialRolloverBillingOptions({
-    store_id: 's1',
-    trial_started_at: '2026-03-01',
-    trial_days: 30,
-    preferred_provider: 'stripe',
     plan_code: 'standard',
-    billing_cycle: 'monthly',
-    amount_jpy: 0,
     ai_plan_code_requested: 'assist',
     ai_plan_code_effective: 'pro_plus',
     ai_plan_code: 'none',
@@ -31,13 +25,7 @@ test('resolveTrialRolloverBillingOptions uses effective values first', () => {
 
 test('resolveTrialRolloverBillingOptions falls back to requested/legacy values', () => {
   const options = resolveTrialRolloverBillingOptions({
-    store_id: 's2',
-    trial_started_at: '2026-03-01',
-    trial_days: 30,
-    preferred_provider: 'komoju',
     plan_code: 'pro',
-    billing_cycle: 'yearly',
-    amount_jpy: 0,
     ai_plan_code_requested: 'pro',
     ai_plan_code_effective: null,
     ai_plan_code: 'assist',
@@ -58,13 +46,7 @@ test('resolveTrialRolloverBillingOptions falls back to requested/legacy values',
 
 test('resolveTrialRolloverBillingOptions disables all options on light plan', () => {
   const options = resolveTrialRolloverBillingOptions({
-    store_id: 's3',
-    trial_started_at: '2026-03-01',
-    trial_days: 30,
-    preferred_provider: 'stripe',
     plan_code: 'light',
-    billing_cycle: 'monthly',
-    amount_jpy: 0,
     ai_plan_code_requested: 'pro_plus',
     ai_plan_code_effective: 'pro_plus',
     ai_plan_code: 'pro_plus',

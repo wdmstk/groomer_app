@@ -23,6 +23,13 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   const { supabase, storeId } = await createStoreScopedClient()
+  const consentAuditSupabase = supabase as unknown as {
+    from: (
+      table: string
+    ) => {
+      insert: (values: unknown) => Promise<{ error: { message: string } | null }>
+    }
+  }
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -35,6 +42,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     .maybeSingle()
   if (templateError) return NextResponse.json({ message: templateError.message }, { status: 500 })
   if (!template) return NextResponse.json({ message: 'template not found.' }, { status: 404 })
+  const currentTemplate = template as {
+    id: string
+    name: string
+    status: string | null
+  }
 
   const { data: latest, error: latestError } = await supabase
     .from('consent_template_versions' as never)
@@ -46,7 +58,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     .maybeSingle()
   if (latestError) return NextResponse.json({ message: latestError.message }, { status: 500 })
 
-  const versionNo = Number(latest?.version_no ?? 0) + 1
+  const latestVersionNo =
+    latest && typeof (latest as { version_no?: unknown }).version_no === 'number'
+      ? (latest as { version_no: number }).version_no
+      : 0
+  const versionNo = latestVersionNo + 1
   const documentHash = crypto.createHash('sha256').update(bodyHtml).digest('hex')
   const nowIso = new Date().toISOString()
 
@@ -70,15 +86,23 @@ export async function POST(request: Request, { params }: RouteParams) {
   if (versionError || !version) {
     return NextResponse.json({ message: versionError?.message ?? 'failed to create version.' }, { status: 500 })
   }
+  const createdVersion = version as {
+    id: string
+    template_id: string
+    version_no: number
+    title: string
+    document_hash: string
+    published_at: string | null
+  }
 
   await insertConsentAuditLogBestEffort({
-    supabase,
+    supabase: consentAuditSupabase,
     storeId,
     entityType: 'template_version',
-    entityId: version.id,
+    entityId: createdVersion.id,
     action: publish ? 'created_and_published' : 'created',
     actorUserId: user?.id ?? null,
-    after: version,
+    after: createdVersion,
     payload: {
       template_id: templateId,
       publish,
@@ -89,7 +113,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     const { error: updateTemplateError } = await supabase
       .from('consent_templates' as never)
       .update({
-        current_version_id: version.id,
+        current_version_id: createdVersion.id,
         status: 'published',
         updated_by_user_id: user?.id ?? null,
         updated_at: nowIso,
@@ -99,24 +123,24 @@ export async function POST(request: Request, { params }: RouteParams) {
     if (updateTemplateError) return NextResponse.json({ message: updateTemplateError.message }, { status: 500 })
 
     await insertConsentAuditLogBestEffort({
-      supabase,
+      supabase: consentAuditSupabase,
       storeId,
       entityType: 'template',
       entityId: templateId,
       action: 'published',
       actorUserId: user?.id ?? null,
-      before: template,
+      before: currentTemplate,
       after: {
-        ...template,
-        current_version_id: version.id,
+        ...currentTemplate,
+        current_version_id: createdVersion.id,
         status: 'published',
       },
       payload: {
-        current_version_id: version.id,
-        version_no: version.version_no,
+        current_version_id: createdVersion.id,
+        version_no: createdVersion.version_no,
       },
     })
   }
 
-  return NextResponse.json({ ok: true, version }, { status: 201 })
+  return NextResponse.json({ ok: true, version: createdVersion }, { status: 201 })
 }

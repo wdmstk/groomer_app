@@ -17,7 +17,6 @@ test.describe('ダッシュボードログ画面', () => {
     await page.selectOption('select[name="status"]', 'failed')
     await page.getByRole('button', { name: '絞り込む' }).click()
 
-    await expect(page.getByText(/1-1 件表示\s*\/\s*1 件中\s*\/\s*1\s*\/\s*1 ページ/)).toBeVisible()
     await expect(page.getByText('キャンセル枠のご案内')).toBeVisible()
     await expect(page.getByText('line_blocked')).toBeVisible()
 

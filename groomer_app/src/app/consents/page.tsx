@@ -26,6 +26,7 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: consentsPageFixtures.storeId }
     : await createStoreScopedClient()
+  const db = supabase as NonNullable<typeof supabase>
   const resolvedSearchParams = await searchParams
   const appointmentId = resolvedSearchParams?.appointment_id
   const customerId = resolvedSearchParams?.customer_id
@@ -57,25 +58,25 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
         { data: null },
       ]
     : await Promise.all([
-        supabase
+        db
           .from('consent_templates' as never)
           .select(
             'id, name, category, status, current_version_id, current_version:consent_template_versions!consent_templates_current_version_id_fkey(id, title, body_html, body_text, version_no)'
           )
           .eq('store_id', storeId)
           .order('updated_at', { ascending: false }),
-        supabase
+        db
           .from('customers')
           .select('id, full_name, address, phone_number')
           .eq('store_id', storeId)
           .order('created_at', { ascending: false }),
-        supabase
+        db
           .from('pets')
           .select('id, customer_id, name, breed, gender, date_of_birth')
           .eq('store_id', storeId)
           .order('created_at', { ascending: false }),
         (() => {
-          let query = supabase
+          let query = db
             .from('consent_documents' as never)
             .select('id, customer_id, pet_id, appointment_id, status, signed_at, created_at, pdf_path')
             .eq('store_id', storeId)
@@ -84,9 +85,9 @@ export default async function ConsentsPage({ searchParams }: PageProps) {
           if (petId) query = query.eq('pet_id', petId)
             return query
           })(),
-        supabase.from('stores').select('name').eq('id', storeId).maybeSingle(),
+        db.from('stores').select('name').eq('id', storeId).maybeSingle(),
         appointmentId
-          ? supabase
+          ? db
               .from('appointments')
               .select('id, customer_id, pet_id, menu')
               .eq('store_id', storeId)

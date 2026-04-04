@@ -68,7 +68,7 @@ export default async function JournalPage() {
   const entryIds = (entries as JournalEntryRow[]).map((entry) => entry.id)
   const { data: entryPets } =
     isPlaywrightE2E
-      ? { data: journalPageFixtures.entryPets as EntryPetRow[] }
+      ? { data: journalPageFixtures.entryPets as unknown as EntryPetRow[] }
       : entryIds.length > 0
       ? await db
           .from('journal_entry_pets')

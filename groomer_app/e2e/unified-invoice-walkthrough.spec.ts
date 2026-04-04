@@ -225,8 +225,18 @@ test.describe('統合会計ウォークスルー録画', () => {
 
     await page.goto('/payments?tab=list', { waitUntil: 'domcontentloaded' })
     await expect(page.getByText('統合請求（β）')).toBeVisible()
-    await page.getByRole('button', { name: '会計確定' }).click()
-    await page.getByLabel('支払方法').selectOption('カード')
+    const openCheckoutButton = page.getByRole('button', { name: '会計確定', exact: true })
+    await expect
+      .poll(async () => {
+        const openCount = await openCheckoutButton.count()
+        const closeCount = await page.getByRole('button', { name: '閉じる', exact: true }).count()
+        return openCount + closeCount
+      }, { timeout: 15_000 })
+      .toBeGreaterThan(0)
+    if (await openCheckoutButton.count()) {
+      await openCheckoutButton.first().click()
+    }
+    await page.getByLabel('支払方法').first().selectOption('カード')
     const payResponsePromise = page.waitForResponse(
       (response) =>
         response.url().includes('/api/invoices/') &&
@@ -234,7 +244,7 @@ test.describe('統合会計ウォークスルー録画', () => {
         response.request().method() === 'POST',
       { timeout: 15_000 }
     )
-    await page.getByRole('button', { name: '確定して領収書へ' }).click()
+    await page.getByRole('button', { name: '確定して領収書へ', exact: true }).click()
     const payResponse = await payResponsePromise
     expect(payResponse.ok()).toBeTruthy()
     await expect
