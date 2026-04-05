@@ -159,6 +159,7 @@ export function ConsentManagementPanel({
   const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null)
   const [signUrlByDocumentId, setSignUrlByDocumentId] = useState<Record<string, string>>({})
   const activeTab = resolveTab(initialTab, mode)
+  const showStoreAdminCombined = mode === 'store-admin'
 
   const filteredPets = useMemo(() => {
     if (!docCustomerId) return pets
@@ -406,10 +407,7 @@ export function ConsentManagementPanel({
 
   const visibleTabs: Array<{ id: TabId; label: string }> =
     mode === 'store-admin'
-      ? [
-          { id: 'create-template', label: 'テンプレ作成' },
-          { id: 'publish-version', label: '同意文を有効化' },
-        ]
+      ? []
       : mode === 'customer-ops'
         ? [
             { id: 'create-document', label: '同意書を作成・署名依頼' },
@@ -438,21 +436,23 @@ export function ConsentManagementPanel({
       {message ? <p data-testid="consent-message" className="rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p> : null}
       {error ? <p data-testid="consent-error" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
 
-      <div className="flex items-center gap-4 border-b">
-        {visibleTabs.map((tab) => (
-          <Link
-            key={tab.id}
-            href={buildTabHref(tab.id)}
-            className={`pb-2 text-sm font-semibold ${
-              activeTab === tab.id ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'
-            }`}
-          >
-            {tab.label}
-          </Link>
-        ))}
-      </div>
+      {visibleTabs.length > 0 ? (
+        <div className="flex items-center gap-4 border-b">
+          {visibleTabs.map((tab) => (
+            <Link
+              key={tab.id}
+              href={buildTabHref(tab.id)}
+              className={`pb-2 text-sm font-semibold ${
+                activeTab === tab.id ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'
+              }`}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+      ) : null}
 
-      {activeTab === 'create-template' ? (
+      {showStoreAdminCombined || activeTab === 'create-template' ? (
         <section className="rounded border bg-white p-4">
           <h2 className="text-lg font-semibold text-gray-900">テンプレートを作成</h2>
           <p className="mt-1 text-sm text-gray-600">テンプレート名は「何の同意書か」を識別するための名前です（例: 施術同意書 標準）。</p>
@@ -470,7 +470,7 @@ export function ConsentManagementPanel({
         </section>
       ) : null}
 
-      {activeTab === 'publish-version' ? (
+      {showStoreAdminCombined || activeTab === 'publish-version' ? (
         <section className="rounded border bg-white p-4">
           <h2 className="text-lg font-semibold text-gray-900">同意文を有効化</h2>
           <p className="mt-1 text-sm text-gray-600">文面を変えるたびに新しい版として有効化します。</p>

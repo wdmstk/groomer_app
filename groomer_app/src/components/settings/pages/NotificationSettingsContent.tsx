@@ -145,20 +145,13 @@ export default async function NotificationSettingsPage({ searchParams }: PagePro
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">通知設定</h1>
           <p className="mt-1 text-sm text-gray-600">
-            リマインド送信条件と通知テンプレートを店舗単位で管理します。
+            予約リマインドや再来店フォローの送信ルールと文面を設定します。
           </p>
         </div>
         <Link href="/dashboard?tab=reoffers" className="text-sm font-semibold text-blue-700">
           ダッシュボードへ戻る
         </Link>
       </div>
-
-      <Card className="border border-slate-200 bg-slate-50">
-        <p className="text-sm font-semibold text-gray-900">権限</p>
-        <p className="mt-1 text-xs text-gray-600">
-          現在のロール: {resolvedManageState.currentRole} / 変更権限: {resolvedManageState.label}
-        </p>
-      </Card>
       <Card className="border border-slate-200 bg-slate-50">
         <p className="text-sm font-semibold text-gray-900">通知強化オプション契約</p>
         <p className="mt-1 text-xs text-gray-600">

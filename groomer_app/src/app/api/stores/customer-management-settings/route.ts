@@ -52,6 +52,9 @@ export async function POST(request: Request) {
   const journalVisibilityMode = resolveJournalVisibilityMode(
     formData.get('journal_visibility_mode')?.toString() ?? null
   )
+  const calendarExpandOutOfRangeAppointments = formData
+    .getAll('calendar_expand_out_of_range_appointments')
+    .some((value) => value?.toString() === 'true')
 
   const { error: upsertError } = await supabase
     .from('store_customer_management_settings' as never)
@@ -60,6 +63,7 @@ export async function POST(request: Request) {
         store_id: storeId,
         medical_record_list_limit: medicalRecordListLimit,
         journal_visibility_mode: journalVisibilityMode,
+        calendar_expand_out_of_range_appointments: calendarExpandOutOfRangeAppointments,
       } as never,
       { onConflict: 'store_id' }
     )
