@@ -29,6 +29,9 @@ type CalendarAppointment = {
 type AppointmentCalendarProps = {
   appointments: CalendarAppointment[]
   initialDelayAlert?: DisplayDelayAlert | null
+  businessStartHourJst?: number
+  businessEndHourJst?: number
+  expandTimelineForOutOfRangeAppointments?: boolean
 }
 
 type CalendarMode = 'month' | 'week' | 'day'
@@ -36,7 +39,8 @@ type CalendarMode = 'month' | 'week' | 'day'
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000
 const weekLabels = ['月', '火', '水', '木', '金', '土', '日']
 const HOUR_WIDTH = 72
-const STAFF_ROW_HEIGHT = 72
+const STAFF_ROW_HEIGHT = 40
+const APPOINTMENT_CHIP_HEIGHT = 36
 const staffColorPalette = [
   { light: 'bg-sky-50 text-sky-800', block: 'border-sky-200 bg-sky-50 text-sky-900' },
   { light: 'bg-emerald-50 text-emerald-800', block: 'border-emerald-200 bg-emerald-50 text-emerald-900' },
@@ -54,13 +58,6 @@ type NormalizedAppointment = CalendarAppointment & {
 type LanePlacedAppointment = {
   item: NormalizedAppointment
   lane: number
-}
-
-type StaffLanePlacedAppointment = {
-  item: NormalizedAppointment
-  staffIndex: number
-  lane: number
-  lanesInStaff: number
 }
 
 type DraggedPayload = {
@@ -131,13 +128,27 @@ function getMinutesFromJstDayStart(date: Date) {
   return p.hour * 60 + p.minute
 }
 
-function getTimelinePlacement(item: NormalizedAppointment) {
+function getAppointmentMinuteRange(item: NormalizedAppointment) {
   const startMin = getMinutesFromJstDayStart(item.start)
   const endMinRaw = getMinutesFromJstDayStart(item.end)
   const endMin = endMinRaw > startMin ? endMinRaw : startMin + 30
   const clampedStart = Math.max(0, Math.min(startMin, 24 * 60))
   const clampedEnd = Math.max(0, Math.min(endMin, 24 * 60))
-  const left = (clampedStart / 60) * HOUR_WIDTH
+  return { startMin: clampedStart, endMin: clampedEnd }
+}
+
+function getTimelinePlacement(
+  item: NormalizedAppointment,
+  timelineStartMin: number,
+  timelineEndMin: number
+) {
+  const { startMin, endMin } = getAppointmentMinuteRange(item)
+  if (endMin <= timelineStartMin || startMin >= timelineEndMin) {
+    return null
+  }
+  const clampedStart = Math.max(timelineStartMin, Math.min(startMin, timelineEndMin))
+  const clampedEnd = Math.max(timelineStartMin, Math.min(endMin, timelineEndMin))
+  const left = ((clampedStart - timelineStartMin) / 60) * HOUR_WIDTH
   const width = Math.max(((clampedEnd - clampedStart) / 60) * HOUR_WIDTH, 56)
   return { startMin: clampedStart, endMin: clampedEnd, left, width }
 }
@@ -148,7 +159,7 @@ function assignLanes(dayAppointments: NormalizedAppointment[]) {
   const placed: LanePlacedAppointment[] = []
 
   sorted.forEach((item) => {
-    const { startMin, endMin } = getTimelinePlacement(item)
+    const { startMin, endMin } = getAppointmentMinuteRange(item)
     let laneIndex = laneEnds.findIndex((laneEnd) => laneEnd <= startMin)
     if (laneIndex === -1) {
       laneIndex = laneEnds.length
@@ -165,42 +176,9 @@ function assignLanes(dayAppointments: NormalizedAppointment[]) {
   }
 }
 
-function assignStaffLanes(dayAppointments: NormalizedAppointment[], staffNames: string[]) {
-  const normalizedStaffNames = staffNames.length > 0 ? staffNames : ['スタッフ未設定']
-  const staffIndexMap = new Map<string, number>()
-  normalizedStaffNames.forEach((name, index) => {
-    staffIndexMap.set(name, index)
-  })
-
-  const grouped: NormalizedAppointment[][] = normalizedStaffNames.map(() => [])
-  dayAppointments.forEach((item) => {
-    const staffIndex = staffIndexMap.get(item.staffName) ?? 0
-    grouped[staffIndex].push(item)
-  })
-
-  const lanesCountByStaff = normalizedStaffNames.map(() => 1)
-  const placed: Array<{ item: NormalizedAppointment; staffIndex: number; lane: number }> = []
-
-  grouped.forEach((items, staffIndex) => {
-    const laneData = assignLanes(items)
-    lanesCountByStaff[staffIndex] = Math.max(1, laneData.totalLanes)
-    laneData.placed.forEach(({ item, lane }) => {
-      placed.push({ item, staffIndex, lane })
-    })
-  })
-
-  return {
-    totalStaff: normalizedStaffNames.length,
-    lanesCountByStaff,
-    placed: placed.map((row) => ({
-      ...row,
-      lanesInStaff: lanesCountByStaff[row.staffIndex] ?? 1,
-    })) as StaffLanePlacedAppointment[],
-  }
-}
-
-function roundTo15(minute: number) {
-  return Math.max(0, Math.min(24 * 60 - 15, Math.round(minute / 15) * 15))
+function roundTo15(minute: number, minMinute: number, maxMinute: number) {
+  const rounded = Math.round(minute / 15) * 15
+  return Math.max(minMinute, Math.min(maxMinute - 15, rounded))
 }
 
 function sendMoveMetric(elapsedMs: number, succeeded: boolean) {
@@ -228,7 +206,13 @@ function sendMoveMetric(elapsedMs: number, succeeded: boolean) {
   })
 }
 
-export function AppointmentCalendar({ appointments, initialDelayAlert = null }: AppointmentCalendarProps) {
+export function AppointmentCalendar({
+  appointments,
+  initialDelayAlert = null,
+  businessStartHourJst = 9,
+  businessEndHourJst = 19,
+  expandTimelineForOutOfRangeAppointments = false,
+}: AppointmentCalendarProps) {
   const router = useRouter()
   const ignoreClickUntilRef = useRef(0)
   const [calendarAppointments, setCalendarAppointments] = useState(appointments)
@@ -271,7 +255,6 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
     })
     return map
   }, [normalized])
-  const staffNames = useMemo(() => Array.from(staffColorMap.keys()), [staffColorMap])
   const staffEntries = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>()
     normalized.forEach((item) => {
@@ -341,7 +324,60 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
   }, [cursor])
 
   const dayKey = toJstDateKey(startOfJstDay(cursor))
-  const timelineWidth = 24 * HOUR_WIDTH
+  const timelineSourceAppointments = useMemo(() => {
+    if (mode === 'day') {
+      return appointmentsByDay.get(dayKey) ?? []
+    }
+    if (mode === 'week') {
+      return weekDays.flatMap((date) => appointmentsByDay.get(toJstDateKey(date)) ?? [])
+    }
+    return normalized
+  }, [appointmentsByDay, dayKey, mode, normalized, weekDays])
+
+  const timelineRange = useMemo(() => {
+    const startHour = Math.max(0, Math.min(23, Math.floor(businessStartHourJst) - 1))
+    const endHour = Math.max(startHour + 1, Math.min(24, Math.ceil(businessEndHourJst) + 1))
+    const baseStartMin = startHour * 60
+    const baseEndMin = endHour * 60
+    if (!expandTimelineForOutOfRangeAppointments || timelineSourceAppointments.length === 0) {
+      return { startMin: baseStartMin, endMin: baseEndMin }
+    }
+
+    let minAppointmentStart = 24 * 60
+    let maxAppointmentEnd = 0
+    timelineSourceAppointments.forEach((item) => {
+      const range = getAppointmentMinuteRange(item)
+      minAppointmentStart = Math.min(minAppointmentStart, range.startMin)
+      maxAppointmentEnd = Math.max(maxAppointmentEnd, range.endMin)
+    })
+
+    const expandedStart = Math.max(0, Math.min(baseStartMin, Math.floor(minAppointmentStart / 60) * 60))
+    const expandedEnd = Math.min(24 * 60, Math.max(baseEndMin, Math.ceil(maxAppointmentEnd / 60) * 60))
+    return {
+      startMin: expandedStart,
+      endMin: Math.max(expandedStart + 60, expandedEnd),
+    }
+  }, [
+    businessEndHourJst,
+    businessStartHourJst,
+    expandTimelineForOutOfRangeAppointments,
+    timelineSourceAppointments,
+  ])
+  const timelineStartMin = timelineRange.startMin
+  const timelineEndMin = timelineRange.endMin
+  const timelineStartHour = Math.floor(timelineStartMin / 60)
+  const timelineEndHour = Math.ceil(timelineEndMin / 60)
+  const timelineLabel = `${String(timelineStartHour).padStart(2, '0')}:00-${String(
+    timelineEndHour % 24
+  ).padStart(2, '0')}:00`
+  const businessHourLabel = `${String(Math.floor(businessStartHourJst)).padStart(2, '0')}:00-${String(
+    Math.ceil(businessEndHourJst) % 24
+  ).padStart(2, '0')}:00`
+  const timelineHours = Array.from(
+    { length: timelineEndHour - timelineStartHour + 1 },
+    (_, index) => timelineStartHour + index
+  )
+  const timelineWidth = (timelineEndHour - timelineStartHour) * HOUR_WIDTH
 
   const handleDragStart = (event: DragEvent<HTMLElement>, item: NormalizedAppointment) => {
     const durationMin = Math.max(
@@ -385,7 +421,9 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
   const handleDropOnTimeline = async (
     event: DragEvent<HTMLDivElement>,
     dayDate: Date,
-    staffCount: number
+    staffCount: number,
+    rangeStartMin: number,
+    rangeEndMin: number
   ) => {
     event.preventDefault()
     const dropTimeStamp = event.timeStamp
@@ -396,17 +434,16 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
     const rect = container.getBoundingClientRect()
     const relativeX = event.clientX - rect.left
     const minuteRatio = relativeX / rect.width
-    const startMinute = roundTo15(minuteRatio * 24 * 60)
+    const startMinute = roundTo15(
+      rangeStartMin + minuteRatio * (rangeEndMin - rangeStartMin),
+      rangeStartMin,
+      rangeEndMin
+    )
     const dayStart = startOfJstDay(dayDate).getTime()
     const startDate = new Date(dayStart + startMinute * 60 * 1000)
     const endDate = new Date(startDate.getTime() + payload.durationMin * 60 * 1000)
 
-    const relativeY = Math.max(0, Math.min(event.clientY - rect.top, rect.height - 1))
-    const staffIndex = Math.min(
-      Math.max(0, Math.floor((relativeY / rect.height) * staffCount)),
-      staffCount - 1
-    )
-    const staffId = staffEntries[staffIndex]?.id || payload.fallbackStaffId
+    const staffId = staffCount <= 1 ? payload.fallbackStaffId : staffEntries[0]?.id || payload.fallbackStaffId
 
     const response = await fetch(`/api/appointments/${payload.appointmentId}/move`, {
       method: 'POST',
@@ -587,17 +624,20 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
 
       {mode === 'week' && (
         <div className="overflow-x-auto">
-          <div className="min-w-[1900px] rounded border bg-white">
+          <div
+            className="rounded border bg-white"
+            style={{ width: `${timelineWidth + 88}px` }}
+          >
             <div className="grid grid-cols-[88px_minmax(0,1fr)] border-b bg-gray-50 text-xs font-semibold text-gray-600">
               <div className="border-r px-2 py-2">日付</div>
               <div className="relative" style={{ width: `${timelineWidth}px`, height: '36px' }}>
-                {Array.from({ length: 24 }, (_, hour) => (
+                {timelineHours.map((hour) => (
                   <div
                     key={`week-header-hour-${hour}`}
                     className="absolute top-0 text-[11px] text-gray-500"
-                    style={{ left: `${hour * HOUR_WIDTH + 4}px` }}
+                    style={{ left: `${(hour - timelineStartHour) * HOUR_WIDTH + 4}px` }}
                   >
-                    {`${String(hour).padStart(2, '0')}:00`}
+                    {`${String(hour % 24).padStart(2, '0')}:00`}
                   </div>
                 ))}
               </div>
@@ -606,63 +646,48 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
             {weekDays.map((date, idx) => {
               const key = toJstDateKey(date)
               const dayAppointments = appointmentsByDay.get(key) ?? []
-              const staffLaneData = assignStaffLanes(dayAppointments, staffNames)
-              const staffSectionHeight = STAFF_ROW_HEIGHT
-              const totalHeight = Math.max(staffLaneData.totalStaff * staffSectionHeight, STAFF_ROW_HEIGHT)
+              const laneData = assignLanes(dayAppointments)
+              const laneSectionHeight = STAFF_ROW_HEIGHT
+              const totalHeight = Math.max(laneData.totalLanes * laneSectionHeight, STAFF_ROW_HEIGHT)
 
               return (
                 <div key={key} className="grid grid-cols-[88px_minmax(0,1fr)] border-b last:border-b-0">
                   <div className="border-r bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600">
-                    {weekLabels[idx]} {getJstParts(date).day}日
+                    {getJstParts(date).day}日（{weekLabels[idx]}）
                   </div>
                   <div
                     className="relative"
                     style={{ width: `${timelineWidth}px`, height: `${totalHeight}px` }}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={(event) => {
-                      void handleDropOnTimeline(event, date, staffLaneData.totalStaff)
+                      void handleDropOnTimeline(
+                        event,
+                        date,
+                        1,
+                        timelineStartMin,
+                        timelineEndMin
+                      )
                     }}
                   >
-                    {Array.from({ length: 25 }, (_, hour) => (
+                    {Array.from({ length: timelineHours.length }, (_, index) => (
                       <div
-                        key={`${key}-hour-line-${hour}`}
+                        key={`${key}-hour-line-${index}`}
                         className="absolute bottom-0 top-0 border-l border-gray-200"
-                        style={{ left: `${hour * HOUR_WIDTH}px` }}
+                        style={{ left: `${index * HOUR_WIDTH}px` }}
                       />
                     ))}
-                    {Array.from({ length: Math.max(0, staffLaneData.totalStaff - 1) }, (_, idx2) => (
-                      <div
-                        key={`${key}-staff-separator-${idx2}`}
-                        className="absolute left-0 right-0 border-t border-gray-200"
-                        style={{ top: `${(idx2 + 1) * staffSectionHeight}px` }}
-                      />
-                    ))}
-                    {staffLaneData.lanesCountByStaff.flatMap((count, staffIndex) =>
-                      Array.from({ length: Math.max(0, count - 1) }, (_, laneBoundaryIndex) => {
-                        const top =
-                          staffSectionHeight * staffIndex +
-                          ((laneBoundaryIndex + 1) / count) * staffSectionHeight
-                        return (
-                          <div
-                            key={`${key}-lane-separator-${staffIndex}-${laneBoundaryIndex}`}
-                            className="absolute left-0 right-0 border-t border-dashed border-gray-300"
-                            style={{ top: `${top}px` }}
-                          />
-                        )
-                      })
-                    )}
-
-                    {staffLaneData.placed.map(({ item, lane, staffIndex, lanesInStaff }) => {
-                      const { left, width } = getTimelinePlacement(item)
-                      const laneHeight = staffSectionHeight / lanesInStaff
-                      const top = staffSectionHeight * staffIndex + laneHeight * lane + 2
-                      const height = Math.max(laneHeight - 4, 18)
+                    {laneData.placed.map(({ item, lane }) => {
+                      const placement = getTimelinePlacement(item, timelineStartMin, timelineEndMin)
+                      if (!placement) return null
+                      const { left, width } = placement
+                      const top = laneSectionHeight * lane + 2
+                      const height = APPOINTMENT_CHIP_HEIGHT
 
                       return (
                         <Link
                           key={item.id}
                           href={`/appointments?tab=calendar&edit=${item.id}`}
-                          className={`absolute rounded border px-2 py-1 text-[11px] shadow-sm ${getItemColorClass(item, 'block')}`}
+                          className={`absolute z-10 overflow-visible rounded border px-2 py-1 text-[11px] shadow-sm hover:z-20 ${getItemColorClass(item, 'block')}`}
                           style={{
                             top: `${top}px`,
                             left: `${left}px`,
@@ -676,11 +701,11 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
                           onDragStart={(event) => handleDragStart(event, item)}
                           onDragEnd={handleDragEnd}
                         >
-                          <p className="font-semibold">
-                            {formatCalendarTimeJst(item.startTime)}-{formatCalendarTimeJst(item.endTime)}
+                          <p className="whitespace-nowrap font-semibold leading-tight">
+                            {formatCalendarTimeJst(item.startTime)}-{formatCalendarTimeJst(item.endTime)} /{' '}
+                            {item.petName} / <span className="text-blue-700">{item.staffName}</span>
                           </p>
-                          <p>{item.petName}</p>
-                          <p className="text-blue-700">{item.staffName}</p>
+                          <p className="whitespace-nowrap leading-tight">{item.menu || '施術内容未設定'}</p>
                         </Link>
                       )
                     })}
@@ -701,25 +726,28 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <div className="min-w-[1900px] rounded border bg-white">
+              <div
+                className="rounded border bg-white"
+                style={{ width: `${timelineWidth + 88}px` }}
+              >
                 <div className="grid grid-cols-[88px_minmax(0,1fr)] border-b bg-gray-50 text-xs font-semibold text-gray-600">
                   <div className="border-r px-2 py-2">日付</div>
                   <div className="relative" style={{ width: `${timelineWidth}px`, height: '36px' }}>
-                    {Array.from({ length: 24 }, (_, hour) => (
+                    {timelineHours.map((hour) => (
                       <div
                         key={`day-header-hour-${hour}`}
                         className="absolute top-0 text-[11px] text-gray-500"
-                        style={{ left: `${hour * HOUR_WIDTH + 4}px` }}
+                        style={{ left: `${(hour - timelineStartHour) * HOUR_WIDTH + 4}px` }}
                       >
-                        {`${String(hour).padStart(2, '0')}:00`}
+                        {`${String(hour % 24).padStart(2, '0')}:00`}
                       </div>
                     ))}
                   </div>
                 </div>
                 {(() => {
-                  const staffLaneData = assignStaffLanes(appointmentsByDay.get(dayKey) ?? [], staffNames)
-                  const staffSectionHeight = STAFF_ROW_HEIGHT
-                  const totalHeight = Math.max(staffLaneData.totalStaff * staffSectionHeight, STAFF_ROW_HEIGHT)
+                  const laneData = assignLanes(appointmentsByDay.get(dayKey) ?? [])
+                  const laneSectionHeight = STAFF_ROW_HEIGHT
+                  const totalHeight = Math.max(laneData.totalLanes * laneSectionHeight, STAFF_ROW_HEIGHT)
                   return (
                     <div className="grid grid-cols-[88px_minmax(0,1fr)]">
                       <div className="border-r bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600">
@@ -730,47 +758,33 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
                         style={{ width: `${timelineWidth}px`, height: `${totalHeight}px` }}
                         onDragOver={(event) => event.preventDefault()}
                         onDrop={(event) => {
-                          void handleDropOnTimeline(event, cursor, staffLaneData.totalStaff)
+                          void handleDropOnTimeline(
+                            event,
+                            cursor,
+                            1,
+                            timelineStartMin,
+                            timelineEndMin
+                          )
                         }}
                       >
-                        {Array.from({ length: 25 }, (_, hour) => (
+                        {Array.from({ length: timelineHours.length }, (_, index) => (
                           <div
-                            key={`day-line-${hour}`}
+                            key={`day-line-${index}`}
                             className="absolute bottom-0 top-0 border-l border-gray-200"
-                            style={{ left: `${hour * HOUR_WIDTH}px` }}
+                            style={{ left: `${index * HOUR_WIDTH}px` }}
                           />
                         ))}
-                        {Array.from({ length: Math.max(0, staffLaneData.totalStaff - 1) }, (_, idx) => (
-                          <div
-                            key={`day-staff-separator-${idx}`}
-                            className="absolute left-0 right-0 border-t border-gray-200"
-                            style={{ top: `${(idx + 1) * staffSectionHeight}px` }}
-                          />
-                        ))}
-                        {staffLaneData.lanesCountByStaff.flatMap((count, staffIndex) =>
-                          Array.from({ length: Math.max(0, count - 1) }, (_, laneBoundaryIndex) => {
-                            const top =
-                              staffSectionHeight * staffIndex +
-                              ((laneBoundaryIndex + 1) / count) * staffSectionHeight
-                            return (
-                              <div
-                                key={`day-lane-separator-${staffIndex}-${laneBoundaryIndex}`}
-                                className="absolute left-0 right-0 border-t border-dashed border-gray-300"
-                                style={{ top: `${top}px` }}
-                              />
-                            )
-                          })
-                        )}
-                        {staffLaneData.placed.map(({ item, lane, staffIndex, lanesInStaff }) => {
-                          const { left, width } = getTimelinePlacement(item)
-                          const laneHeight = staffSectionHeight / lanesInStaff
-                          const top = staffSectionHeight * staffIndex + laneHeight * lane + 2
-                          const height = Math.max(laneHeight - 4, 18)
+                        {laneData.placed.map(({ item, lane }) => {
+                          const placement = getTimelinePlacement(item, timelineStartMin, timelineEndMin)
+                          if (!placement) return null
+                          const { left, width } = placement
+                          const top = laneSectionHeight * lane + 2
+                          const height = APPOINTMENT_CHIP_HEIGHT
                           return (
                             <Link
                               key={item.id}
                               href={`/appointments?tab=calendar&edit=${item.id}`}
-                              className={`absolute rounded border px-2 py-1 text-[11px] shadow-sm ${getItemColorClass(item, 'block')}`}
+                              className={`absolute z-10 overflow-visible rounded border px-2 py-1 text-[11px] shadow-sm hover:z-20 ${getItemColorClass(item, 'block')}`}
                               style={{
                                 top: `${top}px`,
                                 left: `${left}px`,
@@ -784,11 +798,11 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
                               onDragStart={(event) => handleDragStart(event, item)}
                               onDragEnd={handleDragEnd}
                             >
-                              <p className="font-semibold">
-                                {formatJstTime(item.startTime)}-{formatJstTime(item.endTime)}
+                              <p className="whitespace-nowrap font-semibold leading-tight">
+                                {formatJstTime(item.startTime)}-{formatJstTime(item.endTime)} / {item.petName} /{' '}
+                                <span className="text-blue-700">{item.staffName}</span>
                               </p>
-                              <p>{item.petName}</p>
-                              <p className="text-blue-700">{item.staffName}</p>
+                              <p className="whitespace-nowrap leading-tight">{item.menu || '施術内容未設定'}</p>
                             </Link>
                           )
                         })}
@@ -803,7 +817,8 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
       )}
 
       <p className="text-xs text-gray-500">
-        時刻表示は JST です。予約を押すと編集画面へ移動します。
+        時刻表示は JST です（営業時間: {businessHourLabel} / 表示範囲: {timelineLabel}
+        ）。予約を押すと編集画面へ移動します。
       </p>
     </div>
   )

@@ -54,6 +54,7 @@ export const settingsPageFixtures = {
   customerManagementSettings: {
     medical_record_list_limit: 12,
     journal_visibility_mode: 'include_drafts',
+    calendar_expand_out_of_range_appointments: false,
   },
   storageQuota: {
     storeId: 'store-e2e-demo',

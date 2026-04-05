@@ -244,6 +244,32 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
           .order('created_at', { ascending: false })
       ).data
 
+  const calendarDisplaySettings = isPlaywrightE2E
+    ? appointmentsPageFixtures.storeSettings
+    : (() => {
+        return Promise.all([
+          db
+            .from('stores')
+            .select('public_reserve_business_start_hour_jst, public_reserve_business_end_hour_jst')
+            .eq('id', storeId)
+            .maybeSingle(),
+          db
+            .from('store_customer_management_settings' as never)
+            .select('calendar_expand_out_of_range_appointments')
+            .eq('store_id', storeId)
+            .maybeSingle(),
+        ]).then(([storeQuery, customerMgmtQuery]) => ({
+          public_reserve_business_start_hour_jst:
+            Number(storeQuery.data?.public_reserve_business_start_hour_jst ?? 9) || 9,
+          public_reserve_business_end_hour_jst:
+            Number(storeQuery.data?.public_reserve_business_end_hour_jst ?? 19) || 19,
+          calendar_expand_out_of_range_appointments:
+            (customerMgmtQuery.data as { calendar_expand_out_of_range_appointments?: boolean | null } | null)
+              ?.calendar_expand_out_of_range_appointments === true,
+        }))
+      })()
+  const resolvedCalendarDisplaySettings = await calendarDisplaySettings
+
   const editAppointment =
     !editId || isPlaywrightE2E
       ? null
@@ -778,6 +804,11 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
             <AppointmentCalendar
               appointments={calendarAppointments}
               initialDelayAlert={initialDelayAlert}
+              businessStartHourJst={resolvedCalendarDisplaySettings.public_reserve_business_start_hour_jst}
+              businessEndHourJst={resolvedCalendarDisplaySettings.public_reserve_business_end_hour_jst}
+              expandTimelineForOutOfRangeAppointments={
+                resolvedCalendarDisplaySettings.calendar_expand_out_of_range_appointments
+              }
             />
           )}
         </Card>

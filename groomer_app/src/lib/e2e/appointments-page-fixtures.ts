@@ -22,6 +22,11 @@ type AppointmentFixture = {
 
 export const appointmentsPageFixtures = {
   storeId: 'store-e2e-demo',
+  storeSettings: {
+    public_reserve_business_start_hour_jst: 9,
+    public_reserve_business_end_hour_jst: 19,
+    calendar_expand_out_of_range_appointments: false,
+  },
   appointments: [
     {
       id: 'appt-pending-001',

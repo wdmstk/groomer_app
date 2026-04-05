@@ -105,7 +105,6 @@ const storeNavSections: NavSection[] = [
       { href: '/settings', label: '店舗設定', ownerOrAdminOnly: true, matchStartsWith: true },
       { href: '/billing', label: '決済管理', ownerOnly: true, matchStartsWith: true },
       { href: '/staffs', label: 'スタッフ管理' },
-      { href: '/consents?mode=store-admin&tab=create-template', label: '電子同意書テンプレ管理' },
     ],
   },
   {
