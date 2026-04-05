@@ -18,6 +18,12 @@ test('getInitialReservationPaymentState returns authorized for card hold', () =>
   assert.equal(state.reservationPaymentPaidAt, null)
 })
 
+test('getInitialReservationPaymentState returns unpaid for prepayment', () => {
+  const state = getInitialReservationPaymentState('prepayment')
+  assert.equal(state.reservationPaymentStatus, 'unpaid')
+  assert.equal(state.reservationPaymentPaidAt, null)
+})
+
 test('getReservationPaymentBadge returns prepaid badge', () => {
   const badge = getReservationPaymentBadge({
     method: 'prepayment',

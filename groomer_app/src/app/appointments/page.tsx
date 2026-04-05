@@ -12,6 +12,10 @@ import {
   getAppointmentStatusTransitionTime,
   isAppointmentCompletedStatus,
 } from '@/lib/appointments/presentation'
+import {
+  DEFAULT_RESERVATION_PAYMENT_SETTINGS,
+  getReservationPaymentBadge,
+} from '@/lib/appointments/reservation-payment'
 import type { DisplayDelayAlert } from '@/lib/appointments/calendar-presentation'
 
 export const dynamic = 'force-dynamic'
@@ -204,7 +208,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
         await db
           .from('appointments')
           .select(
-            'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, checked_in_at, in_service_at, payment_waiting_at, completed_at, customers(full_name), pets(name), staffs(full_name)'
+            'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, checked_in_at, in_service_at, payment_waiting_at, completed_at, reservation_payment_method, reservation_payment_status, customers(full_name), pets(name), staffs(full_name)'
           )
           .eq('store_id', storeId)
           .order('start_time', { ascending: false })
@@ -247,12 +251,24 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
           await db
             .from('appointments')
             .select(
-              'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes'
+              'id, customer_id, pet_id, staff_id, start_time, end_time, menu, duration, status, notes, reservation_payment_method'
             )
             .eq('id', editId)
             .eq('store_id', storeId)
             .single()
         ).data
+
+  const reservationPaymentSettings = isPlaywrightE2E
+    ? DEFAULT_RESERVATION_PAYMENT_SETTINGS
+    : (
+        await db
+          .from('store_reservation_payment_settings')
+          .select(
+            'prepayment_enabled, card_hold_enabled, cancellation_day_before_percent, cancellation_same_day_percent, cancellation_no_show_percent, no_show_charge_mode'
+          )
+          .eq('store_id', storeId)
+          .maybeSingle()
+      ).data ?? DEFAULT_RESERVATION_PAYMENT_SETTINGS
 
   const menuSelections =
     !editId
@@ -483,6 +499,14 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
               <div className="space-y-3 md:hidden" data-testid="appointments-list-mobile">
                 {appointmentList.map((appointment) => {
                   const consentSummary = consentSummaryByAppointmentId.get(appointment.id) ?? buildConsentSummary(appointment.id, null)
+                  const reservationBadge = getReservationPaymentBadge({
+                    method: appointment.reservation_payment_method,
+                    status: appointment.reservation_payment_status,
+                  })
+                  const canClaimReservationCharge =
+                    appointment.status === '無断キャンセル' &&
+                    (appointment.reservation_payment_method === 'prepayment' ||
+                      appointment.reservation_payment_method === 'card_hold')
                   return (
                   <article
                     key={appointment.id}
@@ -499,6 +523,11 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                     <p>メニュー: {appointment.menu}</p>
                     <p>所要時間: {appointment.duration} 分</p>
                     <p>ステータス: {appointment.status ?? '予約済'}</p>
+                    {reservationBadge ? (
+                      <p>
+                        決済: <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${reservationBadge.className}`}>{reservationBadge.label}</span>
+                      </p>
+                    ) : null}
                     <p>
                       同意書:{' '}
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${consentSummary.badgeTone}`}>
@@ -558,6 +587,17 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                           </form>
                         )
                       })()}
+                      {canClaimReservationCharge ? (
+                        <form
+                          action={`/api/appointments/${appointment.id}/reservation-payment/claim`}
+                          method="post"
+                        >
+                          <input type="hidden" name="redirect_to" value="/appointments?tab=list" />
+                          <Button type="submit" className="bg-sky-600 hover:bg-sky-700">
+                            無断CXL請求
+                          </Button>
+                        </form>
+                      ) : null}
                       {isAppointmentCompletedStatus(appointment.status) ? (
                         <Link
                               href={`/appointments?tab=list&modal=create&followup_from=${appointment.id}`}
@@ -596,6 +636,14 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                     </tr>
                     {appointmentList.map((appointment) => {
                       const consentSummary = consentSummaryByAppointmentId.get(appointment.id) ?? buildConsentSummary(appointment.id, null)
+                      const reservationBadge = getReservationPaymentBadge({
+                        method: appointment.reservation_payment_method,
+                        status: appointment.reservation_payment_status,
+                      })
+                      const canClaimReservationCharge =
+                        appointment.status === '無断キャンセル' &&
+                        (appointment.reservation_payment_method === 'prepayment' ||
+                          appointment.reservation_payment_method === 'card_hold')
                       return (
                       <tr
                         key={appointment.id}
@@ -615,6 +663,13 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                         <td className="py-3 px-2">{appointment.duration} 分</td>
                         <td className="py-3 px-2">
                           <p>{appointment.status ?? '予約済'}</p>
+                          {reservationBadge ? (
+                            <p className="mt-1">
+                              <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${reservationBadge.className}`}>
+                                {reservationBadge.label}
+                              </span>
+                            </p>
+                          ) : null}
                           <p className="mt-1">
                             <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${consentSummary.badgeTone}`}>
                               {consentSummary.badgeLabel}
@@ -675,6 +730,17 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                                 </form>
                               )
                             })()}
+                            {canClaimReservationCharge ? (
+                              <form
+                                action={`/api/appointments/${appointment.id}/reservation-payment/claim`}
+                                method="post"
+                              >
+                                <input type="hidden" name="redirect_to" value="/appointments?tab=list" />
+                                <Button type="submit" className="bg-sky-600 hover:bg-sky-700">
+                                  無断CXL請求
+                                </Button>
+                              </form>
+                            ) : null}
                             {isAppointmentCompletedStatus(appointment.status) ? (
                               <Link
                                 href={`/appointments?tab=list&modal=create&followup_from=${appointment.id}`}
@@ -744,6 +810,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
           recommendationMessage={!editAppointment ? followupRecommendationMessage : undefined}
           followupTaskId={!editAppointment ? followupTaskId : undefined}
           reofferId={!editAppointment ? reofferId : undefined}
+          reservationPaymentSettings={reservationPaymentSettings}
         />
       ) : null}
     </section>

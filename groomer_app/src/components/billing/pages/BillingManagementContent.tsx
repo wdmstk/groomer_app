@@ -40,6 +40,15 @@ const SetupAssistanceCheckoutButton = nextDynamic(
 const StorageAddonCheckoutPanel = nextDynamic(
   () => import('@/components/billing/StorageAddonCheckoutPanel').then((mod) => mod.StorageAddonCheckoutPanel)
 )
+const StorePaymentProviderConnectionsPanel = nextDynamic(
+  () =>
+    import('@/components/billing/StorePaymentProviderConnectionsPanel').then(
+      (mod) => mod.StorePaymentProviderConnectionsPanel
+    ),
+  {
+    loading: () => <p className="text-sm text-gray-500">接続設定を読み込み中...</p>,
+  }
+)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -59,6 +68,13 @@ type BillingPageProps = {
     message?: string
     error?: string
   }>
+}
+type ProviderConnectionView = {
+  provider: 'stripe' | 'komoju'
+  is_active: boolean
+  has_secret_key: boolean
+  has_webhook_secret: boolean
+  komoju_api_base_url: string | null
 }
 
 async function fetchStoreSubscriptionWithAiFallback(admin: ReturnType<typeof createAdminSupabaseClient>, storeId: string) {
@@ -133,6 +149,35 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           .order('created_at', { ascending: false })
           .limit(20)
       ).data
+  const providerConnections: ProviderConnectionView[] = isPlaywrightE2E
+    ? [
+        {
+          provider: 'stripe',
+          is_active: true,
+          has_secret_key: true,
+          has_webhook_secret: true,
+          komoju_api_base_url: null,
+        },
+        {
+          provider: 'komoju',
+          is_active: false,
+          has_secret_key: false,
+          has_webhook_secret: false,
+          komoju_api_base_url: null,
+        },
+      ]
+    : ((
+        await adminClient
+          .from('store_payment_provider_connections' as never)
+          .select('provider, is_active, secret_key, webhook_secret, komoju_api_base_url')
+          .eq('store_id', storeId)
+      ).data?.map((row) => ({
+        provider: (row as { provider: 'stripe' | 'komoju' }).provider,
+        is_active: Boolean((row as { is_active: boolean | null }).is_active),
+        has_secret_key: Boolean((row as { secret_key: string | null }).secret_key),
+        has_webhook_secret: Boolean((row as { webhook_secret: string | null }).webhook_secret),
+        komoju_api_base_url: (row as { komoju_api_base_url: string | null }).komoju_api_base_url,
+      })) ?? []) as ProviderConnectionView[]
   const storagePolicy = isPlaywrightE2E
     ? billingPageFixtures.storagePolicy
     : (
@@ -553,6 +598,14 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         </p>
         <div className="mt-4">
           <SetupAssistanceCheckoutButton />
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Customer Payment Accounts</p>
+        <h2 className="text-lg font-semibold text-gray-900">店舗別 顧客決済アカウント接続</h2>
+        <div className="mt-4">
+          <StorePaymentProviderConnectionsPanel initialConnections={providerConnections} />
         </div>
       </Card>
 

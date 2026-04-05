@@ -13,6 +13,8 @@ type AppointmentFixture = {
   in_service_at?: string | null
   payment_waiting_at?: string | null
   completed_at?: string | null
+  reservation_payment_method?: string | null
+  reservation_payment_status?: string | null
   customers: { full_name: string }[] | null
   pets: { name: string }[] | null
   staffs: { full_name: string }[] | null
@@ -32,6 +34,8 @@ export const appointmentsPageFixtures = {
       duration: 120,
       status: '予約申請',
       notes: '噛み癖あり。口周りは短時間で。',
+      reservation_payment_method: 'none',
+      reservation_payment_status: 'unpaid',
       customers: [{ full_name: '山田 花子' }],
       pets: [{ name: 'モカ' }],
       staffs: [{ full_name: '佐藤 未来' }],
@@ -47,6 +51,8 @@ export const appointmentsPageFixtures = {
       duration: 90,
       status: '予約済',
       notes: null,
+      reservation_payment_method: 'prepayment',
+      reservation_payment_status: 'paid',
       customers: [{ full_name: '鈴木 一郎' }],
       pets: [{ name: 'レオ' }],
       staffs: [{ full_name: '高橋 彩' }],
@@ -62,6 +68,8 @@ export const appointmentsPageFixtures = {
       duration: 120,
       status: '完了',
       notes: '多頭飼い。次回は兄弟犬も同日希望。',
+      reservation_payment_method: 'none',
+      reservation_payment_status: 'unpaid',
       completed_at: '2026-02-01T03:35:00.000Z',
       customers: [{ full_name: '田中 恵' }],
       pets: [{ name: 'こむぎ' }],
@@ -78,6 +86,8 @@ export const appointmentsPageFixtures = {
       duration: 45,
       status: '会計待ち',
       notes: null,
+      reservation_payment_method: 'none',
+      reservation_payment_status: 'unpaid',
       payment_waiting_at: '2026-03-16T05:15:00.000Z',
       customers: null,
       pets: null,

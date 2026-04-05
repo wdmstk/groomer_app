@@ -123,19 +123,14 @@ Completed tasks should be marked:
 ## TASK INDEX（正式タスクの正規順序）
 
 ### in_progress
-1. `TASK-437` 日誌機能（非破壊追加）仕様策定と実装管理（2026-03-31）
-2. `TASK-434` 既存店舗向け同意書テンプレ更新SQL作成（2026-03-29・再オープン）
-3. `TASK-417` AI動画段階実装（2026-03-21）
-4. `TASK-414` 顧客LTV分析
-5. `TASK-412` AIタグ活用導線の改善
-6. `TASK-411` 写真カルテのAIタグ付け
-7. `TASK-410` LINEの自動マーケ
-8. `TASK-409` 事前決済
-9. `TASK-408` POS機能導入計画（要件定義〜実装）
-10. `TASK-401` 統合会計（Invoice方式）
-11. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
-12. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
-13. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
+1. `TASK-434` 既存店舗向け同意書テンプレ更新SQL作成（2026-03-29・再オープン）
+2. `TASK-417` AI動画段階実装（2026-03-21）
+3. `TASK-412` AIタグ活用導線の改善
+4. `TASK-408` POS機能導入計画（要件定義〜実装）
+5. `TASK-401` 統合会計（Invoice方式）
+6. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
+7. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
+8. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
 
 ### todo
 （なし）
@@ -144,40 +139,46 @@ Completed tasks should be marked:
 1. `TASK-413` AIタグ解析ジョブのRLS修正（Supabase SQL Editor反映待ち）
 
 ### done
-1. `TASK-441` 会員証URLのセルフ再取得導線（期限切れ時）（2026-04-05）
-2. `TASK-440` 会員証URL有効期限の可変TTL設定（30/90/180日）（2026-04-05）
-3. `TASK-439` 会員証ポータルからの空き枠待ち自己登録導線追加（2026-04-04）
-4. `TASK-438` 顧客管理・ペット管理の統合ページ仕様策定（2026-04-02）
-5. `TASK-436` 予約管理の同意書ステータスバッジと状態別導線追加（2026-03-31）
-6. `TASK-435` 電子同意書管理のタブ分割・履歴PDF参照/削除・署名導線強化（2026-03-31）
-7. `TASK-433` 施術同意書標準テンプレート完全版差し替え（2026-03-29）
-8. `TASK-432` 施術同意書の表示体裁改善とPDF2ページ化（2026-03-29）
-9. `TASK-431` 予約管理起点の同意書作成導線とPDF作成強化（2026-03-29）
-10. `TASK-430` 電子同意書管理のレイアウト統一・テンプレ本文再利用・PDF証跡強化（2026-03-28）
-11. `TASK-429` アプリ名/会社名の全ページ反映（2026-03-28）
-12. `TASK-428` 電子同意書PDF文字化け修正（日本語対応）（2026-03-27）
-13. `TASK-427` 電子同意書Storageバケット不足エラー修正（2026-03-27）
-14. `TASK-426` 電子同意書テンプレ差し込み表示とプレビュー実装（2026-03-27）
-15. `TASK-425` 電子同意書の署名URL再取得導線追加（2026-03-27）
-16. `TASK-424` 電子同意書テンプレートUIの用語/入力改善（2026-03-27）
-17. `TASK-423` 電子同意書テンプレート標準初期化（店舗作成時の自動投入）（2026-03-27）
-18. `TASK-422` 電子同意書（施術同意書）機能追加（2026-03-27）
-19. `TASK-421` 競合LPベンチマーク整合のLP改修（2026-03-26）
-20. `TASK-420` dev課金操作の安全運用化（2026-03-22）
-21. `TASK-419` 法務・規約コンプライアンス是正（2026-03-22）
-22. `TASK-418` オプション課金確定ゲート整備（2026-03-22）
-23. `TASK-416` サイドバー改善（2026-03-21）
-24. `TASK-415` 動画カルテ + AIプラン拡張（非破壊導入）
-25. `TASK-407` 開発環境で課金なしのプラン/オプション切替
-26. `TASK-406` devサブスク保存後404修正
-27. `TASK-405` タスク/ブランチ運用ガード追加とStorage設定導線整理
-28. `TASK-404` HP本部運用にホテルメニュー向けテンプレ配信を追加
-29. `TASK-403` ペット管理からQR機能を完全削除
-30. `TASK-402` appointments更新後POST転送不具合修正
-31. `TASK-POS-003` POS会計画面（MVP）実装（`TASK-408`配下）
-32. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
-33. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
-34. `TASK-POS-007` POS一本化（トリミング/ホテル会計統合）（`TASK-408`配下）
+1. `TASK-442` 店舗別決済アカウント接続と通常決済のStripe/KOMOJU対応（2026-04-05）
+2. `TASK-441` 会員証URLのセルフ再取得導線（期限切れ時）（2026-04-05）
+3. `TASK-440` 会員証URL有効期限の可変TTL設定（30/90/180日）（2026-04-05）
+4. `TASK-439` 会員証ポータルからの空き枠待ち自己登録導線追加（2026-04-04）
+5. `TASK-438` 顧客管理・ペット管理の統合ページ仕様策定（2026-04-02）
+6. `TASK-437` 日誌機能（非破壊追加）仕様策定と実装管理（2026-03-31）
+7. `TASK-436` 予約管理の同意書ステータスバッジと状態別導線追加（2026-03-31）
+8. `TASK-435` 電子同意書管理のタブ分割・履歴PDF参照/削除・署名導線強化（2026-03-31）
+9. `TASK-433` 施術同意書標準テンプレート完全版差し替え（2026-03-29）
+10. `TASK-432` 施術同意書の表示体裁改善とPDF2ページ化（2026-03-29）
+11. `TASK-431` 予約管理起点の同意書作成導線とPDF作成強化（2026-03-29）
+12. `TASK-430` 電子同意書管理のレイアウト統一・テンプレ本文再利用・PDF証跡強化（2026-03-28）
+13. `TASK-429` アプリ名/会社名の全ページ反映（2026-03-28）
+14. `TASK-428` 電子同意書PDF文字化け修正（日本語対応）（2026-03-27）
+15. `TASK-427` 電子同意書Storageバケット不足エラー修正（2026-03-27）
+16. `TASK-426` 電子同意書テンプレ差し込み表示とプレビュー実装（2026-03-27）
+17. `TASK-425` 電子同意書の署名URL再取得導線追加（2026-03-27）
+18. `TASK-424` 電子同意書テンプレートUIの用語/入力改善（2026-03-27）
+19. `TASK-423` 電子同意書テンプレート標準初期化（店舗作成時の自動投入）（2026-03-27）
+20. `TASK-422` 電子同意書（施術同意書）機能追加（2026-03-27）
+21. `TASK-421` 競合LPベンチマーク整合のLP改修（2026-03-26）
+22. `TASK-420` dev課金操作の安全運用化（2026-03-22）
+23. `TASK-419` 法務・規約コンプライアンス是正（2026-03-22）
+24. `TASK-418` オプション課金確定ゲート整備（2026-03-22）
+25. `TASK-416` サイドバー改善（2026-03-21）
+26. `TASK-415` 動画カルテ + AIプラン拡張（非破壊導入）
+27. `TASK-414` 顧客LTV分析
+28. `TASK-411` 写真カルテのAIタグ付け
+29. `TASK-410` LINEの自動マーケ
+30. `TASK-409` 事前決済
+31. `TASK-407` 開発環境で課金なしのプラン/オプション切替
+32. `TASK-406` devサブスク保存後404修正
+33. `TASK-405` タスク/ブランチ運用ガード追加とStorage設定導線整理
+34. `TASK-404` HP本部運用にホテルメニュー向けテンプレ配信を追加
+35. `TASK-403` ペット管理からQR機能を完全削除
+36. `TASK-402` appointments更新後POST転送不具合修正
+37. `TASK-POS-003` POS会計画面（MVP）実装（`TASK-408`配下）
+38. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
+39. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
+40. `TASK-POS-007` POS一本化（トリミング/ホテル会計統合）（`TASK-408`配下）
 
 ## 正式タスク詳細（Task ID採番済み）
 
@@ -289,7 +290,7 @@ Completed tasks should be marked:
 ## 日誌機能（非破壊追加）仕様策定と実装管理
 - Task ID: `TASK-437`
 - ブランチ: `feat/TASK-437-journal-module-spec`
-- ステータス: `in_progress`
+- ステータス: `done`
 - 概要: 既存DB/既存API/既存写真カルテ・動画カルテを壊さず、日誌機能を新規モジュールとして追加する仕様・UI・APIを確定する（段階リリースは実施しない）
 - 影響範囲: 日誌仕様書 / 新規DBテーブル設計 / 新規API契約（既存準拠: `/api/journal/*`）/ 新規UIコンポーネント / TASKS
 - リスク: 既存カルテ連携時の参照不整合、通知キュー遅延による体験劣化
@@ -366,6 +367,28 @@ Completed tasks should be marked:
   - [x] ダッシュボード/当日運用の未署名導線追加
   - [x] 動作確認（lint/test）
   - [x] TASKS更新（done化）
+
+## 店舗別決済アカウント接続と通常決済のStripe/KOMOJU対応
+- Task ID: `TASK-442`
+- ブランチ: `feat/TASK-442-store-payment-provider-connection`
+- ステータス: `done`
+- 概要: 店舗ごとにStripe/KOMOJU接続情報を管理し、事前決済に加えて通常会計でもStripe/KOMOJU決済導線を利用できるようにする
+- 影響範囲: 決済設定API/UI、決済プロバイダ呼び出し、通常会計API/UI、webhook検証、Supabase SQL、TASKS
+- リスク: 接続情報の秘匿運用、webhook検証の誤判定、二重会計、既存サブスク課金経路との混同
+- 完了条件:
+  - 店舗別にStripe/KOMOJU接続情報を保存・有効化できる
+  - 予約事前決済Checkoutが店舗別接続情報を使用する
+  - 通常会計でもStripe/KOMOJU Checkoutを開始できる
+  - 決済完了で会計反映され、二重計上を回避できる
+  - テスト/ビルドが通る（既存差分外エラーは明示）
+- 進捗:
+  - [x] タスク登録・ブランチ切替
+  - [x] 店舗別接続情報テーブル/API実装（`store_payment_provider_connections` + `/api/settings/payment-provider-connections`）
+  - [x] 決済プロバイダ呼び出しの店舗別キー対応（`providers.ts` に credentials override を追加）
+  - [x] 通常会計Stripe/KOMOJU決済API/UI導線追加（`/api/payments/checkout` + `PaymentForm` ボタン）
+  - [x] webhook検証/会計反映の店舗別対応（複数webhook secret検証 + `appointment_payment` 会計反映）
+  - [x] テスト・ビルド確認（対象テスト3件pass、変更ファイルeslint pass、`npm run build` pass）
+  - [x] Supabase SQL Editor反映（`supabase_store_payment_provider_connections.sql`）
 
 ## 既存店舗向け同意書テンプレ更新SQL作成
 - Task ID: `TASK-434`
@@ -736,7 +759,7 @@ Completed tasks should be marked:
 ## 事前決済
 - Task ID: `TASK-409`
 - ブランチ: `feature/prepayment`
-- ステータス: `in_progress`
+- ステータス: `done`
 - 概要: 予約時に事前決済またはカード仮押さえを選択できるようにし、無断キャンセル請求とキャンセルポリシー管理を追加する
 - 影響範囲: API / DB / UI
 - リスク: 予約作成と既存会計フローの二重課金、無断キャンセル時の請求判定、既存予約画面の一覧表示崩れ
@@ -746,13 +769,19 @@ Completed tasks should be marked:
   - [x] DB拡張
   - [x] API追加
   - [x] UI実装
-  - [ ] テスト
-  - [ ] PR作成
+  - [x] 予約事前決済Checkout API追加（`POST /api/appointments/[appointment_id]/reservation-payment/checkout`）
+  - [x] Stripe/KOMOJU webhookで `reservation_prepayment` 完了時に予約を `paid` 反映
+  - [x] 予約フォームに決済方式選択を追加し、`prepayment` 選択時は保存後にCheckoutへ遷移
+  - [x] 予約一覧に決済バッジ表示（決済済/仮押さえ/請求待ち等）と無断CXL請求ボタンを追加
+  - [x] `prepayment` 初期状態を `unpaid` に修正（予約作成時点での自動 `paid` を廃止）
+  - [x] テスト（`npm test -- tests/appointments.reservation-payment.test.ts tests/payments.shared.test.ts tests/payments.duplicate-guard.test.ts` 3件pass）
+  - [x] 変更ファイル lint（`npx eslint ...` 追加変更ファイル群はpass）
+  - [x] PR作成（`feature/prepayment` は `main` 反映済みのため差分なし）
 
 ## LINEの自動マーケ
 - Task ID: `TASK-410`
 - ブランチ: `feature/line-auto-marketing`
-- ステータス: `in_progress`
+- ステータス: `done`
 - 概要: 施術日、犬種、毛量から次回来店推奨日を算出し、既存LINE通知基盤で自動送信する
 - 影響範囲: API / DB / UI
 - リスク: 推奨日ロジックの過剰送信、既存 reminder/followup 通知との重複、テンプレート互換性
@@ -763,13 +792,13 @@ Completed tasks should be marked:
   - [x] テンプレート基盤の拡張開始
   - [x] API追加
   - [x] UI実装
-  - [ ] テスト
-  - [ ] PR作成
+  - [x] テスト（`npm test -- tests/followups.recommendation.test.ts tests/notification-templates.next-visit-suggestion.test.ts tests/cron.appointment-reminders-core.test.ts` 3件pass）
+  - [x] PR作成（`feature/line-auto-marketing` は `main` 反映済みのため差分なし）
 
 ## 写真カルテのAIタグ付け
 - Task ID: `TASK-411`
 - ブランチ: `feature/ai-photo-tags`
-- ステータス: `in_progress`
+- ステータス: `done`
 - 概要: 写真カルテにAI解析タグを非同期付与し、カルテ画面で確認と編集ができるようにする
 - 影響範囲: API / DB / UI
 - リスク: 推論遅延、タグ誤判定、写真保存フローとの競合、既存カルテ作成UXの劣化
@@ -780,7 +809,7 @@ Completed tasks should be marked:
   - [x] API追加
   - [x] UI実装
   - [x] テスト
-  - [ ] PR作成
+  - [x] PR作成（`feature/ai-photo-tags` は `main` 反映済みのため差分なし）
 
 ## AIタグ活用導線の改善
 - Task ID: `TASK-412`
@@ -814,7 +843,7 @@ Completed tasks should be marked:
 ## 顧客LTV分析
 - Task ID: `TASK-414`
 - ブランチ: `feature/customer-ltv`
-- ステータス: `in_progress`
+- ステータス: `done`
 - 概要: 既存の visits / payments を集計して年間売上、来店回数、平均単価、オプション利用率、LTVランクを可視化する
 - 影響範囲: API / DB / UI
 - リスク: 売上集計の整合性、会計未確定データの扱い、一覧画面の負荷、店舗スコープ漏れ
@@ -826,13 +855,13 @@ Completed tasks should be marked:
   - [x] API追加
   - [x] UI実装
   - [x] テスト
-  - [ ] PR作成
+  - [x] PR作成（`feature/customer-ltv` は `main` 反映済みのため差分なし）
 
 ## Archive（調査メモ・過去の運用記録）
 
 ## Issues
 - `main` から4本の専用ブランチを作成済み。実装は依存順の都合で `feature/prepayment` から着手している
-- 現時点の外部決済連携は店舗サブスク課金向け `KOMOJU` が中心で、予約事前決済向けの顧客課金APIは未実装
+- 予約事前決済向けに `POST /api/appointments/[appointment_id]/reservation-payment/checkout` と webhook 反映（Stripe/KOMOJU）を追加済み。運用前に各環境の決済キーと webhook 設定確認が必要
 - AI推論基盤は未導入のため、写真カルテAIタグ付けは新規バックエンドAPIとジョブ管理の追加が必要
 - 顧客LTVはまず動的集計Viewで実装。データ量増加時のみ nightly snapshot へ移行する方針
 - 遅いページ群は DB 側 index 不足の可能性が高く、`appointments / medical_records / customers / pets / staffs` に非破壊 index を追加して検証する
@@ -1565,12 +1594,13 @@ Completed tasks should be marked:
   - 障害時ロールバック手順
   - マニュアル更新
 - DoD:
-  - UATチェックリスト完了
-  - `docs/` の運用手順が最新化
-  - 本番段階展開計画（pilot→full）が承認済み
+  - （開発段階DoD）UATチェックリスト完了
+  - （開発段階DoD）`docs/` の運用手順が最新化
+  - （開発段階DoD）PlaywrightによるPOS主要回帰（payments / inventory / hotel）が通過
+  - （本番移行ゲート）実店舗パイロット（2営業日）実測と最終サインオフ
 - テスト観点:
-  - 回帰テスト（既存会計/在庫/予約への影響）
-  - 負荷・運用手順リハーサル
+  - 回帰テスト（既存会計/在庫/予約への影響）※開発段階は Playwright を主
+  - 負荷・運用手順リハーサル（本番移行前ゲート）
 - 進捗:
   - [x] UATチェックリストを追加（`docs/pos-uat-checklist.md`）
   - [x] 移行/初期設定手順を追加（`docs/pos-migration-initial-setup.md`）
@@ -1580,7 +1610,8 @@ Completed tasks should be marked:
   - [x] 開発環境リハーサルUAT実測を反映（`docs/pos-uat-checklist.md`, 判定: `conditional`）
   - [x] pilot→full承認記録を反映（`docs/pos-pilot-approval-record.md`, 判定: `hold`）
   - [x] payments E2Eの前提調整と再実行（`e2e/payments-list.spec.ts` 3件pass）
-  - [ ] 実店舗パイロット（2営業日）実測と最終サインオフ
+  - [x] POS関連Playwright再検証（2026-04-05: `e2e/payments-list.spec.ts` / `e2e/inventory-pages.spec.ts` / `e2e/hotel-page.spec.ts` 合計14件pass）
+  - [ ] 実店舗パイロット（2営業日）実測と最終サインオフ（開発段階のため defer。リリース判定フェーズで実施）
 
 #### TASK-POS-007 POS一本化（トリミング/ホテル会計統合）
 - ブランチ: `feat/TASK-POS-007-pos-unification`
