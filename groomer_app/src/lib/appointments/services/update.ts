@@ -148,10 +148,16 @@ export async function updateAppointment(params: {
       if (reservationPaymentMethod === 'card_hold') {
         payload.reservation_payment_status = 'captured'
         payload.reservation_payment_paid_at = new Date().toISOString()
-      } else if (reservationPaymentMethod === 'prepayment') {
+      } else if (
+        reservationPaymentMethod === 'prepayment' &&
+        (existingAppointment.reservation_payment_status === 'paid' ||
+          existingAppointment.reservation_payment_status === 'captured')
+      ) {
         payload.reservation_payment_status = 'paid'
         payload.reservation_payment_paid_at =
           existingAppointment.reservation_payment_paid_at ?? new Date().toISOString()
+      } else if (reservationPaymentMethod === 'prepayment') {
+        payload.reservation_payment_status = 'charge_pending'
       }
     }
   }

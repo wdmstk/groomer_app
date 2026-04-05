@@ -54,8 +54,8 @@ export function normalizeReservationPaymentStatus(value: string | null | undefin
 export function getInitialReservationPaymentState(method: ReservationPaymentMethod) {
   if (method === 'prepayment') {
     return {
-      reservationPaymentStatus: 'paid' as ReservationPaymentStatus,
-      reservationPaymentPaidAt: new Date().toISOString(),
+      reservationPaymentStatus: 'unpaid' as ReservationPaymentStatus,
+      reservationPaymentPaidAt: null as string | null,
       reservationPaymentAuthorizedAt: null as string | null,
     }
   }

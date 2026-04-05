@@ -57,8 +57,14 @@ type StripeOneTimeCheckoutSession = {
   payment_intent?: string | null
 }
 
-async function getStripe<T>(path: string) {
-  const secret = requireEnv('STRIPE_SECRET_KEY')
+export type ProviderCredentialsOverrides = {
+  stripeSecretKey?: string | null
+  komojuSecretKey?: string | null
+  komojuApiBaseUrl?: string | null
+}
+
+async function getStripe<T>(path: string, credentials?: ProviderCredentialsOverrides) {
+  const secret = requireEnv('STRIPE_SECRET_KEY', credentials?.stripeSecretKey)
   const response = await fetch(`https://api.stripe.com/v1/${path}`, {
     headers: {
       Authorization: `Bearer ${secret}`,
@@ -73,8 +79,8 @@ async function getStripe<T>(path: string) {
   return json as T
 }
 
-async function deleteStripe<T>(path: string) {
-  const secret = requireEnv('STRIPE_SECRET_KEY')
+async function deleteStripe<T>(path: string, credentials?: ProviderCredentialsOverrides) {
+  const secret = requireEnv('STRIPE_SECRET_KEY', credentials?.stripeSecretKey)
   const response = await fetch(`https://api.stripe.com/v1/${path}`, {
     method: 'DELETE',
     headers: {
@@ -90,9 +96,9 @@ async function deleteStripe<T>(path: string) {
   return json as T
 }
 
-async function getKomoju<T>(path: string) {
-  const secret = requireEnv('KOMOJU_SECRET_KEY')
-  const apiBase = process.env.KOMOJU_API_BASE_URL ?? 'https://api.komoju.com'
+async function getKomoju<T>(path: string, credentials?: ProviderCredentialsOverrides) {
+  const secret = requireEnv('KOMOJU_SECRET_KEY', credentials?.komojuSecretKey)
+  const apiBase = credentials?.komojuApiBaseUrl?.trim() || process.env.KOMOJU_API_BASE_URL || 'https://api.komoju.com'
   const response = await fetch(`${apiBase}${path}`, {
     headers: {
       Authorization: `Bearer ${secret}`,
@@ -107,7 +113,9 @@ async function getKomoju<T>(path: string) {
   return json as T
 }
 
-function requireEnv(name: string) {
+function requireEnv(name: string, override?: string | null) {
+  const direct = override?.trim()
+  if (direct) return direct
   const value = process.env[name]
   if (!value) {
     throw new Error(`Missing ${name}`)
@@ -124,8 +132,12 @@ function buildFormEncoded(payload: Record<string, string | number | boolean | nu
   return params
 }
 
-async function postStripeForm<T>(path: string, payload: Record<string, string | number | boolean | null | undefined>) {
-  const secret = requireEnv('STRIPE_SECRET_KEY')
+async function postStripeForm<T>(
+  path: string,
+  payload: Record<string, string | number | boolean | null | undefined>,
+  credentials?: ProviderCredentialsOverrides
+) {
+  const secret = requireEnv('STRIPE_SECRET_KEY', credentials?.stripeSecretKey)
   const response = await fetch(`https://api.stripe.com/v1/${path}`, {
     method: 'POST',
     headers: {
@@ -143,9 +155,9 @@ async function postStripeForm<T>(path: string, payload: Record<string, string | 
   return json as T
 }
 
-async function postKomojuJson<T>(path: string, payload: Json) {
-  const secret = requireEnv('KOMOJU_SECRET_KEY')
-  const apiBase = process.env.KOMOJU_API_BASE_URL ?? 'https://api.komoju.com'
+async function postKomojuJson<T>(path: string, payload: Json, credentials?: ProviderCredentialsOverrides) {
+  const secret = requireEnv('KOMOJU_SECRET_KEY', credentials?.komojuSecretKey)
+  const apiBase = credentials?.komojuApiBaseUrl?.trim() || process.env.KOMOJU_API_BASE_URL || 'https://api.komoju.com'
   const response = await fetch(`${apiBase}${path}`, {
     method: 'POST',
     headers: {
@@ -175,16 +187,18 @@ export async function createStripeCustomer({
   email,
   storeId,
   userId,
+  credentials,
 }: {
   email: string
   storeId: string
   userId: string
+  credentials?: ProviderCredentialsOverrides
 }) {
   const customer = await postStripeForm<StripeCustomer>('customers', {
     email,
     'metadata[store_id]': storeId,
     'metadata[user_id]': userId,
-  })
+  }, credentials)
   return customer.id
 }
 
@@ -199,6 +213,7 @@ export async function createStripeCheckoutSession({
   amountJpy,
   useAdditionalStorePricing,
   options,
+  credentials,
 }: {
   customerId: string
   successUrl: string
@@ -210,6 +225,7 @@ export async function createStripeCheckoutSession({
   amountJpy: number
   useAdditionalStorePricing?: boolean
   options: SubscriptionOptionPricingInput
+  credentials?: ProviderCredentialsOverrides
 }) {
   const optionAwarePriceKey = stripeSubscriptionPriceEnvKey(
     plan,
@@ -254,7 +270,7 @@ export async function createStripeCheckoutSession({
     'subscription_data[metadata][hotel_option_enabled]': optionMetadata(options).hotel_option_enabled,
     'subscription_data[metadata][notification_option_enabled]':
       optionMetadata(options).notification_option_enabled,
-  })
+  }, credentials)
   if (!session.url) {
     throw new Error('Stripe checkout URL is empty.')
   }
@@ -267,12 +283,14 @@ export async function createStripeSubscription({
   billingCycle,
   useAdditionalStorePricing,
   options,
+  credentials,
 }: {
   customerId: string
   plan: AppPlan
   billingCycle: BillingCycle
   useAdditionalStorePricing?: boolean
   options: SubscriptionOptionPricingInput
+  credentials?: ProviderCredentialsOverrides
 }) {
   const optionAwarePriceKey = stripeSubscriptionPriceEnvKey(
     plan,
@@ -303,7 +321,7 @@ export async function createStripeSubscription({
     'metadata[billing_cycle]': billingCycle,
     'metadata[hotel_option_enabled]': optionMetadata(options).hotel_option_enabled,
     'metadata[notification_option_enabled]': optionMetadata(options).notification_option_enabled,
-  })
+  }, credentials)
   return subscription
 }
 
@@ -317,6 +335,7 @@ export async function createKomojuCheckoutSession({
   amountJpy,
   useAdditionalStorePricing,
   options,
+  credentials,
 }: {
   customerId: string
   returnUrl: string
@@ -327,6 +346,7 @@ export async function createKomojuCheckoutSession({
   amountJpy: number
   useAdditionalStorePricing?: boolean
   options: SubscriptionOptionPricingInput
+  credentials?: ProviderCredentialsOverrides
 }) {
   const optionAwareProductKey = komojuSubscriptionProductEnvKey(
     plan,
@@ -367,7 +387,7 @@ export async function createKomojuCheckoutSession({
       amount_jpy: Math.max(0, Math.round(amountJpy)),
       ...optionMetadata(options),
     },
-  })
+  }, credentials)
   if (!session.url) {
     throw new Error('KOMOJU checkout URL is empty.')
   }
@@ -380,12 +400,14 @@ export async function createKomojuSubscription({
   billingCycle,
   useAdditionalStorePricing,
   options,
+  credentials,
 }: {
   customerId: string
   plan: AppPlan
   billingCycle: BillingCycle
   useAdditionalStorePricing?: boolean
   options: SubscriptionOptionPricingInput
+  credentials?: ProviderCredentialsOverrides
 }) {
   const optionAwareProductKey = komojuSubscriptionProductEnvKey(
     plan,
@@ -416,7 +438,7 @@ export async function createKomojuSubscription({
       billing_cycle: billingCycle,
       ...optionMetadata(options),
     },
-  })
+  }, credentials)
   return subscription
 }
 
@@ -429,6 +451,7 @@ export async function createStripeStorageAddonCheckoutSession(params: {
   addonGb: number
   amountJpy: number
   units: number
+  credentials?: ProviderCredentialsOverrides
 }) {
   const priceKey = stripeStorageAddonPriceEnvKey(params.addonGb)
   const priceId = process.env[priceKey] || ''
@@ -457,7 +480,7 @@ export async function createStripeStorageAddonCheckoutSession(params: {
     'subscription_data[metadata][storage_addon_gb]': params.addonGb,
     'subscription_data[metadata][storage_addon_units]': params.units,
     'subscription_data[metadata][amount_jpy]': Math.max(0, Math.round(params.amountJpy)),
-  })
+  }, params.credentials)
   if (!session.url) {
     throw new Error('Stripe checkout URL is empty.')
   }
@@ -472,6 +495,7 @@ export async function createKomojuStorageAddonCheckoutSession(params: {
   addonGb: number
   amountJpy: number
   units: number
+  credentials?: ProviderCredentialsOverrides
 }) {
   const productKey = komojuStorageAddonProductEnvKey(params.addonGb)
   const productId = process.env[productKey] || ''
@@ -498,7 +522,7 @@ export async function createKomojuStorageAddonCheckoutSession(params: {
       storage_addon_units: params.units,
       amount_jpy: Math.max(0, Math.round(params.amountJpy)),
     },
-  })
+  }, params.credentials)
   if (!session.url) {
     throw new Error('KOMOJU checkout URL is empty.')
   }
@@ -514,6 +538,7 @@ export async function createStripeOneTimeCheckoutSession(params: {
   storeId: string
   userId: string
   metadata?: Record<string, string>
+  credentials?: ProviderCredentialsOverrides
 }) {
   const normalizedAmount = Math.max(0, Math.round(params.amountJpy))
   if (normalizedAmount <= 0) {
@@ -536,7 +561,11 @@ export async function createStripeOneTimeCheckoutSession(params: {
   Object.entries(metadata).forEach(([key, value]) => {
     payload[`metadata[${key}]`] = value
   })
-  const session = await postStripeForm<StripeOneTimeCheckoutSession>('checkout/sessions', payload)
+  const session = await postStripeForm<StripeOneTimeCheckoutSession>(
+    'checkout/sessions',
+    payload,
+    params.credentials
+  )
   if (!session.url) {
     throw new Error('Stripe checkout URL is empty.')
   }
@@ -551,6 +580,7 @@ export async function createKomojuOneTimeCheckoutSession(params: {
   storeId: string
   userId: string
   metadata?: Record<string, string>
+  credentials?: ProviderCredentialsOverrides
 }) {
   const normalizedAmount = Math.max(0, Math.round(params.amountJpy))
   if (normalizedAmount <= 0) {
@@ -575,7 +605,7 @@ export async function createKomojuOneTimeCheckoutSession(params: {
       user_id: params.userId,
       ...(params.metadata ?? {}),
     },
-  })
+  }, params.credentials)
   if (!session.url) {
     throw new Error('KOMOJU checkout URL is empty.')
   }
@@ -589,13 +619,14 @@ export async function fetchStripeSubscription(subscriptionId: string) {
 export async function cancelStripeSubscription(params: {
   subscriptionId: string
   immediately: boolean
+  credentials?: ProviderCredentialsOverrides
 }) {
   if (params.immediately) {
-    return deleteStripe<StripeCanceledSubscription>(`subscriptions/${params.subscriptionId}`)
+    return deleteStripe<StripeCanceledSubscription>(`subscriptions/${params.subscriptionId}`, params.credentials)
   }
   return postStripeForm<StripeCanceledSubscription>(`subscriptions/${params.subscriptionId}`, {
     cancel_at_period_end: true,
-  })
+  }, params.credentials)
 }
 
 export async function fetchKomojuSubscription(subscriptionId: string) {
@@ -605,10 +636,11 @@ export async function fetchKomojuSubscription(subscriptionId: string) {
 export async function cancelKomojuSubscription(params: {
   subscriptionId: string
   immediately: boolean
+  credentials?: ProviderCredentialsOverrides
 }) {
   return postKomojuJson<KomojuSubscription>(`/v1/subscriptions/${params.subscriptionId}/cancel`, {
     immediate: params.immediately,
-  })
+  }, params.credentials)
 }
 
 export async function createProviderCustomer({
@@ -616,18 +648,20 @@ export async function createProviderCustomer({
   email,
   storeId,
   userId,
+  credentials,
 }: {
   provider: BillingProvider
   email: string
   storeId: string
   userId: string
+  credentials?: ProviderCredentialsOverrides
 }) {
   if (provider === 'stripe') {
-    return createStripeCustomer({ email, storeId, userId })
+    return createStripeCustomer({ email, storeId, userId, credentials })
   }
   const result = await postKomojuJson<{ id: string }>('/v1/customers', {
     email,
     metadata: { store_id: storeId, user_id: userId },
-  })
+  }, credentials)
   return result.id
 }

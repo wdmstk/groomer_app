@@ -9,6 +9,9 @@ import {
 import { setStoreExtraCapacityGb } from '@/lib/storage-quota'
 import { normalizePlanCode, type AppPlan } from '@/lib/subscription-plan'
 import { parseBillingCycle, type BillingCycle } from '@/lib/billing/pricing'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { normalizeReservationPaymentMethod } from '@/lib/appointments/reservation-payment'
+import { settleAppointmentPaymentFromProvider } from '@/lib/payments/external-checkout'
 
 export type StripeWebhookEvent = {
   id?: string
@@ -96,6 +99,34 @@ function parseStorageAddonUnitsFromMetadata(
   return Math.max(0, parsed)
 }
 
+async function markReservationPrepaymentAsPaid(params: {
+  storeId: string
+  appointmentId: string
+}) {
+  const admin = createAdminSupabaseClient()
+  const { data: appointment, error: appointmentError } = await admin
+    .from('appointments')
+    .select('id, reservation_payment_method, reservation_payment_status, reservation_payment_paid_at')
+    .eq('store_id', params.storeId)
+    .eq('id', params.appointmentId)
+    .maybeSingle()
+
+  if (appointmentError || !appointment) return
+  if (normalizeReservationPaymentMethod(appointment.reservation_payment_method) !== 'prepayment') return
+  if (appointment.reservation_payment_status === 'paid' || appointment.reservation_payment_status === 'captured') {
+    return
+  }
+
+  await admin
+    .from('appointments')
+    .update({
+      reservation_payment_status: 'paid',
+      reservation_payment_paid_at: appointment.reservation_payment_paid_at ?? new Date().toISOString(),
+    })
+    .eq('store_id', params.storeId)
+    .eq('id', params.appointmentId)
+}
+
 export async function processStripeBillingEvent(event: StripeWebhookEvent) {
   const subscriptionId = event.data?.object?.subscription ?? null
 
@@ -131,6 +162,48 @@ export async function processStripeBillingEvent(event: StripeWebhookEvent) {
           resultMessage: checkoutResult,
         })
       }
+    }
+
+    const isReservationPrepayment =
+      object?.mode === 'payment' &&
+      object?.payment_status === 'paid' &&
+      metadata.operation_type === 'reservation_prepayment'
+    if (isReservationPrepayment && metadata.store_id && metadata.appointment_id) {
+      await markReservationPrepaymentAsPaid({
+        storeId: metadata.store_id,
+        appointmentId: metadata.appointment_id,
+      })
+      const alreadyDone = await hasBillingOperation({
+        storeId: metadata.store_id,
+        provider: 'stripe',
+        operationType: 'reservation_prepayment_paid',
+        resultMessage: checkoutResult,
+      })
+      if (!alreadyDone) {
+        await insertBillingOperation({
+          storeId: metadata.store_id,
+          provider: 'stripe',
+          operationType: 'reservation_prepayment_paid',
+          amountJpy: parseAmountFromMetadata(metadata) ?? null,
+          reason: 'stripe_checkout_session_completed',
+          status: 'succeeded',
+          resultMessage: checkoutResult,
+        })
+      }
+    }
+
+    const isAppointmentPayment =
+      object?.mode === 'payment' &&
+      object?.payment_status === 'paid' &&
+      metadata.operation_type === 'appointment_payment'
+    if (isAppointmentPayment && metadata.store_id && metadata.appointment_id) {
+      await settleAppointmentPaymentFromProvider({
+        storeId: metadata.store_id,
+        appointmentId: metadata.appointment_id,
+        provider: 'stripe',
+        idempotencyKey: `extpay:stripe:${object?.id ?? event.id ?? 'unknown'}`,
+        metadata,
+      })
     }
 
     const isSubscriptionCheckout = object?.mode === 'subscription' && Boolean(object?.subscription)
@@ -306,6 +379,42 @@ export async function processKomojuBillingEvent(event: KomojuWebhookEvent) {
           resultMessage: paymentResult,
         })
       }
+    }
+
+    const isReservationPrepayment = metadata.operation_type === 'reservation_prepayment'
+    if (isReservationPrepayment && metadata.store_id && metadata.appointment_id) {
+      await markReservationPrepaymentAsPaid({
+        storeId: metadata.store_id,
+        appointmentId: metadata.appointment_id,
+      })
+      const alreadyDone = await hasBillingOperation({
+        storeId: metadata.store_id,
+        provider: 'komoju',
+        operationType: 'reservation_prepayment_paid',
+        resultMessage: paymentResult,
+      })
+      if (!alreadyDone) {
+        await insertBillingOperation({
+          storeId: metadata.store_id,
+          provider: 'komoju',
+          operationType: 'reservation_prepayment_paid',
+          amountJpy: parseAmountFromMetadata(metadata) ?? event.data?.payment?.amount ?? null,
+          reason: 'komoju_payment_succeeded',
+          status: 'succeeded',
+          resultMessage: paymentResult,
+        })
+      }
+    }
+
+    const isAppointmentPayment = metadata.operation_type === 'appointment_payment'
+    if (isAppointmentPayment && metadata.store_id && metadata.appointment_id) {
+      await settleAppointmentPaymentFromProvider({
+        storeId: metadata.store_id,
+        appointmentId: metadata.appointment_id,
+        provider: 'komoju',
+        idempotencyKey: `extpay:komoju:${event.data?.payment?.id ?? event.id ?? 'unknown'}`,
+        metadata,
+      })
     }
 
   }

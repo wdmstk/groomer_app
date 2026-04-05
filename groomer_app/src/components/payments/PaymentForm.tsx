@@ -43,6 +43,8 @@ export function PaymentForm({
   const [discountAmount, setDiscountAmount] = useState(initialDiscountAmount)
   const [notes, setNotes] = useState(initialNotes)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState<'stripe' | 'komoju' | null>(null)
+  const [checkoutError, setCheckoutError] = useState('')
   const [idempotencyKey] = useState(() =>
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
@@ -59,6 +61,37 @@ export function PaymentForm({
   const subtotal = selectedAppointment?.subtotal ?? 0
   const tax = selectedAppointment?.tax ?? 0
   const total = Math.max(0, (selectedAppointment?.total ?? 0) - discountAmount)
+
+  async function startExternalCheckout(provider: 'stripe' | 'komoju') {
+    if (!appointmentId) {
+      setCheckoutError('予約を選択してください。')
+      return
+    }
+    setCheckoutLoading(provider)
+    setCheckoutError('')
+    try {
+      const response = await fetch('/api/payments/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appointment_id: appointmentId,
+          provider,
+          discount_amount: discountAmount,
+        }),
+      })
+      const payload = (await response.json().catch(() => null)) as
+        | { message?: string; checkout_url?: string }
+        | null
+      if (!response.ok || !payload?.checkout_url) {
+        throw new Error(payload?.message ?? '外部決済開始に失敗しました。')
+      }
+      window.location.href = payload.checkout_url
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : '外部決済開始に失敗しました。')
+    } finally {
+      setCheckoutLoading(null)
+    }
+  }
 
   return (
     <form action={action} method="post" className="space-y-4" onSubmit={() => setIsSubmitting(true)}>
@@ -154,7 +187,28 @@ export function PaymentForm({
         >
           {isSubmitting ? '送信中...' : isEdit ? '会計確定して更新' : '会計確定して登録'}
         </button>
+        {!isEdit ? (
+          <>
+            <button
+              type="button"
+              disabled={checkoutLoading !== null}
+              onClick={() => void startExternalCheckout('stripe')}
+              className="rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            >
+              {checkoutLoading === 'stripe' ? '遷移中...' : 'Stripeで決済'}
+            </button>
+            <button
+              type="button"
+              disabled={checkoutLoading !== null}
+              onClick={() => void startExternalCheckout('komoju')}
+              className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+            >
+              {checkoutLoading === 'komoju' ? '遷移中...' : 'KOMOJUで決済'}
+            </button>
+          </>
+        ) : null}
       </div>
+      {checkoutError ? <p className="text-xs text-red-600">{checkoutError}</p> : null}
       <p className="text-xs text-gray-500">会計確定後、領収書画面へ遷移します。</p>
     </form>
   )

@@ -503,6 +503,7 @@ export async function insertBillingOperation(params: {
     | 'setup_assistance_paid'
     | 'storage_addon_request'
     | 'storage_addon_paid'
+    | 'reservation_prepayment_paid'
     | 'notification_usage_billing_calculated'
   amountJpy?: number | null
   reason?: string | null

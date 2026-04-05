@@ -14,6 +14,7 @@ import {
   type CreatedAppointmentSummary,
 } from '@/lib/appointments/form-presentation'
 import { APPOINTMENT_METRIC_EVENTS } from '@/lib/appointments/metrics'
+import { DEFAULT_RESERVATION_PAYMENT_SETTINGS } from '@/lib/appointments/reservation-payment'
 
 type CustomerOption = {
   id: string
@@ -65,6 +66,16 @@ type EditAppointment = {
   duration: number | null
   status: string | null
   notes: string | null
+  reservation_payment_method?: string | null
+}
+
+type ReservationPaymentSettings = {
+  prepayment_enabled: boolean
+  card_hold_enabled: boolean
+  cancellation_day_before_percent: number
+  cancellation_same_day_percent: number
+  cancellation_no_show_percent: number
+  no_show_charge_mode: 'manual' | 'auto'
 }
 
 type AppointmentFormProps = {
@@ -92,6 +103,7 @@ type AppointmentFormProps = {
   cancelHref?: string
   followupTaskId?: string
   reofferId?: string
+  reservationPaymentSettings?: ReservationPaymentSettings
 }
 
 function toLocalInputValue(date: Date) {
@@ -127,6 +139,7 @@ export function AppointmentForm({
   cancelHref = '/appointments?tab=list',
   followupTaskId,
   reofferId,
+  reservationPaymentSettings = DEFAULT_RESERVATION_PAYMENT_SETTINGS,
 }: AppointmentFormProps) {
   const [customerList, setCustomerList] = useState(customerOptions)
   const [petList, setPetList] = useState(petOptions)
@@ -145,6 +158,9 @@ export function AppointmentForm({
   const [selectedMenuIds, setSelectedMenuIds] = useState(defaultMenuIds)
   const [status, setStatus] = useState(editAppointment?.status ?? initialPrefill?.status ?? '予約済')
   const [notes, setNotes] = useState(editAppointment?.notes ?? initialPrefill?.notes ?? '')
+  const [reservationPaymentMethod, setReservationPaymentMethod] = useState(
+    editAppointment?.reservation_payment_method ?? 'none'
+  )
   const [copyMessage, setCopyMessage] = useState('')
   const [copyTimeMode, setCopyTimeMode] = useState<'keep_start' | 'copy_full'>('keep_start')
   const [quickCustomerName, setQuickCustomerName] = useState('')
@@ -173,6 +189,17 @@ export function AppointmentForm({
       block: 'nearest',
     })
   }, [createdAppointments.length])
+
+  useEffect(() => {
+    const available = [
+      'none',
+      ...(reservationPaymentSettings.prepayment_enabled ? ['prepayment'] : []),
+      ...(reservationPaymentSettings.card_hold_enabled ? ['card_hold'] : []),
+    ]
+    if (!available.includes(reservationPaymentMethod)) {
+      setReservationPaymentMethod('none')
+    }
+  }, [reservationPaymentMethod, reservationPaymentSettings.card_hold_enabled, reservationPaymentSettings.prepayment_enabled])
 
   const onInputChanged = (setter: (value: string) => void) => (event: ChangeEvent<HTMLInputElement>) => {
     setFieldChangeCount((prev) => prev + 1)
@@ -263,6 +290,33 @@ export function AppointmentForm({
       if (editAppointment) {
         window.location.href = '/appointments'
         return
+      }
+
+      const createdAppointmentId = payload?.appointment?.id ?? payload?.id
+      if (reservationPaymentMethod === 'prepayment' && createdAppointmentId) {
+        const checkoutResponse = await fetch(
+          `/api/appointments/${createdAppointmentId}/reservation-payment/checkout`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              accept: 'application/json',
+            },
+            body: JSON.stringify({}),
+          }
+        )
+        const checkoutPayload = (await checkoutResponse.json().catch(() => null)) as
+          | { checkout_url?: string; message?: string }
+          | null
+        if (checkoutResponse.ok && checkoutPayload?.checkout_url) {
+          window.location.href = checkoutPayload.checkout_url
+          return
+        }
+        setSubmitMessage(
+          checkoutPayload?.message
+            ? `予約は保存しましたが、事前決済開始に失敗しました: ${checkoutPayload.message}`
+            : '予約は保存しましたが、事前決済開始に失敗しました。'
+        )
       }
 
       setCreatedAppointments((prev) => [
@@ -737,6 +791,28 @@ export function AppointmentForm({
               </option>
             ))}
           </select>
+        </label>
+        <label className="space-y-2 text-sm text-gray-700">
+          予約時決済方式
+          <select
+            name="reservation_payment_method"
+            value={reservationPaymentMethod}
+            onChange={onSelectChanged(setReservationPaymentMethod)}
+            className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            <option value="none">なし</option>
+            {reservationPaymentSettings.prepayment_enabled ? (
+              <option value="prepayment">事前決済</option>
+            ) : null}
+            {reservationPaymentSettings.card_hold_enabled ? (
+              <option value="card_hold">カード仮押さえ</option>
+            ) : null}
+          </select>
+          {reservationPaymentMethod === 'prepayment' ? (
+            <p className="text-xs text-gray-500">
+              予約保存後に外部決済画面へ遷移します。決済完了後に「決済済」へ更新されます。
+            </p>
+          ) : null}
         </label>
         <label className={`space-y-2 text-sm text-gray-700 ${singleColumn ? '' : 'md:col-span-2'}`}>
           備考
