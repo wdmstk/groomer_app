@@ -35,7 +35,8 @@ type CalendarMode = 'month' | 'week' | 'day'
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000
 const weekLabels = ['月', '火', '水', '木', '金', '土', '日']
-const HOUR_HEIGHT = 56
+const HOUR_WIDTH = 72
+const STAFF_ROW_HEIGHT = 72
 const staffColorPalette = [
   { light: 'bg-sky-50 text-sky-800', block: 'border-sky-200 bg-sky-50 text-sky-900' },
   { light: 'bg-emerald-50 text-emerald-800', block: 'border-emerald-200 bg-emerald-50 text-emerald-900' },
@@ -136,9 +137,9 @@ function getTimelinePlacement(item: NormalizedAppointment) {
   const endMin = endMinRaw > startMin ? endMinRaw : startMin + 30
   const clampedStart = Math.max(0, Math.min(startMin, 24 * 60))
   const clampedEnd = Math.max(0, Math.min(endMin, 24 * 60))
-  const top = (clampedStart / 60) * HOUR_HEIGHT
-  const height = Math.max(((clampedEnd - clampedStart) / 60) * HOUR_HEIGHT, 24)
-  return { startMin: clampedStart, endMin: clampedEnd, top, height }
+  const left = (clampedStart / 60) * HOUR_WIDTH
+  const width = Math.max(((clampedEnd - clampedStart) / 60) * HOUR_WIDTH, 56)
+  return { startMin: clampedStart, endMin: clampedEnd, left, width }
 }
 
 function assignLanes(dayAppointments: NormalizedAppointment[]) {
@@ -340,6 +341,7 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
   }, [cursor])
 
   const dayKey = toJstDateKey(startOfJstDay(cursor))
+  const timelineWidth = 24 * HOUR_WIDTH
 
   const handleDragStart = (event: DragEvent<HTMLElement>, item: NormalizedAppointment) => {
     const durationMin = Math.max(
@@ -392,16 +394,16 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
     const payload = JSON.parse(raw) as DraggedPayload
     const container = event.currentTarget
     const rect = container.getBoundingClientRect()
-    const relativeY = event.clientY - rect.top
-    const minuteRatio = relativeY / rect.height
+    const relativeX = event.clientX - rect.left
+    const minuteRatio = relativeX / rect.width
     const startMinute = roundTo15(minuteRatio * 24 * 60)
     const dayStart = startOfJstDay(dayDate).getTime()
     const startDate = new Date(dayStart + startMinute * 60 * 1000)
     const endDate = new Date(startDate.getTime() + payload.durationMin * 60 * 1000)
 
-    const relativeX = Math.max(0, Math.min(event.clientX - rect.left, rect.width - 1))
+    const relativeY = Math.max(0, Math.min(event.clientY - rect.top, rect.height - 1))
     const staffIndex = Math.min(
-      Math.max(0, Math.floor((relativeX / rect.width) * staffCount)),
+      Math.max(0, Math.floor((relativeY / rect.height) * staffCount)),
       staffCount - 1
     )
     const staffId = staffEntries[staffIndex]?.id || payload.fallbackStaffId
@@ -585,81 +587,76 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
 
       {mode === 'week' && (
         <div className="overflow-x-auto">
-          <div className="min-w-[1000px] rounded border bg-white">
-            <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))] border-b bg-gray-50 text-xs font-semibold text-gray-600">
-              <div className="border-r px-2 py-2">時刻</div>
-              {weekDays.map((date, idx) => (
-                <div key={toJstDateKey(date)} className="border-r px-2 py-2 last:border-r-0">
-                  {weekLabels[idx]} {getJstParts(date).day}日
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))]">
-              <div
-                className="relative border-r bg-gray-50 text-[11px] text-gray-500"
-                style={{ height: `${24 * HOUR_HEIGHT}px` }}
-              >
+          <div className="min-w-[1900px] rounded border bg-white">
+            <div className="grid grid-cols-[88px_minmax(0,1fr)] border-b bg-gray-50 text-xs font-semibold text-gray-600">
+              <div className="border-r px-2 py-2">日付</div>
+              <div className="relative" style={{ width: `${timelineWidth}px`, height: '36px' }}>
                 {Array.from({ length: 24 }, (_, hour) => (
                   <div
-                    key={hour}
-                    className="absolute left-0 right-0 border-t px-1"
-                    style={{ top: `${hour * HOUR_HEIGHT}px`, height: `${HOUR_HEIGHT}px` }}
+                    key={`week-header-hour-${hour}`}
+                    className="absolute top-0 text-[11px] text-gray-500"
+                    style={{ left: `${hour * HOUR_WIDTH + 4}px` }}
                   >
                     {`${String(hour).padStart(2, '0')}:00`}
                   </div>
                 ))}
               </div>
+            </div>
 
-              {weekDays.map((date) => {
-                const key = toJstDateKey(date)
-                const dayAppointments = appointmentsByDay.get(key) ?? []
-                const staffLaneData = assignStaffLanes(dayAppointments, staffNames)
+            {weekDays.map((date, idx) => {
+              const key = toJstDateKey(date)
+              const dayAppointments = appointmentsByDay.get(key) ?? []
+              const staffLaneData = assignStaffLanes(dayAppointments, staffNames)
+              const staffSectionHeight = STAFF_ROW_HEIGHT
+              const totalHeight = Math.max(staffLaneData.totalStaff * staffSectionHeight, STAFF_ROW_HEIGHT)
 
-                return (
+              return (
+                <div key={key} className="grid grid-cols-[88px_minmax(0,1fr)] border-b last:border-b-0">
+                  <div className="border-r bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600">
+                    {weekLabels[idx]} {getJstParts(date).day}日
+                  </div>
                   <div
-                    key={key}
-                    className="relative border-r last:border-r-0"
-                    style={{ height: `${24 * HOUR_HEIGHT}px` }}
+                    className="relative"
+                    style={{ width: `${timelineWidth}px`, height: `${totalHeight}px` }}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={(event) => {
                       void handleDropOnTimeline(event, date, staffLaneData.totalStaff)
                     }}
                   >
-                    {Array.from({ length: 24 }, (_, hour) => (
+                    {Array.from({ length: 25 }, (_, hour) => (
                       <div
-                        key={`${key}-line-${hour}`}
-                        className="absolute left-0 right-0 border-t"
-                        style={{ top: `${hour * HOUR_HEIGHT}px` }}
+                        key={`${key}-hour-line-${hour}`}
+                        className="absolute bottom-0 top-0 border-l border-gray-200"
+                        style={{ left: `${hour * HOUR_WIDTH}px` }}
                       />
                     ))}
-                    {Array.from({ length: Math.max(0, staffLaneData.totalStaff - 1) }, (_, idx) => (
+                    {Array.from({ length: Math.max(0, staffLaneData.totalStaff - 1) }, (_, idx2) => (
                       <div
-                        key={`${key}-staff-separator-${idx}`}
-                        className="absolute bottom-0 top-0 border-l border-gray-200"
-                        style={{ left: `${((idx + 1) / staffLaneData.totalStaff) * 100}%` }}
+                        key={`${key}-staff-separator-${idx2}`}
+                        className="absolute left-0 right-0 border-t border-gray-200"
+                        style={{ top: `${(idx2 + 1) * staffSectionHeight}px` }}
                       />
                     ))}
                     {staffLaneData.lanesCountByStaff.flatMap((count, staffIndex) =>
                       Array.from({ length: Math.max(0, count - 1) }, (_, laneBoundaryIndex) => {
-                        const ratio =
-                          (staffIndex + (laneBoundaryIndex + 1) / count) / staffLaneData.totalStaff
+                        const top =
+                          staffSectionHeight * staffIndex +
+                          ((laneBoundaryIndex + 1) / count) * staffSectionHeight
                         return (
                           <div
                             key={`${key}-lane-separator-${staffIndex}-${laneBoundaryIndex}`}
-                            className="absolute bottom-0 top-0 border-l border-dashed border-gray-300"
-                            style={{ left: `${ratio * 100}%` }}
+                            className="absolute left-0 right-0 border-t border-dashed border-gray-300"
+                            style={{ top: `${top}px` }}
                           />
                         )
                       })
                     )}
 
                     {staffLaneData.placed.map(({ item, lane, staffIndex, lanesInStaff }) => {
-                      const { top, height } = getTimelinePlacement(item)
-                      const staffWidth = 100 / staffLaneData.totalStaff
-                      const laneWidth = staffWidth / lanesInStaff
-                      const left = staffWidth * staffIndex + laneWidth * lane + 0.5
-                      const width = laneWidth - 1
+                      const { left, width } = getTimelinePlacement(item)
+                      const laneHeight = staffSectionHeight / lanesInStaff
+                      const top = staffSectionHeight * staffIndex + laneHeight * lane + 2
+                      const height = Math.max(laneHeight - 4, 18)
 
                       return (
                         <Link
@@ -668,8 +665,8 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
                           className={`absolute rounded border px-2 py-1 text-[11px] shadow-sm ${getItemColorClass(item, 'block')}`}
                           style={{
                             top: `${top}px`,
-                            left: `${left}%`,
-                            width: `${width}%`,
+                            left: `${left}px`,
+                            width: `${width}px`,
                             height: `${height}px`,
                             opacity: draggingAppointmentId === item.id ? 0.5 : 1,
                           }}
@@ -688,9 +685,9 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
                       )
                     })}
                   </div>
-                )
-              })}
-            </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -704,103 +701,101 @@ export function AppointmentCalendar({ appointments, initialDelayAlert = null }: 
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <div className="min-w-[560px] rounded border bg-white">
-                <div className="grid grid-cols-[64px_minmax(0,1fr)] border-b bg-gray-50 text-xs font-semibold text-gray-600">
-                  <div className="border-r px-2 py-2">時刻</div>
-                  <div className="px-2 py-2">{formatJstDate(cursor)}</div>
-                </div>
-                <div className="grid grid-cols-[64px_minmax(0,1fr)]">
-                  <div
-                    className="relative border-r bg-gray-50 text-[11px] text-gray-500"
-                    style={{ height: `${24 * HOUR_HEIGHT}px` }}
-                  >
+              <div className="min-w-[1900px] rounded border bg-white">
+                <div className="grid grid-cols-[88px_minmax(0,1fr)] border-b bg-gray-50 text-xs font-semibold text-gray-600">
+                  <div className="border-r px-2 py-2">日付</div>
+                  <div className="relative" style={{ width: `${timelineWidth}px`, height: '36px' }}>
                     {Array.from({ length: 24 }, (_, hour) => (
                       <div
-                        key={`day-hour-${hour}`}
-                        className="absolute left-0 right-0 border-t px-1"
-                        style={{ top: `${hour * HOUR_HEIGHT}px`, height: `${HOUR_HEIGHT}px` }}
+                        key={`day-header-hour-${hour}`}
+                        className="absolute top-0 text-[11px] text-gray-500"
+                        style={{ left: `${hour * HOUR_WIDTH + 4}px` }}
                       >
                         {`${String(hour).padStart(2, '0')}:00`}
                       </div>
                     ))}
                   </div>
-
-                  <div
-                    className="relative"
-                    style={{ height: `${24 * HOUR_HEIGHT}px` }}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={(event) => {
-                      void handleDropOnTimeline(event, cursor, staffEntries.length)
-                    }}
-                  >
-                    {Array.from({ length: 24 }, (_, hour) => (
-                      <div
-                        key={`day-line-${hour}`}
-                        className="absolute left-0 right-0 border-t"
-                        style={{ top: `${hour * HOUR_HEIGHT}px` }}
-                      />
-                    ))}
-                    {(() => {
-                      const staffLaneData = assignStaffLanes(appointmentsByDay.get(dayKey) ?? [], staffNames)
-                      return (
-                        <>
-                          {Array.from({ length: Math.max(0, staffLaneData.totalStaff - 1) }, (_, idx) => (
-                            <div
-                              key={`day-staff-separator-${idx}`}
-                              className="absolute bottom-0 top-0 border-l border-gray-200"
-                              style={{ left: `${((idx + 1) / staffLaneData.totalStaff) * 100}%` }}
-                            />
-                          ))}
-                          {staffLaneData.lanesCountByStaff.flatMap((count, staffIndex) =>
-                            Array.from({ length: Math.max(0, count - 1) }, (_, laneBoundaryIndex) => {
-                              const ratio =
-                                (staffIndex + (laneBoundaryIndex + 1) / count) / staffLaneData.totalStaff
-                              return (
-                                <div
-                                  key={`day-lane-separator-${staffIndex}-${laneBoundaryIndex}`}
-                                  className="absolute bottom-0 top-0 border-l border-dashed border-gray-300"
-                                  style={{ left: `${ratio * 100}%` }}
-                                />
-                              )
-                            })
-                          )}
-                          {staffLaneData.placed.map(({ item, lane, staffIndex, lanesInStaff }) => {
-                            const { top, height } = getTimelinePlacement(item)
-                            const staffWidth = 100 / staffLaneData.totalStaff
-                            const laneWidth = staffWidth / lanesInStaff
-                            const left = staffWidth * staffIndex + laneWidth * lane + 0.5
-                            const width = laneWidth - 1
-                            return (
-                              <Link
-                                key={item.id}
-                                href={`/appointments?tab=calendar&edit=${item.id}`}
-                                className={`absolute rounded border px-2 py-1 text-[11px] shadow-sm ${getItemColorClass(item, 'block')}`}
-                                style={{
-                                  top: `${top}px`,
-                                  left: `${left}%`,
-                                  width: `${width}%`,
-                                  height: `${height}px`,
-                                  opacity: draggingAppointmentId === item.id ? 0.5 : 1,
-                                }}
-                                draggable
-                                onClick={(event) => handleChipClick(event, item.id)}
-                                onDoubleClick={(event) => handleChipDoubleClick(event, item.id)}
-                                onDragStart={(event) => handleDragStart(event, item)}
-                                onDragEnd={handleDragEnd}
-                              >
-                                <p className="font-semibold">
-                                  {formatJstTime(item.startTime)}-{formatJstTime(item.endTime)}
-                                </p>
-                                <p>{item.petName}</p>
-                                <p className="text-blue-700">{item.staffName}</p>
-                              </Link>
-                            )
-                          })}
-                        </>
-                      )
-                    })()}
-                  </div>
                 </div>
+                {(() => {
+                  const staffLaneData = assignStaffLanes(appointmentsByDay.get(dayKey) ?? [], staffNames)
+                  const staffSectionHeight = STAFF_ROW_HEIGHT
+                  const totalHeight = Math.max(staffLaneData.totalStaff * staffSectionHeight, STAFF_ROW_HEIGHT)
+                  return (
+                    <div className="grid grid-cols-[88px_minmax(0,1fr)]">
+                      <div className="border-r bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600">
+                        {formatJstDate(cursor)}
+                      </div>
+                      <div
+                        className="relative"
+                        style={{ width: `${timelineWidth}px`, height: `${totalHeight}px` }}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={(event) => {
+                          void handleDropOnTimeline(event, cursor, staffLaneData.totalStaff)
+                        }}
+                      >
+                        {Array.from({ length: 25 }, (_, hour) => (
+                          <div
+                            key={`day-line-${hour}`}
+                            className="absolute bottom-0 top-0 border-l border-gray-200"
+                            style={{ left: `${hour * HOUR_WIDTH}px` }}
+                          />
+                        ))}
+                        {Array.from({ length: Math.max(0, staffLaneData.totalStaff - 1) }, (_, idx) => (
+                          <div
+                            key={`day-staff-separator-${idx}`}
+                            className="absolute left-0 right-0 border-t border-gray-200"
+                            style={{ top: `${(idx + 1) * staffSectionHeight}px` }}
+                          />
+                        ))}
+                        {staffLaneData.lanesCountByStaff.flatMap((count, staffIndex) =>
+                          Array.from({ length: Math.max(0, count - 1) }, (_, laneBoundaryIndex) => {
+                            const top =
+                              staffSectionHeight * staffIndex +
+                              ((laneBoundaryIndex + 1) / count) * staffSectionHeight
+                            return (
+                              <div
+                                key={`day-lane-separator-${staffIndex}-${laneBoundaryIndex}`}
+                                className="absolute left-0 right-0 border-t border-dashed border-gray-300"
+                                style={{ top: `${top}px` }}
+                              />
+                            )
+                          })
+                        )}
+                        {staffLaneData.placed.map(({ item, lane, staffIndex, lanesInStaff }) => {
+                          const { left, width } = getTimelinePlacement(item)
+                          const laneHeight = staffSectionHeight / lanesInStaff
+                          const top = staffSectionHeight * staffIndex + laneHeight * lane + 2
+                          const height = Math.max(laneHeight - 4, 18)
+                          return (
+                            <Link
+                              key={item.id}
+                              href={`/appointments?tab=calendar&edit=${item.id}`}
+                              className={`absolute rounded border px-2 py-1 text-[11px] shadow-sm ${getItemColorClass(item, 'block')}`}
+                              style={{
+                                top: `${top}px`,
+                                left: `${left}px`,
+                                width: `${width}px`,
+                                height: `${height}px`,
+                                opacity: draggingAppointmentId === item.id ? 0.5 : 1,
+                              }}
+                              draggable
+                              onClick={(event) => handleChipClick(event, item.id)}
+                              onDoubleClick={(event) => handleChipDoubleClick(event, item.id)}
+                              onDragStart={(event) => handleDragStart(event, item)}
+                              onDragEnd={handleDragEnd}
+                            >
+                              <p className="font-semibold">
+                                {formatJstTime(item.startTime)}-{formatJstTime(item.endTime)}
+                              </p>
+                              <p>{item.petName}</p>
+                              <p className="text-blue-700">{item.staffName}</p>
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           )}
