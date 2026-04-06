@@ -63,6 +63,7 @@ describe('Sidebar component', () => {
     expect(screen.queryByText('KPIレポート')).toBeNull()
 
     fireEvent.click(screen.getAllByRole('button', { name: '制限メニューを表示' })[0]!)
+    fireEvent.click(screen.getByRole('button', { name: '運用分析' }))
 
     expect(screen.getByText('KPIレポート')).toBeTruthy()
     expect(screen.getAllByText('プロ').length).toBeGreaterThan(0)
