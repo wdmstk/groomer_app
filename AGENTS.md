@@ -54,16 +54,19 @@ They must not assume or infer missing context.
 # 3. Development Environment
 
 Install dependencies:
-    pip install -r requirements.txt
+    cd groomer_app && npm ci
 
-Run tests:
-    pytest
+Run unit tests (legacy):
+    cd groomer_app && npm test
+
+Run E2E tests:
+    cd groomer_app && npm run test:e2e
+
+Run unit tests (new standard):
+    cd groomer_app && npx vitest run
 
 Lint code:
-    ruff check .
-
-Format code:
-    ruff format .
+    cd groomer_app && npm run lint
 
 Before finishing any task:
 * Run tests
@@ -109,8 +112,35 @@ For every change:
 * Ensure all tests pass
 * Do not remove existing tests unless necessary
 
-Testing framework:
-    pytest
+Testing frameworks:
+    unit/logic: Vitest (`npx vitest run`) as the default for new/updated tests
+    e2e: Playwright (`npm run test:e2e`)
+
+## 6.1 Test Code Quality (Mandatory)
+
+* Tests must verify actual behavior of real features
+* Meaningless assertions such as `expect(true).toBe(true)` (and similar variants) are strictly prohibited
+* Each test case must verify concrete input and expected output
+* Keep mocks to the minimum needed; prefer behavior close to real runtime
+
+## 6.2 No Hardcoding To Pass Tests (Mandatory)
+
+* Hardcoding only to satisfy tests is strictly prohibited
+* Never add branches like `if(testmode)` in production code
+* Never embed test-only magic numbers/special values in production code
+* Separate test and production via environment variables and configuration files
+
+## 6.3 Test Implementation Principles (Mandatory)
+
+* Start from a failing test (Red-Green-Refactor)
+* Always include boundary, abnormal, and error cases
+* Prioritize real quality over superficial coverage numbers
+* Test case names must clearly state what is being verified
+
+## 6.4 Pre-Implementation Confirmation (Mandatory)
+
+* Understand the feature specification before writing tests
+* If any point is unclear, ask the user instead of making temporary assumptions
 
 ---
 

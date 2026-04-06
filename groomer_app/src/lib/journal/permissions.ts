@@ -8,7 +8,21 @@ export type JournalPermissions = {
 type PermissionParams = {
   supabase: {
     from: (table: string) => {
-      select: (columns: string) => any
+      select: (columns: string) => {
+        eq: (column: string, value: string) => {
+          eq: (column: string, value: string) => {
+            maybeSingle: () => Promise<{
+              data: {
+                can_create?: boolean | null
+                can_publish?: boolean | null
+                can_view_internal?: boolean | null
+                can_delete?: boolean | null
+              } | null
+              error: { message: string } | null
+            }>
+          }
+        }
+      }
     }
   }
   storeId: string

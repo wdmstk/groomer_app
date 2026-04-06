@@ -16,6 +16,7 @@
     "lint:changed": "node ./scripts/lint-changed.mjs",
     "lint:files": "eslint --cache --cache-location .eslintcache --quiet",
     "test": "node --import ./tests/register-alias.mjs --test",
+    "test:vitest": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "types:generate:supabase": "node ./scripts/generate-supabase-types.mjs"
@@ -34,12 +35,15 @@
   "devDependencies": {
     "@playwright/test": "^1.55.0",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "jsdom": "^29.0.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.2"
   }
 }

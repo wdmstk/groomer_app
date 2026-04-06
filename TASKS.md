@@ -139,50 +139,118 @@ Completed tasks should be marked:
 1. `TASK-413` AIタグ解析ジョブのRLS修正（Supabase SQL Editor反映待ち）
 
 ### done
-1. `TASK-444` 店舗設定タブ再編と予約カレンダー営業時間連動（2026-04-05）
-2. `TASK-443` 予約カレンダーの時間軸横向き化（2026-04-05）
-3. `TASK-442` 店舗別決済アカウント接続と通常決済のStripe/KOMOJU対応（2026-04-05）
-4. `TASK-441` 会員証URLのセルフ再取得導線（期限切れ時）（2026-04-05）
-5. `TASK-440` 会員証URL有効期限の可変TTL設定（30/90/180日）（2026-04-05）
-6. `TASK-439` 会員証ポータルからの空き枠待ち自己登録導線追加（2026-04-04）
-7. `TASK-438` 顧客管理・ペット管理の統合ページ仕様策定（2026-04-02）
-8. `TASK-437` 日誌機能（非破壊追加）仕様策定と実装管理（2026-03-31）
-9. `TASK-436` 予約管理の同意書ステータスバッジと状態別導線追加（2026-03-31）
-10. `TASK-435` 電子同意書管理のタブ分割・履歴PDF参照/削除・署名導線強化（2026-03-31）
-11. `TASK-433` 施術同意書標準テンプレート完全版差し替え（2026-03-29）
-12. `TASK-432` 施術同意書の表示体裁改善とPDF2ページ化（2026-03-29）
-13. `TASK-431` 予約管理起点の同意書作成導線とPDF作成強化（2026-03-29）
-14. `TASK-430` 電子同意書管理のレイアウト統一・テンプレ本文再利用・PDF証跡強化（2026-03-28）
-15. `TASK-429` アプリ名/会社名の全ページ反映（2026-03-28）
-16. `TASK-428` 電子同意書PDF文字化け修正（日本語対応）（2026-03-27）
-17. `TASK-427` 電子同意書Storageバケット不足エラー修正（2026-03-27）
-18. `TASK-426` 電子同意書テンプレ差し込み表示とプレビュー実装（2026-03-27）
-19. `TASK-425` 電子同意書の署名URL再取得導線追加（2026-03-27）
-20. `TASK-424` 電子同意書テンプレートUIの用語/入力改善（2026-03-27）
-21. `TASK-423` 電子同意書テンプレート標準初期化（店舗作成時の自動投入）（2026-03-27）
-22. `TASK-422` 電子同意書（施術同意書）機能追加（2026-03-27）
-23. `TASK-421` 競合LPベンチマーク整合のLP改修（2026-03-26）
-24. `TASK-420` dev課金操作の安全運用化（2026-03-22）
-25. `TASK-419` 法務・規約コンプライアンス是正（2026-03-22）
-26. `TASK-418` オプション課金確定ゲート整備（2026-03-22）
-27. `TASK-416` サイドバー改善（2026-03-21）
-28. `TASK-415` 動画カルテ + AIプラン拡張（非破壊導入）
-29. `TASK-414` 顧客LTV分析
-30. `TASK-411` 写真カルテのAIタグ付け
-31. `TASK-410` LINEの自動マーケ
-32. `TASK-409` 事前決済
-33. `TASK-407` 開発環境で課金なしのプラン/オプション切替
-34. `TASK-406` devサブスク保存後404修正
-35. `TASK-405` タスク/ブランチ運用ガード追加とStorage設定導線整理
-36. `TASK-404` HP本部運用にホテルメニュー向けテンプレ配信を追加
-37. `TASK-403` ペット管理からQR機能を完全削除
-38. `TASK-402` appointments更新後POST転送不具合修正
-39. `TASK-POS-003` POS会計画面（MVP）実装（`TASK-408`配下）
-40. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
-41. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
-42. `TASK-POS-007` POS一本化（トリミング/ホテル会計統合）（`TASK-408`配下）
+1. `TASK-446` `.tsx` 向けVitest導入とUIコンポーネントテスト追加（2026-04-05）
+2. `TASK-445` テスト品質/実装原則の運用ルール明文化とガード導入（2026-04-05）
+3. `TASK-444` 店舗設定タブ再編と予約カレンダー営業時間連動（2026-04-05）
+4. `TASK-443` 予約カレンダーの時間軸横向き化（2026-04-05）
+5. `TASK-442` 店舗別決済アカウント接続と通常決済のStripe/KOMOJU対応（2026-04-05）
+6. `TASK-441` 会員証URLのセルフ再取得導線（期限切れ時）（2026-04-05）
+7. `TASK-440` 会員証URL有効期限の可変TTL設定（30/90/180日）（2026-04-05）
+8. `TASK-439` 会員証ポータルからの空き枠待ち自己登録導線追加（2026-04-04）
+9. `TASK-438` 顧客管理・ペット管理の統合ページ仕様策定（2026-04-02）
+10. `TASK-437` 日誌機能（非破壊追加）仕様策定と実装管理（2026-03-31）
+11. `TASK-436` 予約管理の同意書ステータスバッジと状態別導線追加（2026-03-31）
+12. `TASK-435` 電子同意書管理のタブ分割・履歴PDF参照/削除・署名導線強化（2026-03-31）
+13. `TASK-433` 施術同意書標準テンプレート完全版差し替え（2026-03-29）
+14. `TASK-432` 施術同意書の表示体裁改善とPDF2ページ化（2026-03-29）
+15. `TASK-431` 予約管理起点の同意書作成導線とPDF作成強化（2026-03-29）
+16. `TASK-430` 電子同意書管理のレイアウト統一・テンプレ本文再利用・PDF証跡強化（2026-03-28）
+17. `TASK-429` アプリ名/会社名の全ページ反映（2026-03-28）
+18. `TASK-428` 電子同意書PDF文字化け修正（日本語対応）（2026-03-27）
+19. `TASK-427` 電子同意書Storageバケット不足エラー修正（2026-03-27）
+20. `TASK-426` 電子同意書テンプレ差し込み表示とプレビュー実装（2026-03-27）
+21. `TASK-425` 電子同意書の署名URL再取得導線追加（2026-03-27）
+22. `TASK-424` 電子同意書テンプレートUIの用語/入力改善（2026-03-27）
+23. `TASK-423` 電子同意書テンプレート標準初期化（店舗作成時の自動投入）（2026-03-27）
+24. `TASK-422` 電子同意書（施術同意書）機能追加（2026-03-27）
+25. `TASK-421` 競合LPベンチマーク整合のLP改修（2026-03-26）
+26. `TASK-420` dev課金操作の安全運用化（2026-03-22）
+27. `TASK-419` 法務・規約コンプライアンス是正（2026-03-22）
+28. `TASK-418` オプション課金確定ゲート整備（2026-03-22）
+29. `TASK-416` サイドバー改善（2026-03-21）
+30. `TASK-415` 動画カルテ + AIプラン拡張（非破壊導入）
+31. `TASK-414` 顧客LTV分析
+32. `TASK-411` 写真カルテのAIタグ付け
+33. `TASK-410` LINEの自動マーケ
+34. `TASK-409` 事前決済
+35. `TASK-407` 開発環境で課金なしのプラン/オプション切替
+36. `TASK-406` devサブスク保存後404修正
+37. `TASK-405` タスク/ブランチ運用ガード追加とStorage設定導線整理
+38. `TASK-404` HP本部運用にホテルメニュー向けテンプレ配信を追加
+39. `TASK-403` ペット管理からQR機能を完全削除
+40. `TASK-402` appointments更新後POST転送不具合修正
+41. `TASK-POS-003` POS会計画面（MVP）実装（`TASK-408`配下）
+42. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
+43. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
+44. `TASK-POS-007` POS一本化（トリミング/ホテル会計統合）（`TASK-408`配下）
 
 ## 正式タスク詳細（Task ID採番済み）
+
+## `.tsx` 向けVitest導入とUIコンポーネントテスト追加
+- Task ID: `TASK-446`
+- ブランチ: `test/TASK-446-vitest-button-tsx`
+- ステータス: `done`
+- 概要: `.tsx` コンポーネント向けに Vitest 実行環境を最小導入し、代表例として `Button.tsx` の挙動テストを追加する
+- 影響範囲: `groomer_app/package.json`、`groomer_app/package-lock.json`、`groomer_app/vitest.config.ts`、`groomer_app/tests/setup-vitest.ts`、`groomer_app/tests/ui.button.vitest.test.tsx`
+- リスク: 既存 `node:test` ベースとの実行対象競合
+- 完了条件:
+  - `npx vitest run` で `.tsx` 向けテストが実行できる
+  - `Button.tsx` の表示/属性/クリックの基本挙動を検証できる
+  - 既存テスト運用を壊さない（Vitest対象を限定）
+- 進捗:
+  - [x] ブランチ作成・タスク登録
+  - [x] テスト対象リスト化（`Button.tsx` / `Input.tsx` / `Card.tsx` / `ThemeHydrator.tsx` / `GlobalFooter.tsx` / `FormModal.tsx` / `StoreSwitcher.tsx` / `Sidebar.tsx` / `app/legal/*.tsx` / `app/lp/page.tsx` / `app/manual/*.tsx` / `app/page.tsx` / `app/(auth)/*.tsx` / `app/billing-required` / `app/member-portal-*e2e` / `app/dev/page.tsx` / `app/dev/support-chat/page.tsx` / `app/manual/[sectionId]` / `app/dev/manual/*` / `app/support-chat|support-tickets` / `app/dev/support-tickets` / `app/hq/page.tsx` / `app/hq/menu-templates` / `app/hq/menu-template-deliveries` / `app/hq/hotel-menu-templates` / `app/hq/hotel-menu-template-deliveries` / `app/hq/manual/*` / `app/invite/[token]` / `app/reserve/*` / `app/consent/sign/[token]` / `app/billing/{page,history/page,success/page}.tsx` / `app/{appointments,billing,customers,pets,payments,support-chat,support-tickets,inventory,dev,hq}/layout.tsx` / `app/inventory/page.tsx` / `app/dashboard/{page,appointments-kpi,notification-logs,audit-logs,setup-store}/page.tsx` / `app/settings/layout.tsx` / `app/settings/page.tsx` / `app/settings/{storage,public-reserve,notifications,setup-store}/page.tsx`）
+  - [x] Vitest最小導入（config/setup）
+  - [x] `Button.tsx` テスト追加
+  - [x] `Input.tsx` テスト追加
+  - [x] `Card.tsx` テスト追加
+  - [x] `ThemeHydrator.tsx` テスト追加
+  - [x] `GlobalFooter.tsx` テスト追加
+  - [x] `FormModal.tsx` テスト追加
+  - [x] `StoreSwitcher.tsx` テスト追加
+  - [x] `Sidebar.tsx` テスト追加
+  - [x] `app/legal/privacy|terms|security|tokusho` ページテスト追加
+  - [x] `app/lp` / `app/manual` / `app/manual/glossary` ページテスト追加
+  - [x] `app/page` / `app/(auth)/login|signup` ページテスト追加
+  - [x] `app/billing-required` / `app/member-portal-*e2e` / `app/dev` ページテスト追加
+  - [x] `app/manual/[sectionId]` / `app/dev/manual|glossary|[sectionId]` ページテスト追加
+  - [x] `app/support-chat|support-tickets` / `app/dev/support-tickets` ページテスト追加
+  - [x] `app/hq` / `app/hq/menu-templates` / `app/hq/menu-template-deliveries` ページテスト追加
+  - [x] `app/hq/hotel-menu-templates` / `app/hq/hotel-menu-template-deliveries` ページテスト追加
+  - [x] `app/hq/manual` / `app/hq/manual/glossary` / `app/hq/manual/[sectionId]` ページテスト追加
+  - [x] `app/invite/[token]` / `app/reserve/[store_id]|cancel` / `app/consent/sign/[token]` / `app/billing/success` ページテスト追加
+  - [x] 未カバー残対象の全件リスト化（`app/layout.tsx` / `app/legal/layout.tsx` / `app/manual/layout.tsx` / `app/medical-records/layout.tsx` / `app/ops/layout.tsx` / `app/service-menus/layout.tsx` / `app/visits/layout.tsx` / `app/consents/layout.tsx` / `app/dashboard/layout.tsx` / `app/hotel/layout.tsx` / `app/journal/layout.tsx` / `app/appointments/page.tsx` / `app/consents/page.tsx` / `app/customers/page.tsx` / `app/customers/manage/page.tsx` / `app/dev/appointments-kpi/page.tsx` / `app/dev/billing-alerts/page.tsx` / `app/dev/cron/page.tsx` / `app/dev/subscriptions/page.tsx` / `app/hotel/page.tsx` / `app/inventory/{history,inbounds,outbounds,products,purchase-orders,reorder-suggestions,reports,stocks,stocktake}/page.tsx` / `app/invite/[token]/page-client.tsx` / `app/journal/page.tsx` / `app/journal/pets/[pet_id]/page.tsx` / `app/medical-records/page.tsx` / `app/ops/today/page.tsx` / `app/payments/page.tsx` / `app/pets/page.tsx` / `app/receipts/[payment_id]/page.tsx` / `app/reserve/[store_id]/reserve-form.tsx` / `app/reserve/cancel/page-client.tsx` / `app/service-menus/page.tsx` / `app/shared/{journal,medical-records,member-portal}/[token]/page.tsx` / `app/staffs/page.tsx` / `app/visits/page.tsx`）
+  - [x] `app/dashboard/page.tsx` ページテスト追加
+  - [x] `app/dashboard/appointments-kpi/page.tsx` ページテスト追加
+  - [x] `app/dashboard/notification-logs|audit-logs/page.tsx` ページテスト追加
+  - [x] `app/billing/page.tsx` / `app/billing/history/page.tsx` / `app/inventory/page.tsx` / `app/dashboard/setup-store/page.tsx` ページテスト追加
+  - [x] `app/{appointments,billing,customers,pets,payments,support-chat,support-tickets,inventory,dev,hq}/layout.tsx` ページテスト追加
+  - [x] `app/{dashboard,hotel,journal,consents,legal,manual,medical-records,ops,service-menus,visits}/layout.tsx` / `app/layout.tsx` テスト追加
+  - [x] `app/{appointments,consents,customers,hotel,inventory/history|inbounds|outbounds|products|purchase-orders|reorder-suggestions|reports|stocks|stocktake,journal,ops/today,payments,pets,receipts/[payment_id],service-menus,staffs}/page.tsx` テスト追加
+  - [x] `app/{invite/[token]/page-client,reserve/cancel/page-client,reserve/[store_id]/reserve-form,shared/journal/[token],shared/medical-records/[token],shared/member-portal/[token],journal/pets/[pet_id],medical-records,visits,customers/manage,dev/appointments-kpi|billing-alerts|cron|subscriptions}/page*.tsx` テスト追加
+  - [x] `app/settings/layout.tsx` / `app/settings/page.tsx` / `app/settings/{storage,public-reserve,notifications,setup-store}/page.tsx` ページテスト追加
+  - [x] `npx vitest run` 実行確認
+  - [x] `npm test` 実行確認
+  - [x] `npm run lint` 実行確認（`src/lib/journal/permissions.ts` の `no-explicit-any` 解消済み）
+
+## テスト品質/実装原則の運用ルール明文化とガード導入
+- Task ID: `TASK-445`
+- ブランチ: `docs/TASK-445-test-guidelines-ops`
+- ステータス: `done`
+- 概要: テストコード品質・ハードコーディング禁止・Red-Green-Refactor・仕様確認・Vitest利用方針を運用ルールへ反映し、最低限の自動ガードを追加する
+- 影響範囲: `AGENTS.md`、`groomer_app/README.md`、`docs/current-test-items.md`、GitHub Actions（テスト品質ガード）
+- リスク: 既存運用（`node:test`）と新方針（Vitest）の併記期間での混乱
+- 完了条件:
+  - ルール文書に禁止事項・必須事項が明記される
+  - 実行手順（誰がいつ何を実行するか）が README に追記される
+  - チェックリストがテストドキュメントへ追加される
+  - 意味のないアサーションと `if(testmode)` 系分岐をCIで検出できる
+- 進捗:
+  - [x] ブランチ作成・タスク登録
+  - [x] 既存ドキュメント/CI確認
+  - [x] ルール追記（AGENTS/README/docs）
+  - [x] CIガード追加
+  - [x] 最終整合確認
 
 ## 店舗設定タブ再編と予約カレンダー営業時間連動
 - Task ID: `TASK-444`
