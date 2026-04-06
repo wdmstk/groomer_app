@@ -1,0 +1,37 @@
+name: Test Quality Guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check banned test patterns
+        run: |
+          set -euo pipefail
+
+          bad_asserts="$(grep -RInE 'expectr?\s*\(\s*true\s*\)\s*\.toBe\s*\(\s*true\s*\)' groomer_app/tests groomer_app/e2e || true)"
+          if [[ -n "${bad_asserts}" ]]; then
+            echo "Meaningless assertion is not allowed:"
+            echo "${bad_asserts}"
+            exit 1
+          fi
+
+          bad_testmode="$(grep -RInEi 'if\s*\(\s*testmode\s*\)' groomer_app/src || true)"
+          if [[ -n "${bad_testmode}" ]]; then
+            echo "Production code must not contain if(testmode) branch:"
+            echo "${bad_testmode}"
+            exit 1
+          fi
+
+          echo "Test quality guard passed."
