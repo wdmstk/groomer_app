@@ -31,6 +31,8 @@ type NavSection = {
   links: NavLink[]
 }
 
+const SIDEBAR_EXPANDED_SECTIONS_STORAGE_KEY = 'sidebar_expanded_sections'
+
 const DEFAULT_OPTION_STATE = {
   hotelOptionEnabled: false,
   notificationOptionEnabled: false,
@@ -147,6 +149,17 @@ export function Sidebar() {
   const [uiTheme, setUiTheme] = useState<UiTheme>(resolveClientUiThemeSnapshot)
   const [themeMessage, setThemeMessage] = useState('')
   const [isThemeSaving, setIsThemeSaving] = useState(false)
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') return {}
+    const raw = window.sessionStorage.getItem(SIDEBAR_EXPANDED_SECTIONS_STORAGE_KEY)
+    if (!raw) return {}
+    try {
+      const parsed = JSON.parse(raw) as Record<string, boolean>
+      return parsed && typeof parsed === 'object' ? parsed : {}
+    } catch {
+      return {}
+    }
+  })
   const persistedTitle = useSyncExternalStore(
     () => () => {},
     () => (typeof window === 'undefined' ? '' : window.sessionStorage.getItem('active_store_name') ?? ''),
@@ -337,69 +350,122 @@ export function Sidebar() {
   }
 
   const renderLinks = (onNavigate?: () => void) => (
-    <nav className="space-y-2">
-      {activeNavSections.map((section) => (
-        <div key={section.title} className="pt-1">
-          <div className="mb-1 flex items-center gap-2 px-2">
-            <p className="shrink-0 text-xs font-semibold tracking-wide text-gray-500">{section.title}</p>
-            <span className="h-px flex-1 bg-gray-200" aria-hidden="true" />
-          </div>
-          <div className="space-y-1">
-            {section.links.map((link) => {
-              if (link.ownerOnly && activeRole !== 'owner') {
-                return null
+    <nav className="space-y-3">
+      {activeNavSections.map((section) => {
+        const sectionKey = `${activeNavMode}:${section.title}`
+        const hasActiveLink = section.links.some((link) => isLinkActive(link))
+        const isExpanded = expandedSections[sectionKey] ?? hasActiveLink
+        return (
+          <section key={section.title} className="rounded-xl border bg-gray-50 p-2">
+            <button
+              type="button"
+              aria-expanded={isExpanded}
+              onClick={() =>
+                setExpandedSections((prev) => {
+                  const current = prev[sectionKey] ?? hasActiveLink
+                  const next = {
+                    ...prev,
+                    [sectionKey]: !current,
+                  }
+                  window.sessionStorage.setItem(SIDEBAR_EXPANDED_SECTIONS_STORAGE_KEY, JSON.stringify(next))
+                  return next
+                })
               }
-              if (link.ownerOrAdminOnly && activeRole !== 'owner' && activeRole !== 'admin') {
-                return null
+              className={`flex w-full items-center justify-between rounded-md border-l-4 border bg-white px-3 py-2 text-left transition-colors hover:bg-gray-50 ${
+                hasActiveLink ? 'shadow-sm' : 'border-l-gray-300'
+              }`}
+              style={
+                hasActiveLink
+                  ? {
+                      borderLeftColor: 'var(--button-primary-bg)',
+                      backgroundColor: 'var(--accent-soft-bg)',
+                      color: 'var(--accent-soft-text)',
+                    }
+                  : undefined
               }
-              const canAccess = canAccessRouteByPlan(link.href, activePlanCode)
-              const requiredOption = requiredOptionForRoute(link.href)
-              const hasRequiredOption =
-                requiredOption === null
-                  ? true
-                  : requiredOption === 'hotel'
-                    ? activeOptionState.hotelOptionEnabled
-                    : activeOptionState.notificationOptionEnabled
-              const canOpen = canAccess && hasRequiredOption
-              if (!canOpen && !showLockedMenu) {
-                return null
-              }
-              if (!canOpen) {
-                const requiredPlan = planLabel(requiredPlanForRoute(link.href))
-                const lockReason = !canAccess
-                  ? requiredPlan
-                  : optionLabel(requiredOption!)
-                return (
-                  <div
-                    key={link.href}
-                    className="flex items-center justify-between rounded border border-dashed border-gray-300 bg-gray-50 p-2 text-gray-500"
-                  >
-                    <span>{link.label}</span>
-                    <span className="rounded bg-gray-200 px-2 py-0.5 text-xs font-semibold">{lockReason}</span>
-                  </div>
-                )
-              }
-              const isActive = isLinkActive(link)
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={onNavigate}
-                  className={`block rounded p-2 transition-colors ${
-                    isActive ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-      ))}
+            >
+              <span
+                className="text-xs font-bold tracking-wide text-gray-600"
+                style={hasActiveLink ? { color: 'var(--accent-soft-text)' } : undefined}
+              >
+                {section.title}
+              </span>
+              <span
+                aria-hidden="true"
+                className={`text-xs font-semibold text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                style={hasActiveLink ? { color: 'var(--accent-soft-text)' } : undefined}
+              >
+                ▼
+              </span>
+            </button>
+            {isExpanded ? (
+              <div className="mt-2 space-y-1.5 pl-4">
+                {section.links.map((link) => {
+                  if (link.ownerOnly && activeRole !== 'owner') {
+                    return null
+                  }
+                  if (link.ownerOrAdminOnly && activeRole !== 'owner' && activeRole !== 'admin') {
+                    return null
+                  }
+                  const canAccess = canAccessRouteByPlan(link.href, activePlanCode)
+                  const requiredOption = requiredOptionForRoute(link.href)
+                  const hasRequiredOption =
+                    requiredOption === null
+                      ? true
+                      : requiredOption === 'hotel'
+                        ? activeOptionState.hotelOptionEnabled
+                        : activeOptionState.notificationOptionEnabled
+                  const canOpen = canAccess && hasRequiredOption
+                  if (!canOpen && !showLockedMenu) {
+                    return null
+                  }
+                  if (!canOpen) {
+                    const requiredPlan = planLabel(requiredPlanForRoute(link.href))
+                    const lockReason = !canAccess
+                      ? requiredPlan
+                      : optionLabel(requiredOption!)
+                    return (
+                      <div
+                        key={link.href}
+                        className="flex min-h-10 items-center justify-between rounded-md border border-dashed bg-gray-50 px-3 py-2 text-sm text-gray-500"
+                      >
+                        <span className="font-medium">{link.label}</span>
+                        <span className="rounded border bg-white px-2 py-0.5 text-xs font-semibold">{lockReason}</span>
+                      </div>
+                    )
+                  }
+                  const isActive = isLinkActive(link)
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={onNavigate}
+                      className={`group flex min-h-10 items-center rounded-md border px-3 py-2 text-sm font-medium transition-all ${
+                        isActive
+                          ? 'border-l-4 bg-blue-100 pl-[10px] text-blue-700 shadow-sm'
+                          : 'bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                      style={isActive ? { borderLeftColor: 'var(--button-primary-bg)' } : undefined}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`mr-2 h-1.5 w-1.5 rounded-full transition-colors ${
+                          isActive ? 'bg-blue-700' : 'bg-gray-400 group-hover:bg-gray-500'
+                        }`}
+                      />
+                      {link.label}
+                    </Link>
+                  )
+                })}
+              </div>
+            ) : null}
+          </section>
+        )
+      })}
       <button
         type="button"
         onClick={() => setShowLockedMenu((prev) => !prev)}
-        className="mt-1 w-full rounded border px-2 py-1.5 text-left text-xs font-semibold text-gray-600 hover:bg-gray-50"
+        className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-left text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-50"
       >
         {showLockedMenu ? '制限メニューを隠す' : '制限メニューを表示'}
       </button>
