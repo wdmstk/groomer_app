@@ -2,6 +2,7 @@
 
 Task ID: `TASK-POS-001`  
 Parent Task: `TASK-408`
+Status: `finalized`（2026-04-06）
 
 ## 1. 目的
 - 既存の会計基盤（`payments` / `invoices`）と在庫基盤（`inventory_*`）を活かし、店舗現場が1画面で会計業務を完了できるPOS要件を定義する。
@@ -154,3 +155,8 @@ Parent Task: `TASK-408`
 - 段階展開/ロールバック: `docs/pos-pilot-rollout-runbook.md`
 - 承認記録: `docs/pos-pilot-approval-record.md`
 - 店舗運用マニュアル: `docs/pos-operations-user-manual.md`
+
+## 12. レビュー反映ログ（2026-04-06）
+- MVPでの取消/返金境界（未締め取消 / 締め後返金）を要件本文と引き継ぎ事項で明確化した。
+- 支払方法必須・在庫不足・重複確定防止の境界値ケースを受け入れ基準に固定した。
+- `TASK-POS-002` への引き継ぎ項目と整合する前提で確定版として凍結した。

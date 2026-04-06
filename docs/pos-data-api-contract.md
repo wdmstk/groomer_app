@@ -2,6 +2,7 @@
 
 Task ID: `TASK-POS-002`  
 Parent Task: `TASK-408`
+Status: `finalized`（2026-04-06）
 
 ## 1. Goal
 - POS伝票、会計確定、取消/返金、日次締めを既存会計・在庫基盤に統合するための最小データ契約を定義する。
@@ -378,3 +379,8 @@ Parent Task: `TASK-408`
 - 先行でDDL追加 + RLS追加 + read API追加
 - 次に confirm/voidのwrite API導入
 - 最後にUIを段階切替（既存`/payments`互換を保ったまま）
+
+## 9. レビュー反映ログ（2026-04-06）
+- 一意制約（`uq_pos_payments_store_action_idempotency` / `uq_pos_payments_order_confirm` / `uq_pos_refunds_order_void_once`）を契約とSQLで整合済み。
+- RLS方針（select/insert/update/delete すべて `store_id in current_user_store_ids()`）を契約とSQLで一致済み。
+- `invoice_lines.source_type=pos_product` 拡張と、在庫仕訳冪等化キー（`POS_OUTBOUND`/`POS_VOID_REVERT`）を運用前提として固定済み。

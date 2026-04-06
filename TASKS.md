@@ -123,20 +123,14 @@ Completed tasks should be marked:
 ## TASK INDEX（正式タスクの正規順序）
 
 ### in_progress
-1. `TASK-434` 既存店舗向け同意書テンプレ更新SQL作成（2026-03-29・再オープン）
-2. `TASK-417` AI動画段階実装（2026-03-21）
-3. `TASK-412` AIタグ活用導線の改善
-4. `TASK-408` POS機能導入計画（要件定義〜実装）
-5. `TASK-401` 統合会計（Invoice方式）
-6. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）
-7. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）
-8. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
+1. `TASK-408` POS機能導入計画（要件定義〜実装）
+2. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
 
 ### todo
 （なし）
 
 ### blocked
-1. `TASK-413` AIタグ解析ジョブのRLS修正（Supabase SQL Editor反映待ち）
+1. `TASK-417` AI動画段階実装（2026-04-06・ユーザー指示で保留）
 
 ### done
 1. `TASK-446` `.tsx` 向けVitest導入とUIコンポーネントテスト追加（2026-04-05）
@@ -151,38 +145,44 @@ Completed tasks should be marked:
 10. `TASK-437` 日誌機能（非破壊追加）仕様策定と実装管理（2026-03-31）
 11. `TASK-436` 予約管理の同意書ステータスバッジと状態別導線追加（2026-03-31）
 12. `TASK-435` 電子同意書管理のタブ分割・履歴PDF参照/削除・署名導線強化（2026-03-31）
-13. `TASK-433` 施術同意書標準テンプレート完全版差し替え（2026-03-29）
-14. `TASK-432` 施術同意書の表示体裁改善とPDF2ページ化（2026-03-29）
-15. `TASK-431` 予約管理起点の同意書作成導線とPDF作成強化（2026-03-29）
-16. `TASK-430` 電子同意書管理のレイアウト統一・テンプレ本文再利用・PDF証跡強化（2026-03-28）
-17. `TASK-429` アプリ名/会社名の全ページ反映（2026-03-28）
-18. `TASK-428` 電子同意書PDF文字化け修正（日本語対応）（2026-03-27）
-19. `TASK-427` 電子同意書Storageバケット不足エラー修正（2026-03-27）
-20. `TASK-426` 電子同意書テンプレ差し込み表示とプレビュー実装（2026-03-27）
-21. `TASK-425` 電子同意書の署名URL再取得導線追加（2026-03-27）
-22. `TASK-424` 電子同意書テンプレートUIの用語/入力改善（2026-03-27）
-23. `TASK-423` 電子同意書テンプレート標準初期化（店舗作成時の自動投入）（2026-03-27）
-24. `TASK-422` 電子同意書（施術同意書）機能追加（2026-03-27）
-25. `TASK-421` 競合LPベンチマーク整合のLP改修（2026-03-26）
-26. `TASK-420` dev課金操作の安全運用化（2026-03-22）
-27. `TASK-419` 法務・規約コンプライアンス是正（2026-03-22）
-28. `TASK-418` オプション課金確定ゲート整備（2026-03-22）
-29. `TASK-416` サイドバー改善（2026-03-21）
+13. `TASK-434` 既存店舗向け同意書テンプレ更新SQL作成（2026-04-06）
+14. `TASK-433` 施術同意書標準テンプレート完全版差し替え（2026-03-29）
+15. `TASK-432` 施術同意書の表示体裁改善とPDF2ページ化（2026-03-29）
+16. `TASK-431` 予約管理起点の同意書作成導線とPDF作成強化（2026-03-29）
+17. `TASK-430` 電子同意書管理のレイアウト統一・テンプレ本文再利用・PDF証跡強化（2026-03-28）
+18. `TASK-429` アプリ名/会社名の全ページ反映（2026-03-28）
+19. `TASK-428` 電子同意書PDF文字化け修正（日本語対応）（2026-03-27）
+20. `TASK-427` 電子同意書Storageバケット不足エラー修正（2026-03-27）
+21. `TASK-426` 電子同意書テンプレ差し込み表示とプレビュー実装（2026-03-27）
+22. `TASK-425` 電子同意書の署名URL再取得導線追加（2026-03-27）
+23. `TASK-424` 電子同意書テンプレートUIの用語/入力改善（2026-03-27）
+24. `TASK-423` 電子同意書テンプレート標準初期化（店舗作成時の自動投入）（2026-03-27）
+25. `TASK-422` 電子同意書（施術同意書）機能追加（2026-03-27）
+26. `TASK-421` 競合LPベンチマーク整合のLP改修（2026-03-26）
+27. `TASK-420` dev課金操作の安全運用化（2026-03-22）
+28. `TASK-419` 法務・規約コンプライアンス是正（2026-03-22）
+29. `TASK-418` オプション課金確定ゲート整備（2026-03-22）
+30. `TASK-416` サイドバー改善（2026-03-21）
 30. `TASK-415` 動画カルテ + AIプラン拡張（非破壊導入）
 31. `TASK-414` 顧客LTV分析
-32. `TASK-411` 写真カルテのAIタグ付け
-33. `TASK-410` LINEの自動マーケ
-34. `TASK-409` 事前決済
-35. `TASK-407` 開発環境で課金なしのプラン/オプション切替
-36. `TASK-406` devサブスク保存後404修正
-37. `TASK-405` タスク/ブランチ運用ガード追加とStorage設定導線整理
-38. `TASK-404` HP本部運用にホテルメニュー向けテンプレ配信を追加
-39. `TASK-403` ペット管理からQR機能を完全削除
-40. `TASK-402` appointments更新後POST転送不具合修正
-41. `TASK-POS-003` POS会計画面（MVP）実装（`TASK-408`配下）
-42. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
-43. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
-44. `TASK-POS-007` POS一本化（トリミング/ホテル会計統合）（`TASK-408`配下）
+32. `TASK-412` AIタグ活用導線の改善（2026-04-06）
+33. `TASK-411` 写真カルテのAIタグ付け
+34. `TASK-410` LINEの自動マーケ
+35. `TASK-409` 事前決済
+36. `TASK-407` 開発環境で課金なしのプラン/オプション切替
+37. `TASK-406` devサブスク保存後404修正
+38. `TASK-405` タスク/ブランチ運用ガード追加とStorage設定導線整理
+39. `TASK-404` HP本部運用にホテルメニュー向けテンプレ配信を追加
+40. `TASK-403` ペット管理からQR機能を完全削除
+41. `TASK-402` appointments更新後POST転送不具合修正
+42. `TASK-POS-003` POS会計画面（MVP）実装（`TASK-408`配下）
+43. `TASK-POS-004` 在庫連動（自動出庫/返品戻し）実装（`TASK-408`配下）
+44. `TASK-POS-005` レジ開閉局・日次締め実装（`TASK-408`配下）
+45. `TASK-POS-007` POS一本化（トリミング/ホテル会計統合）（`TASK-408`配下）
+46. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）（2026-04-06）
+47. `TASK-POS-002` データモデル・API契約設計（`TASK-408`配下）（2026-04-06）
+48. `TASK-401` 統合会計（Invoice方式）（2026-04-06）
+49. `TASK-413` AIタグ解析ジョブのRLS修正（2026-04-06）
 
 ## 正式タスク詳細（Task ID採番済み）
 
@@ -514,13 +514,13 @@ Completed tasks should be marked:
 ## 既存店舗向け同意書テンプレ更新SQL作成
 - Task ID: `TASK-434`
 - ブランチ: `fix/TASK-434-consent-template-existing-store-update`
-- ステータス: `in_progress`
+- ステータス: `done`
 - 概要: 既存店舗で既に作成済みの「施術同意書（標準）」を新仕様テンプレートへ切り替え、SNS利用選択の別入力実装と顧客/ペット情報の自動差し込みを反映する
 - 影響範囲: Supabase SQL（`supabase_consent_default_templates_update_existing.sql`/`supabase_consent_default_templates.sql`）/ 同意書管理UI（`/consents`）/ 同意書API / 公開署名API / TASKS
 - リスク: 既存店舗で current_version が新バージョンへ更新されることによる運用差分
 - 完了条件:
   - 既存店舗テンプレートを新バージョン追加+current_version切替で更新できる
-  - SNS利用選択を同意書作成時の別入力として受け取り、テンプレへ差し込みできる
+  - SNS利用選択を署名時に本人入力として受け取り、テンプレへ差し込みできる
   - 住所/電話/犬種/年齢/性別を顧客・ペット情報から自動差し込みできる
   - 体重項目をテンプレートから削除する
   - 再実行しても同一本文なら重複更新しない
@@ -528,10 +528,10 @@ Completed tasks should be marked:
   - [x] ブランチ作成・タスク登録
   - [x] 更新SQLの初版作成
   - [x] 要件8項目の方針確定
-  - [ ] SNS利用選択の別入力実装（UI/API）
-  - [ ] 自動差し込み変数の拡張（住所/電話/犬種/年齢/性別）
-  - [ ] 標準テンプレート文面再調整（体重削除含む）
-  - [ ] 動作確認（lint/test）
+  - [x] SNS利用選択の署名時本人入力実装（UI/API）
+  - [x] 自動差し込み変数の拡張（住所/電話/犬種/年齢/性別）
+  - [x] 標準テンプレート文面再調整（体重削除含む）
+  - [x] 動作確認（lint/test）
   - [x] TASKS更新（in_progressへ再オープン）
 
 ## 施術同意書標準テンプレート完全版差し替え
@@ -850,7 +850,7 @@ Completed tasks should be marked:
 ## 統合会計（Invoice方式）
 - Task ID: `TASK-401`
 - ブランチ: `fix/TASK-401-unified-checkout-playwright-recording`（録画完走対応）
-- ステータス: `in_progress`
+- ステータス: `done`
 - 概要: 同一タイミングのトリミング予約とホテル滞在を1回の会計で確定できる `invoice` 基盤を導入する
 - 影響範囲: DB / API / UI / 領収書 / 既存会計連携
 - リスク: 既存 `payments` の互換性、二重計上、来店履歴自動作成の整合性
@@ -875,7 +875,7 @@ Completed tasks should be marked:
   - [x] Playwright E2Eログイン回避の調整（proxyエントリ追加）
   - [x] Playwright録画実行（`e2e/unified-invoice-walkthrough.spec.ts` 実行、動画出力あり）
   - [x] Playwright録画完走（`--retries=0` で 1 passed を確認）
-  - [ ] PR作成
+  - [x] PR作成（`merge: TASK-401 unified invoice checkout` / `merge: TASK-401 hotel invoice runtime fix` / `merge: TASK-401 unified checkout manual and recording flow` で main 反映済み）
 
 ## 事前決済
 - Task ID: `TASK-409`
@@ -935,7 +935,7 @@ Completed tasks should be marked:
 ## AIタグ活用導線の改善
 - Task ID: `TASK-412`
 - ブランチ: `feat/medical-record-ai-tag-usage`
-- ステータス: `in_progress`
+- ステータス: `done`
 - 概要: カルテ一覧でAIタグをチップ表示し、タグや解析状態で絞り込めるようにして、詳細を開かなくても要確認カルテを見つけやすくする
 - 影響範囲: UI / 一覧導線 / テスト
 - リスク: 一覧の情報量増加、モバイル表示の圧迫、タグ絞り込み条件の分かりにくさ
@@ -944,12 +944,12 @@ Completed tasks should be marked:
   - [x] 既存カルテ一覧UIの調査反映
   - [x] UI実装
   - [x] テスト
-  - [ ] PR作成
+  - [x] PR作成（`merge: integrate feat/medical-record-ai-tag-usage into main` で反映済み）
 
 ## AIタグ解析ジョブのRLS修正
 - Task ID: `TASK-413`
 - ブランチ: `fix/medical-record-ai-tag-jobs-rls`
-- ステータス: `blocked`
+- ステータス: `done`
 - 概要: AIタグの「AIタグを解析」実行時に `medical_record_ai_tag_jobs` insert が RLS で拒否される問題を解消する
 - 影響範囲: DB(RLS) / AIタグ解析受付API
 - リスク: RLS条件の誤設定による他店舗データアクセス、既存ジョブ更新系への影響
@@ -957,9 +957,9 @@ Completed tasks should be marked:
 - 進捗:
   - [x] 原因調査（RLS policy未定義を確認）
   - [x] DB修正SQL追加
-  - [ ] Supabase SQL Editor 反映
-  - [ ] 動作確認
-  - [ ] PR作成
+  - [x] Supabase SQL Editor 反映（ユーザー実行でエラー表示なし）
+  - [x] 動作確認（ユーザー報告: RLSエラー表示なし）
+  - [x] PR作成（`merge: fix/medical-record-ai-tag-jobs-rls into main` で main 反映済み）
 
 ## 顧客LTV分析
 - Task ID: `TASK-414`
@@ -1439,7 +1439,7 @@ Completed tasks should be marked:
 ## AI動画段階実装（2026-03-21）
 - Task ID: `TASK-417`
 - ブランチ: `feature/ai-video-tiered-rollout`
-- ステータス: `in_progress`
+- ステータス: `blocked`
 - 概要: Assist / Pro / Pro+ の境界を守りつつ、動画機能を段階導入する
 - 完了条件:
   - Assist: 動画AI非使用で短尺化・テロップ・要約・LINE最適化ジョブを実装
@@ -1473,6 +1473,7 @@ Completed tasks should be marked:
   - [x] Step 15: `/dev/cron` 可視化強化（job_runs + medical_record_ai_video_jobs 監視カード）を追加
   - [x] Step 16: `/dev/cron` 監視カードに failed 閾値超過アラート表示を追加
   - [x] Step 17: PR提出向け最終整理（RunbookへPRテンプレ/確認観点/スクショ項目）を追加
+  - [x] Step 18: ユーザー指示により保留化（2026-04-06）
 
 ## オプション課金確定ゲート整備（2026-03-22）
 - Task ID: `TASK-418`
@@ -1590,7 +1591,7 @@ Completed tasks should be marked:
 #### TASK-POS-001 要件定義・業務フロー確定
 - Task ID: `TASK-POS-001`
 - ブランチ: `feat/TASK-POS-001-pos-requirements`
-- ステータス: `in_progress`
+- ステータス: `done`
 - 目的: 店舗運用に必要なPOS業務（通常会計/返品/取消/締め）を仕様化する
 - スコープ:
   - ユースケース定義（トリミング会計、ホテル会計、物販会計、混在会計）
@@ -1608,12 +1609,12 @@ Completed tasks should be marked:
   - [x] 要件定義ドキュメント作成（`docs/pos-requirements-definition.md`）
   - [x] 受け入れ基準（Given/When/Then）12ケース定義
   - [x] 非機能要件（性能/監査/可用性/セキュリティ）定義
-  - [ ] レビュー反映と確定版化
+  - [x] レビュー反映と確定版化（2026-04-06）
 
 #### TASK-POS-002 データモデル・API契約設計
 - Task ID: `TASK-POS-002`
 - ブランチ: `feat/TASK-POS-002-pos-data-contract`
-- ステータス: `in_progress`
+- ステータス: `done`
 - 目的: POS伝票・レジ締め・返金を扱うDB/API基盤を設計する
 - スコープ:
   - 新規テーブル案: `pos_sessions`, `pos_orders`, `pos_order_lines`, `pos_payments`, `pos_refunds`, `cash_drawer_events`
@@ -1632,6 +1633,7 @@ Completed tasks should be marked:
   - [x] SQLマイグレーション草案作成（`supabase/supabase_pos_core.sql`）
   - [x] SQLマイグレーション案の確定（主要制約・一意性を反映）
   - [x] APIレスポンス契約の最終化（status/code/response schema を明記）
+  - [x] レビュー反映と確定版化（2026-04-06）
 
 #### TASK-POS-003 POS会計画面（MVP）実装
 - Task ID: `TASK-POS-003`
