@@ -164,6 +164,33 @@ describe('followups events route', () => {
     })
   })
 
+  // TRACE-024
+  it('returns 409 when same-day same-channel followup notification already exists', async () => {
+    const supabase = createSupabaseMock()
+    const fromSpy = vi.spyOn(supabase, 'from')
+    fromSpy.mockImplementation((table: string) => {
+      if (table !== 'customer_notification_logs') return createSupabaseMock().from(table)
+      return {
+        select() {
+          return {
+            eq() {
+              return this
+            },
+            maybeSingle: async () => ({ data: { id: 'dup-log-1' }, error: null }),
+          }
+        },
+        insert: async () => ({ error: null }),
+      }
+    })
+    getFollowupRouteContextMock.mockResolvedValue({ supabase, storeId: 'store-1', user: { id: 'user-1' } })
+    const { POST } = await import('../src/app/api/followups/[followup_id]/events/route')
+    const response = await POST(buildRequest({ event_type: 'contacted_phone', payload: { result: 'connected' } }), {
+      params: Promise.resolve({ followup_id: 'task-1' }),
+    })
+
+    expect(response.status).toBe(409)
+  })
+
   it('returns 400 when contacted_line payload has no body', async () => {
     const { POST } = await import('../src/app/api/followups/[followup_id]/events/route')
     const response = await POST(
