@@ -32,9 +32,7 @@ export function useDismissibleModal({
   }, [open, onClose])
 
   const handleBackdropClick = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (modalPanelRef.current && !modalPanelRef.current.contains(event.target as Node)) {
-      onClose()
-    }
+    event.preventDefault()
   }
 
   return {

@@ -8,7 +8,17 @@ import {
 
 type Provider = 'stripe' | 'komoju'
 
-export function StorageAddonCheckoutPanel() {
+type StorageAddonCheckoutPanelProps = {
+  legalAgreed?: boolean
+  requireLegalAgreement?: boolean
+  onLegalAgreementRequired?: () => void
+}
+
+export function StorageAddonCheckoutPanel({
+  legalAgreed = false,
+  requireLegalAgreement = false,
+  onLegalAgreementRequired,
+}: StorageAddonCheckoutPanelProps) {
   const [units, setUnits] = useState(1)
   const [isLoading, setIsLoading] = useState<Provider | null>(null)
   const [error, setError] = useState('')
@@ -17,8 +27,12 @@ export function StorageAddonCheckoutPanel() {
   const amountJpy = useMemo(() => amountForStorageAddonUnits(Math.max(1, units)), [units])
 
   async function startCheckout(provider: Provider) {
-    setIsLoading(provider)
     setError('')
+    if (requireLegalAgreement && !legalAgreed) {
+      onLegalAgreementRequired?.()
+      return
+    }
+    setIsLoading(provider)
     try {
       const response = await fetch('/api/billing/storage-addon/checkout', {
         method: 'POST',
@@ -63,7 +77,7 @@ export function StorageAddonCheckoutPanel() {
       <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
-          disabled={isLoading !== null}
+          disabled={isLoading !== null || (requireLegalAgreement && !legalAgreed)}
           onClick={() => {
             void startCheckout('stripe')
           }}
@@ -73,7 +87,7 @@ export function StorageAddonCheckoutPanel() {
         </button>
         <button
           type="button"
-          disabled={isLoading !== null}
+          disabled={isLoading !== null || (requireLegalAgreement && !legalAgreed)}
           onClick={() => {
             void startCheckout('komoju')
           }}

@@ -1,9 +1,11 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import nextDynamic from 'next/dynamic'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { CustomerCreateModal } from '@/components/customers/CustomerCreateModal'
+import { DeleteWithImpactDialogButton } from '@/components/customers/DeleteWithImpactDialogButton'
 import { CustomerMemberPortalControls } from '@/components/customers/CustomerMemberPortalControls'
 import { PetCreateModal } from '@/components/pets/PetCreateModal'
 import { JournalVisibilityToggleButton } from '@/components/journal/JournalVisibilityToggleButton'
@@ -39,6 +41,13 @@ import { createSignedVideoUrlMap } from '@/lib/medical-records/videos'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+
+const RevisitAlertList = nextDynamic(
+  () => import('@/components/customers/RevisitAlertList').then((mod) => mod.RevisitAlertList),
+  {
+    loading: () => <p className="text-sm text-gray-500">来店周期アラートを読み込み中...</p>,
+  }
+)
 
 const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
@@ -169,6 +178,11 @@ type VisitHistoryItem = {
   actionLabel: string
 }
 
+type DeletionImpactItem = {
+  label: string
+  count: number
+}
+
 const genderOptions = ['オス', 'メス', '不明']
 
 function firstParam(value: string | string[] | undefined) {
@@ -209,6 +223,14 @@ function getPetName(
   return relation.name ?? '未登録'
 }
 
+function getCustomerNameFromPet(
+  relation: { full_name: string } | { full_name: string }[] | null | undefined
+) {
+  if (!relation) return '未登録'
+  if (Array.isArray(relation)) return relation[0]?.full_name ?? '未登録'
+  return relation.full_name ?? '未登録'
+}
+
 function formatHotelPeriod(checkInAt: string | null | undefined, checkOutAt: string | null | undefined) {
   return `${toJstDateTime(checkInAt)} 〜 ${toJstDateTime(checkOutAt)}`
 }
@@ -217,12 +239,14 @@ function buildManageHref(params: {
   customerId?: string
   tab?: string
   q?: string
+  view?: 'customers' | 'pets' | 'detail' | 'alerts'
   customerEdit?: string
   petEdit?: string
   modal?: string
   waitlistCustomer?: string
 }) {
   const search = new URLSearchParams()
+  if (params.view) search.set('view', params.view)
   if (params.customerId) search.set('customer_id', params.customerId)
   if (params.tab) search.set('tab', params.tab)
   if (params.q) search.set('q', params.q)
@@ -257,6 +281,9 @@ function renderLineStatus(lineId: string | null) {
 export default async function CustomersManagePage({ searchParams }: CustomersManagePageProps) {
   const params = (await searchParams) ?? {}
   const q = (firstParam(params.q) ?? '').trim()
+  const rawView = firstParam(params.view) ?? 'detail'
+  const activeView =
+    rawView === 'customers' || rawView === 'pets' || rawView === 'alerts' ? rawView : 'detail'
   const rawCustomerId = firstParam(params.customer_id) ?? ''
   const rawTab = firstParam(params.tab) ?? 'basic'
   const customerEditId = firstParam(params.customer_edit) ?? ''
@@ -299,8 +326,11 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
     return haystack.includes(q.toLowerCase())
   })
 
-  const selectedCustomer =
-    customers.find((customer) => customer.id === rawCustomerId) ?? customers[0] ?? null
+  const selectedCustomer = rawCustomerId
+    ? customers.find((customer) => customer.id === rawCustomerId) ?? null
+    : activeView === 'detail'
+      ? null
+      : customers[0] ?? null
   const selectedCustomerId = selectedCustomer?.id ?? ''
 
   const petsData = isPlaywrightE2E
@@ -316,6 +346,54 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
   const selectedCustomerPets = selectedCustomer
     ? allPets.filter((pet) => pet.customer_id === selectedCustomer.id)
     : []
+  const petCountByCustomerId = allPets.reduce(
+    (acc, pet) => {
+      acc[pet.customer_id] = (acc[pet.customer_id] ?? 0) + 1
+      return acc
+    },
+    {} as Record<string, number>
+  )
+  const petsForList = allPets.filter((pet) => {
+    if (!q) return true
+    const ownerName = getCustomerNameFromPet(pet.customers)
+    const haystack = `${pet.name ?? ''} ${ownerName}`.toLowerCase()
+    return haystack.includes(q.toLowerCase())
+  })
+
+  const visitRows = isPlaywrightE2E
+    ? []
+    : (
+        await db
+          .from('visits')
+          .select('customer_id, appointment_id, visit_date')
+          .eq('store_id', storeId)
+          .order('visit_date', { ascending: false })
+      ).data ?? []
+  const appointmentPetRows = isPlaywrightE2E
+    ? []
+    : (
+        await db
+          .from('appointments')
+          .select('id, pet_id')
+          .eq('store_id', storeId)
+      ).data ?? []
+  const appointmentPetIdById = new Map<string, string>()
+  ;((appointmentPetRows ?? []) as Array<{ id: string; pet_id: string | null }>).forEach((row) => {
+    if (!row.id || !row.pet_id) return
+    appointmentPetIdById.set(row.id, row.pet_id)
+  })
+  const lastVisitDateByCustomerId = new Map<string, string>()
+  const lastVisitDateByPetId = new Map<string, string>()
+  ;((visitRows ?? []) as Array<{ customer_id: string | null; appointment_id: string | null; visit_date: string | null }>).forEach((row) => {
+    if (row.customer_id && row.visit_date && !lastVisitDateByCustomerId.has(row.customer_id)) {
+      lastVisitDateByCustomerId.set(row.customer_id, row.visit_date)
+    }
+    if (!row.appointment_id || !row.visit_date) return
+    const petId = appointmentPetIdById.get(row.appointment_id)
+    if (petId && !lastVisitDateByPetId.has(petId)) {
+      lastVisitDateByPetId.set(petId, row.visit_date)
+    }
+  })
 
   const activeTab = (() => {
     if (!selectedCustomer) return 'basic'
@@ -328,6 +406,8 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
   })()
   const activePetId = activeTab.startsWith('pet:') ? activeTab.slice(4) : ''
   const activePet = selectedCustomerPets.find((pet) => pet.id === activePetId) ?? null
+  const isCreateCustomerModalOpen = rawModal === 'create_customer'
+  const isCreatePetModalOpen = rawModal === 'create_pet'
   const isWaitlistModalOpen = rawModal === 'waitlist'
   const waitlistCustomer = isWaitlistModalOpen
     ? allCustomers.find((customer) => customer.id === rawWaitlistCustomerId) ??
@@ -388,6 +468,22 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
     if (!row.customer_id || customerLtvByCustomerId.has(row.customer_id)) return
     customerLtvByCustomerId.set(row.customer_id, row)
   })
+
+  const waitlistRowsResult =
+    isPlaywrightE2E
+      ? { data: [], error: null }
+      : await db
+          .from('slot_waitlist_requests')
+          .select('customer_id')
+          .eq('store_id', storeId)
+  const waitlistCustomerIdSet = new Set<string>()
+  if (!waitlistRowsResult.error) {
+    ;((waitlistRowsResult.data ?? []) as Array<{ customer_id: string | null }>).forEach((row) => {
+      if (row.customer_id) {
+        waitlistCustomerIdSet.add(row.customer_id)
+      }
+    })
+  }
 
   const memberPortalRows =
     isPlaywrightE2E || !adminSupabase
@@ -584,6 +680,14 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
     tab: activeTab,
     q: q || undefined,
   })
+  const customerCreateModalCloseHref = buildManageHref({
+    view: 'customers',
+    q: q || undefined,
+  })
+  const petCreateModalCloseHref = buildManageHref({
+    view: 'pets',
+    q: q || undefined,
+  })
   const appointmentVisits = (
     selectedCustomer && !isPlaywrightE2E
       ? (
@@ -636,72 +740,516 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 30)
 
+  let customerDeleteImpacts: DeletionImpactItem[] = []
+  let petDeleteImpacts: DeletionImpactItem[] = []
+  if (selectedCustomer && !isPlaywrightE2E) {
+    const selectedPetIds = selectedCustomerPets.map((pet) => pet.id)
+    const activePetAppointmentIds =
+      activePet
+        ? (
+            await db
+              .from('appointments')
+              .select('id')
+              .eq('store_id', storeId)
+              .eq('pet_id', activePet.id)
+          ).data?.map((row) => row.id) ?? []
+        : []
+    const [
+      customerAppointmentCountResult,
+      customerPaymentCountResult,
+      customerVisitCountResult,
+      customerInvoiceCountResult,
+      customerConsentCountResult,
+      customerFollowupCountResult,
+      customerHotelByCustomerCountResult,
+      customerMedicalRecordByPetsCountResult,
+      customerHotelByPetsCountResult,
+      activePetAppointmentCountResult,
+      activePetPaymentCountResult,
+      activePetMedicalRecordCountResult,
+      activePetHotelCountResult,
+      activePetConsentCountResult,
+      activePetFollowupCountResult,
+    ] = await Promise.all([
+      db
+        .from('appointments')
+        .select('id', { count: 'exact', head: true })
+        .eq('store_id', storeId)
+        .eq('customer_id', selectedCustomer.id),
+      db
+        .from('payments')
+        .select('id', { count: 'exact', head: true })
+        .eq('store_id', storeId)
+        .eq('customer_id', selectedCustomer.id),
+      db
+        .from('visits')
+        .select('id', { count: 'exact', head: true })
+        .eq('store_id', storeId)
+        .eq('customer_id', selectedCustomer.id),
+      db
+        .from('invoices')
+        .select('id', { count: 'exact', head: true })
+        .eq('store_id', storeId)
+        .eq('customer_id', selectedCustomer.id),
+      db
+        .from('consent_documents')
+        .select('id', { count: 'exact', head: true })
+        .eq('store_id', storeId)
+        .eq('customer_id', selectedCustomer.id),
+      db
+        .from('customer_followup_tasks')
+        .select('id', { count: 'exact', head: true })
+        .eq('store_id', storeId)
+        .eq('customer_id', selectedCustomer.id),
+      db
+        .from('hotel_stays')
+        .select('id', { count: 'exact', head: true })
+        .eq('store_id', storeId)
+        .eq('customer_id', selectedCustomer.id),
+      selectedPetIds.length > 0
+        ? db
+            .from('medical_records')
+            .select('id', { count: 'exact', head: true })
+            .eq('store_id', storeId)
+            .in('pet_id', selectedPetIds)
+        : Promise.resolve({ count: 0 }),
+      selectedPetIds.length > 0
+        ? db
+            .from('hotel_stays')
+            .select('id', { count: 'exact', head: true })
+            .eq('store_id', storeId)
+            .in('pet_id', selectedPetIds)
+        : Promise.resolve({ count: 0 }),
+      activePet
+        ? db
+            .from('appointments')
+            .select('id', { count: 'exact', head: true })
+            .eq('store_id', storeId)
+            .eq('pet_id', activePet.id)
+        : Promise.resolve({ count: 0 }),
+      activePet
+        ? activePetAppointmentIds.length > 0
+          ? db
+              .from('payments')
+              .select('id', { count: 'exact', head: true })
+              .eq('store_id', storeId)
+              .in('appointment_id', activePetAppointmentIds)
+          : Promise.resolve({ count: 0 })
+        : Promise.resolve({ count: 0 }),
+      activePet
+        ? db
+            .from('medical_records')
+            .select('id', { count: 'exact', head: true })
+            .eq('store_id', storeId)
+            .eq('pet_id', activePet.id)
+        : Promise.resolve({ count: 0 }),
+      activePet
+        ? db
+            .from('hotel_stays')
+            .select('id', { count: 'exact', head: true })
+            .eq('store_id', storeId)
+            .eq('pet_id', activePet.id)
+        : Promise.resolve({ count: 0 }),
+      activePet
+        ? db
+            .from('consent_documents')
+            .select('id', { count: 'exact', head: true })
+            .eq('store_id', storeId)
+            .eq('pet_id', activePet.id)
+        : Promise.resolve({ count: 0 }),
+      activePet
+        ? db
+            .from('customer_followup_tasks')
+            .select('id', { count: 'exact', head: true })
+            .eq('store_id', storeId)
+            .eq('pet_id', activePet.id)
+        : Promise.resolve({ count: 0 }),
+    ])
+
+    customerDeleteImpacts = [
+      { label: '顧客レコード', count: 1 },
+      { label: 'ペット', count: selectedCustomerPets.length },
+      { label: '予約', count: Number(customerAppointmentCountResult.count ?? 0) },
+      { label: '会計', count: Number(customerPaymentCountResult.count ?? 0) },
+      { label: '来店履歴', count: Number(customerVisitCountResult.count ?? 0) },
+      { label: '請求書', count: Number(customerInvoiceCountResult.count ?? 0) },
+      { label: '同意書', count: Number(customerConsentCountResult.count ?? 0) },
+      { label: 'フォローアップ', count: Number(customerFollowupCountResult.count ?? 0) },
+      { label: 'カルテ', count: Number(customerMedicalRecordByPetsCountResult.count ?? 0) },
+      {
+        label: 'ホテル滞在',
+        count:
+          Number(customerHotelByCustomerCountResult.count ?? 0) +
+          Number(customerHotelByPetsCountResult.count ?? 0),
+      },
+    ]
+
+    petDeleteImpacts = activePet
+      ? [
+          { label: 'ペットレコード', count: 1 },
+          { label: '予約', count: Number(activePetAppointmentCountResult.count ?? 0) },
+          { label: '会計', count: Number(activePetPaymentCountResult.count ?? 0) },
+          { label: 'カルテ', count: Number(activePetMedicalRecordCountResult.count ?? 0) },
+          { label: 'ホテル滞在', count: Number(activePetHotelCountResult.count ?? 0) },
+          { label: '同意書', count: Number(activePetConsentCountResult.count ?? 0) },
+          { label: 'フォローアップ', count: Number(activePetFollowupCountResult.count ?? 0) },
+        ]
+      : []
+  }
+
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold text-gray-900">顧客管理（β）</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">顧客ペット管理</h1>
       </header>
 
-      <section className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-medium tracking-wide text-gray-500">顧客選択</p>
-          <details className="group relative">
-            <summary className="ml-auto flex w-fit cursor-pointer list-none items-center gap-2 rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 [&::-webkit-details-marker]:hidden">
-              <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4 text-gray-600" aria-hidden="true">
-                <path
-                  d="M14.167 14.166 18.333 18.333M16.667 9.167A7.5 7.5 0 1 1 1.667 9.167a7.5 7.5 0 0 1 15 0Z"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              {q ? `検索: ${q}` : '検索'}
-            </summary>
-            <div className="absolute right-0 top-[calc(100%+0.5rem)] z-20 w-[min(92vw,26rem)] rounded border border-gray-200 bg-white p-3 shadow-lg">
-              <form className="grid gap-2 sm:grid-cols-[1fr_auto_auto]" method="get" action="/customers/manage">
-                <Input name="q" defaultValue={q} placeholder="顧客名・電話番号で検索" />
-                <Button type="submit">検索</Button>
-                <Link
-                  href="/customers/manage"
-                  className="inline-flex h-9 items-center justify-center rounded border border-gray-300 px-3 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  クリア
-                </Link>
-              </form>
-            </div>
-          </details>
+      <section className="space-y-4">
+        <div className="grid grid-cols-4 gap-1 rounded-lg border border-gray-300 bg-white p-1">
+          <Link
+            href={buildManageHref({ view: 'customers', q: q || undefined })}
+            scroll={false}
+            className={`min-w-0 rounded px-2 py-1.5 text-center text-xs font-semibold leading-tight sm:px-3 sm:text-sm ${
+              activeView === 'customers' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <span className="sm:hidden">顧客</span>
+            <span className="hidden sm:inline">顧客一覧</span>
+          </Link>
+          <Link
+            href={buildManageHref({ view: 'pets', q: q || undefined })}
+            scroll={false}
+            className={`min-w-0 rounded px-2 py-1.5 text-center text-xs font-semibold leading-tight sm:px-3 sm:text-sm ${
+              activeView === 'pets' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <span className="sm:hidden">ペット</span>
+            <span className="hidden sm:inline">ペット一覧</span>
+          </Link>
+          <Link
+            href={buildManageHref({
+              view: 'detail',
+              customerId: selectedCustomerId || undefined,
+              tab: activeTab,
+              q: q || undefined,
+            })}
+            scroll={false}
+            className={`min-w-0 rounded px-2 py-1.5 text-center text-xs font-semibold leading-tight sm:px-3 sm:text-sm ${
+              activeView === 'detail' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <span className="sm:hidden">詳細</span>
+            <span className="hidden sm:inline">顧客詳細</span>
+          </Link>
+          <Link
+            href={buildManageHref({ view: 'alerts' })}
+            scroll={false}
+            className={`min-w-0 rounded px-2 py-1.5 text-center text-xs font-semibold leading-tight sm:px-3 sm:text-sm ${
+              activeView === 'alerts' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <span className="sm:hidden">アラート</span>
+            <span className="hidden sm:inline">来店周期アラート</span>
+          </Link>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {customers.length === 0 ? (
-            <p className="py-1 text-sm text-gray-500">該当する顧客がいません。</p>
-          ) : (
-            customers.map((customer) => (
+        {activeView === 'customers' ? (
+          <Card className="space-y-3">
+            <form className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]" method="get" action="/customers/manage">
+              <input type="hidden" name="view" value="customers" />
+              <Input name="q" defaultValue={q} placeholder="顧客名・電話番号で検索" />
+              <Button type="submit">検索</Button>
               <Link
-                key={customer.id}
-                href={buildManageHref({
-                  customerId: customer.id,
-                  tab: 'basic',
-                  q: q || undefined,
-                })}
-                scroll={false}
-                className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-sm ${
-                  selectedCustomer?.id === customer.id
-                    ? 'border-blue-600 bg-blue-50 text-blue-700'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+                href={buildManageHref({ view: 'customers' })}
+                className="inline-flex h-9 items-center justify-center rounded border border-gray-300 px-3 text-sm text-gray-700 hover:bg-gray-50"
               >
-                {customer.full_name}
+                クリア
               </Link>
-            ))
-          )}
-        </div>
+              <Link
+                href={buildManageHref({ view: 'customers', q: q || undefined, modal: 'create_customer' })}
+                className="inline-flex h-9 items-center justify-center rounded bg-blue-600 px-3 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                新規追加
+              </Link>
+            </form>
+            <div className="overflow-hidden rounded-lg border border-gray-200">
+              {customers.length === 0 ? (
+                <p className="p-4 text-sm text-gray-500">該当する顧客がいません。</p>
+              ) : (
+                <>
+                  <div className="space-y-2 p-3 md:hidden">
+                  {customers.map((customer) => (
+                    <article key={customer.id} className="rounded-lg border border-gray-200 bg-white p-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="text-sm font-semibold text-gray-900">{customer.full_name}</p>
+                        {waitlistCustomerIdSet.has(customer.id) ? (
+                          <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                            空き枠待ち
+                          </span>
+                        ) : null}
+                      </div>
+                      <dl className="mt-2 space-y-1 text-xs text-gray-600">
+                        <div className="flex justify-between gap-3">
+                          <dt>LTV</dt>
+                          <dd>
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getCustomerLtvRankTone(
+                                customerLtvByCustomerId.get(customer.id)?.ltv_rank
+                              )}`}
+                            >
+                              {getCustomerLtvRankLabel(customerLtvByCustomerId.get(customer.id)?.ltv_rank)}
+                            </span>
+                          </dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <dt>電話番号</dt>
+                          <dd className="font-medium text-gray-900">{formatCustomerFallback(customer.phone_number)}</dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <dt>ペット数</dt>
+                          <dd className="font-medium text-gray-900">{petCountByCustomerId[customer.id] ?? 0}匹</dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <dt>最終来店</dt>
+                          <dd className="font-medium text-gray-900">{toJstDateTime(lastVisitDateByCustomerId.get(customer.id) ?? null)}</dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <dt>LINE</dt>
+                          <dd className="font-medium text-gray-900">{getCustomerLineStatus(customer.line_id).badgeLabel}</dd>
+                        </div>
+                      </dl>
+                      <div className="mt-3">
+                        <Link
+                          href={buildManageHref({
+                            view: 'detail',
+                            customerId: customer.id,
+                            tab: 'basic',
+                            q: q || undefined,
+                          })}
+                          scroll={false}
+                          className="inline-flex rounded border border-blue-200 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                        >
+                          詳細
+                        </Link>
+                      </div>
+                    </article>
+                  ))}
+                  </div>
+                  <div className="hidden overflow-x-auto md:block">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
+                        <tr>
+                          <th className="px-3 py-2">顧客名</th>
+                          <th className="px-3 py-2">LTV</th>
+                          <th className="px-3 py-2">電話番号</th>
+                          <th className="px-3 py-2">ペット数</th>
+                          <th className="px-3 py-2">最終来店</th>
+                          <th className="px-3 py-2">LINE</th>
+                          <th className="px-3 py-2">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 bg-white">
+                        {customers.map((customer) => (
+                          <tr key={customer.id} className="align-top">
+                            <td className="px-3 py-2">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="font-medium text-gray-900">{customer.full_name}</span>
+                                {waitlistCustomerIdSet.has(customer.id) ? (
+                                  <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                                    空き枠待ち
+                                  </span>
+                                ) : null}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-gray-700">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getCustomerLtvRankTone(
+                                  customerLtvByCustomerId.get(customer.id)?.ltv_rank
+                                )}`}
+                              >
+                                {getCustomerLtvRankLabel(customerLtvByCustomerId.get(customer.id)?.ltv_rank)}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-gray-700">{formatCustomerFallback(customer.phone_number)}</td>
+                            <td className="px-3 py-2 text-gray-700">{petCountByCustomerId[customer.id] ?? 0}匹</td>
+                            <td className="px-3 py-2 text-gray-700">
+                              {toJstDateTime(lastVisitDateByCustomerId.get(customer.id) ?? null)}
+                            </td>
+                            <td className="px-3 py-2 text-gray-700">{getCustomerLineStatus(customer.line_id).badgeLabel}</td>
+                            <td className="px-3 py-2">
+                              <Link
+                                href={buildManageHref({
+                                  view: 'detail',
+                                  customerId: customer.id,
+                                  tab: 'basic',
+                                  q: q || undefined,
+                                })}
+                                scroll={false}
+                                className="inline-flex rounded border border-blue-200 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                              >
+                                詳細
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          </Card>
+        ) : null}
+
+        {activeView === 'pets' ? (
+          <Card className="space-y-3">
+            <form className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]" method="get" action="/customers/manage">
+              <input type="hidden" name="view" value="pets" />
+              <Input name="q" defaultValue={q} placeholder="ペット名・飼い主名で検索" />
+              <Button type="submit">検索</Button>
+              <Link
+                href={buildManageHref({ view: 'pets' })}
+                className="inline-flex h-9 items-center justify-center rounded border border-gray-300 px-3 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                クリア
+              </Link>
+              <Link
+                href={buildManageHref({ view: 'pets', q: q || undefined, modal: 'create_pet' })}
+                className="inline-flex h-9 items-center justify-center rounded bg-blue-600 px-3 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                新規追加
+              </Link>
+            </form>
+            <div className="overflow-hidden rounded-lg border border-gray-200">
+              {petsForList.length === 0 ? (
+                <p className="p-4 text-sm text-gray-500">該当するペットがいません。</p>
+              ) : (
+                <>
+                  <div className="space-y-2 p-3 md:hidden">
+                  {petsForList.map((pet) => (
+                    <article key={pet.id} className="rounded-lg border border-gray-200 bg-white p-3">
+                      <p className="text-sm font-semibold text-gray-900">{pet.name}</p>
+                      <dl className="mt-2 space-y-1 text-xs text-gray-600">
+                        <div className="flex justify-between gap-3">
+                          <dt>飼い主</dt>
+                          <dd className="font-medium text-gray-900">
+                            {getCustomerNameFromPet(pet.customers) === '未登録' ? (
+                              '未登録'
+                            ) : (
+                              <Link
+                                href={buildManageHref({ view: 'pets', q: getCustomerNameFromPet(pet.customers) })}
+                                scroll={false}
+                                className="text-blue-700 underline underline-offset-2 hover:text-blue-800"
+                              >
+                                {getCustomerNameFromPet(pet.customers)}
+                              </Link>
+                            )}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <dt>犬種</dt>
+                          <dd className="font-medium text-gray-900">{formatPetFallback(pet.breed)}</dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <dt>性別</dt>
+                          <dd className="font-medium text-gray-900">{formatPetFallback(pet.gender)}</dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <dt>最終来店</dt>
+                          <dd className="font-medium text-gray-900">{toJstDateTime(lastVisitDateByPetId.get(pet.id) ?? null)}</dd>
+                        </div>
+                      </dl>
+                      <div className="mt-3">
+                        <Link
+                          href={buildManageHref({
+                            view: 'detail',
+                            customerId: pet.customer_id,
+                            tab: `pet:${pet.id}`,
+                            q: q || undefined,
+                          })}
+                          scroll={false}
+                          className="inline-flex rounded border border-blue-200 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                        >
+                          詳細
+                        </Link>
+                      </div>
+                    </article>
+                  ))}
+                  </div>
+                  <div className="hidden overflow-x-auto md:block">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
+                        <tr>
+                          <th className="px-3 py-2">ペット名</th>
+                          <th className="px-3 py-2">飼い主</th>
+                          <th className="px-3 py-2">犬種</th>
+                          <th className="px-3 py-2">性別</th>
+                          <th className="px-3 py-2">最終来店</th>
+                          <th className="px-3 py-2">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 bg-white">
+                        {petsForList.map((pet) => (
+                          <tr key={pet.id} className="align-top">
+                            <td className="px-3 py-2 font-medium text-gray-900">{pet.name}</td>
+                            <td className="px-3 py-2 text-gray-700">
+                              {getCustomerNameFromPet(pet.customers) === '未登録' ? (
+                                '未登録'
+                              ) : (
+                                <Link
+                                  href={buildManageHref({ view: 'pets', q: getCustomerNameFromPet(pet.customers) })}
+                                  scroll={false}
+                                  className="text-blue-700 underline underline-offset-2 hover:text-blue-800"
+                                >
+                                  {getCustomerNameFromPet(pet.customers)}
+                                </Link>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-gray-700">{formatPetFallback(pet.breed)}</td>
+                            <td className="px-3 py-2 text-gray-700">{formatPetFallback(pet.gender)}</td>
+                            <td className="px-3 py-2 text-gray-700">{toJstDateTime(lastVisitDateByPetId.get(pet.id) ?? null)}</td>
+                            <td className="px-3 py-2">
+                              <Link
+                                href={buildManageHref({
+                                  view: 'detail',
+                                  customerId: pet.customer_id,
+                                  tab: `pet:${pet.id}`,
+                                  q: q || undefined,
+                                })}
+                                scroll={false}
+                                className="inline-flex rounded border border-blue-200 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                              >
+                                詳細
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          </Card>
+        ) : null}
+
+        {activeView === 'alerts' ? (
+          <Card>
+            <div className="space-y-2">
+              <h2 className="text-base font-semibold text-gray-900">来店周期アラート</h2>
+              <p className="text-sm text-gray-600">再来店フォロー対象を確認し、LINE送信や対応状況を管理できます。</p>
+            </div>
+            <div className="mt-4">
+              <RevisitAlertList />
+            </div>
+          </Card>
+        ) : null}
       </section>
 
+      {activeView === 'detail' ? (
+      <>
       {!selectedCustomer ? (
         <Card>
-          <p className="text-sm text-gray-600">検索から顧客を選択してください。</p>
+          <p className="text-sm text-gray-600">顧客一覧またはペット一覧から対象を選択してください。</p>
         </Card>
       ) : (
         <>
@@ -716,6 +1264,11 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                 >
                   {getCustomerLtvRankLabel(customerLtvByCustomerId.get(selectedCustomer.id)?.ltv_rank)}
                 </span>
+                {waitlistCustomerIdSet.has(selectedCustomer.id) ? (
+                  <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                    空き枠待ち
+                  </span>
+                ) : null}
                 {formatCustomerNoShowCount(noShowCounts[selectedCustomer.id] ?? 0) ? (
                   <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">
                     {formatCustomerNoShowCount(noShowCounts[selectedCustomer.id] ?? 0)}
@@ -749,16 +1302,14 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                   <span className="sm:hidden">待ち</span>
                   <span className="hidden sm:inline">空き枠待ち</span>
                 </Link>
-                <form action={`/api/customers/${selectedCustomer.id}`} method="post" className="border-l border-gray-300">
-                  <input type="hidden" name="_method" value="delete" />
-                  <button
-                    type="submit"
-                    className="inline-flex h-9 w-full items-center justify-center whitespace-nowrap px-2 font-medium text-red-700 hover:bg-red-50 sm:w-auto sm:px-3"
-                  >
-                    <span className="sm:hidden">削除</span>
-                    <span className="hidden sm:inline">顧客削除</span>
-                  </button>
-                </form>
+                <DeleteWithImpactDialogButton
+                  action={`/api/customers/${selectedCustomer.id}`}
+                  formClassName="border-l border-gray-300"
+                  desktopLabel="顧客削除"
+                  title="顧客を削除しますか？"
+                  description="関連データも連動して削除されます。削除対象件数を確認してください。"
+                  impacts={customerDeleteImpacts}
+                />
               </div>
             </div>
 
@@ -818,16 +1369,14 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                     <span className="sm:hidden">日誌</span>
                     <span className="hidden sm:inline">日誌アルバム</span>
                   </Link>
-                  <form action={`/api/pets/${activePet.id}`} method="post" className="border-l border-gray-300">
-                    <input type="hidden" name="_method" value="delete" />
-                    <button
-                      type="submit"
-                      className="inline-flex h-9 w-full items-center justify-center whitespace-nowrap px-2 font-medium text-red-700 hover:bg-red-50 sm:w-auto sm:px-3"
-                    >
-                      <span className="sm:hidden">削除</span>
-                      <span className="hidden sm:inline">ペット削除</span>
-                    </button>
-                  </form>
+                  <DeleteWithImpactDialogButton
+                    action={`/api/pets/${activePet.id}`}
+                    formClassName="border-l border-gray-300"
+                    desktopLabel="ペット削除"
+                    title="ペットを削除しますか？"
+                    description="関連データも連動して削除されます。削除対象件数を確認してください。"
+                    impacts={petDeleteImpacts}
+                  />
                 </div>
               ) : null}
             </div>
@@ -873,24 +1422,24 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                     </dl>
                   </section>
 
-                  <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                    <h3 className="mb-3 text-sm font-semibold text-amber-900">会員証URL</h3>
+                  <section className="rounded-lg border border-gray-200 bg-white p-4">
+                    <h3 className="mb-3 text-sm font-semibold text-gray-900">会員証URL</h3>
                     <dl className="space-y-3 text-sm">
                       <div className="grid grid-cols-[7.5rem_1fr] items-start gap-3">
-                        <dt className="text-amber-800">有効期限</dt>
-                        <dd className="font-medium text-amber-900">
+                        <dt className="text-gray-500">有効期限</dt>
+                        <dd className="font-medium text-gray-900">
                           {toJstDateTime(activeMemberPortalByCustomerId.get(selectedCustomer.id)?.expires_at ?? null)}
                         </dd>
                       </div>
                       <div className="grid grid-cols-[7.5rem_1fr] items-start gap-3">
-                        <dt className="text-amber-800">最終アクセス</dt>
-                        <dd className="font-medium text-amber-900">
+                        <dt className="text-gray-500">最終アクセス</dt>
+                        <dd className="font-medium text-gray-900">
                           {toJstDateTime(activeMemberPortalByCustomerId.get(selectedCustomer.id)?.last_used_at ?? null)}
                         </dd>
                       </div>
                       <div className="grid grid-cols-[7.5rem_1fr] items-start gap-3">
-                        <dt className="text-amber-800">運用ルール</dt>
-                        <dd className="font-medium text-amber-900">対象店舗の最終来店日 + 設定TTL（来店なしは発行日基準）</dd>
+                        <dt className="text-gray-500">運用ルール</dt>
+                        <dd className="font-medium text-gray-900">対象店舗の最終来店日 + 設定TTL（来店なしは発行日基準）</dd>
                       </div>
                     </dl>
                     <div className="mt-3">
@@ -1143,6 +1692,114 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
           </Card>
         </>
       )}
+      </>
+      ) : null}
+
+      {isCreateCustomerModalOpen ? (
+        <CustomerCreateModal title="新規顧客登録" closeRedirectTo={customerCreateModalCloseHref}>
+          <form action="/api/customers" method="post" className="space-y-4">
+            <input type="hidden" name="redirect_to" value={customerCreateModalCloseHref} />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="space-y-2 text-sm text-gray-700">
+                氏名
+                <Input name="full_name" required placeholder="山田 花子" />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                電話番号
+                <Input name="phone_number" placeholder="090-0000-0000" />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                メールアドレス
+                <Input type="email" name="email" placeholder="example@email.com" />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                住所
+                <Input name="address" placeholder="東京都渋谷区..." />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                LINE ID
+                <Input name="line_id" placeholder="@lineid" />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                来店経路
+                <Input name="how_to_know" placeholder="Instagram, 口コミなど" />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700 md:col-span-2">
+                タグ (カンマ区切り)
+                <Input name="tags" placeholder="噛む, 皮膚弱い" />
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="submit">登録する</Button>
+            </div>
+          </form>
+        </CustomerCreateModal>
+      ) : null}
+
+      {isCreatePetModalOpen ? (
+        <PetCreateModal title="新規ペット登録" closeRedirectTo={petCreateModalCloseHref}>
+          <form action="/api/pets" method="post" className="space-y-4">
+            <input type="hidden" name="redirect_to" value={petCreateModalCloseHref} />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="space-y-2 text-sm text-gray-700">
+                飼い主
+                <select name="customer_id" required defaultValue="" className="w-full rounded border p-2">
+                  <option value="" disabled>
+                    選択してください
+                  </option>
+                  {customerOptions.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.full_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                ペット名
+                <Input name="name" required placeholder="モコ" />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                犬種
+                <Input name="breed" placeholder="トイプードル" />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                性別
+                <select name="gender" defaultValue="" className="w-full rounded border p-2">
+                  <option value="">未選択</option>
+                  {genderOptions.map((gender) => (
+                    <option key={gender} value={gender}>
+                      {gender}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                生年月日
+                <Input type="date" name="date_of_birth" />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                体重 (kg)
+                <Input type="number" step="0.1" name="weight" placeholder="3.2" />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                最終ワクチン接種日
+                <Input type="date" name="vaccine_date" />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                持病 (カンマ区切り)
+                <Input name="chronic_diseases" placeholder="心臓, アレルギー" />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700 md:col-span-2">
+                注意事項
+                <Input name="notes" placeholder="噛む、怖がりなど" />
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="submit">登録する</Button>
+            </div>
+          </form>
+        </PetCreateModal>
+      ) : null}
 
       {editCustomer ? (
         <CustomerCreateModal title="顧客情報の更新" closeRedirectTo={modalCloseHref}>

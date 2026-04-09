@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('ペットホテル管理', () => {
+  // TRACE-019
   test('一覧、カレンダー、設定、商品台帳の初期表示を確認できる', async ({ page }) => {
     await page.goto('/hotel')
 

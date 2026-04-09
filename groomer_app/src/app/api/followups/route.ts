@@ -5,12 +5,15 @@ import {
   getRecommendedVisitIntervalDays,
   getRecommendationReason,
 } from '@/lib/followups/recommendation'
+import {
+  buildBlockedCustomerIdsByRefollowPolicy,
+  clampRefollowDays,
+} from '@/lib/followups/refollow-policy'
 import type { Database, Json } from '@/lib/supabase/database.types'
 import type { JsonObject } from '@/lib/object-utils'
 import {
   FOLLOWUP_STATUSES,
   getFollowupRouteContext,
-  isResolvedStatus,
   jsonError,
   toOptionalDate,
   toOptionalDateOnly,
@@ -173,7 +176,7 @@ export async function GET(request: Request) {
     })
   }
 
-  const [{ data: customers, error: customersError }, { data: visits, error: visitsError }, { data: appointments, error: appointmentsError }, { data: activeTasks, error: activeTasksError }, { data: staffs, error: staffsError }, { data: pets, error: petsError }, { data: nextVisitTemplateRows, error: nextVisitTemplateError }] =
+  const [{ data: customers, error: customersError }, { data: visits, error: visitsError }, { data: appointments, error: appointmentsError }, { data: activeTasks, error: activeTasksError }, { data: staffs, error: staffsError }, { data: pets, error: petsError }, { data: nextVisitTemplateRows, error: nextVisitTemplateError }, { data: customerManagementSettingsRows, error: customerManagementSettingsError }] =
     await Promise.all([
       supabase
         .from('customers')
@@ -190,7 +193,7 @@ export async function GET(request: Request) {
         .eq('store_id', storeId),
       supabase
         .from('customer_followup_tasks')
-        .select('customer_id, snoozed_until, status')
+        .select('customer_id, snoozed_until, status, resolved_at, updated_at')
         .eq('store_id', storeId),
       supabase
         .from('staffs')
@@ -204,6 +207,11 @@ export async function GET(request: Request) {
         .eq('channel', 'line')
         .eq('is_active', true)
         .eq('template_key', 'next_visit_suggestion_line'),
+      supabase
+        .from('store_customer_management_settings' as never)
+        .select('followup_snoozed_refollow_days, followup_no_need_refollow_days, followup_lost_refollow_days')
+        .eq('store_id', storeId)
+        .maybeSingle(),
     ])
 
   const firstError =
@@ -213,12 +221,33 @@ export async function GET(request: Request) {
     activeTasksError ??
     staffsError ??
     petsError ??
+    customerManagementSettingsError ??
     (nextVisitTemplateError && !nextVisitTemplateError.message.includes('notification_templates')
       ? nextVisitTemplateError
       : null)
   if (firstError) {
     return jsonError(firstError.message, 500)
   }
+
+  const customerManagementSettings = (customerManagementSettingsRows ?? null) as
+    | {
+        followup_snoozed_refollow_days?: number | null
+        followup_no_need_refollow_days?: number | null
+        followup_lost_refollow_days?: number | null
+      }
+    | null
+  const snoozedRefollowDays = clampRefollowDays(
+    customerManagementSettings?.followup_snoozed_refollow_days ?? null,
+    7
+  )
+  const noNeedRefollowDays = clampRefollowDays(
+    customerManagementSettings?.followup_no_need_refollow_days ?? null,
+    60
+  )
+  const lostRefollowDays = clampRefollowDays(
+    customerManagementSettings?.followup_lost_refollow_days ?? null,
+    90
+  )
 
   const lastVisitByCustomerId = new Map<string, { visitDate: string; appointmentId: string | null }>()
   ;((visits ?? []) as Array<{ customer_id: string | null; visit_date: string; appointment_id: string | null }>).forEach((row) => {
@@ -272,16 +301,20 @@ export async function GET(request: Request) {
       .map((row) => row.customer_id as string)
   )
 
-  const blockedCustomerIds = new Set(
-    ((activeTasks ?? []) as Array<{ customer_id: string | null; snoozed_until: string | null; status: string }>)
-      .filter((row) => {
-        if (!row.customer_id) return false
-        if (!isResolvedStatus(row.status)) return true
-        if (!row.snoozed_until) return false
-        const snoozedUntilMs = new Date(row.snoozed_until).getTime()
-        return Number.isFinite(snoozedUntilMs) && snoozedUntilMs > nowMs
-      })
-      .map((row) => row.customer_id as string)
+  const blockedCustomerIds = buildBlockedCustomerIdsByRefollowPolicy(
+    ((activeTasks ?? []) as Array<{
+      customer_id: string | null
+      snoozed_until: string | null
+      status: string
+      resolved_at?: string | null
+      updated_at?: string | null
+    }>),
+    nowMs,
+    {
+      snoozedDays: snoozedRefollowDays,
+      noNeedDays: noNeedRefollowDays,
+      lostDays: lostRefollowDays,
+    }
   )
 
   const candidates = ((customers ?? []) as Array<{

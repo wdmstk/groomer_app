@@ -29,7 +29,6 @@ type Item = {
 
 type ProductsPageProps = {
   searchParams?: Promise<{
-    tab?: string
     modal?: string
     edit?: string
   }>
@@ -37,11 +36,9 @@ type ProductsPageProps = {
 
 export default async function InventoryProductsPage({ searchParams }: ProductsPageProps) {
   const resolvedSearchParams = await searchParams
-  const activeTab = 'list'
-  const isCreateModalOpen =
-    resolvedSearchParams?.modal === 'create' || resolvedSearchParams?.tab === 'new'
+  const isCreateModalOpen = resolvedSearchParams?.modal === 'create'
   const editId = resolvedSearchParams?.edit
-  const modalCloseRedirect = `/inventory/products?tab=${activeTab}`
+  const modalCloseRedirect = '/inventory/products'
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: inventoryPageFixtures.storeId }
     : await createStoreScopedClient()
@@ -82,24 +79,13 @@ export default async function InventoryProductsPage({ searchParams }: ProductsPa
         <h1 className="text-2xl font-semibold text-gray-900">商品マスタ管理</h1>
       </div>
 
-      <div className="flex items-center gap-4 border-b">
-        <Link
-          href="/inventory/products?tab=list"
-          className={`pb-2 text-sm font-semibold ${
-            activeTab === 'list' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'
-          }`}
-        >
-          商品一覧
-        </Link>
-      </div>
-
       <Card>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">商品一覧</h2>
           <div className="flex items-center gap-3">
             <p className="text-sm text-gray-500">全 {itemList.length} 件</p>
             <Link
-              href="/inventory/products?tab=list&modal=create"
+              href="/inventory/products?modal=create"
               className="inline-flex items-center rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
             >
               新規登録
@@ -109,48 +95,113 @@ export default async function InventoryProductsPage({ searchParams }: ProductsPa
         {itemList.length === 0 ? (
           <p className="text-sm text-gray-500">商品がまだ登録されていません。</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b text-gray-500">
-                <tr>
-                  <th className="px-2 py-2">商品名</th>
-                  <th className="px-2 py-2">カテゴリ</th>
-                  <th className="px-2 py-2">単位</th>
-                  <th className="px-2 py-2">仕入先</th>
-                  <th className="px-2 py-2">発注点</th>
-                  <th className="px-2 py-2">適正在庫</th>
-                  <th className="px-2 py-2">状態</th>
-                  <th className="px-2 py-2">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {itemList.map((item) => (
-                  <tr key={item.id} className="text-gray-700">
-                    <td className="px-2 py-3 font-medium text-gray-900">{item.name}</td>
-                    <td className="px-2 py-3">{item.category ?? '未設定'}</td>
-                    <td className="px-2 py-3">{item.unit}</td>
-                    <td className="px-2 py-3">{item.preferred_supplier_name ?? item.supplier_name ?? '未設定'}</td>
-                    <td className="px-2 py-3">{item.reorder_point}</td>
-                    <td className="px-2 py-3">{item.optimal_stock}</td>
-                    <td className="px-2 py-3">{item.is_active ? '有効' : '無効'}</td>
-                    <td className="px-2 py-3">
-                      <div className="flex items-center gap-2">
-                        <Link href={`/inventory/products?tab=list&edit=${item.id}`} className="text-sm text-blue-600">
-                          編集
-                        </Link>
-                        <form action={`/api/inventory/items/${item.id}`} method="post">
-                          <input type="hidden" name="_method" value="delete" />
-                          <Button type="submit" className="bg-red-500 hover:bg-red-600">
-                            削除
-                          </Button>
-                        </form>
-                      </div>
-                    </td>
+          <>
+            <div className="space-y-2.5 md:hidden">
+              {itemList.map((item) => (
+                <article key={item.id} className="rounded border border-gray-200 p-3 text-sm text-gray-700">
+                  <p className="truncate font-semibold text-gray-900">{item.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {item.category ?? '未設定'} / {item.unit} / {item.preferred_supplier_name ?? item.supplier_name ?? '未設定'}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                      発注点 {item.reorder_point}
+                    </span>
+                    <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                      適正在庫 {item.optimal_stock}
+                    </span>
+                    <span
+                      className={`inline-flex rounded border px-2 py-0.5 text-xs font-semibold ${
+                        item.is_active
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                          : 'border-gray-200 bg-gray-50 text-gray-500'
+                      }`}
+                    >
+                      {item.is_active ? '有効' : '無効'}
+                    </span>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-xs text-gray-600">備考: {item.notes ?? 'なし'}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <Link
+                      href={`/inventory/products?edit=${item.id}`}
+                      className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                    >
+                      編集
+                    </Link>
+                    <form action={`/api/inventory/items/${item.id}`} method="post">
+                      <input type="hidden" name="_method" value="delete" />
+                      <Button type="submit" className="h-7 border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 hover:bg-red-100 whitespace-nowrap">
+                        削除
+                      </Button>
+                    </form>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="hidden md:block" data-testid="inventory-products-table-wrap">
+              <table className="min-w-full table-fixed text-left text-sm" data-testid="inventory-products-table">
+                <thead className="border-b bg-gray-50 text-gray-500">
+                  <tr>
+                    <th className="px-2.5 py-2">商品</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">在庫基準</th>
+                    <th className="px-2.5 py-2">状態</th>
+                    <th className="px-2.5 py-2">備考</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">操作</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y">
+                  {itemList.map((item) => (
+                    <tr key={item.id} className="text-gray-700" data-testid={`inventory-product-row-${item.id}`}>
+                      <td className="px-2.5 py-2 align-top">
+                        <p className="truncate font-medium text-gray-900">{item.name}</p>
+                        <p className="truncate text-xs text-gray-500">
+                          {item.category ?? '未設定'} / {item.unit}
+                        </p>
+                        <p className="truncate text-xs text-gray-500">
+                          {item.preferred_supplier_name ?? item.supplier_name ?? '未設定'}
+                        </p>
+                      </td>
+                      <td className="px-2.5 py-2 whitespace-nowrap align-top">
+                        <p>発注点 {item.reorder_point}</p>
+                        <p className="text-xs text-gray-500">適正在庫 {item.optimal_stock}</p>
+                      </td>
+                      <td className="px-2.5 py-2 align-top">
+                        <span
+                          className={`inline-flex rounded border px-2 py-0.5 text-xs font-semibold ${
+                            item.is_active
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                              : 'border-gray-200 bg-gray-50 text-gray-500'
+                          }`}
+                        >
+                          {item.is_active ? '有効' : '無効'}
+                        </span>
+                      </td>
+                      <td className="px-2.5 py-2 align-top">
+                        <p className="line-clamp-2">{item.notes ?? 'なし'}</p>
+                      </td>
+                      <td className="px-2.5 py-2 align-top">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Link
+                            href={`/inventory/products?edit=${item.id}`}
+                            className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                          >
+                            編集
+                          </Link>
+                          <form action={`/api/inventory/items/${item.id}`} method="post">
+                            <input type="hidden" name="_method" value="delete" />
+                            <Button type="submit" className="h-7 border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 hover:bg-red-100 whitespace-nowrap">
+                              削除
+                            </Button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
 

@@ -115,11 +115,6 @@ function toLocalInputValue(date: Date) {
   return `${yyyy}-${mm}-${dd}T${hh}:${min}`
 }
 
-type QrPayload = {
-  customer_id?: string
-  pet_id?: string
-}
-
 export function AppointmentForm({
   editAppointment,
   customerOptions,
@@ -176,9 +171,6 @@ export function AppointmentForm({
   const [submitMessage, setSubmitMessage] = useState('')
   const [createdAppointments, setCreatedAppointments] = useState<CreatedAppointmentSummary[]>([])
   const [currentGroupId, setCurrentGroupId] = useState('')
-  const [qrMessage, setQrMessage] = useState('')
-  const [qrError, setQrError] = useState('')
-  const [qrDecoding, setQrDecoding] = useState(false)
   const formOpenedAtRef = useRef(Date.now())
   const createdAppointmentsRef = useRef<HTMLDivElement | null>(null)
 
@@ -351,46 +343,6 @@ export function AppointmentForm({
     setCopyMessage('')
     setSubmitError('')
     setSubmitMessage('別のペットを選んで続けて予約できます。')
-  }
-
-  const handleQrImageScan = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    setQrMessage('')
-    setQrError('')
-    setQrDecoding(true)
-    try {
-      const detectorCtor = (globalThis as unknown as { BarcodeDetector?: new (options?: { formats?: string[] }) => { detect: (source: ImageBitmap) => Promise<Array<{ rawValue?: string }>> } }).BarcodeDetector
-      if (!detectorCtor) {
-        throw new Error('このブラウザはQR画像読取に対応していません。')
-      }
-      const detector = new detectorCtor({ formats: ['qr_code'] })
-      const bitmap = await createImageBitmap(file)
-      const results = await detector.detect(bitmap)
-      const raw = results[0]?.rawValue
-      if (!raw) {
-        throw new Error('QRコードを読み取れませんでした。')
-      }
-      const parsed = JSON.parse(raw) as QrPayload
-      if (!parsed.customer_id || !parsed.pet_id) {
-        throw new Error('QRデータ形式が不正です。')
-      }
-
-      const customerExists = customerList.some((customer) => customer.id === parsed.customer_id)
-      const petExists = petList.some((pet) => pet.id === parsed.pet_id)
-      if (!customerExists || !petExists) {
-        throw new Error('この店舗の顧客/ペット情報と一致しません。')
-      }
-
-      handleCustomerChanged(parsed.customer_id)
-      setSelectedPetId(parsed.pet_id)
-      setQrMessage('QRコードから顧客・ペットを自動選択しました。')
-    } catch (error) {
-      setQrError(error instanceof Error ? error.message : 'QR読取に失敗しました。')
-    } finally {
-      setQrDecoding(false)
-      event.target.value = ''
-    }
   }
 
   const customerQueryNormalized = customerQuery.trim().toLowerCase()
@@ -570,19 +522,6 @@ export function AppointmentForm({
         </div>
       ) : null}
       <div className={`grid grid-cols-1 gap-4 ${singleColumn ? '' : 'md:grid-cols-2'}`}>
-        <label className={`space-y-2 text-sm text-gray-700 ${singleColumn ? '' : 'md:col-span-2'}`}>
-          QRコード画像から読取
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleQrImageScan}
-            disabled={qrDecoding}
-            className="w-full rounded border p-2 text-sm"
-          />
-          {qrDecoding ? <p className="text-xs text-gray-500">QR画像を解析中...</p> : null}
-          {qrMessage ? <p className="text-xs text-emerald-700">{qrMessage}</p> : null}
-          {qrError ? <p className="text-xs text-red-600">{qrError}</p> : null}
-        </label>
         <label className={`space-y-2 text-sm text-gray-700 ${singleColumn ? '' : 'md:col-span-2'}`}>
           顧客検索
           <Input

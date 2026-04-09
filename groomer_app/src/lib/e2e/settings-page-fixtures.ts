@@ -55,6 +55,9 @@ export const settingsPageFixtures = {
     medical_record_list_limit: 12,
     journal_visibility_mode: 'include_drafts',
     calendar_expand_out_of_range_appointments: false,
+    followup_snoozed_refollow_days: 7,
+    followup_no_need_refollow_days: 60,
+    followup_lost_refollow_days: 90,
   },
   storageQuota: {
     storeId: 'store-e2e-demo',

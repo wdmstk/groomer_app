@@ -462,21 +462,21 @@ export default function LandingPage() {
             <table className="min-w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="bg-slate-50 text-slate-700">
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">プラン</th>
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">月額（1店舗）</th>
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">年額（15%OFF）</th>
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">2店舗目以降（月額）</th>
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">2店舗目以降（年額）</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">プラン</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">月額（1店舗）</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">年額（15%OFF）</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">2店舗目以降（月額）</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">2店舗目以降（年額）</th>
                 </tr>
               </thead>
               <tbody>
                 {PRICE_ROWS.map((row) => (
                   <tr key={row.plan} className="odd:bg-white even:bg-slate-50/40">
-                    <td className="border-b border-slate-100 px-3 py-2 font-medium text-slate-900">{row.plan}</td>
-                    <td className="border-b border-slate-100 px-3 py-2">{row.monthly}</td>
-                    <td className="border-b border-slate-100 px-3 py-2">{row.yearly}</td>
-                    <td className="border-b border-slate-100 px-3 py-2">{row.additionalMonthly}</td>
-                    <td className="border-b border-slate-100 px-3 py-2">{row.additionalYearly}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2 font-medium text-slate-900">{row.plan}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2">{row.monthly}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2">{row.yearly}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2">{row.additionalMonthly}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2">{row.additionalYearly}</td>
                   </tr>
                 ))}
               </tbody>
@@ -492,19 +492,19 @@ export default function LandingPage() {
             <table className="min-w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="bg-slate-50 text-slate-700">
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">オプション</th>
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">料金</th>
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">対象プラン</th>
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">内容</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">オプション</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">料金</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">対象プラン</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">内容</th>
                 </tr>
               </thead>
               <tbody>
                 {ADDITIONAL_OPTION_ROWS.map((row) => (
                   <tr key={row.option} className="odd:bg-white even:bg-slate-50/40">
-                    <td className="border-b border-slate-100 px-3 py-2 font-medium text-slate-900">{row.option}</td>
-                    <td className="border-b border-slate-100 px-3 py-2">{row.price}</td>
-                    <td className="border-b border-slate-100 px-3 py-2">{row.target}</td>
-                    <td className="border-b border-slate-100 px-3 py-2">{row.detail}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2 font-medium text-slate-900">{row.option}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2">{row.price}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2">{row.target}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2">{row.detail}</td>
                   </tr>
                 ))}
               </tbody>
@@ -521,19 +521,19 @@ export default function LandingPage() {
             <table className="min-w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="bg-slate-50 text-slate-700">
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">機能</th>
-                  <th className="border-b border-slate-200 px-3 py-2 text-center font-semibold">ライト</th>
-                  <th className="border-b border-slate-200 px-3 py-2 text-center font-semibold">スタンダード</th>
-                  <th className="border-b border-slate-200 px-3 py-2 text-center font-semibold">プロ</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">機能</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 text-center font-semibold">ライト</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 text-center font-semibold">スタンダード</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 text-center font-semibold">プロ</th>
                 </tr>
               </thead>
               <tbody>
                 {PLAN_FEATURE_ROWS.map((row) => (
                   <tr key={row.feature} className="odd:bg-white even:bg-slate-50/40">
-                    <td className="border-b border-slate-100 px-3 py-2">{row.feature}</td>
-                    <td className="border-b border-slate-100 px-3 py-2 text-center">{row.light}</td>
-                    <td className="border-b border-slate-100 px-3 py-2 text-center">{row.standard}</td>
-                    <td className="border-b border-slate-100 px-3 py-2 text-center">{row.pro}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2">{row.feature}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2 text-center">{row.light}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2 text-center">{row.standard}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2 text-center">{row.pro}</td>
                   </tr>
                 ))}
               </tbody>
@@ -561,17 +561,17 @@ export default function LandingPage() {
             <table className="min-w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="bg-slate-50 text-slate-700">
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">プラン</th>
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">標準容量</th>
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">追加容量料金</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">プラン</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">標準容量</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">追加容量料金</th>
                 </tr>
               </thead>
               <tbody>
                 {STORAGE_ROWS.map((row) => (
                   <tr key={row.plan} className="odd:bg-white even:bg-slate-50/40">
-                    <td className="border-b border-slate-100 px-3 py-2 font-medium text-slate-900">{row.plan}</td>
-                    <td className="border-b border-slate-100 px-3 py-2">{row.included}</td>
-                    <td className="border-b border-slate-100 px-3 py-2">{row.addon}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2 font-medium text-slate-900">{row.plan}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2">{row.included}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2">{row.addon}</td>
                   </tr>
                 ))}
               </tbody>
@@ -582,15 +582,15 @@ export default function LandingPage() {
             <table className="min-w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="bg-slate-50 text-slate-700">
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">追加例</th>
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">追加料金</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">追加例</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">追加料金</th>
                 </tr>
               </thead>
               <tbody>
                 {STORAGE_ADDON_EXAMPLES.map((row) => (
                   <tr key={row.extra} className="odd:bg-white even:bg-slate-50/40">
-                    <td className="border-b border-slate-100 px-3 py-2">{row.extra}</td>
-                    <td className="border-b border-slate-100 px-3 py-2">{row.monthly}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2">{row.extra}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2">{row.monthly}</td>
                   </tr>
                 ))}
               </tbody>
@@ -631,15 +631,15 @@ export default function LandingPage() {
             <table className="min-w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="bg-slate-50 text-slate-700">
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">項目</th>
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">内容</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">項目</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">内容</th>
                 </tr>
               </thead>
               <tbody>
                 {BILLING_TERM_ROWS.map((row) => (
                   <tr key={row.item} className="odd:bg-white even:bg-slate-50/40">
-                    <td className="border-b border-slate-100 px-3 py-2 font-medium text-slate-900">{row.item}</td>
-                    <td className="border-b border-slate-100 px-3 py-2">{row.detail}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2 font-medium text-slate-900">{row.item}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2">{row.detail}</td>
                   </tr>
                 ))}
               </tbody>
@@ -681,19 +681,19 @@ export default function LandingPage() {
             <table className="min-w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="bg-slate-50 text-slate-700">
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold">比較項目</th>
-                  <th className="border-b border-slate-200 px-3 py-2 text-center font-semibold">本サービス</th>
-                  <th className="border-b border-slate-200 px-3 py-2 text-center font-semibold">A社</th>
-                  <th className="border-b border-slate-200 px-3 py-2 text-center font-semibold">B社</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 font-semibold">比較項目</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 text-center font-semibold">本サービス</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 text-center font-semibold">A社</th>
+                  <th className="border-b border-slate-200 px-2.5 py-2 text-center font-semibold">B社</th>
                 </tr>
               </thead>
               <tbody>
                 {COMPETITOR_ROWS.map((row) => (
                   <tr key={row.axis} className="odd:bg-white even:bg-slate-50/40">
-                    <td className="border-b border-slate-100 px-3 py-2">{row.axis}</td>
-                    <td className="border-b border-slate-100 px-3 py-2 text-center font-semibold text-sky-700">{row.service}</td>
-                    <td className="border-b border-slate-100 px-3 py-2 text-center">{row.companyA}</td>
-                    <td className="border-b border-slate-100 px-3 py-2 text-center">{row.companyB}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2">{row.axis}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2 text-center font-semibold text-sky-700">{row.service}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2 text-center">{row.companyA}</td>
+                    <td className="border-b border-slate-100 px-2.5 py-2 text-center">{row.companyB}</td>
                   </tr>
                 ))}
               </tbody>

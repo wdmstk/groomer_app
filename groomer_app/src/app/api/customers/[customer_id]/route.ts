@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
 import { insertAuditLogBestEffort } from '@/lib/audit-logs'
+import {
+  CustomerDeleteServiceError,
+  deleteCustomerWithDependencies,
+} from '@/lib/customers/services/delete'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
 type RouteParams = {
@@ -103,14 +107,18 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     .eq('id', customer_id)
     .eq('store_id', storeId)
     .maybeSingle()
-  const { error } = await supabase
-    .from('customers')
-    .delete()
-    .eq('id', customer_id)
-    .eq('store_id', storeId)
-
-  if (error) {
-    return NextResponse.json({ message: error.message }, { status: 500 })
+  try {
+    await deleteCustomerWithDependencies({
+      supabase,
+      storeId,
+      customerId: customer_id,
+    })
+  } catch (error) {
+    if (error instanceof CustomerDeleteServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status })
+    }
+    const message = error instanceof Error ? error.message : 'Failed to delete customer.'
+    return NextResponse.json({ message }, { status: 500 })
   }
 
   if (before) {
@@ -136,12 +144,24 @@ async function deleteCustomer(customerId: string) {
     .eq('id', customerId)
     .eq('store_id', storeId)
     .maybeSingle()
-  const { error } = await supabase
-    .from('customers')
-    .delete()
-    .eq('id', customerId)
-    .eq('store_id', storeId)
-  return { error, supabase, storeId, before }
+  try {
+    await deleteCustomerWithDependencies({
+      supabase,
+      storeId,
+      customerId,
+    })
+    return { error: null, supabase, storeId, before }
+  } catch (error) {
+    if (error instanceof CustomerDeleteServiceError) {
+      return { error: { message: error.message }, supabase, storeId, before }
+    }
+    return {
+      error: { message: error instanceof Error ? error.message : 'Failed to delete customer.' },
+      supabase,
+      storeId,
+      before,
+    }
+  }
 }
 
 export async function POST(request: Request, context: RouteParams) {
@@ -168,7 +188,7 @@ export async function POST(request: Request, context: RouteParams) {
         before,
       })
     }
-    return NextResponse.redirect(new URL('/customers?tab=list', request.url))
+    return NextResponse.redirect(new URL('/customers/manage?view=customers', request.url))
   }
 
   if (method === 'put' || method === 'patch') {
@@ -219,7 +239,7 @@ export async function POST(request: Request, context: RouteParams) {
       after: updatedCustomer,
     })
 
-    return NextResponse.redirect(new URL('/customers', request.url))
+    return NextResponse.redirect(new URL(`/customers/manage?customer_id=${customer_id}`, request.url))
   }
 
   return NextResponse.json({ message: 'Unsupported method' }, { status: 405 })

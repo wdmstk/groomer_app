@@ -47,7 +47,7 @@ export default async function InventoryReorderSuggestionsPage() {
           <h1 className="text-2xl font-semibold text-gray-900">発注提案一覧</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/inventory/products?tab=list" className="rounded border px-3 py-2 text-sm text-gray-700">
+          <Link href="/inventory/products" className="rounded border px-3 py-2 text-sm text-gray-700">
             商品マスタ
           </Link>
           <Link href="/inventory/purchase-orders" className="rounded border px-3 py-2 text-sm text-gray-700">

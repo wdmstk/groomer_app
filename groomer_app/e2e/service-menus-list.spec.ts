@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test.describe('施術メニュー一覧', () => {
   test('実運用に近いメニューデータと推奨所要時間を表示できる', async ({ page }) => {
-    await page.goto('/service-menus?tab=list')
+    await page.goto('/service-menus')
 
     await expect(page.getByRole('heading', { name: '施術メニュー管理' })).toBeVisible()
     await expect(page.getByTestId('service-menus-list')).toBeVisible()
@@ -28,7 +28,7 @@ test.describe('施術メニュー一覧', () => {
   })
 
   test('新規メニューモーダルを開ける', async ({ page }) => {
-    await page.goto('/service-menus?tab=list&modal=create')
+    await page.goto('/service-menus?modal=create')
 
     await expect(page.getByRole('heading', { name: '新規メニュー登録' })).toBeVisible()
     await expect(page.getByLabel('メニュー名')).toBeVisible()

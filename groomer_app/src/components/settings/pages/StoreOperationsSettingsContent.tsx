@@ -65,7 +65,7 @@ export default async function StoreOperationsSettingsContent() {
         await db
           .from('store_customer_management_settings' as never)
           .select(
-            'medical_record_list_limit, journal_visibility_mode, calendar_expand_out_of_range_appointments'
+            'medical_record_list_limit, journal_visibility_mode, calendar_expand_out_of_range_appointments, followup_snoozed_refollow_days, followup_no_need_refollow_days, followup_lost_refollow_days'
           )
           .eq('store_id', storeId)
           .maybeSingle()
@@ -74,6 +74,9 @@ export default async function StoreOperationsSettingsContent() {
             medical_record_list_limit?: number | null
             journal_visibility_mode?: string | null
             calendar_expand_out_of_range_appointments?: boolean | null
+            followup_snoozed_refollow_days?: number | null
+            followup_no_need_refollow_days?: number | null
+            followup_lost_refollow_days?: number | null
           }
         | null
 
@@ -111,6 +114,18 @@ export default async function StoreOperationsSettingsContent() {
       : 'published_only'
   const calendarExpandOutOfRangeAppointments =
     customerManagementSettings?.calendar_expand_out_of_range_appointments === true
+  const followupSnoozedRefollowDays = Math.max(
+    1,
+    Math.min(365, Number(customerManagementSettings?.followup_snoozed_refollow_days ?? 7))
+  )
+  const followupNoNeedRefollowDays = Math.max(
+    1,
+    Math.min(365, Number(customerManagementSettings?.followup_no_need_refollow_days ?? 60))
+  )
+  const followupLostRefollowDays = Math.max(
+    1,
+    Math.min(365, Number(customerManagementSettings?.followup_lost_refollow_days ?? 90))
+  )
   const publicReserveBlockedDatesText = ((publicReserveBlockedDates ?? []) as Array<{
     date_key: string | null
   }>)
@@ -123,7 +138,7 @@ export default async function StoreOperationsSettingsContent() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">店舗運用設定</h1>
         <p className="mt-1 text-sm text-gray-600">
-          営業時間・休業日・会員証・LTVランク・顧客管理（β）の表示設定を管理します。
+          営業時間・休業日・会員証・LTVランク・顧客ペット管理の表示設定を管理します。
         </p>
       </div>
 
@@ -187,7 +202,7 @@ export default async function StoreOperationsSettingsContent() {
               <button
                 type="submit"
                 disabled={!canManage}
-                className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center rounded bg-slate-900 px-2.5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 営業時間を保存
               </button>
@@ -212,7 +227,7 @@ export default async function StoreOperationsSettingsContent() {
               <button
                 type="submit"
                 disabled={!canManage}
-                className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center rounded bg-slate-900 px-2.5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 カレンダー表示設定を保存
               </button>
@@ -242,7 +257,7 @@ export default async function StoreOperationsSettingsContent() {
             <button
               type="submit"
               disabled={!canManage}
-              className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center rounded bg-slate-900 px-2.5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               定休日・臨時休業日を保存
             </button>
@@ -285,7 +300,7 @@ export default async function StoreOperationsSettingsContent() {
               <button
                 type="submit"
                 disabled={!canManage}
-                className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center rounded bg-slate-900 px-2.5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 会員証設定を保存
               </button>
@@ -303,20 +318,20 @@ export default async function StoreOperationsSettingsContent() {
           </p>
           <form action="/api/stores/ltv-rank-settings" method="post" className="space-y-4">
             <div className="overflow-x-auto rounded border border-gray-200">
-              <table className="min-w-full border-collapse text-sm">
+              <table className="min-w-full table-fixed border-collapse text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-gray-700">
-                    <th className="border border-gray-200 px-3 py-2 text-left">ランク</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left">年間売上（円）</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left">来店回数（回/年）</th>
+                    <th className="border border-gray-200 px-2.5 py-2 text-left">ランク</th>
+                    <th className="border border-gray-200 px-2.5 py-2 text-left">年間売上（円）</th>
+                    <th className="border border-gray-200 px-2.5 py-2 text-left">来店回数（回/年）</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-amber-700">
+                    <th className="border border-gray-200 px-2.5 py-2 text-left font-semibold text-amber-700">
                       ゴールド
                     </th>
-                    <td className="border border-gray-200 px-3 py-2">
+                    <td className="border border-gray-200 px-2.5 py-2">
                       <input
                         type="number"
                         min={0}
@@ -327,7 +342,7 @@ export default async function StoreOperationsSettingsContent() {
                         disabled={!canManage}
                       />
                     </td>
-                    <td className="border border-gray-200 px-3 py-2">
+                    <td className="border border-gray-200 px-2.5 py-2">
                       <input
                         type="number"
                         min={0}
@@ -340,10 +355,10 @@ export default async function StoreOperationsSettingsContent() {
                     </td>
                   </tr>
                   <tr>
-                    <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-slate-700">
+                    <th className="border border-gray-200 px-2.5 py-2 text-left font-semibold text-slate-700">
                       シルバー
                     </th>
-                    <td className="border border-gray-200 px-3 py-2">
+                    <td className="border border-gray-200 px-2.5 py-2">
                       <input
                         type="number"
                         min={0}
@@ -354,7 +369,7 @@ export default async function StoreOperationsSettingsContent() {
                         disabled={!canManage}
                       />
                     </td>
-                    <td className="border border-gray-200 px-3 py-2">
+                    <td className="border border-gray-200 px-2.5 py-2">
                       <input
                         type="number"
                         min={0}
@@ -367,10 +382,10 @@ export default async function StoreOperationsSettingsContent() {
                     </td>
                   </tr>
                   <tr>
-                    <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-orange-700">
+                    <th className="border border-gray-200 px-2.5 py-2 text-left font-semibold text-orange-700">
                       ブロンズ
                     </th>
-                    <td className="border border-gray-200 px-3 py-2">
+                    <td className="border border-gray-200 px-2.5 py-2">
                       <input
                         type="number"
                         min={0}
@@ -381,7 +396,7 @@ export default async function StoreOperationsSettingsContent() {
                         disabled={!canManage}
                       />
                     </td>
-                    <td className="border border-gray-200 px-3 py-2">
+                    <td className="border border-gray-200 px-2.5 py-2">
                       <input
                         type="number"
                         min={0}
@@ -401,7 +416,7 @@ export default async function StoreOperationsSettingsContent() {
               <button
                 type="submit"
                 disabled={!canManage}
-                className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center rounded bg-slate-900 px-2.5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 LTVランク初期値を保存
               </button>
@@ -412,11 +427,11 @@ export default async function StoreOperationsSettingsContent() {
 
       <details className="rounded border border-gray-200 bg-white p-3" open>
         <summary className="cursor-pointer text-sm font-semibold text-gray-900">
-          顧客管理（β）表示設定
+          顧客ペット管理表示設定
         </summary>
         <div className="mt-3 space-y-3">
           <p className="text-xs text-gray-500">
-            顧客管理（β）で表示するカルテ件数、日誌表示対象、予約カレンダーの範囲外予約表示を設定します。
+            顧客ペット管理で表示するカルテ件数、日誌表示対象、予約カレンダーの範囲外予約表示、再来店フォローの再フォロー日数を設定します。
           </p>
           <form action="/api/stores/customer-management-settings" method="post" className="space-y-4">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -445,6 +460,44 @@ export default async function StoreOperationsSettingsContent() {
                 </select>
               </label>
             </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <label className="text-xs text-gray-700">
+                保留の再フォロー日数
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  name="followup_snoozed_refollow_days"
+                  defaultValue={followupSnoozedRefollowDays}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+              <label className="text-xs text-gray-700">
+                不要の再フォロー日数
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  name="followup_no_need_refollow_days"
+                  defaultValue={followupNoNeedRefollowDays}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+              <label className="text-xs text-gray-700">
+                失注の再フォロー日数
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  name="followup_lost_refollow_days"
+                  defaultValue={followupLostRefollowDays}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+            </div>
             <input
               type="hidden"
               name="calendar_expand_out_of_range_appointments"
@@ -455,9 +508,9 @@ export default async function StoreOperationsSettingsContent() {
               <button
                 type="submit"
                 disabled={!canManage}
-                className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center rounded bg-slate-900 px-2.5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                顧客管理（β）表示設定を保存
+                顧客ペット管理表示設定を保存
               </button>
             </div>
           </form>

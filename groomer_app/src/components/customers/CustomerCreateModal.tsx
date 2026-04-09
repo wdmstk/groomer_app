@@ -15,7 +15,7 @@ type CustomerCreateModalProps = {
 export function CustomerCreateModal({
   title,
   children,
-  closeRedirectTo = '/customers?tab=list',
+  closeRedirectTo = '/customers/manage?view=customers',
 }: CustomerCreateModalProps) {
   const router = useRouter()
   const [open, setOpen] = useState(true)

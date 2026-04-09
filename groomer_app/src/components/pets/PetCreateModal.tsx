@@ -12,7 +12,11 @@ type PetCreateModalProps = {
   closeRedirectTo?: string
 }
 
-export function PetCreateModal({ title, children, closeRedirectTo = '/pets?tab=list' }: PetCreateModalProps) {
+export function PetCreateModal({
+  title,
+  children,
+  closeRedirectTo = '/customers/manage?view=pets',
+}: PetCreateModalProps) {
   const router = useRouter()
   const [open, setOpen] = useState(true)
   const handleClose = useCallback(() => {

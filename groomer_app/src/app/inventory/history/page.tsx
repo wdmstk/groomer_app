@@ -107,36 +107,62 @@ export default async function InventoryHistoryPage({
         {rows.length === 0 ? (
           <p className="text-sm text-gray-500">履歴がありません。</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b text-gray-500">
-                <tr>
-                  <th className="px-2 py-2">日時</th>
-                  <th className="px-2 py-2">商品</th>
-                  <th className="px-2 py-2">区分</th>
-                  <th className="px-2 py-2">数量</th>
-                  <th className="px-2 py-2">理由</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {rows.map((row) => {
-                  const item = relatedItem(row.inventory_items)
-                  const delta = toNumber(row.quantity_delta)
-                  return (
-                    <tr key={row.id} className="text-gray-700">
-                      <td className="px-2 py-3">{new Date(row.happened_at).toLocaleString('ja-JP')}</td>
-                      <td className="px-2 py-3 font-medium text-gray-900">{item?.name ?? '不明な商品'}</td>
-                      <td className="px-2 py-3">{movementLabel(row.movement_type)}</td>
-                      <td className="px-2 py-3">
+          <>
+            <div className="space-y-2.5 md:hidden">
+              {rows.map((row) => {
+                const item = relatedItem(row.inventory_items)
+                const delta = toNumber(row.quantity_delta)
+                return (
+                  <article key={row.id} className="rounded border border-gray-200 p-3 text-sm text-gray-700">
+                    <p className="truncate font-semibold text-gray-900">{item?.name ?? '不明な商品'}</p>
+                    <p className="text-xs text-gray-500">{new Date(row.happened_at).toLocaleString('ja-JP')}</p>
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                        {movementLabel(row.movement_type)}
+                      </span>
+                      <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
                         {delta > 0 ? `+${delta}` : delta} {item?.unit ?? ''}
-                      </td>
-                      <td className="px-2 py-3">{row.reason ?? '-'}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-600">理由: {row.reason ?? '-'}</p>
+                  </article>
+                )
+              })}
+            </div>
+            <div className="hidden md:block" data-testid="inventory-history-table-wrap">
+              <table className="min-w-full table-fixed text-left text-sm" data-testid="inventory-history-table">
+                <thead className="border-b bg-gray-50 text-gray-500">
+                  <tr>
+                    <th className="px-2.5 py-2">商品</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">区分/数量</th>
+                    <th className="px-2.5 py-2">日時/理由</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {rows.map((row) => {
+                    const item = relatedItem(row.inventory_items)
+                    const delta = toNumber(row.quantity_delta)
+                    return (
+                      <tr key={row.id} className="text-gray-700" data-testid={`inventory-history-row-${row.id}`}>
+                        <td className="px-2.5 py-2 align-top">
+                          <p className="truncate font-medium text-gray-900">{item?.name ?? '不明な商品'}</p>
+                          <p className="text-xs text-gray-500">{item?.unit ?? ''}</p>
+                        </td>
+                        <td className="px-2.5 py-2 whitespace-nowrap align-top">
+                          <p>{movementLabel(row.movement_type)}</p>
+                          <p className="text-xs text-gray-500">{delta > 0 ? `+${delta}` : delta} {item?.unit ?? ''}</p>
+                        </td>
+                        <td className="px-2.5 py-2 align-top">
+                          <p>{new Date(row.happened_at).toLocaleString('ja-JP')}</p>
+                          <p className="truncate text-xs text-gray-500">{row.reason ?? '-'}</p>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
     </section>

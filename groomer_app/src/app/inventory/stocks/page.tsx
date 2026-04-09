@@ -106,36 +106,76 @@ export default async function InventoryStocksPage({ searchParams }: StocksPagePr
         {rows.length === 0 ? (
           <p className="text-sm text-gray-500">表示できる在庫データがありません。</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b text-gray-500">
-                <tr>
-                  <th className="px-2 py-2">商品名</th>
-                  <th className="px-2 py-2">カテゴリ</th>
-                  <th className="px-2 py-2">現在庫</th>
-                  <th className="px-2 py-2">適正在庫</th>
-                  <th className="px-2 py-2">仕入先</th>
-                  <th className="px-2 py-2">状態</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {rows.map((row) => (
-                  <tr key={row.id} className="text-gray-700">
-                    <td className="px-2 py-3 font-medium text-gray-900">{row.name}</td>
-                    <td className="px-2 py-3">{row.category ?? '未設定'}</td>
-                    <td className="px-2 py-3">
-                      {row.currentStock} {row.unit}
-                    </td>
-                    <td className="px-2 py-3">
-                      {row.optimalStock} {row.unit}
-                    </td>
-                    <td className="px-2 py-3">{row.supplier_name ?? '未設定'}</td>
-                    <td className="px-2 py-3">{row.isLow ? '不足' : '正常'}</td>
+          <>
+            <div className="space-y-2.5 md:hidden">
+              {rows.map((row) => (
+                <article key={row.id} className="rounded border border-gray-200 p-3 text-sm text-gray-700">
+                  <p className="truncate font-semibold text-gray-900">{row.name}</p>
+                  <p className="truncate text-xs text-gray-500">
+                    {row.category ?? '未設定'} / {row.supplier_name ?? '未設定'}
+                  </p>
+                  <p className="mt-2 font-medium text-gray-900">
+                    現在庫 {row.currentStock} {row.unit}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    適正在庫 {row.optimalStock} {row.unit}
+                  </p>
+                  <span
+                    className={`mt-2 inline-flex rounded border px-2 py-0.5 text-xs font-semibold ${
+                      row.isLow
+                        ? 'border-rose-200 bg-rose-50 text-rose-700'
+                        : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    }`}
+                  >
+                    {row.isLow ? '不足' : '正常'}
+                  </span>
+                </article>
+              ))}
+            </div>
+
+            <div className="hidden md:block" data-testid="inventory-stocks-table-wrap">
+              <table className="min-w-full table-fixed text-left text-sm" data-testid="inventory-stocks-table">
+                <thead className="border-b bg-gray-50 text-gray-500">
+                  <tr>
+                    <th className="px-2.5 py-2">商品</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">在庫</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">状態</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y">
+                  {rows.map((row) => (
+                    <tr key={row.id} className="text-gray-700" data-testid={`inventory-stock-row-${row.id}`}>
+                      <td className="px-2.5 py-2 align-top">
+                        <p className="truncate font-medium text-gray-900">{row.name}</p>
+                        <p className="truncate text-xs text-gray-500">
+                          {row.category ?? '未設定'} / {row.supplier_name ?? '未設定'}
+                        </p>
+                      </td>
+                      <td className="px-2.5 py-2 whitespace-nowrap align-top">
+                        <p>
+                          現在庫 {row.currentStock} {row.unit}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          適正在庫 {row.optimalStock} {row.unit}
+                        </p>
+                      </td>
+                      <td className="px-2.5 py-2 align-top">
+                        <span
+                          className={`inline-flex rounded border px-2 py-0.5 text-xs font-semibold ${
+                            row.isLow
+                              ? 'border-rose-200 bg-rose-50 text-rose-700'
+                              : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                          }`}
+                        >
+                          {row.isLow ? '不足' : '正常'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
     </section>

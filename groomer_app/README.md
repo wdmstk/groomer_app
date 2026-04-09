@@ -106,8 +106,8 @@ Next.js の開発元が提供する [Vercel Platform](https://vercel.com/new?utm
 2. ログイン後、サイドバーの `StoreSwitcher` でアクティブ店舗を切り替える。
 3. 店舗Aで、顧客/ペット/スタッフ/メニュー/予約/会計を作成する。
 4. 店舗Bへ切り替え、店舗Aのデータが以下に表示されないことを確認する。
-   - `/customers`
-   - `/pets`
+   - `/customers/manage?view=customers`
+   - `/customers/manage?view=pets`
    - `/staffs`
    - `/service-menus`
    - `/appointments`
@@ -137,6 +137,8 @@ Next.js の開発元が提供する [Vercel Platform](https://vercel.com/new?utm
 20. 写真カルテAIタグを活用する場合は、カルテ一覧 `/medical-records?tab=list` でタグチップと解析状態から絞り込みできる。運用時は `/api/cron/medical-record-ai-tags` の定期実行を登録する。
 21. Supabase Dashboard の `Authentication > Providers > Email` で `Leaked password protection` を **ON** にする（HaveIBeenPwned連携）。
 22. 利用者ごとのUIテーマ切替を使う場合は `../supabase_staffs_ui_theme.sql` を適用する。
+23. LINE webhook 連携（`/api/webhooks/line`）または顧客削除時のLINEイベント参照を使う場合は `../supabase_line_webhook_events.sql` を適用する。
+24. LINE自動マーケ機能を使う場合は `../supabase_line_auto_marketing.sql` を適用する。
 
 ### Cron登録とは
 

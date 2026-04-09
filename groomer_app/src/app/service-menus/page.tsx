@@ -19,7 +19,6 @@ export const revalidate = 0
 
 type ServiceMenusPageProps = {
   searchParams?: Promise<{
-    tab?: string
     modal?: string
     edit?: string
   }>
@@ -49,11 +48,9 @@ type AppointmentDurationLearningRow = {
 
 export default async function ServiceMenusPage({ searchParams }: ServiceMenusPageProps) {
   const resolvedSearchParams = await searchParams
-  const activeTab = 'list'
-  const isCreateModalOpen =
-    resolvedSearchParams?.modal === 'create' || resolvedSearchParams?.tab === 'new'
+  const isCreateModalOpen = resolvedSearchParams?.modal === 'create'
   const editId = resolvedSearchParams?.edit
-  const modalCloseRedirect = `/service-menus?tab=${activeTab}`
+  const modalCloseRedirect = '/service-menus'
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: serviceMenusPageFixtures.storeId }
     : await createStoreScopedClient()
@@ -145,17 +142,6 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
         <h1 className="text-2xl font-semibold text-gray-900">施術メニュー管理</h1>
       </div>
 
-      <div className="flex items-center gap-4 border-b">
-        <Link
-          href="/service-menus?tab=list"
-          className={`pb-2 text-sm font-semibold ${
-            activeTab === 'list' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'
-          }`}
-        >
-          メニュー一覧
-        </Link>
-      </div>
-
       <Card>
         <div className="mb-4 flex items-center justify-between rounded border border-violet-200 bg-violet-50 p-3">
           <div>
@@ -179,7 +165,7 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
                     （差分 {suggestion.delta > 0 ? '+' : ''}{suggestion.delta} 分 / 実績 {suggestion.sampleCount} 件）
                   </p>
                 </div>
-                <Link href={`/service-menus?tab=list&edit=${menu.id}`} className="rounded border border-violet-300 px-3 py-1.5 text-xs font-semibold text-violet-700">
+                <Link href={`/service-menus?edit=${menu.id}`} className="rounded border border-violet-300 px-3 py-1.5 text-xs font-semibold text-violet-700">
                   このメニューを編集
                 </Link>
               </div>
@@ -193,7 +179,7 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
           <div className="flex items-center gap-3">
             <p className="text-sm text-gray-500">全 {menuList.length} 件</p>
             <Link
-              href="/service-menus?tab=list&modal=create"
+              href="/service-menus?modal=create"
               className="inline-flex items-center rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
             >
               新規登録
@@ -204,38 +190,48 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
           <p className="text-sm text-gray-500">メニューがまだ登録されていません。</p>
         ) : (
           <>
-            <div className="space-y-3 md:hidden" data-testid="service-menus-list-mobile">
+            <div className="space-y-2.5 md:hidden" data-testid="service-menus-list-mobile">
               {menuList.map((menu) => (
                 <article
                   key={menu.id}
-                  className="rounded border p-3 text-sm text-gray-700"
+                  className="rounded border border-gray-200 p-3 text-sm text-gray-700"
                   data-testid={`service-menu-row-${menu.id}`}
                 >
-                  <p className="font-semibold text-gray-900">{menu.name}</p>
-                  <p>カテゴリ: {formatServiceMenuCategory(menu.category)}</p>
-                  <p>価格: {menu.price.toLocaleString()} 円</p>
-                  <p>時間: {menu.duration} 分</p>
-                  <p>税率: {formatServiceMenuTaxRate(menu.tax_rate)}</p>
-                  <p>税込: {formatServiceMenuTaxIncluded(menu.tax_included)}</p>
-                  <p>有効: {formatServiceMenuActive(menu.is_active)}</p>
-                  <p>即時確定対象: {formatServiceMenuInstantBookable(menu.is_instant_bookable)}</p>
-                  <p>表示順: {menu.display_order ?? 0}</p>
-                  <p>備考: {formatServiceMenuNotes(menu.notes)}</p>
+                  <p className="truncate font-semibold text-gray-900">{menu.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {formatServiceMenuCategory(menu.category)} / {menu.duration} 分 / {menu.price.toLocaleString()} 円
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                      税率 {formatServiceMenuTaxRate(menu.tax_rate)}
+                    </span>
+                    <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                      {formatServiceMenuTaxIncluded(menu.tax_included)}
+                    </span>
+                    <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                      {formatServiceMenuActive(menu.is_active)}
+                    </span>
+                    <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                      {formatServiceMenuInstantBookable(menu.is_instant_bookable)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">表示順: {menu.display_order ?? 0}</p>
+                  <p className="line-clamp-2 text-xs text-gray-600">備考: {formatServiceMenuNotes(menu.notes)}</p>
                   {durationSuggestionByMenuId.has(menu.id) ? (
                     <p className="mt-1 inline-flex rounded bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
                       推奨 {durationSuggestionByMenuId.get(menu.id)?.recommendedDuration} 分
                     </p>
                   ) : null}
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <Link
-                      href={`/service-menus?tab=list&edit=${menu.id}`}
-                      className="text-blue-600 text-sm"
+                      href={`/service-menus?edit=${menu.id}`}
+                      className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
                     >
                       編集
                     </Link>
                     <form action={`/api/service-menus/${menu.id}`} method="post">
                       <input type="hidden" name="_method" value="delete" />
-                      <Button type="submit" className="bg-red-500 hover:bg-red-600">
+                      <Button type="submit" className="h-7 border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 hover:bg-red-100 whitespace-nowrap">
                         削除
                       </Button>
                     </form>
@@ -244,22 +240,16 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
               ))}
             </div>
 
-            <div className="hidden overflow-x-auto md:block">
-              <table className="min-w-full text-sm text-left" data-testid="service-menus-list">
-                <thead className="text-gray-500 border-b">
+            <div className="hidden md:block">
+              <table className="min-w-full table-fixed text-sm text-left" data-testid="service-menus-list">
+                <thead className="border-b bg-gray-50 text-gray-500">
                   <tr>
-                    <th className="py-2 px-2">メニュー</th>
-                    <th className="py-2 px-2">カテゴリ</th>
-                    <th className="py-2 px-2">価格</th>
-                    <th className="py-2 px-2">時間</th>
-                    <th className="py-2 px-2">推奨所要時間</th>
-                    <th className="py-2 px-2">税率</th>
-                    <th className="py-2 px-2">税込</th>
-                    <th className="py-2 px-2">有効</th>
-                    <th className="py-2 px-2">即時確定対象</th>
-                    <th className="py-2 px-2">表示順</th>
-                    <th className="py-2 px-2">備考</th>
-                    <th className="py-2 px-2">操作</th>
+                    <th className="px-2.5 py-2">メニュー</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">価格 / 時間</th>
+                    <th className="px-2.5 py-2">状態</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">税</th>
+                    <th className="px-2.5 py-2">備考</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -269,36 +259,50 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
                       className="text-gray-700"
                       data-testid={`service-menu-row-${menu.id}`}
                     >
-                      <td className="py-3 px-2 font-medium text-gray-900">{menu.name}</td>
-                      <td className="py-3 px-2">{formatServiceMenuCategory(menu.category)}</td>
-                      <td className="py-3 px-2">{menu.price.toLocaleString()} 円</td>
-                      <td className="py-3 px-2">{menu.duration} 分</td>
-                      <td className="py-3 px-2">
+                      <td className="px-2.5 py-2 align-top">
+                        <p className="truncate font-medium text-gray-900">{menu.name}</p>
+                        <p className="truncate text-xs text-gray-500">{formatServiceMenuCategory(menu.category)}</p>
                         {durationSuggestionByMenuId.has(menu.id) ? (
-                          <span className="rounded bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-700">
+                          <span className="mt-1 inline-flex rounded bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
                             推奨 {durationSuggestionByMenuId.get(menu.id)?.recommendedDuration} 分
                           </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">-</span>
-                        )}
+                        ) : null}
                       </td>
-                      <td className="py-3 px-2">{formatServiceMenuTaxRate(menu.tax_rate)}</td>
-                      <td className="py-3 px-2">{formatServiceMenuTaxIncluded(menu.tax_included)}</td>
-                      <td className="py-3 px-2">{formatServiceMenuActive(menu.is_active)}</td>
-                      <td className="py-3 px-2">{formatServiceMenuInstantBookable(menu.is_instant_bookable)}</td>
-                      <td className="py-3 px-2">{menu.display_order ?? 0}</td>
-                      <td className="py-3 px-2">{formatServiceMenuNotes(menu.notes)}</td>
-                      <td className="py-3 px-2">
-                        <div className="flex items-center gap-2">
+                      <td className="px-2.5 py-2 whitespace-nowrap align-top">
+                        <p>{menu.price.toLocaleString()} 円</p>
+                        <p className="text-xs text-gray-500">{menu.duration} 分</p>
+                      </td>
+                      <td className="px-2.5 py-2 align-top">
+                        <div className="flex flex-wrap gap-1">
+                          <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                            {formatServiceMenuActive(menu.is_active)}
+                          </span>
+                          <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                            {formatServiceMenuInstantBookable(menu.is_instant_bookable)}
+                          </span>
+                          <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                            表示順 {menu.display_order ?? 0}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-2.5 py-2 whitespace-nowrap align-top">
+                        <p>{formatServiceMenuTaxRate(menu.tax_rate)}</p>
+                        <p className="text-xs text-gray-500">{formatServiceMenuTaxIncluded(menu.tax_included)}</p>
+                      </td>
+                      <td className="px-2.5 py-2 align-top">
+                        <p className="line-clamp-2">{formatServiceMenuNotes(menu.notes)}</p>
+                      </td>
+                      <td className="px-2.5 py-2 align-top">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <Link
-                            href={`/service-menus?tab=list&edit=${menu.id}`}
-                            className="text-blue-600 text-sm"
+                            href={`/service-menus?edit=${menu.id}`}
+                            className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
                           >
                             編集
                           </Link>
                           <form action={`/api/service-menus/${menu.id}`} method="post">
                             <input type="hidden" name="_method" value="delete" />
-                            <Button type="submit" className="bg-red-500 hover:bg-red-600">
+                            <Button type="submit" className="h-7 border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 hover:bg-red-100 whitespace-nowrap">
                               削除
                             </Button>
                           </form>

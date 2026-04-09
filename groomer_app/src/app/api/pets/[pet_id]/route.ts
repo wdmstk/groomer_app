@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { insertAuditLogBestEffort } from '@/lib/audit-logs'
+import { CustomerDeleteServiceError, deletePetWithDependencies } from '@/lib/customers/services/delete'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
 type RouteParams = {
@@ -125,10 +126,18 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     .eq('id', pet_id)
     .eq('store_id', storeId)
     .maybeSingle()
-  const { error } = await supabase.from('pets').delete().eq('id', pet_id).eq('store_id', storeId)
-
-  if (error) {
-    return NextResponse.json({ message: error.message }, { status: 500 })
+  try {
+    await deletePetWithDependencies({
+      supabase,
+      storeId,
+      petId: pet_id,
+    })
+  } catch (error) {
+    if (error instanceof CustomerDeleteServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status })
+    }
+    const message = error instanceof Error ? error.message : 'Failed to delete pet.'
+    return NextResponse.json({ message }, { status: 500 })
   }
 
   if (before) {
@@ -154,8 +163,24 @@ async function deletePet(petId: string) {
     .eq('id', petId)
     .eq('store_id', storeId)
     .maybeSingle()
-  const { error } = await supabase.from('pets').delete().eq('id', petId).eq('store_id', storeId)
-  return { error, supabase, storeId, before }
+  try {
+    await deletePetWithDependencies({
+      supabase,
+      storeId,
+      petId,
+    })
+    return { error: null, supabase, storeId, before }
+  } catch (error) {
+    if (error instanceof CustomerDeleteServiceError) {
+      return { error: { message: error.message }, supabase, storeId, before }
+    }
+    return {
+      error: { message: error instanceof Error ? error.message : 'Failed to delete pet.' },
+      supabase,
+      storeId,
+      before,
+    }
+  }
 }
 
 export async function POST(request: Request, context: RouteParams) {
@@ -182,7 +207,7 @@ export async function POST(request: Request, context: RouteParams) {
         before,
       })
     }
-    return NextResponse.redirect(new URL('/pets?tab=list', request.url))
+    return NextResponse.redirect(new URL('/customers/manage?view=pets', request.url))
   }
 
   if (method === 'put' || method === 'patch') {
@@ -252,7 +277,9 @@ export async function POST(request: Request, context: RouteParams) {
       after: updatedPet,
     })
 
-    return NextResponse.redirect(new URL('/pets', request.url))
+    return NextResponse.redirect(
+      new URL(`/customers/manage?customer_id=${payload.customer_id}&tab=${pet_id}`, request.url)
+    )
   }
 
   return NextResponse.json({ message: 'Unsupported method' }, { status: 405 })

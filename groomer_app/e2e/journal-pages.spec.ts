@@ -20,7 +20,9 @@ test.describe('日誌画面', () => {
   })
 
   test('ペット別アルバムへ遷移して投稿一覧を確認できる', async ({ page }) => {
-    await page.goto('/pets?tab=list', { waitUntil: 'domcontentloaded' })
+    await page.goto('/customers/manage?view=detail&customer_id=customer-001&tab=pet:pet-001', {
+      waitUntil: 'domcontentloaded',
+    })
     await page.getByRole('link', { name: '日誌アルバム' }).first().click()
 
     await expect(page.getByRole('heading', { name: 'こむぎの日誌アルバム' })).toBeVisible()

@@ -123,8 +123,9 @@ Completed tasks should be marked:
 ## TASK INDEX（正式タスクの正規順序）
 
 ### in_progress
-1. `TASK-408` POS機能導入計画（要件定義〜実装）
-2. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
+1. `TASK-448` 顧客管理βページ改善（会員証URLカード配色統一）
+2. `TASK-408` POS機能導入計画（要件定義〜実装）
+3. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
 
 ### todo
 （なし）
@@ -186,6 +187,94 @@ Completed tasks should be marked:
 51. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）（2026-04-06）
 
 ## 正式タスク詳細（Task ID採番済み）
+
+## 顧客管理βページ改善（会員証URLカード配色統一）
+- Task ID: `TASK-448`
+- ブランチ: `feat/TASK-448-customer-manage-beta-improvements`
+- ステータス: `in_progress`
+- 概要: 顧客管理（β）ページの基本情報タブで、会員証URLカードの配色を顧客情報カードと統一し視認性を揃える。今後の追加改善は同タスクで継続管理する。
+- 影響範囲: `groomer_app/src/app/customers/manage/page.tsx`、`TASKS.md`
+- リスク: 色トーン変更により既存の注意喚起（アンバー）の印象が弱まる可能性
+- 完了条件:
+  - 会員証URLカードが顧客情報カードと同配色（`border-gray-200 bg-white` + グレーテキスト系）になる
+  - レイアウト・表示項目・導線は変更しない
+- 進捗:
+  - [x] タスク起票とブランチ作成
+  - [x] 会員証URLカード配色を顧客情報カードへ統一
+  - [x] 顧客/ペット削除時の関連データ連動削除（予約・会計・カルテ等）を実装
+  - [x] 顧客/ペット削除前に「元に戻せない」確認メッセージを表示し、キャンセル/続行選択後に削除する導線へ変更
+  - [x] LINE webhookテーブル未適用時の原因特定とREADME適用手順の明記
+  - [x] SidebarのHydration mismatch（展開状態のSSR/CSR不一致）を解消
+  - [x] 顧客管理βを `顧客一覧 / ペット一覧 / 顧客詳細` のタブ構成へ変更
+  - [x] 来店周期アラートを顧客管理βタブへ移設（`/customers/manage?view=alerts`）
+  - [x] 顧客一覧・ペット一覧を表形式（1行1顧客/1行1ペット）へ統一
+  - [x] 顧客詳細上部の検索・顧客選択ボタンを削除
+  - [x] 顧客一覧にLTV列を追加し、名前横バッジは「空き枠待ち」のみに整理
+  - [x] 顧客一覧・ペット一覧に検索機能を追加
+  - [x] 顧客一覧・ペット一覧をレスポンシブ化（狭幅時カード表示 / 広幅時テーブル表示）
+  - [x] タブラベルの視認性を改善（モバイルは短縮ラベル + 4分割均等幅、横スクロールなし）
+  - [x] 顧客一覧・ペット一覧から管理βページ内モーダルで新規追加できる導線を追加
+  - [x] 新規追加ボタンを検索行と同一行へ統合し、ボタン文言を「新規追加」に統一
+  - [x] 来店周期アラートの表を `未着手候補 / 対応中 / 対応済` の3区分に再編し、主要列+詳細展開で可読性を改善
+  - [x] 来店周期アラートで「対応済」と「未着手候補」に同一顧客が重複表示される不整合を修正（既存タスク保有顧客を候補から除外）
+  - [x] 来店周期アラートの「対応済」をおすすめ運用に合わせて直近30日表示へ変更
+  - [x] 再フォロー日数（保留/不要/失注）を店舗ごとに設定可能化（デフォルト 7/60/90）
+  - [x] E2Eで店舗設定の再フォロー日数（7/60/90）表示反映を確認（`e2e/settings-pages.spec.ts`）
+  - [x] 設定値（7/60/90）に基づく候補ブロック判定の単体テスト追加と、未着手候補/対応中/対応済テーブル分離のE2E確認を実施
+  - [x] 検証ログ更新（`npx vitest run tests/followups.refollow-policy.vitest.test.ts` / `npx playwright test e2e/customers-followup-alerts.spec.ts --project=chromium` / `npm run lint`）
+  - [x] ダッシュボードの再来店フォロー文言/導線を顧客管理βと統一（`来店周期アラート` / `再来店フォロー一覧` / `/customers/manage?view=alerts`）
+  - [x] 単一タブページのタブUI整理（施術メニュー管理の `メニュー一覧` 単一タブを削除）
+  - [x] 単一タブページのタブUI整理を追加適用（`pets` / `payments` / `inventory/products` はタブUIを削除、`staffs` は将来拡張予定のため維持）
+  - [x] 単一タブ対象ページの `?tab=list` 導線を新URLへ整理（リンク/E2E/APIリダイレクトを `/pets` `/payments` `/inventory/products` `/service-menus` へ置換）
+  - [x] 単一タブ対象ページの受け入れ側から `tab` 依存を撤去（`searchParams.tab` / `tab=new` を廃止し `modal=create` へ統一）
+  - [x] 決済管理の同意チェックをCheckout以外にも適用（容量追加・初期設定代行にも共通チェック表示/必須化）
+  - [x] 決済管理の同意チェックを3カード共通の1チェックへ統合（基本/容量追加/初期設定代行で同一同意状態を共有）
+  - [x] 決済管理/決済履歴のUI整理（`owner専用` 文言・相互導線リンク削除、Webhook障害時カードの可読性改善）
+  - [x] 決済タブ再編（`決済接続` タブ追加、顧客決済アカウント接続を分離、プロバイダ状態/最近の操作履歴を決済履歴へ移設、Webhook障害カード再調整）
+  - [x] モーダル共通挙動を変更し、モーダル外クリックでは閉じない仕様へ統一（`Esc`/閉じるボタンは維持）
+  - [x] 予約モーダル（AppointmentForm）のQR画像読取機能を削除（QR関連state/ハンドラ/UI一式を撤去）
+  - [x] 旧 `顧客管理` / `ペット管理` ページを廃止運用化（`/customers` `/pets` は `customers/manage` 系へリダイレクト、サイドメニュー項目は削除）
+  - [x] 旧 `/customers` `/pets` 参照導線を `customers/manage` 系へ統一（画面リンク/APIフォールバック/モーダル既定遷移/README/E2E）
+  - [x] 「顧客管理β」の名称を「顧客ペット管理」へ統一（ページ見出し/サイドバー/関連導線文言）
+  - [x] ペット一覧で飼い主名クリック時に、その飼い主名で検索を即時適用する導線を追加
+  - [x] 予約一覧に顧客/ペット/担当の横断検索を追加し、既定では `キャンセル/完了済` を除外、`全表示` チェックで切替可能化
+  - [x] 予約一覧の表示密度を再設計（列再編、名称行の非改行化、状態バッジ/操作ボタンの小型統一、列間隔の圧縮、モバイル最適化）
+  - [x] ペットカルテ一覧を予約一覧と同一トーンへ再設計（対象情報の集約、状態/操作の可読性向上、ボタンサイズ統一）
+  - [x] 一覧UI横展開の第1弾として `visits` / `payments` を予約一覧系デザインへ寄せて再編（対象列の集約・操作ボタン小型化・折返し制御）。※ 顧客ペット一覧は対象外
+  - [x] 一覧UI横展開の第2弾として `staffs` / `service-menus` を同一トーンへ再編（列集約・状態バッジ化・操作ボタン小型化・モバイルカード密度改善）。※ 顧客ペット一覧は対象外
+  - [x] 一覧UI横展開の第3弾として `inventory/products` / `inventory/stocks` を同一トーンへ再編（モバイルカード追加、PC列集約、状態バッジ化、操作ボタン小型化）
+  - [x] 一覧UI横展開の第4弾として `inventory/inbounds` / `inventory/outbounds` / `inventory/history` / `inventory/stocktake` を同一トーンへ再編（履歴表のモバイルカード化、PC列集約、可読性統一）
+  - [x] 一覧UI横展開の第5弾として `dashboard/notification-logs` / `dashboard/audit-logs` を同一トーンへ再編（モバイルカード化、PC列集約、状態バッジ/詳細開閉の可読性統一）
+  - [x] 一覧UI横展開の第6弾として `billing/BillingHistoryContent` の履歴テーブル群を同一トーンへ再編（共通ヘッダー背景、列幅制御、セル余白統一）
+  - [x] 一覧UI横展開の第7弾として `hotel/HotelStaysManager` の台帳・商品一覧テーブルを同一トーンへ再編（ヘッダー/余白統一、列固定、操作ボタン密度統一）
+  - [x] 一覧UI横展開の第8弾として `consents/ConsentManagementPanel` と `hq/page` の一覧表を同一トーンへ再編（同意書履歴のモバイルカード化、PC列集約、ヘッダー/余白統一）
+  - [x] 一覧UI横展開の第9弾として `hq/menu-templates` 系4ページのテーブルを同一トーンへ再編（`table-fixed`、ヘッダー背景、セル余白統一）
+  - [x] 一覧UI横展開の第10弾として `dev` 系テーブル（`CronJobsManager` / `SubscriptionsManager` / `FailedWebhookEventsPanel` / `dev/billing-alerts`）を同一トーンへ再編（`table-fixed`、ヘッダー背景、セル余白統一）
+  - [x] 一覧UI横展開の第11弾として `dashboard/page` 内テーブルと `receipts/[payment_id]` 明細表を同一トーンへ再編（`table-fixed`、ヘッダー背景、セル余白統一）
+  - [x] 一覧UI横展開の第12弾として `payments/PosCheckoutPanel` 明細表と `settings/StoreOperationsSettingsContent` のLTV設定表を同一トーンへ再編（`table-fixed`、ヘッダー/セル余白統一）
+  - [x] 一覧UI横展開の第13弾として `lp/page` の案内表を軽量統一（セル余白のみ統一、訴求優先で `table-fixed` は未適用）
+  - [x] `customers/RevisitAlertList` は軽量統一のみ適用（ヘッダー背景 + セル余白、列構成/機能は不変更）
+  - [x] 操作ボタン仕様の共通化を適用（`h-7 / px-2 / text-xs / font-semibold / whitespace-nowrap` を基準に、主要一覧の編集・削除・詳細・再発行・PDF操作を統一）
+  - [x] 操作ボタン統一の漏れ補修（`RevisitAlertList` の `一括連絡文をコピー` / `キューに追加` / `保存する` を共通仕様へ揃え）
+  - [x] E2E不安定の根本修正（`settings-pages.spec.ts` の遷移再試行/タイムアウト設計見直し、`appointments-calendar.spec.ts` の文言依存検証を状態依存へ変更）
+  - [x] E2E再検証完了（`settings` 反復24件 pass、`appointments-calendar` 反復10件 pass、フル `npm run test:e2e` で 63/63 pass）
+  - [x] 全体テスト観点監査を開始し、ページ/API×テスト対応の監査レポートを作成（`docs/test-coverage-audit-2026-04-09.md`）
+  - [x] 来店周期アラートの仕様ズレを修正（`7/30/all` 対象期間、再フォロー期限切れの未着手復帰、候補/対応済の重複解消）し、E2Eを拡張
+  - [x] 監査レポート優先ギャップの第1陣を追加（`/visits` E2E、`followups status/events` route、`stores customer-management-settings` route）
+  - [x] 監査レポート優先ギャップの第2陣を追加（`/api/visits` / `/api/visits/[visit_id]` の境界値・異常系ルートテスト）
+  - [x] `settings` 配下の挙動検証を強化（`/settings/{notifications,storage}` の `saved/error` 表示、レガシーURLリダイレクト、`public-reserve` 保存フォームの `redirect_to` 整合）
+  - [x] 監査レポートに仕様トレーサビリティ表（初版）を追加（仕様項目 -> テストファイル -> 検証アサーション + 更新運用ルール）
+  - [x] 仕様トレーサビリティ表の更新漏れガードを追加（`npm run test:traceability` / `scripts/verify-traceability.mjs`）
+  - [x] トレーサビリティ更新漏れガードをCI組み込み（`.github/workflows/traceability-guard.yml` でPR時に `npm run test:traceability` 実行）
+  - [x] トレーサビリティガードを強化（表セクション存在、ヘッダー妥当性、仕様項目重複、列空欄、テストパス接頭辞・実在チェック）
+  - [x] トレーサビリティガードに主要カテゴリ欠落検知を追加（顧客/予約/会計/通知/設定）
+  - [x] トレーサビリティ参照テストの最低品質チェックを追加（`test/it` と `expect/assert` の存在検証）
+  - [x] Level2対応: `Test ID (TRACE-xxx)` を表/テストへ付与し、ID重複・形式・テスト内記載有無を `test:traceability` で自動検証
+  - [x] PRテンプレートを追加し、`TRACE-xxx` 更新欄を標準化（`.github/pull_request_template.md`）
+  - [x] トレーサビリティ表を在庫/ホテル/サポート領域へ拡張（`TRACE-018`〜`TRACE-020`）
+  - [x] Branch protection必須化の実行手順書を追加（`docs/traceability-guard-setup.md`）
+  - [x] `main` ブランチで `Traceability Guard / verify` を Required status check として有効化（Branch protection設定）
+  - [ ] 後続の顧客管理β改善指示を反映
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）
 - Task ID: `TASK-447`

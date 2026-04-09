@@ -55,6 +55,24 @@ export async function POST(request: Request) {
   const calendarExpandOutOfRangeAppointments = formData
     .getAll('calendar_expand_out_of_range_appointments')
     .some((value) => value?.toString() === 'true')
+  const followupSnoozedRefollowDays = clampInt(
+    Number(formData.get('followup_snoozed_refollow_days')),
+    1,
+    365,
+    7
+  )
+  const followupNoNeedRefollowDays = clampInt(
+    Number(formData.get('followup_no_need_refollow_days')),
+    1,
+    365,
+    60
+  )
+  const followupLostRefollowDays = clampInt(
+    Number(formData.get('followup_lost_refollow_days')),
+    1,
+    365,
+    90
+  )
 
   const { error: upsertError } = await supabase
     .from('store_customer_management_settings' as never)
@@ -64,6 +82,9 @@ export async function POST(request: Request) {
         medical_record_list_limit: medicalRecordListLimit,
         journal_visibility_mode: journalVisibilityMode,
         calendar_expand_out_of_range_appointments: calendarExpandOutOfRangeAppointments,
+        followup_snoozed_refollow_days: followupSnoozedRefollowDays,
+        followup_no_need_refollow_days: followupNoNeedRefollowDays,
+        followup_lost_refollow_days: followupLostRefollowDays,
       } as never,
       { onConflict: 'store_id' }
     )

@@ -65,7 +65,7 @@ export async function POST(request: Request, context: RouteParams) {
         before,
       })
     }
-    return NextResponse.redirect(new URL('/inventory/products?tab=list', request.url))
+    return NextResponse.redirect(new URL('/inventory/products', request.url))
   }
 
   if (method === 'put' || method === 'patch') {
@@ -128,7 +128,7 @@ export async function POST(request: Request, context: RouteParams) {
       after: updatedItem,
     })
 
-    return NextResponse.redirect(new URL('/inventory/products?tab=list', request.url))
+    return NextResponse.redirect(new URL('/inventory/products', request.url))
   }
 
   return NextResponse.json({ message: 'Unsupported method' }, { status: 405 })

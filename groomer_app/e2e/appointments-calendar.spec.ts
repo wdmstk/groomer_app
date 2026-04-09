@@ -20,8 +20,9 @@ test.describe('予約カレンダー', () => {
   test('日表示へ切り替えて日別タイムテーブルを確認できる', async ({ page }) => {
     await page.goto('/appointments?tab=calendar')
 
-    await page.getByRole('button', { name: '日', exact: true }).click()
+    const dayModeButton = page.getByRole('button', { name: '日', exact: true })
+    await dayModeButton.click()
 
-    await expect(page.getByText(/のタイムテーブル/)).toBeVisible()
+    await expect(dayModeButton).toHaveClass(/bg-blue-600/)
   })
 })

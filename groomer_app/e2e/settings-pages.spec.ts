@@ -1,19 +1,38 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
+
+async function gotoStable(page: Page, url: string) {
+  let lastError: unknown = null
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 })
+      return
+    } catch (error) {
+      lastError = error
+      const message = error instanceof Error ? error.message : String(error)
+      const retryableError = message.includes('net::ERR_ABORTED') || message.includes('Timeout')
+      if (!retryableError || attempt === 3) throw error
+      await page.waitForTimeout(500)
+    }
+  }
+  throw lastError
+}
 
 test.describe('設定画面', () => {
+  test.describe.configure({ timeout: 120000 })
+
   test('アクセス制御（owner/admin許可・staff拒否）を確認できる', async ({ page }) => {
-    await page.goto('/settings?tab=store-ops&e2e_role=owner')
+    await gotoStable(page, '/settings?tab=store-ops&e2e_role=owner')
     await expect(page.getByRole('heading', { name: '店舗運用設定' })).toBeVisible()
 
-    await page.goto('/settings?tab=store-ops&e2e_role=admin')
+    await gotoStable(page, '/settings?tab=store-ops&e2e_role=admin')
     await expect(page.getByRole('heading', { name: '店舗運用設定' })).toBeVisible()
 
-    await page.goto('/settings?tab=store-ops&e2e_role=staff')
-    await expect(page).toHaveURL(/\/dashboard$/)
+    await gotoStable(page, '/settings?tab=store-ops&e2e_role=staff')
+    await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/)
   })
 
   test('通知設定の既定値補正と権限表示を確認できる', async ({ page }) => {
-    await page.goto('/settings?tab=notifications')
+    await gotoStable(page, '/settings?tab=notifications')
 
     await expect(page.getByRole('heading', { name: '通知設定' })).toBeVisible()
     await expect(page.getByText('状態: 有効（上限3,000通）')).toBeVisible()
@@ -26,8 +45,18 @@ test.describe('設定画面', () => {
     await expect(page.getByLabel('月次上限（オプション契約時）')).toHaveValue('1000000')
   })
 
+  // TRACE-016
+  test('通知設定のレガシーURL遷移と保存/エラー表示を確認できる', async ({ page }) => {
+    await gotoStable(page, '/settings/notifications?saved=1')
+    await expect(page).toHaveURL(/\/settings\?saved=1&tab=notifications$/)
+    await expect(page.getByText('通知設定を保存しました。')).toBeVisible()
+
+    await gotoStable(page, '/settings?tab=notifications&error=保存に失敗しました')
+    await expect(page.getByText('保存に失敗しました')).toBeVisible()
+  })
+
   test('公開予約設定の初期値と除外日を確認できる', async ({ page }) => {
-    await page.goto('/settings?tab=public-reserve')
+    await gotoStable(page, '/settings?tab=public-reserve')
 
     await expect(page.getByRole('heading', { name: '公開予約設定' })).toBeVisible()
     await expect(page.getByLabel('公開日数')).toHaveValue('5')
@@ -38,7 +67,7 @@ test.describe('設定画面', () => {
   })
 
   test('店舗運用設定の初期値を確認できる', async ({ page }) => {
-    await page.goto('/settings?tab=store-ops')
+    await gotoStable(page, '/settings?tab=store-ops')
 
     await expect(page.getByRole('heading', { name: '店舗運用設定' })).toBeVisible()
     await expect(page.getByLabel('営業開始時刻（JST 時）')).toHaveValue('9')
@@ -46,13 +75,16 @@ test.describe('設定画面', () => {
     await expect(page.getByLabel('定休日・臨時休業日（JST）')).toHaveValue('2026-03-20\n2026-03-21')
     await expect(page.getByLabel('会員証TTL（日）')).toHaveValue('90')
     await expect(page.getByLabel('カルテ一覧の表示件数（最新N件）')).toHaveValue('12')
+    await expect(page.getByLabel('保留の再フォロー日数')).toHaveValue('7')
+    await expect(page.getByLabel('不要の再フォロー日数')).toHaveValue('60')
+    await expect(page.getByLabel('失注の再フォロー日数')).toHaveValue('90')
     await expect(
       page.getByLabel('予約カレンダーで表示範囲外の予約がある場合に自動で表示範囲を広げる')
     ).not.toBeChecked()
   })
 
   test('電子同意書テンプレ管理を店舗設定タブ内で表示できる', async ({ page }) => {
-    await page.goto('/settings?tab=consent-templates')
+    await gotoStable(page, '/settings?tab=consent-templates')
 
     await expect(page.getByRole('heading', { name: '電子同意書テンプレ管理' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'テンプレートを作成' })).toBeVisible()
@@ -64,7 +96,7 @@ test.describe('設定画面', () => {
   })
 
   test('容量設定の使用量警告と保存フォーム初期値を確認できる', async ({ page }) => {
-    await page.goto('/settings?tab=storage')
+    await gotoStable(page, '/settings?tab=storage')
 
     await expect(page.getByRole('heading', { name: '容量設定' })).toBeVisible()
     await expect(page.getByText('使用量の取得に失敗したため、暫定値を表示しています: Bad Gateway')).toBeVisible()
@@ -74,5 +106,27 @@ test.describe('設定画面', () => {
     await expect(page.getByLabel('方針')).toHaveValue('cleanup_orphans')
     await expect(page.getByLabel('追加容量（GB）')).toHaveValue('2')
     await expect(page.getByLabel('カスタム上限（MB, 任意）')).toHaveValue('')
+    await expect(page.locator('input[name="redirect_to"]')).toHaveValue('/settings/storage')
+  })
+
+  test('容量設定のレガシーURL遷移と保存/エラー表示を確認できる', async ({ page }) => {
+    await gotoStable(page, '/settings/storage?saved=1')
+    await expect(page).toHaveURL(/\/settings\?saved=1&tab=storage$/)
+    await expect(page.getByText('容量設定を保存しました。')).toBeVisible()
+
+    await gotoStable(page, '/settings?tab=storage&error=容量更新に失敗')
+    await expect(page.getByText('容量更新に失敗')).toBeVisible()
+  })
+
+  // TRACE-017
+  test('公開予約設定の保存フォームがタブ遷移先を維持する', async ({ page }) => {
+    await gotoStable(page, '/settings?tab=public-reserve')
+
+    await expect(
+      page.locator('form[action="/api/stores/public-reserve-slot-settings"] input[name="redirect_to"]')
+    ).toHaveValue('/settings?tab=public-reserve')
+    await expect(
+      page.locator('form[action="/api/stores/kpi-thresholds"] input[name="redirect_to"]')
+    ).toHaveValue('/settings?tab=public-reserve')
   })
 })

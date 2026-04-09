@@ -73,30 +73,30 @@ export function FailedWebhookEventsPanel({ events }: FailedWebhookEventsPanelPro
       <h2 className="text-lg font-semibold text-gray-900">Webhook失敗イベント再処理</h2>
       {message ? <p className="mt-2 text-sm text-gray-700">{message}</p> : null}
       <div className="mt-3 overflow-x-auto">
-        <table className="min-w-full text-sm text-left">
-          <thead className="border-b text-gray-500">
+        <table className="min-w-full table-fixed text-sm text-left">
+          <thead className="border-b bg-gray-50 text-gray-500">
             <tr>
-              <th className="px-2 py-2">日時</th>
-              <th className="px-2 py-2">店舗</th>
-              <th className="px-2 py-2">provider</th>
-              <th className="px-2 py-2">event_type</th>
-              <th className="px-2 py-2">event_id</th>
-              <th className="px-2 py-2">webhook_event_id</th>
-              <th className="px-2 py-2">error</th>
-              <th className="px-2 py-2">操作</th>
+              <th className="px-2.5 py-2">日時</th>
+              <th className="px-2.5 py-2">店舗</th>
+              <th className="px-2.5 py-2">provider</th>
+              <th className="px-2.5 py-2">event_type</th>
+              <th className="px-2.5 py-2">event_id</th>
+              <th className="px-2.5 py-2">webhook_event_id</th>
+              <th className="px-2.5 py-2">error</th>
+              <th className="px-2.5 py-2">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {events.map((row) => (
               <tr key={row.id} className="bg-red-50 text-gray-700">
-                <td className="px-2 py-3">{formatDate(row.created_at)}</td>
-                <td className="px-2 py-3">{resolveStoreName(row.stores)}</td>
-                <td className="px-2 py-3">{row.provider}</td>
-                <td className="px-2 py-3">{row.event_type}</td>
-                <td className="px-2 py-3">{row.event_id ?? '-'}</td>
-                <td className="px-2 py-3 font-mono text-xs">{row.id}</td>
-                <td className="px-2 py-3">{row.error_message ?? '-'}</td>
-                <td className="px-2 py-3">
+                <td className="px-2.5 py-2">{formatDate(row.created_at)}</td>
+                <td className="px-2.5 py-2">{resolveStoreName(row.stores)}</td>
+                <td className="px-2.5 py-2">{row.provider}</td>
+                <td className="px-2.5 py-2">{row.event_type}</td>
+                <td className="px-2.5 py-2">{row.event_id ?? '-'}</td>
+                <td className="px-2.5 py-2 font-mono text-xs">{row.id}</td>
+                <td className="px-2.5 py-2">{row.error_message ?? '-'}</td>
+                <td className="px-2.5 py-2">
                   <Button
                     type="button"
                     onClick={() => retryWebhook(row.id)}

@@ -597,30 +597,30 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
       </div>
 
       <div className="mt-3 overflow-x-auto rounded border bg-white">
-        <table className="min-w-full text-left text-sm">
-          <thead className="border-b text-slate-500">
+        <table className="min-w-full table-fixed text-left text-sm">
+          <thead className="border-b bg-gray-50 text-slate-500">
             <tr>
-              <th className="px-2 py-2">区分</th>
-              <th className="px-2 py-2">明細</th>
-              <th className="px-2 py-2">数量</th>
-              <th className="px-2 py-2">単価</th>
-              <th className="px-2 py-2">小計</th>
-              <th className="px-2 py-2">操作</th>
+              <th className="px-2.5 py-2">区分</th>
+              <th className="px-2.5 py-2">明細</th>
+              <th className="px-2.5 py-2">数量</th>
+              <th className="px-2.5 py-2">単価</th>
+              <th className="px-2.5 py-2">小計</th>
+              <th className="px-2.5 py-2">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {cart.map((line) => (
               <tr key={line.id} className="text-slate-700">
-                <td className="px-2 py-2">
+                <td className="px-2.5 py-2">
                   {line.lineType === 'product' ? '店販' : 'サービス'}
                 </td>
-                <td className="px-2 py-2">
+                <td className="px-2.5 py-2">
                   {line.label} ({line.unit})
                 </td>
-                <td className="px-2 py-2">{line.quantity}</td>
-                <td className="px-2 py-2">{formatYen(line.unitAmount)}</td>
-                <td className="px-2 py-2">{formatYen(line.quantity * line.unitAmount)}</td>
-                <td className="px-2 py-2">
+                <td className="px-2.5 py-2">{line.quantity}</td>
+                <td className="px-2.5 py-2">{formatYen(line.unitAmount)}</td>
+                <td className="px-2.5 py-2">{formatYen(line.quantity * line.unitAmount)}</td>
+                <td className="px-2.5 py-2">
                   <button
                     type="button"
                     onClick={() => removeLine(line.id)}
@@ -633,7 +633,7 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
             ))}
             {cart.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-2 py-4 text-center text-slate-500">
+                <td colSpan={6} className="px-2.5 py-2 text-center text-slate-500">
                   明細がありません。
                 </td>
               </tr>

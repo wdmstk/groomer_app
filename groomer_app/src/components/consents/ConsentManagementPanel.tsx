@@ -556,71 +556,120 @@ export function ConsentManagementPanel({
           <h2 className="text-lg font-semibold text-gray-900">同意書履歴</h2>
           {documents.length === 0 ? <p className="mt-2 text-sm text-gray-500">同意書がまだ作成されていません。</p> : null}
           {documents.length > 0 ? (
-            <div className="mt-2 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="border-b text-gray-500">
-                  <tr>
-                    <th className="px-2 py-2">同意書ID</th>
-                    <th className="px-2 py-2">予約ID</th>
-                    <th className="px-2 py-2">ステータス</th>
-                    <th className="px-2 py-2">署名日時</th>
-                    <th className="px-2 py-2">作成日時</th>
-                    <th className="px-2 py-2">PDF</th>
-                    <th className="px-2 py-2">署名URL</th>
-                    <th className="px-2 py-2">削除</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {documents.map((row) => (
-                    <tr key={row.id}>
-                      <td className="px-2 py-2 font-mono text-xs">{row.id}</td>
-                      <td className="px-2 py-2 font-mono text-xs">{row.appointment_id ?? '-'}</td>
-                      <td className="px-2 py-2">{row.status}</td>
-                      <td className="px-2 py-2">{formatDate(row.signed_at)}</td>
-                      <td className="px-2 py-2">{formatDate(row.created_at)}</td>
-                      <td className="px-2 py-2">
-                        <button
-                          type="button"
-                          onClick={() => void openPdf(row.id)}
-                          disabled={pdfLoadingDocumentId === row.id || !row.pdf_path}
-                          className="rounded border border-sky-300 px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
-                        >
-                          {pdfLoadingDocumentId === row.id ? '取得中...' : 'PDFを開く'}
-                        </button>
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="flex flex-col gap-2">
-                          <button
-                            type="button"
-                            onClick={() => void regenerateSignUrl(row.id)}
-                            disabled={resendingDocumentId === row.id || row.status === 'signed' || row.status === 'revoked'}
-                            className="rounded border border-indigo-300 px-2 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
-                          >
-                            {resendingDocumentId === row.id ? '再発行中...' : '署名URLを再発行'}
-                          </button>
+            <div className="mt-2 space-y-2.5">
+              <div className="space-y-2.5 md:hidden">
+                {documents.map((row) => (
+                  <article key={row.id} className="rounded border border-gray-200 p-3 text-sm text-gray-700">
+                    <p className="font-mono text-xs text-gray-500">{row.id}</p>
+                    <p className="mt-1 text-xs text-gray-500">予約ID: {row.appointment_id ?? '-'}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                        {row.status}
+                      </span>
+                      <span className="text-xs text-gray-500">署名: {formatDate(row.signed_at)}</span>
+                      <span className="text-xs text-gray-500">作成: {formatDate(row.created_at)}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => void openPdf(row.id)}
+                        disabled={pdfLoadingDocumentId === row.id || !row.pdf_path}
+                        className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+                      >
+                        {pdfLoadingDocumentId === row.id ? '取得中...' : 'PDFを開く'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void regenerateSignUrl(row.id)}
+                        disabled={resendingDocumentId === row.id || row.status === 'signed' || row.status === 'revoked'}
+                        className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+                      >
+                        {resendingDocumentId === row.id ? '再発行中...' : '署名URLを再発行'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void deleteDocument(row.id)}
+                        disabled={deletingDocumentId === row.id}
+                        className="inline-flex h-7 items-center justify-center rounded border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 hover:bg-red-100 whitespace-nowrap disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+                      >
+                        {deletingDocumentId === row.id ? '削除中...' : '削除'}
+                      </button>
+                    </div>
+                    {signUrlByDocumentId[row.id] ? (
+                      <code className="mt-2 block break-all rounded bg-gray-50 px-2 py-1 text-[11px] text-gray-700">
+                        {signUrlByDocumentId[row.id]}
+                      </code>
+                    ) : (
+                      <p className="mt-2 text-[11px] text-gray-500">未表示（再発行で表示）</p>
+                    )}
+                  </article>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
+                <table className="min-w-full table-fixed text-left text-sm">
+                  <thead className="border-b bg-gray-50 text-gray-500">
+                    <tr>
+                      <th className="px-2.5 py-2">同意書</th>
+                      <th className="px-2.5 py-2">状態/日時</th>
+                      <th className="px-2.5 py-2">操作</th>
+                      <th className="px-2.5 py-2">署名URL</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {documents.map((row) => (
+                      <tr key={row.id}>
+                        <td className="px-2.5 py-2">
+                          <p className="font-mono text-xs">{row.id}</p>
+                          <p className="font-mono text-xs text-gray-500">{row.appointment_id ?? '-'}</p>
+                        </td>
+                        <td className="px-2.5 py-2">
+                          <p>{row.status}</p>
+                          <p className="text-xs text-gray-500">署名: {formatDate(row.signed_at)}</p>
+                          <p className="text-xs text-gray-500">作成: {formatDate(row.created_at)}</p>
+                        </td>
+                        <td className="px-2.5 py-2">
+                          <div className="flex flex-wrap gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => void openPdf(row.id)}
+                              disabled={pdfLoadingDocumentId === row.id || !row.pdf_path}
+                              className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+                            >
+                              {pdfLoadingDocumentId === row.id ? '取得中...' : 'PDFを開く'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void regenerateSignUrl(row.id)}
+                              disabled={resendingDocumentId === row.id || row.status === 'signed' || row.status === 'revoked'}
+                              className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+                            >
+                              {resendingDocumentId === row.id ? '再発行中...' : '署名URLを再発行'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void deleteDocument(row.id)}
+                              disabled={deletingDocumentId === row.id}
+                              className="inline-flex h-7 items-center justify-center rounded border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 hover:bg-red-100 whitespace-nowrap disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+                            >
+                              {deletingDocumentId === row.id ? '削除中...' : '削除'}
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-2.5 py-2">
                           {signUrlByDocumentId[row.id] ? (
-                            <code className="break-all rounded bg-gray-50 px-2 py-1 text-[11px] text-gray-700">
+                            <code className="block break-all rounded bg-gray-50 px-2 py-1 text-[11px] text-gray-700">
                               {signUrlByDocumentId[row.id]}
                             </code>
                           ) : (
                             <p className="text-[11px] text-gray-500">未表示（再発行で表示）</p>
                           )}
-                        </div>
-                      </td>
-                      <td className="px-2 py-2">
-                        <button
-                          type="button"
-                          onClick={() => void deleteDocument(row.id)}
-                          disabled={deletingDocumentId === row.id}
-                          className="rounded border border-red-300 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
-                        >
-                          {deletingDocumentId === row.id ? '削除中...' : '削除'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : null}
         </section>

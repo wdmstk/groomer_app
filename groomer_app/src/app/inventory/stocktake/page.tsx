@@ -123,14 +123,29 @@ export default async function InventoryStocktakePage() {
 
       <Card>
         <h2 className="mb-3 text-lg font-semibold text-gray-900">最新の棚卸調整履歴</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b text-gray-500">
+        <div className="space-y-2.5 md:hidden">
+          {((stocktakeRows ?? []) as MovementRow[]).map((row) => {
+            const item = relatedItem(row.inventory_items)
+            const delta = row.quantity_delta > 0 ? `+${row.quantity_delta}` : String(row.quantity_delta)
+            return (
+              <article key={row.id} className="rounded border border-gray-200 p-3 text-sm text-gray-700">
+                <p className="truncate font-semibold text-gray-900">{item?.name ?? '不明な商品'}</p>
+                <p className="text-xs text-gray-500">{new Date(row.happened_at).toLocaleString('ja-JP')}</p>
+                <p className="mt-2 font-medium text-gray-900">
+                  {delta} {item?.unit ?? ''}
+                </p>
+                <p className="text-xs text-gray-600">理由: {row.reason ?? '-'}</p>
+              </article>
+            )
+          })}
+        </div>
+        <div className="hidden md:block" data-testid="inventory-stocktake-table-wrap">
+          <table className="min-w-full table-fixed text-left text-sm" data-testid="inventory-stocktake-table">
+            <thead className="border-b bg-gray-50 text-gray-500">
               <tr>
-                <th className="px-2 py-2">日時</th>
-                <th className="px-2 py-2">商品</th>
-                <th className="px-2 py-2">調整量</th>
-                <th className="px-2 py-2">理由</th>
+                <th className="px-2.5 py-2">商品</th>
+                <th className="px-2.5 py-2 whitespace-nowrap">調整量</th>
+                <th className="px-2.5 py-2">日時/理由</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -138,13 +153,18 @@ export default async function InventoryStocktakePage() {
                 const item = relatedItem(row.inventory_items)
                 const delta = row.quantity_delta > 0 ? `+${row.quantity_delta}` : String(row.quantity_delta)
                 return (
-                  <tr key={row.id} className="text-gray-700">
-                    <td className="px-2 py-3">{new Date(row.happened_at).toLocaleString('ja-JP')}</td>
-                    <td className="px-2 py-3 font-medium text-gray-900">{item?.name ?? '不明な商品'}</td>
-                    <td className="px-2 py-3">
+                  <tr key={row.id} className="text-gray-700" data-testid={`inventory-stocktake-row-${row.id}`}>
+                    <td className="px-2.5 py-2 align-top">
+                      <p className="truncate font-medium text-gray-900">{item?.name ?? '不明な商品'}</p>
+                      <p className="text-xs text-gray-500">{item?.unit ?? ''}</p>
+                    </td>
+                    <td className="px-2.5 py-2 whitespace-nowrap align-top">
                       {delta} {item?.unit ?? ''}
                     </td>
-                    <td className="px-2 py-3">{row.reason ?? '-'}</td>
+                    <td className="px-2.5 py-2 align-top">
+                      <p>{new Date(row.happened_at).toLocaleString('ja-JP')}</p>
+                      <p className="truncate text-xs text-gray-500">{row.reason ?? '-'}</p>
+                    </td>
                   </tr>
                 )
               })}

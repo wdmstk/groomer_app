@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   const preferredStaffId = String(formData.get('preferred_staff_id') ?? '').trim() || null
   const channel = String(formData.get('channel') ?? 'manual').trim()
   const notes = String(formData.get('notes') ?? '').trim() || null
-  const redirectTo = String(formData.get('redirect_to') ?? '/customers?tab=list').trim()
+  const redirectTo = String(formData.get('redirect_to') ?? '/customers/manage').trim()
 
   if (!customerId) {
     return NextResponse.redirect(new URL(redirectTo, request.url), { status: 303 })

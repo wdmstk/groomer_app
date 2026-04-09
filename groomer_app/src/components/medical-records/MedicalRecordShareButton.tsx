@@ -62,10 +62,20 @@ export function MedicalRecordShareButton({ recordId }: MedicalRecordShareButtonP
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
-        <Button type="button" onClick={handleCreateShare} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button
+          type="button"
+          onClick={handleCreateShare}
+          disabled={loading}
+          className="h-7 whitespace-nowrap bg-emerald-600 px-2 py-0 text-xs hover:bg-emerald-700"
+        >
           {loading ? '発行中...' : 'URLコピー'}
         </Button>
-        <Button type="button" onClick={handleSendLineShare} disabled={lineLoading} className="bg-slate-900 hover:bg-slate-800">
+        <Button
+          type="button"
+          onClick={handleSendLineShare}
+          disabled={lineLoading}
+          className="h-7 whitespace-nowrap bg-slate-900 px-2 py-0 text-xs hover:bg-slate-800"
+        >
           {lineLoading ? '送信中...' : 'LINE送信'}
         </Button>
       </div>

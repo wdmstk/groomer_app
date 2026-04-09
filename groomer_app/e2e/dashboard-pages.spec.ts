@@ -30,7 +30,7 @@ test.describe('ダッシュボード画面', () => {
 
     await gotoStable(page, '/dashboard?tab=followups')
 
-    await expect(page.getByText('再来店フォロー未着手')).toBeVisible()
+    await expect(page.getByText('来店周期アラート未着手')).toBeVisible()
     await expect(page.getByText('無断キャンセル予兆（店舗）')).toBeVisible()
     await expect(page.getByText('20%')).toBeVisible()
     await expect(page.getByText('高 1 件 / 中 1 件')).toBeVisible()

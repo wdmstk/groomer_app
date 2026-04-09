@@ -5,7 +5,6 @@ import { GlobalFooter } from '@/components/ui/GlobalFooter'
 import { ThemeHydrator } from '@/components/ui/ThemeHydrator'
 import { UI_THEMES } from '@/lib/ui/themes'
 import { resolveUiThemeOrDefault, UI_THEME_COOKIE, UI_THEME_STORAGE_KEY } from '@/lib/ui/theme-preference'
-import '@fontsource/inter/latin.css'
 import './globals.css';
 
 export const metadata: Metadata = {

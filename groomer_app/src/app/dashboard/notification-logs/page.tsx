@@ -401,50 +401,73 @@ export default async function NotificationLogsPage({ searchParams }: Notificatio
         {rows.length === 0 ? (
           <p className="text-sm text-gray-500">通知ログはまだありません。</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b text-gray-500">
-                <tr>
-                  <th className="px-2 py-2">送信日時</th>
-                  <th className="px-2 py-2">種別</th>
-                  <th className="px-2 py-2">チャネル</th>
-                  <th className="px-2 py-2">顧客</th>
-                  <th className="px-2 py-2">送信先</th>
-                  <th className="px-2 py-2">件名</th>
-                  <th className="px-2 py-2">本文</th>
-                  <th className="px-2 py-2">状態</th>
-                  <th className="px-2 py-2">dedupe_key</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {rows.map((row) => (
-                  <tr key={row.id} className="align-top text-gray-700">
-                    <td className="px-2 py-3">{formatDateTime(row.sent_at)}</td>
-                    <td className="px-2 py-3">{row.notification_type}</td>
-                    <td className="px-2 py-3">{row.channel}</td>
-                    <td className="px-2 py-3">
-                      <p className="font-medium text-gray-900">
-                        {getRelationValue(row.customers, 'full_name') ?? '未登録'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        電話: {getRelationValue(row.customers, 'phone_number') ?? '未登録'} / LINE:{' '}
-                        {getRelationValue(row.customers, 'line_id') ?? '未登録'}
-                      </p>
-                    </td>
-                    <td className="px-2 py-3 text-xs text-gray-600">{row.target ?? '-'}</td>
-                    <td className="px-2 py-3">{row.subject ?? '-'}</td>
-                    <td className="max-w-xl px-2 py-3 whitespace-pre-wrap">{row.body ?? '-'}</td>
-                    <td className="px-2 py-3">
-                      <span className={`rounded px-2 py-1 text-xs font-semibold ${getStatusTone(row.status)}`}>
-                        {row.status}
-                      </span>
-                    </td>
-                    <td className="px-2 py-3 text-xs text-gray-500">{row.dedupe_key ?? '-'}</td>
+          <>
+            <div className="space-y-2.5 md:hidden">
+              {rows.map((row) => (
+                <article key={row.id} className="rounded border border-gray-200 p-3 text-sm text-gray-700">
+                  <p className="text-xs text-gray-500">{formatDateTime(row.sent_at)}</p>
+                  <p className="mt-1 truncate font-semibold text-gray-900">
+                    {getRelationValue(row.customers, 'full_name') ?? '未登録'}
+                  </p>
+                  <p className="truncate text-xs text-gray-500">
+                    {row.notification_type} / {row.channel} / {row.target ?? '-'}
+                  </p>
+                  <p className="mt-2 text-xs text-gray-600">件名: {row.subject ?? '-'}</p>
+                  <p className="line-clamp-3 whitespace-pre-wrap text-xs text-gray-600">本文: {row.body ?? '-'}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className={`rounded px-2 py-0.5 text-xs font-semibold ${getStatusTone(row.status)}`}>
+                      {row.status}
+                    </span>
+                    <span className="text-xs text-gray-500">key: {row.dedupe_key ?? '-'}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="hidden md:block" data-testid="notification-logs-table-wrap">
+              <table className="min-w-full table-fixed text-left text-sm" data-testid="notification-logs-table">
+                <thead className="border-b bg-gray-50 text-gray-500">
+                  <tr>
+                    <th className="px-2.5 py-2">通知</th>
+                    <th className="px-2.5 py-2">顧客/送信先</th>
+                    <th className="px-2.5 py-2">内容</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">状態</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y">
+                  {rows.map((row) => (
+                    <tr key={row.id} className="align-top text-gray-700" data-testid={`notification-log-row-${row.id}`}>
+                      <td className="px-2.5 py-2">
+                        <p>{formatDateTime(row.sent_at)}</p>
+                        <p className="text-xs text-gray-500">
+                          {row.notification_type} / {row.channel}
+                        </p>
+                        <p className="truncate text-xs text-gray-500">dedupe: {row.dedupe_key ?? '-'}</p>
+                      </td>
+                      <td className="px-2.5 py-2">
+                        <p className="truncate font-medium text-gray-900">
+                          {getRelationValue(row.customers, 'full_name') ?? '未登録'}
+                        </p>
+                        <p className="truncate text-xs text-gray-500">
+                          電話: {getRelationValue(row.customers, 'phone_number') ?? '未登録'} / LINE:{' '}
+                          {getRelationValue(row.customers, 'line_id') ?? '未登録'}
+                        </p>
+                        <p className="truncate text-xs text-gray-500">送信先: {row.target ?? '-'}</p>
+                      </td>
+                      <td className="px-2.5 py-2">
+                        <p className="truncate">{row.subject ?? '-'}</p>
+                        <p className="line-clamp-3 whitespace-pre-wrap text-xs text-gray-600">{row.body ?? '-'}</p>
+                      </td>
+                      <td className="px-2.5 py-2">
+                        <span className={`rounded px-2 py-0.5 text-xs font-semibold ${getStatusTone(row.status)}`}>
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
         <div className="mt-4 flex items-center justify-between border-t pt-4 text-sm text-gray-600">
           <Link

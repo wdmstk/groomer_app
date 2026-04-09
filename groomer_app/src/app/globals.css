@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@fontsource/inter/latin.css";
 
 :root,
 html[data-theme="clean-medical"] {

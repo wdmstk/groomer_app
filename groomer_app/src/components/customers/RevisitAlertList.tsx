@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { renderNextVisitSuggestionLineTemplate } from '@/lib/notification-templates'
 import type { JsonObject } from '@/lib/object-utils'
@@ -39,6 +39,8 @@ type FollowupTaskRow = {
   due_on: string | null
   snoozed_until: string | null
   assigned_user_id?: string | null
+  resolved_at?: string | null
+  updated_at?: string | null
   resolution_note: string | null
   recommendation_reason?: string | null
   last_contacted_at: string | null
@@ -176,6 +178,40 @@ function formatEventLabel(event: {
   }
 }
 
+function getTaskStatusLabel(status: string) {
+  switch (status) {
+    case 'open':
+      return '未着手'
+    case 'in_progress':
+      return '対応中'
+    case 'snoozed':
+      return '保留'
+    case 'resolved_booked':
+      return '予約化'
+    case 'resolved_no_need':
+      return '不要'
+    case 'resolved_lost':
+      return '失注'
+    default:
+      return status
+  }
+}
+
+function getTaskStatusTone(status: string) {
+  if (status === 'open') return 'bg-rose-100 text-rose-800'
+  if (status === 'in_progress') return 'bg-amber-100 text-amber-800'
+  if (status === 'snoozed') return 'bg-slate-100 text-slate-700'
+  if (status === 'resolved_booked') return 'bg-emerald-100 text-emerald-800'
+  if (status === 'resolved_no_need' || status === 'resolved_lost') return 'bg-gray-100 text-gray-700'
+  return 'bg-gray-100 text-gray-700'
+}
+
+function getOverdueTone(overdueDays: number) {
+  if (overdueDays >= 14) return 'bg-rose-100 text-rose-800'
+  if (overdueDays >= 7) return 'bg-amber-100 text-amber-800'
+  return 'bg-slate-100 text-slate-700'
+}
+
 export function RevisitAlertList() {
   const [tasks, setTasks] = useState<FollowupTaskRow[]>([])
   const [candidates, setCandidates] = useState<CandidateRow[]>([])
@@ -198,6 +234,8 @@ export function RevisitAlertList() {
   } | null>(null)
   const [actionReason, setActionReason] = useState('')
   const [expandedTaskIds, setExpandedTaskIds] = useState<string[]>([])
+  const [expandedCandidateIds, setExpandedCandidateIds] = useState<string[]>([])
+  const [expandedQueueRowIds, setExpandedQueueRowIds] = useState<string[]>([])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -255,7 +293,7 @@ export function RevisitAlertList() {
   )
 
   const setAllSelection = (checked: boolean) => {
-    setSelectedIds(checked ? candidates.map((row) => row.customerId) : [])
+    setSelectedIds(checked ? visibleCandidates.map((row) => row.customerId) : [])
   }
 
   const toggleSelection = (customerId: string) => {
@@ -266,6 +304,18 @@ export function RevisitAlertList() {
 
   const toggleEventExpansion = (taskId: string) => {
     setExpandedTaskIds((prev) =>
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
+    )
+  }
+
+  const toggleCandidateExpansion = (customerId: string) => {
+    setExpandedCandidateIds((prev) =>
+      prev.includes(customerId) ? prev.filter((id) => id !== customerId) : [...prev, customerId]
+    )
+  }
+
+  const toggleQueueRowExpansion = (taskId: string) => {
+    setExpandedQueueRowIds((prev) =>
       prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
     )
   }
@@ -284,7 +334,7 @@ export function RevisitAlertList() {
   }
 
   const copyFollowupMessage = async () => {
-    const text = selectedRows
+    const text = selectedRowsForVisibleCandidates
       .map((row) =>
         renderNextVisitSuggestionLineTemplate({
           customerName: row.customerName,
@@ -296,7 +346,7 @@ export function RevisitAlertList() {
         })
       )
       .join('\n\n')
-    await copyText(text, `連絡文をコピーしました（${selectedRows.length}件）`)
+    await copyText(text, `連絡文をコピーしました（${selectedRowsForVisibleCandidates.length}件）`)
   }
 
   const copySingleFollowupMessage = async (row: {
@@ -317,7 +367,7 @@ export function RevisitAlertList() {
   }
 
   const copyPhoneList = async () => {
-    const text = selectedRows
+    const text = selectedRowsForVisibleCandidates
       .filter((row) => row.phoneNumber)
       .map((row) => `${row.customerName}: ${row.phoneNumber}`)
       .join('\n')
@@ -325,7 +375,7 @@ export function RevisitAlertList() {
   }
 
   const copyLineList = async () => {
-    const text = selectedRows
+    const text = selectedRowsForVisibleCandidates
       .filter((row) => row.lineId)
       .map((row) => `${row.customerName}: ${row.lineId}`)
       .join('\n')
@@ -510,6 +560,8 @@ export function RevisitAlertList() {
     ),
     sourceAppointmentId: task.source_appointment_id,
     status: task.status,
+    resolvedAt: task.resolved_at ?? null,
+    updatedAt: task.updated_at ?? null,
     dueOn: task.due_on,
     snoozedUntil: task.snoozed_until,
     assignedUserId: task.assigned_user_id ?? '',
@@ -519,15 +571,260 @@ export function RevisitAlertList() {
     assigneeName: task.assignee_name ?? null,
     events: task.events ?? [],
   }))
+  const sortedCandidates = [...candidates].sort((a, b) => {
+    if (b.overdueDays !== a.overdueDays) return b.overdueDays - a.overdueDays
+    return new Date(a.recommendedAt).getTime() - new Date(b.recommendedAt).getTime()
+  })
+  const sortedTaskRows = [...taskRows].sort((a, b) => {
+    const aResolved = a.status.startsWith('resolved_') ? 1 : 0
+    const bResolved = b.status.startsWith('resolved_') ? 1 : 0
+    if (aResolved !== bResolved) return aResolved - bResolved
+    if (b.overdueDays !== a.overdueDays) return b.overdueDays - a.overdueDays
+    return new Date(a.recommendedAt).getTime() - new Date(b.recommendedAt).getTime()
+  })
+  const unresolvedTaskCustomerIdSet = new Set(
+    sortedTaskRows.filter((task) => !task.status.startsWith('resolved_')).map((task) => task.customerId)
+  )
+  const visibleCandidates = sortedCandidates.filter((row) => !unresolvedTaskCustomerIdSet.has(row.customerId))
+  const visibleCandidateIdSet = new Set(visibleCandidates.map((row) => row.customerId))
+  const selectedRowsForVisibleCandidates = selectedRows.filter((row) => visibleCandidateIdSet.has(row.customerId))
+  const selectedVisibleCount = selectedIds.filter((id) => visibleCandidateIdSet.has(id)).length
+  const inProgressTaskRows = sortedTaskRows.filter((task) => !task.status.startsWith('resolved_'))
+  const resolvedTaskRows = sortedTaskRows.filter(
+    (task) => task.status.startsWith('resolved_') && !visibleCandidateIdSet.has(task.customerId)
+  )
+
+  const renderTaskSection = (
+    title: string,
+    description: string,
+    rows: typeof sortedTaskRows,
+    emptyText: string,
+    readOnly = false
+  ) => (
+    <div className="space-y-3 rounded border bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+          <p className="text-xs text-gray-500">{description}</p>
+        </div>
+        <p className="text-xs text-gray-500">{rows.length} 件</p>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="text-sm text-gray-500">{emptyText}</p>
+      ) : (
+        <div className="overflow-x-auto rounded border">
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-b bg-gray-50 text-gray-500">
+              <tr>
+                <th className="px-2.5 py-2">顧客</th>
+                <th className="px-2.5 py-2">超過日数</th>
+                <th className="px-2.5 py-2">担当者</th>
+                <th className="px-2.5 py-2">状態</th>
+                <th className="px-2.5 py-2">操作</th>
+                <th className="px-2.5 py-2">詳細</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {rows.map((task) => {
+                const isResolved = task.status.startsWith('resolved_')
+                const isExpanded = expandedQueueRowIds.includes(task.id)
+                return (
+                  <Fragment key={task.id}>
+                    <tr className="text-gray-700">
+                      <td className="px-2.5 py-2 font-medium text-gray-900">{task.customerName}</td>
+                      <td className="px-2.5 py-2">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getOverdueTone(task.overdueDays)}`}
+                        >
+                          {task.overdueDays} 日
+                        </span>
+                      </td>
+                      <td className="px-2.5 py-2">{task.assigneeName ?? '未割当'}</td>
+                      <td className="px-2.5 py-2">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getTaskStatusTone(task.status)}`}
+                        >
+                          {getTaskStatusLabel(task.status)}
+                        </span>
+                        {task.snoozedUntil ? (
+                          <p className="mt-1 text-xs text-gray-500">再通知: {toJstDateLabel(task.snoozedUntil)}</p>
+                        ) : null}
+                      </td>
+                      <td className="px-2.5 py-2">
+                        {readOnly ? (
+                          <span className="text-xs font-semibold text-gray-500">解決済み</span>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <select
+                              value={task.assignedUserId}
+                              onChange={(event) => {
+                                void updateTaskAssignee(task.id, event.target.value)
+                              }}
+                              className="rounded border p-1 text-xs"
+                              disabled={savingId === task.id || isResolved}
+                            >
+                              <option value="">担当未設定</option>
+                              {availableAssignees.map((assignee) => (
+                                <option key={assignee.user_id} value={assignee.user_id}>
+                                  {assignee.full_name}
+                                </option>
+                              ))}
+                            </select>
+                            {task.status === 'in_progress' ? (
+                              <span className="rounded bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-800">
+                                対応中
+                              </span>
+                            ) : (
+                              <Button
+                                type="button"
+                                className="h-7 bg-indigo-600 px-2 py-0 text-xs font-semibold whitespace-nowrap hover:bg-indigo-700"
+                                onClick={() => void updateTaskStatus(task.id, 'in_progress')}
+                                disabled={savingId === task.id || isResolved}
+                              >
+                                {savingId === task.id ? '更新中...' : '対応開始'}
+                              </Button>
+                            )}
+                            <Link
+                              href={`/appointments?tab=list&modal=create${task.sourceAppointmentId ? `&followup_from=${task.sourceAppointmentId}` : ''}&followup_task_id=${task.id}&followup_customer_id=${task.customerId}${task.petId ? `&followup_pet_id=${task.petId}` : ''}`}
+                              className="inline-flex h-7 items-center justify-center rounded bg-slate-900 px-2 py-0 text-xs font-semibold text-white whitespace-nowrap hover:bg-slate-800"
+                            >
+                              予約作成
+                            </Link>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-2.5 py-2">
+                        <button
+                          type="button"
+                          className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                          onClick={() => toggleQueueRowExpansion(task.id)}
+                        >
+                          {isExpanded ? '閉じる' : '詳細'}
+                        </button>
+                      </td>
+                    </tr>
+                    {isExpanded ? (
+                      <tr className="bg-gray-50 text-gray-700">
+                        <td className="px-2.5 py-2" colSpan={6}>
+                          <div className="grid gap-2 text-xs md:grid-cols-2">
+                            <p>ペット: {task.petName ?? '未登録'}</p>
+                            <p>前回来店: {toJstDateLabel(task.lastVisitAt)}</p>
+                            <p>推奨来店日: {toJstDateLabel(task.recommendedAt)}</p>
+                            <p>電話: {task.phoneNumber ?? '未登録'}</p>
+                            <p>LINE: {task.lineId ?? '未登録'}</p>
+                            <p>メモ: {task.resolutionNote ?? 'なし'}</p>
+                          </div>
+                          {!readOnly ? (
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <Button
+                                type="button"
+                                className="h-7 border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 whitespace-nowrap hover:bg-slate-50"
+                                onClick={() => openActionModal(task.id, '保留理由', 'snoozed')}
+                                disabled={savingId === task.id || isResolved}
+                              >
+                                1週間保留
+                              </Button>
+                              <Button
+                                type="button"
+                                className="h-7 bg-emerald-600 px-2 py-0 text-xs font-semibold whitespace-nowrap hover:bg-emerald-700"
+                                onClick={() => openActionModal(task.id, '不要理由', 'resolved_no_need', 'no_need')}
+                                disabled={savingId === task.id || isResolved}
+                              >
+                                不要
+                              </Button>
+                              <Button
+                                type="button"
+                                className="h-7 border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 whitespace-nowrap hover:bg-red-100"
+                                onClick={() => openActionModal(task.id, '失注理由', 'resolved_lost', 'declined')}
+                                disabled={savingId === task.id || isResolved}
+                              >
+                                失注
+                              </Button>
+                              {!isResolved && task.phoneNumber ? (
+                                <a
+                                  href={`tel:${task.phoneNumber}`}
+                                  onClick={() => {
+                                    void recordContact(task.id, 'contacted_phone')
+                                  }}
+                                  className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 whitespace-nowrap hover:bg-slate-50"
+                                >
+                                  電話
+                                </a>
+                              ) : null}
+                              {!isResolved && task.lineId ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const body = renderNextVisitSuggestionLineTemplate({
+                                      customerName: task.customerName,
+                                      petName: task.petName ?? 'ペット',
+                                      lastVisitAt: task.lastVisitAt,
+                                      recommendedAt: task.recommendedAt,
+                                      recommendationReason:
+                                        typeof task.recommendation_reason === 'string'
+                                          ? task.recommendation_reason
+                                          : '前回施術内容からおすすめ時期を算出',
+                                      templateBody: followupTemplateBody || undefined,
+                                    })
+                                    void copyText(body, `${task.customerName}様向け連絡文をコピーしました。`)
+                                    void recordContact(task.id, 'contacted_line', {
+                                      body,
+                                      subject: '再来店フォロー',
+                                    })
+                                  }}
+                                  className="inline-flex h-7 items-center justify-center rounded bg-emerald-600 px-2 py-0 text-xs font-semibold text-white whitespace-nowrap hover:bg-emerald-700"
+                                >
+                                  LINE送信
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : null}
+                          <div className="mt-2 text-xs">
+                            {task.events.length > 0 ? (
+                              <div className="space-y-1 text-gray-600">
+                                {(expandedTaskIds.includes(task.id) ? task.events : task.events.slice(0, 3)).map(
+                                  (event) => (
+                                    <p key={event.id}>
+                                      {toJstDateLabel(event.created_at)} / {formatEventLabel(event)}
+                                    </p>
+                                  )
+                                )}
+                                {task.events.length > 3 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleEventExpansion(task.id)}
+                                    className="text-xs font-semibold text-blue-700"
+                                  >
+                                    {expandedTaskIds.includes(task.id) ? '履歴を閉じる' : '履歴をもっと見る'}
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">履歴なし</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">再来店フォロー隊列</h2>
+          <h2 className="text-lg font-semibold text-gray-900">再来店フォロー一覧</h2>
           <p className="text-xs text-gray-500">候補抽出ではなく、対応キューとして運用します。</p>
         </div>
-        <Button type="button" className="bg-gray-700 hover:bg-gray-800" onClick={() => void loadData()}>
+        <Button type="button" className="h-7 border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 whitespace-nowrap hover:bg-slate-50" onClick={() => void loadData()}>
           再読込
         </Button>
       </div>
@@ -606,286 +903,123 @@ export function RevisitAlertList() {
                 <h3 className="text-sm font-semibold text-gray-900">未着手候補</h3>
                 <p className="text-xs text-gray-500">未対応タスクがない顧客のみ表示。キュー投入時に担当を引き継ぎます。</p>
               </div>
-              <p className="text-xs text-gray-500">{candidates.length} 件</p>
+              <p className="text-xs text-gray-500">{visibleCandidates.length} 件</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <label className="inline-flex items-center gap-1 text-xs text-gray-700">
                 <input
                   type="checkbox"
-                  checked={candidates.length > 0 && selectedIds.length === candidates.length}
+                  checked={visibleCandidates.length > 0 && selectedVisibleCount === visibleCandidates.length}
                   onChange={(event) => setAllSelection(event.target.checked)}
                 />
                 全選択
               </label>
-              <Button type="button" onClick={copyFollowupMessage}>
+              <Button
+                type="button"
+                className="h-7 border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 whitespace-nowrap hover:bg-slate-50"
+                onClick={copyFollowupMessage}
+              >
                 一括連絡文をコピー
               </Button>
-              <Button type="button" className="bg-gray-700 hover:bg-gray-800" onClick={copyPhoneList}>
+              <Button type="button" className="h-7 border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 whitespace-nowrap hover:bg-slate-50" onClick={copyPhoneList}>
                 電話一覧をコピー
               </Button>
-              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700" onClick={copyLineList}>
+              <Button type="button" className="h-7 bg-emerald-600 px-2 py-0 text-xs font-semibold whitespace-nowrap hover:bg-emerald-700" onClick={copyLineList}>
                 LINE一覧をコピー
               </Button>
             </div>
 
-            {candidates.length === 0 ? (
+            {visibleCandidates.length === 0 ? (
               <p className="text-sm text-gray-500">新規候補はありません。</p>
             ) : (
               <div className="overflow-x-auto rounded border">
                 <table className="min-w-full text-left text-sm">
-                  <thead className="border-b text-gray-500">
+                  <thead className="border-b bg-gray-50 text-gray-500">
                     <tr>
-                      <th className="px-2 py-2">選択</th>
-                      <th className="px-2 py-2">顧客</th>
-                      <th className="px-2 py-2">ペット</th>
-                      <th className="px-2 py-2">前回来店</th>
-                      <th className="px-2 py-2">推奨来店日</th>
-                      <th className="px-2 py-2">算出根拠</th>
-                      <th className="px-2 py-2">超過日数</th>
-                      <th className="px-2 py-2">担当引継ぎ</th>
-                      <th className="px-2 py-2">電話</th>
-                      <th className="px-2 py-2">LINE</th>
-                      <th className="px-2 py-2">操作</th>
+                      <th className="px-2.5 py-2">選択</th>
+                      <th className="px-2.5 py-2">顧客</th>
+                      <th className="px-2.5 py-2">超過日数</th>
+                      <th className="px-2.5 py-2">担当引継ぎ</th>
+                      <th className="px-2.5 py-2">操作</th>
+                      <th className="px-2.5 py-2">詳細</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {candidates.map((row) => (
-                      <tr key={row.customerId} className="text-gray-700">
-                        <td className="px-2 py-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(row.customerId)}
-                            onChange={() => toggleSelection(row.customerId)}
-                          />
-                        </td>
-                        <td className="px-2 py-3 font-medium text-gray-900">{row.customerName}</td>
-                        <td className="px-2 py-3">{row.petId ? '引継ぎあり' : '未特定'}</td>
-                        <td className="px-2 py-3">{toJstDateLabel(row.lastVisitAt)}</td>
-                        <td className="px-2 py-3">{toJstDateLabel(row.recommendedAt)}</td>
-                        <td className="px-2 py-3 text-xs text-gray-500">{row.recommendationReason}</td>
-                        <td className="px-2 py-3">{row.overdueDays} 日</td>
-                        <td className="px-2 py-3">{row.suggestedAssignedName ?? '未割当'}</td>
-                        <td className="px-2 py-3">{row.phoneNumber ?? '未登録'}</td>
-                        <td className="px-2 py-3">{row.lineId ?? '未登録'}</td>
-                        <td className="px-2 py-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                              type="button"
-                              onClick={() => void createTask(row)}
-                              disabled={savingId === row.customerId}
-                            >
-                              キューに追加
-                            </Button>
-                            {row.phoneNumber ? (
-                              <a
-                                href={`tel:${row.phoneNumber}`}
-                                className="rounded bg-gray-700 px-2 py-1 text-xs font-semibold text-white"
-                              >
-                                電話する
-                              </a>
-                            ) : null}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                void copySingleFollowupMessage(row)
-                              }}
-                              className="rounded bg-emerald-600 px-2 py-1 text-xs font-semibold text-white"
-                            >
-                              LINE文面コピー
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-3 rounded border bg-white p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">対応キュー</h3>
-                <p className="text-xs text-gray-500">保留、不要、予約化までここで閉じます。</p>
-              </div>
-              <p className="text-xs text-gray-500">{taskRows.length} 件</p>
-            </div>
-
-            {taskRows.length === 0 ? (
-              <p className="text-sm text-gray-500">フォローアップタスクはまだありません。</p>
-            ) : (
-              <div className="overflow-x-auto rounded border">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="border-b text-gray-500">
-                    <tr>
-                      <th className="px-2 py-2">顧客</th>
-                      <th className="px-2 py-2">ペット</th>
-                      <th className="px-2 py-2">前回来店</th>
-                      <th className="px-2 py-2">推奨来店日</th>
-                      <th className="px-2 py-2">担当者</th>
-                      <th className="px-2 py-2">状態</th>
-                      <th className="px-2 py-2">連絡</th>
-                      <th className="px-2 py-2">メモ</th>
-                      <th className="px-2 py-2">履歴</th>
-                      <th className="px-2 py-2">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {taskRows.map((task) => {
-                      const isResolved = task.status.startsWith('resolved_')
+                    {visibleCandidates.map((row) => {
+                      const isExpanded = expandedCandidateIds.includes(row.customerId)
                       return (
-                      <tr key={task.id} className="text-gray-700">
-                        <td className="px-2 py-3 font-medium text-gray-900">
-                          {task.customerName}
-                          <p className="text-xs text-gray-500">{task.overdueDays} 日超過</p>
-                        </td>
-                        <td className="px-2 py-3">{task.petName ?? '未登録'}</td>
-                        <td className="px-2 py-3">{toJstDateLabel(task.lastVisitAt)}</td>
-                        <td className="px-2 py-3">{toJstDateLabel(task.recommendedAt)}</td>
-                        <td className="px-2 py-3">{task.assigneeName ?? '未割当'}</td>
-                        <td className="px-2 py-3">
-                          <p>{task.status}</p>
-                          {task.snoozedUntil ? (
-                            <p className="text-xs text-gray-500">再通知: {toJstDateLabel(task.snoozedUntil)}</p>
-                          ) : null}
-                        </td>
-                        <td className="px-2 py-3">
-                          <p>電話: {task.phoneNumber ?? '未登録'}</p>
-                          <p>LINE: {task.lineId ?? '未登録'}</p>
-                          {task.lastContactedAt ? (
-                            <p className="text-xs text-gray-500">
-                              最終対応: {toJstDateLabel(task.lastContactedAt)} / {task.lastContactMethod ?? 'manual'}
-                            </p>
-                          ) : null}
-                        </td>
-                        <td className="px-2 py-3">{task.resolutionNote ?? 'なし'}</td>
-                        <td className="px-2 py-3">
-                          {task.events.length > 0 ? (
-                            <div className="space-y-1 text-xs text-gray-600">
-                              {(expandedTaskIds.includes(task.id) ? task.events : task.events.slice(0, 3)).map(
-                                (event) => (
-                                  <p key={event.id}>
-                                    {toJstDateLabel(event.created_at)} / {formatEventLabel(event)}
-                                  </p>
-                                )
-                              )}
-                              {task.events.length > 3 ? (
-                                <button
+                        <Fragment key={row.customerId}>
+                          <tr className="text-gray-700">
+                            <td className="px-2.5 py-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.includes(row.customerId)}
+                                onChange={() => toggleSelection(row.customerId)}
+                              />
+                            </td>
+                            <td className="px-2.5 py-2 font-medium text-gray-900">{row.customerName}</td>
+                            <td className="px-2.5 py-2">
+                              <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getOverdueTone(row.overdueDays)}`}>
+                                {row.overdueDays} 日
+                              </span>
+                            </td>
+                            <td className="px-2.5 py-2">{row.suggestedAssignedName ?? '未割当'}</td>
+                            <td className="px-2.5 py-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Button
                                   type="button"
-                                  onClick={() => toggleEventExpansion(task.id)}
-                                  className="text-xs font-semibold text-blue-700"
+                                  className="h-7 bg-slate-900 px-2 py-0 text-xs font-semibold text-white whitespace-nowrap hover:bg-slate-800"
+                                  onClick={() => void createTask(row)}
+                                  disabled={savingId === row.customerId}
                                 >
-                                  {expandedTaskIds.includes(task.id) ? '閉じる' : 'もっと見る'}
-                                </button>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-gray-400">履歴なし</span>
-                          )}
-                        </td>
-                        <td className="px-2 py-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <select
-                              value={task.assignedUserId}
-                              onChange={(event) => {
-                                void updateTaskAssignee(task.id, event.target.value)
-                              }}
-                              className="rounded border p-1 text-xs"
-                              disabled={savingId === task.id || isResolved}
-                            >
-                              <option value="">担当未設定</option>
-                              {availableAssignees.map((assignee) => (
-                                <option key={assignee.user_id} value={assignee.user_id}>
-                                  {assignee.full_name}
-                                </option>
-                              ))}
-                            </select>
-                            <Button
-                              type="button"
-                              className="bg-indigo-600 hover:bg-indigo-700"
-                              onClick={() => void updateTaskStatus(task.id, 'in_progress')}
-                              disabled={savingId === task.id || task.status === 'in_progress' || isResolved}
-                            >
-                              対応中
-                            </Button>
-                            <Button
-                              type="button"
-                              className="bg-gray-700 hover:bg-gray-800"
-                              onClick={() => openActionModal(task.id, '保留理由', 'snoozed')}
-                              disabled={savingId === task.id || isResolved}
-                            >
-                              1週間保留
-                            </Button>
-                            <Button
-                              type="button"
-                              className="bg-emerald-600 hover:bg-emerald-700"
-                              onClick={() =>
-                                openActionModal(task.id, '不要理由', 'resolved_no_need', 'no_need')
-                              }
-                              disabled={savingId === task.id || isResolved}
-                            >
-                              不要
-                            </Button>
-                            <Button
-                              type="button"
-                              className="bg-rose-600 hover:bg-rose-700"
-                              onClick={() =>
-                                openActionModal(task.id, '失注理由', 'resolved_lost', 'declined')
-                              }
-                              disabled={savingId === task.id || isResolved}
-                            >
-                              失注
-                            </Button>
-                            {!isResolved && task.phoneNumber ? (
-                              <a
-                                href={`tel:${task.phoneNumber}`}
-                                onClick={() => {
-                                  void recordContact(task.id, 'contacted_phone')
-                                }}
-                                className="rounded bg-gray-700 px-2 py-1 text-xs font-semibold text-white"
-                              >
-                                電話
-                              </a>
-                            ) : null}
-                            {!isResolved && task.lineId ? (
+                                  キューに追加
+                                </Button>
+                                {row.phoneNumber ? (
+                                  <a
+                                    href={`tel:${row.phoneNumber}`}
+                                    className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 whitespace-nowrap hover:bg-slate-50"
+                                  >
+                                    電話する
+                                  </a>
+                                ) : null}
+                              </div>
+                            </td>
+                            <td className="px-2.5 py-2">
                               <button
                                 type="button"
-                                onClick={() => {
-                                  const body = renderNextVisitSuggestionLineTemplate({
-                                    customerName: task.customerName,
-                                    petName: task.petName ?? 'ペット',
-                                    lastVisitAt: task.lastVisitAt,
-                                    recommendedAt: task.recommendedAt,
-                                    recommendationReason:
-                                      typeof task.recommendation_reason === 'string'
-                                        ? task.recommendation_reason
-                                        : '前回施術内容からおすすめ時期を算出',
-                                    templateBody: followupTemplateBody || undefined,
-                                  })
-                                  void copyText(body, `${task.customerName}様向け連絡文をコピーしました。`)
-                                  void recordContact(task.id, 'contacted_line', {
-                                    body,
-                                    subject: '再来店フォロー',
-                                  })
-                                }}
-                                className="rounded bg-emerald-600 px-2 py-1 text-xs font-semibold text-white"
+                                className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                                onClick={() => toggleCandidateExpansion(row.customerId)}
                               >
-                                LINE送信
+                                {isExpanded ? '閉じる' : '詳細'}
                               </button>
-                            ) : null}
-                            {task.status.startsWith('resolved_') ? (
-                              <span className="text-xs font-semibold text-gray-500">解決済み</span>
-                            ) : null}
-                            <Link
-                              href={`/appointments?tab=list&modal=create${task.sourceAppointmentId ? `&followup_from=${task.sourceAppointmentId}` : ''}&followup_task_id=${task.id}&followup_customer_id=${task.customerId}${task.petId ? `&followup_pet_id=${task.petId}` : ''}`}
-                              className="rounded bg-blue-600 px-2 py-1 text-xs font-semibold text-white"
-                            >
-                              予約作成
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
+                            </td>
+                          </tr>
+                          {isExpanded ? (
+                            <tr className="bg-gray-50 text-gray-700">
+                              <td className="px-2.5 py-2" colSpan={6}>
+                                <div className="grid gap-2 text-xs md:grid-cols-2">
+                                  <p>ペット: {row.petId ? '引継ぎあり' : '未特定'}</p>
+                                  <p>前回来店: {toJstDateLabel(row.lastVisitAt)}</p>
+                                  <p>推奨来店日: {toJstDateLabel(row.recommendedAt)}</p>
+                                  <p>電話: {row.phoneNumber ?? '未登録'}</p>
+                                  <p>LINE: {row.lineId ?? '未登録'}</p>
+                                  <p>算出根拠: {row.recommendationReason}</p>
+                                </div>
+                                <div className="mt-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      void copySingleFollowupMessage(row)
+                                    }}
+                                    className="inline-flex h-7 items-center justify-center rounded bg-emerald-600 px-2 py-0 text-xs font-semibold text-white whitespace-nowrap hover:bg-emerald-700"
+                                  >
+                                    LINE文面コピー
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
                       )
                     })}
                   </tbody>
@@ -893,6 +1027,20 @@ export function RevisitAlertList() {
               </div>
             )}
           </div>
+
+          {renderTaskSection(
+            '対応中',
+            '未着手・対応中・保留のタスクを優先順で表示します。',
+            inProgressTaskRows,
+            '対応中タスクはありません。'
+          )}
+          {renderTaskSection(
+            '対応済',
+            '予約化・不要・失注の完了タスクです（対象期間フィルターの表示条件が適用されます）。',
+            resolvedTaskRows,
+            '対応済タスクはありません。',
+            true
+          )}
         </>
       ) : null}
 
@@ -924,12 +1072,17 @@ export function RevisitAlertList() {
                 />
               </label>
               <div className="flex items-center gap-2">
-                <Button type="button" onClick={() => void submitActionModal()} disabled={Boolean(savingId)}>
+                <Button
+                  type="button"
+                  className="h-7 bg-slate-900 px-2 py-0 text-xs font-semibold text-white whitespace-nowrap hover:bg-slate-800"
+                  onClick={() => void submitActionModal()}
+                  disabled={Boolean(savingId)}
+                >
                   保存する
                 </Button>
                 <Button
                   type="button"
-                  className="bg-gray-700 hover:bg-gray-800"
+                  className="h-7 border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 whitespace-nowrap hover:bg-slate-50"
                   onClick={() => {
                     setActionModal(null)
                     setActionReason('')
