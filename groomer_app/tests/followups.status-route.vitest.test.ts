@@ -139,6 +139,25 @@ describe('followups status route', () => {
     })
   })
 
+  // TRACE-028
+  it('returns 400 when resolution_type is invalid', async () => {
+    const { PATCH } = await import('../src/app/api/followups/[followup_id]/status/route')
+    const response = await PATCH(
+      buildRequest({
+        status: 'resolved_no_need',
+        resolution_type: 'invalid_type',
+      }),
+      {
+        params: Promise.resolve({ followup_id: 'task-1' }),
+      }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: '有効な resolution_type を指定してください。',
+    })
+  })
+
   // TRACE-022
   it('returns 400 when status transition is not allowed from resolved task', async () => {
     assertFollowupTaskInStoreMock.mockResolvedValue({

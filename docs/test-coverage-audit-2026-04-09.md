@@ -89,6 +89,7 @@
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-026 | followups status API: 更新対象なしリクエストの拒否 | `tests/followups.status-route.vitest.test.ts` | 空ボディ等で更新対象が無い場合 `400` + `更新対象がありません。` |
+| TRACE-028 | followups status API: 不正resolution_typeの拒否 | `tests/followups.status-route.vitest.test.ts` | 解決系更新で許可外 `resolution_type` は `400` |
 | TRACE-022 | followups status API: 解決済みからの不正再開遷移拒否 | `tests/followups.status-route.vitest.test.ts` | `resolved_no_need -> in_progress` が `400` + 不正遷移メッセージ |
 | TRACE-006 | followups events API: 不正event_typeの拒否 | `tests/followups.events-route.vitest.test.ts` | `bad_event` で `400` + `有効な event_type を指定してください。` |
 | TRACE-007 | followups events API: 解決済みへの連絡記録禁止 | `tests/followups.events-route.vitest.test.ts` | `resolved_*` タスクに `contacted_line` を追加すると `400` |
