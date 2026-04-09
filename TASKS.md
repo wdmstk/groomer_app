@@ -276,6 +276,7 @@ Completed tasks should be marked:
   - [x] `main` ブランチで `Traceability Guard / verify` を Required status check として有効化（Branch protection設定）
   - [x] `Journal E2E` の遷移フレーク対策として `gotoStable` 再試行を導入（`e2e/journal-pages.spec.ts`）
   - [x] Playwright E2E起動時の `/` 参照でSupabase必須エラーが出ないよう、`app/page.tsx` に `PLAYWRIGHT_E2E` ガードを追加（`/lp` へ即時リダイレクト）
+  - [x] `Journal E2E` ワークフローの Node 実行環境を `24` へ統一し、CI上の `.ts` 実行エラー（`ERR_UNKNOWN_FILE_EXTENSION`）を解消
   - [ ] 後続の顧客管理β改善指示を反映
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）
