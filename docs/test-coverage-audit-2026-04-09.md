@@ -119,6 +119,9 @@
 | TRACE-041 | visits API(PUT): 合計金額の非数入力拒否 | `tests/visits.visit-id-route.vitest.test.ts` | `total_amount` が非数の場合 `400` + `合計金額は数値で入力してください。` |
 | TRACE-043 | visits API(POST-override PUT): 合計金額の非数入力拒否 | `tests/visits.visit-id-route.vitest.test.ts` | `_method=put` のフォーム更新で `total_amount` が非数なら `400` |
 | TRACE-044 | visits API(POST-override PUT): 不正visit_date形式の拒否 | `tests/visits.visit-id-route.vitest.test.ts` | `_method=put` のフォーム更新で `visit_date` が無効形式なら `400` |
+| TRACE-045 | visits API(POST-override PATCH): 合計金額の非数入力拒否 | `tests/visits.visit-id-route.vitest.test.ts` | `_method=patch` のフォーム更新で `total_amount` が非数なら `400` |
+| TRACE-046 | visits API(POST-override PATCH): 不正visit_date形式の拒否 | `tests/visits.visit-id-route.vitest.test.ts` | `_method=patch` のフォーム更新で `visit_date` が無効形式なら `400` |
+| TRACE-047 | visits API(POST-override PATCH): 正常更新 | `tests/visits.visit-id-route.vitest.test.ts` | `_method=patch` のフォーム更新が正常入力で `307` リダイレクト（`/visits`）を返す |
 | TRACE-013 | 来店履歴ページ: 主要タブ表示 | `e2e/visits-page.spec.ts` | `list/revisit/followup/cycle/quality` 各見出しを確認 |
 | TRACE-014 | 顧客一覧ページ: 基本情報表示とモーダル導線 | `e2e/customers-list.spec.ts` | 顧客行の主要項目（氏名/電話/LTV等）表示と `新規顧客登録` モーダル起動を確認 |
 | TRACE-015 | 会計一覧ページ: 一覧表示と領収書表示 | `e2e/payments-list.spec.ts` | 会計行の金額/ステータス表示、`領収書` で支払情報と明細表示を確認 |
