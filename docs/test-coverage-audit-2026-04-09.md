@@ -98,6 +98,7 @@
 | TRACE-055 | followups API(GET): `include_candidates=true` の `window_days` 候補境界 | `tests/followups.route.vitest.test.ts` | `window_days=7` では直近候補のみ、`window_days=all` では期間外候補も含まれる |
 | TRACE-056 | followups API(GET): `include_candidates=true` の未来予約除外 | `tests/followups.route.vitest.test.ts` | 未来予約がある顧客は候補から除外され、未来予約がない顧客のみ候補に含まれる |
 | TRACE-057 | followups API(GET): `include_candidates=true` と `status` クエリの不変性 | `tests/followups.route.vitest.test.ts` | `status` 指定有無で候補算出結果（`candidates`）が変わらない |
+| TRACE-058 | followups API(GET): `include_candidates=true` と `due` クエリの不変性 | `tests/followups.route.vitest.test.ts` | `due` 指定有無で候補算出結果（`candidates`）が変わらない |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
