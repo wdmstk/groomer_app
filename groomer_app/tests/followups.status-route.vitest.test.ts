@@ -182,6 +182,25 @@ describe('followups status route', () => {
     })
   })
 
+  // TRACE-031
+  it('returns 400 when status transition from open to resolved_booked is requested', async () => {
+    const { PATCH } = await import('../src/app/api/followups/[followup_id]/status/route')
+    const response = await PATCH(
+      buildRequest({
+        status: 'resolved_booked',
+        resolution_type: 'booked',
+      }),
+      {
+        params: Promise.resolve({ followup_id: 'task-1' }),
+      }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: '不正な status 遷移です: open -> resolved_booked',
+    })
+  })
+
   it('returns 400 when assigned_user_id is not an active store member', async () => {
     getFollowupRouteContextMock.mockResolvedValue({
       supabase: createSupabaseMock({ memberExists: false }),
