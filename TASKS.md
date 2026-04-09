@@ -291,6 +291,12 @@ Completed tasks should be marked:
   - [x] 残存リスク対策として `followups events` のLINE ID未登録時ガード（400）テストを追加
   - [x] 残存リスク対策として `followups status` の `open -> resolved_booked` 不正遷移拒否テストを追加
   - [x] 残存リスク対策として `followups status` の不正 `snoozed_until` 拒否（400）テストを追加
+  - [ ] 把握済み残タスク（優先順）を先にTASKSへ反映してから着手する
+  - [x] [P1] `followups status` 正常系（担当者解除: `assigned_user_id=null`）を追加
+  - [ ] [P2] `followups status` 正常系（`snoozed` 成功時の応答とイベント整合）を追加
+  - [ ] [P3] `followups events` 異常系（`contacted_line payload.body` 空白のみ）を追加
+  - [ ] [P4] `followups events` 異常系（dedupe時の副作用ログinsert失敗ハンドリング）を追加
+  - [ ] [P5] `/api/visits` `/api/visits/[visit_id]` 境界ケース（時刻/店舗整合）を追補
   - [ ] 後続の顧客管理β改善指示を反映
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）

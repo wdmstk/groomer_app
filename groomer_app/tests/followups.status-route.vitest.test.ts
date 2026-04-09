@@ -242,4 +242,24 @@ describe('followups status route', () => {
       message: '指定された担当者は店舗メンバーではありません。',
     })
   })
+
+  // TRACE-033
+  it('returns 200 when assigned_user_id is explicitly set to null', async () => {
+    const { PATCH } = await import('../src/app/api/followups/[followup_id]/status/route')
+    const response = await PATCH(
+      buildRequest({
+        assigned_user_id: null,
+      }),
+      {
+        params: Promise.resolve({ followup_id: 'task-1' }),
+      }
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      task: {
+        id: 'task-1',
+      },
+    })
+  })
 })
