@@ -147,6 +147,23 @@ describe('followups events route', () => {
     })
   })
 
+  // TRACE-023
+  it('returns 400 when contacted_phone payload has invalid result', async () => {
+    const { POST } = await import('../src/app/api/followups/[followup_id]/events/route')
+    const response = await POST(
+      buildRequest({
+        event_type: 'contacted_phone',
+        payload: { result: 'invalid_result' },
+      }),
+      { params: Promise.resolve({ followup_id: 'task-1' }) }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: '電話連絡の result は connected/voicemail/no_answer のみ指定できます。',
+    })
+  })
+
   it('returns 400 when contacted_line payload has no body', async () => {
     const { POST } = await import('../src/app/api/followups/[followup_id]/events/route')
     const response = await POST(
