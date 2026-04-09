@@ -303,6 +303,11 @@ Completed tasks should be marked:
   - [x] [P9] `followups status` 正常系（`in_progress -> resolved_no_need` 成功時の `resolved` イベント整合）を追加
   - [x] [P10] `/api/visits/[visit_id]` POST(_method=put/patch) の `total_amount` 非数入力を `400` で拒否する
   - [x] [P11] `/api/visits/[visit_id]` POST(_method=put/patch) の `visit_date` 不正形式を `400` で拒否する
+  - [x] [P12] `/api/visits/[visit_id]` POST(_method=patch) の `total_amount` 非数入力を `400` で拒否する
+  - [x] [P13] `/api/visits/[visit_id]` POST(_method=patch) の `visit_date` 不正形式を `400` で拒否する
+  - [x] [P14] `/api/visits/[visit_id]` POST(_method=patch) の正常系更新（307リダイレクト）を追加し、PUT/patchの契約差分を明示する
+  - [ ] [P15] `followups` のfixture依存が高いE2Eを実データ近似シナリオへ1本追加する（残存リスク対策）
+  - [ ] [P16] 監査レポートの「残存リスク」更新（追加テストの反映と次の優先ギャップ再定義）
   - [ ] 後続の顧客管理β改善指示を反映
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）
