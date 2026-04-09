@@ -255,6 +255,82 @@ describe('followups status route', () => {
     expect(captured.event?.event_type).toBe('snoozed')
   })
 
+  // TRACE-042
+  it('returns 200 and records resolved event consistently for in_progress -> resolved_no_need', async () => {
+    const captured: { updated: Record<string, unknown> | null; event: Record<string, unknown> | null } = {
+      updated: null,
+      event: null,
+    }
+    assertFollowupTaskInStoreMock.mockResolvedValue({
+      data: {
+        id: 'task-1',
+        status: 'in_progress',
+        snoozed_until: null,
+        resolved_at: null,
+        resolution_type: null,
+        resolution_note: null,
+        assigned_user_id: null,
+      },
+    })
+    const supabase = {
+      from(table: string) {
+        if (table === 'store_memberships') return createSupabaseMock().from(table)
+        if (table === 'customer_followup_tasks') {
+          return {
+            update(payload: Record<string, unknown>) {
+              captured.updated = payload
+              return {
+                eq() {
+                  return this
+                },
+                select() {
+                  return {
+                    single: async () => ({
+                      data: {
+                        id: 'task-1',
+                        status: payload.status,
+                        resolution_type: payload.resolution_type,
+                      },
+                      error: null,
+                    }),
+                  }
+                },
+              }
+            },
+          }
+        }
+        if (table === 'customer_followup_events') {
+          return {
+            insert: async (payload: Record<string, unknown>) => {
+              captured.event = payload
+              return { error: null }
+            },
+          }
+        }
+        return { insert: async () => ({ error: null }) }
+      },
+    }
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase,
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+    })
+    const { PATCH } = await import('../src/app/api/followups/[followup_id]/status/route')
+    const response = await PATCH(
+      buildRequest({ status: 'resolved_no_need', resolution_type: 'no_need' }),
+      {
+        params: Promise.resolve({ followup_id: 'task-1' }),
+      }
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      task: { id: 'task-1', status: 'resolved_no_need', resolution_type: 'no_need' },
+    })
+    expect(captured.updated?.status).toBe('resolved_no_need')
+    expect(captured.event?.event_type).toBe('resolved')
+  })
+
   it('returns 400 when assigned_user_id is not an active store member', async () => {
     getFollowupRouteContextMock.mockResolvedValue({
       supabase: createSupabaseMock({ memberExists: false }),
