@@ -287,6 +287,7 @@ Completed tasks should be marked:
   - [x] 残存リスク対策として `followups status` の更新対象なしリクエスト拒否（400）テストを追加
   - [x] 残存リスク対策として `followups events` の電話番号未登録時ガード（400）テストを追加
   - [x] 残存リスク対策として `followups status` の不正 `resolution_type` 拒否（400）テストを追加
+  - [x] 残存リスク対策として `followups events` の顧客未存在時ガード（404）テストを追加
   - [ ] 後続の顧客管理β改善指示を反映
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）
