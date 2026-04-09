@@ -95,6 +95,7 @@
 | TRACE-025 | followups events API: 解決済みへのメモ記録は許可 | `tests/followups.events-route.vitest.test.ts` | `resolved_*` タスクに `note_added` を追加でき `201` を返す |
 | TRACE-023 | followups events API: 電話連絡resultの許可値制限 | `tests/followups.events-route.vitest.test.ts` | `contacted_phone` で許可外 `result` を送ると `400` |
 | TRACE-024 | followups events API: 同日同チャネル重複送信の拒否 | `tests/followups.events-route.vitest.test.ts` | 同一 followup + 同日 + 同チャネルは `409`（重複送信防止） |
+| TRACE-027 | followups events API: 電話番号未登録時の電話連絡拒否 | `tests/followups.events-route.vitest.test.ts` | `contacted_phone` 実行時に顧客電話番号未登録なら `400` |
 | TRACE-021 | followups再フォロー判定: クールダウン境界日の解除 | `tests/followups.refollow-policy.vitest.test.ts` | `snoozed/no_need/lost` が「ちょうど閾値日」でブロック解除されることを確認 |
 | TRACE-008 | 店舗顧客管理設定API: 権限制御 | `tests/stores.customer-management-settings.route.vitest.test.ts` | 未認証 `401`、`staff` 権限で `403` |
 | TRACE-009 | 店舗顧客管理設定API: クランプ/安全リダイレクト | `tests/stores.customer-management-settings.route.vitest.test.ts` | 極端値が `1..365` / `5..100` へ補正、`//evil...` は既定リダイレクトへ |

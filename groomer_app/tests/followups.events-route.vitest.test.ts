@@ -170,6 +170,38 @@ describe('followups events route', () => {
     expect(response.status).toBe(201)
   })
 
+  // TRACE-027
+  it('returns 400 when contacted_phone is requested but phone number is not registered', async () => {
+    const supabase = createSupabaseMock()
+    const fromSpy = vi.spyOn(supabase, 'from')
+    fromSpy.mockImplementation((table: string) => {
+      if (table !== 'customers') return createSupabaseMock().from(table)
+      return {
+        select() {
+          return {
+            eq() {
+              return this
+            },
+            maybeSingle: async () => ({
+              data: { id: 'customer-1', phone_number: null, line_id: 'line-111' },
+              error: null,
+            }),
+          }
+        },
+      }
+    })
+    getFollowupRouteContextMock.mockResolvedValue({ supabase, storeId: 'store-1', user: { id: 'user-1' } })
+    const { POST } = await import('../src/app/api/followups/[followup_id]/events/route')
+    const response = await POST(buildRequest({ event_type: 'contacted_phone', payload: {} }), {
+      params: Promise.resolve({ followup_id: 'task-1' }),
+    })
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: '電話番号が未登録です。',
+    })
+  })
+
   // TRACE-023
   it('returns 400 when contacted_phone payload has invalid result', async () => {
     const { POST } = await import('../src/app/api/followups/[followup_id]/events/route')
