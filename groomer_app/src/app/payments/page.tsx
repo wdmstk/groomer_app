@@ -101,7 +101,6 @@ type PosHotelLineOption = {
 
 type PaymentsPageProps = {
   searchParams?: Promise<{
-    tab?: string
     modal?: string
     edit?: string
     appointment_id?: string
@@ -112,9 +111,13 @@ type PaymentsPageProps = {
 const paymentMethodOptions = ['現金', 'カード', '電子マネー', 'QR決済', 'その他']
 const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
+function paymentStateClass(paidAt: string | null) {
+  if (paidAt) return 'border-emerald-200 bg-emerald-50 text-emerald-700'
+  return 'border-amber-200 bg-amber-50 text-amber-700'
+}
+
 export default async function PaymentsPage({ searchParams }: PaymentsPageProps) {
   const resolvedSearchParams = await searchParams
-  const activeTab = 'list'
   const isLegacyMode = resolvedSearchParams?.mode === 'legacy' || Boolean(resolvedSearchParams?.appointment_id)
   const isCreateModalOpen =
     resolvedSearchParams?.modal === 'create' && isLegacyMode
@@ -299,7 +302,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
       }
     })
     .filter((row): row is PosHotelLineOption => Boolean(row))
-  const modalCloseRedirect = `/payments?tab=${activeTab}`
+  const modalCloseRedirect = '/payments'
 
   return (
     <section className="space-y-6">
@@ -319,146 +322,155 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
         hotelLines={posHotelLineOptions}
       />
 
-      <div className="flex items-center gap-4 border-b">
-        <Link
-          href="/payments?tab=list"
-          className={`pb-2 text-sm font-semibold ${
-            activeTab === 'list' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'
-          }`}
-        >
-          会計一覧
-        </Link>
-      </div>
-
-      {activeTab === 'list' ? (
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">会計一覧</h2>
-            <div className="flex items-center gap-3">
-              <p className="text-sm text-gray-500">全 {paymentList.length} 件</p>
-              <Link
-                href="/payments?tab=list&modal=create&mode=legacy"
-                className="inline-flex items-center rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-              >
-                予約単位会計（レガシー）
-              </Link>
-            </div>
+      <Card>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">会計一覧</h2>
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-gray-500">全 {paymentList.length} 件</p>
+            <Link
+              href="/payments?modal=create&mode=legacy"
+              className="inline-flex items-center rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              予約単位会計（レガシー）
+            </Link>
           </div>
-          {paymentList.length === 0 ? (
-            <p className="text-sm text-gray-500">会計がまだ登録されていません。</p>
-          ) : (
-            <>
-              <div className="space-y-3 md:hidden" data-testid="payments-list-mobile">
-                {paymentList.map((payment) => (
-                  <article
-                    key={payment.id}
-                    className="rounded border p-3 text-sm text-gray-700"
-                    data-testid={`payment-row-${payment.id}`}
+        </div>
+        {paymentList.length === 0 ? (
+          <p className="text-sm text-gray-500">会計がまだ登録されていません。</p>
+        ) : (
+          <>
+            <div className="space-y-2.5 md:hidden" data-testid="payments-list-mobile">
+              {paymentList.map((payment) => (
+                <article
+                  key={payment.id}
+                  className="rounded border border-gray-200 p-3 text-sm text-gray-700"
+                  data-testid={`payment-row-${payment.id}`}
+                >
+                  <p className="truncate font-semibold text-gray-900">
+                    {getPaymentRelatedValue(payment.customers, 'full_name')}
+                  </p>
+                  <p className="truncate text-xs text-gray-500">
+                    予約:{' '}
+                    {appointmentLabelById.get(payment.appointment_id) ?? payment.appointment_id}
+                  </p>
+                  <span
+                    className={`mt-2 inline-flex rounded border px-2 py-0.5 text-xs font-semibold ${paymentStateClass(payment.paid_at)}`}
                   >
-                    <p className="font-semibold text-gray-900">
-                      {getPaymentRelatedValue(payment.customers, 'full_name')}
-                    </p>
-                    <p>
-                      予約:{' '}
-                      {appointmentLabelById.get(payment.appointment_id) ?? payment.appointment_id}
-                    </p>
-                    <p>金額: {payment.total_amount.toLocaleString()} 円</p>
-                    <p>会計状態: {formatPaymentPaidState(payment.paid_at)}</p>
-                    <p>支払方法: {payment.method ?? '現金'}</p>
-                    <p>支払日時: {formatPaymentPaidAt(payment.paid_at)}</p>
-                    <p>備考: {payment.notes ?? 'なし'}</p>
-                    <div className="mt-2 flex items-center gap-2">
+                    {formatPaymentPaidState(payment.paid_at)}
+                  </span>
+                  <p className="mt-2 font-medium text-gray-900">金額: {payment.total_amount.toLocaleString()} 円</p>
+                  <p className="text-xs text-gray-600">支払方法: {payment.method ?? '現金'}</p>
+                  <p className="text-xs text-gray-600">支払日時: {formatPaymentPaidAt(payment.paid_at)}</p>
+                  <p>備考: {payment.notes ?? 'なし'}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <Link
+                      href={`/payments?edit=${payment.id}`}
+                      className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                    >
+                      編集
+                    </Link>
+                    {payment.paid_at ? (
                       <Link
-                        href={`/payments?tab=list&edit=${payment.id}`}
-                        className="text-blue-600 text-sm"
+                        href={`/receipts/${payment.id}`}
+                        className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
                       >
-                        編集
+                        印刷
                       </Link>
-                      {payment.paid_at ? (
-                        <Link href={`/receipts/${payment.id}`} className="text-sm text-gray-600">
-                          印刷
-                        </Link>
-                      ) : (
-                        <span className="text-sm text-gray-400">未会計</span>
-                      )}
-                      <form action={`/api/payments/${payment.id}`} method="post">
-                        <input type="hidden" name="_method" value="delete" />
-                        <Button type="submit" className="bg-red-500 hover:bg-red-600">
-                          削除
-                        </Button>
-                      </form>
-                    </div>
-                  </article>
-                ))}
-              </div>
+                    ) : (
+                      <span className="inline-flex h-7 items-center rounded border border-gray-200 bg-gray-50 px-2 text-xs text-gray-400">
+                        未会計
+                      </span>
+                    )}
+                    <form action={`/api/payments/${payment.id}`} method="post">
+                      <input type="hidden" name="_method" value="delete" />
+                      <Button type="submit" className="h-7 border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 hover:bg-red-100 whitespace-nowrap">
+                        削除
+                      </Button>
+                    </form>
+                  </div>
+                </article>
+              ))}
+            </div>
 
-              <div className="hidden overflow-x-auto md:block">
-                <table className="min-w-full text-sm text-left" data-testid="payments-list">
-                  <thead className="text-gray-500 border-b">
-                    <tr>
-                      <th className="py-2 px-2">顧客</th>
-                      <th className="py-2 px-2">予約</th>
-                      <th className="py-2 px-2">合計金額</th>
-                      <th className="py-2 px-2">会計状態</th>
-                      <th className="py-2 px-2">支払方法</th>
-                      <th className="py-2 px-2">支払日時</th>
-                      <th className="py-2 px-2">備考</th>
-                      <th className="py-2 px-2">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {paymentList.map((payment) => (
-                      <tr
-                        key={payment.id}
-                        className="text-gray-700"
-                        data-testid={`payment-row-${payment.id}`}
-                      >
-                        <td className="py-3 px-2 font-medium text-gray-900">
+            <div className="hidden md:block">
+              <table className="min-w-full table-fixed text-left text-sm" data-testid="payments-list">
+                <thead className="border-b bg-gray-50 text-gray-500">
+                  <tr>
+                    <th className="px-2.5 py-2">対象</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">合計金額</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">会計状態</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">支払方法</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">支払日時</th>
+                    <th className="px-2.5 py-2">備考</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {paymentList.map((payment) => (
+                    <tr
+                      key={payment.id}
+                      className="text-gray-700"
+                      data-testid={`payment-row-${payment.id}`}
+                    >
+                      <td className="px-2.5 py-2 align-top">
+                        <p className="truncate font-medium text-gray-900">
                           {getPaymentRelatedValue(payment.customers, 'full_name')}
-                        </td>
-                        <td className="py-3 px-2">
+                        </p>
+                        <p className="truncate text-xs text-gray-500">
                           {appointmentLabelById.get(payment.appointment_id) ?? payment.appointment_id}
-                        </td>
-                        <td className="py-3 px-2">{payment.total_amount.toLocaleString()} 円</td>
-                        <td className="py-3 px-2">{formatPaymentPaidState(payment.paid_at)}</td>
-                        <td className="py-3 px-2">{payment.method ?? '現金'}</td>
-                        <td className="py-3 px-2">{formatPaymentPaidAt(payment.paid_at)}</td>
-                        <td className="py-3 px-2">{payment.notes ?? 'なし'}</td>
-                        <td className="py-3 px-2">
-                          <div className="flex items-center gap-2">
+                        </p>
+                      </td>
+                      <td className="px-2.5 py-2 whitespace-nowrap align-top">
+                        {payment.total_amount.toLocaleString()} 円
+                      </td>
+                      <td className="px-2.5 py-2 align-top">
+                        <span
+                          className={`inline-flex rounded border px-2 py-0.5 text-xs font-semibold ${paymentStateClass(payment.paid_at)}`}
+                        >
+                          {formatPaymentPaidState(payment.paid_at)}
+                        </span>
+                      </td>
+                      <td className="px-2.5 py-2 whitespace-nowrap align-top">{payment.method ?? '現金'}</td>
+                      <td className="px-2.5 py-2 whitespace-nowrap align-top">{formatPaymentPaidAt(payment.paid_at)}</td>
+                      <td className="px-2.5 py-2 align-top">
+                        <p className="line-clamp-2">{payment.notes ?? 'なし'}</p>
+                      </td>
+                      <td className="px-2.5 py-2 align-top">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Link
+                            href={`/payments?edit=${payment.id}`}
+                            className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                          >
+                            編集
+                          </Link>
+                          {payment.paid_at ? (
                             <Link
-                              href={`/payments?tab=list&edit=${payment.id}`}
-                              className="text-blue-600 text-sm"
+                              href={`/receipts/${payment.id}`}
+                              className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
                             >
-                              編集
+                              印刷
                             </Link>
-                            {payment.paid_at ? (
-                              <Link
-                                href={`/receipts/${payment.id}`}
-                                className="text-sm text-gray-600"
-                              >
-                                印刷
-                              </Link>
-                            ) : (
-                              <span className="text-sm text-gray-400">未会計</span>
-                            )}
-                            <form action={`/api/payments/${payment.id}`} method="post">
-                              <input type="hidden" name="_method" value="delete" />
-                              <Button type="submit" className="bg-red-500 hover:bg-red-600">
-                                削除
-                              </Button>
-                            </form>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </Card>
-      ) : null}
+                          ) : (
+                            <span className="inline-flex h-7 items-center rounded border border-gray-200 bg-gray-50 px-2 text-xs text-gray-400">
+                              未会計
+                            </span>
+                          )}
+                          <form action={`/api/payments/${payment.id}`} method="post">
+                            <input type="hidden" name="_method" value="delete" />
+                            <Button type="submit" className="h-7 border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 hover:bg-red-100 whitespace-nowrap">
+                              削除
+                            </Button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </Card>
 
       {isCreateModalOpen || editPayment ? (
         <PaymentCreateModal
@@ -471,7 +483,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
           paymentMethodOptions={paymentMethodOptions}
           appointmentOptions={selectableAppointmentOptions}
           customerNameById={customerNameById}
-          closeRedirectTo={`${modalCloseRedirect}&mode=legacy`}
+          closeRedirectTo={`${modalCloseRedirect}?mode=legacy`}
         />
       ) : null}
     </section>

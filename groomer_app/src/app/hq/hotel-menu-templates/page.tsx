@@ -142,26 +142,26 @@ export default async function HqHotelMenuTemplatesPage() {
         <h2 className="text-lg font-semibold text-gray-900">配信元サンプルホテルメニュー（先頭20件）</h2>
         <p className="mt-1 text-xs text-gray-500">source_store_id: {sourceStoreId}</p>
         <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b text-gray-500">
+          <table className="min-w-full table-fixed text-left text-sm">
+            <thead className="border-b bg-gray-50 text-gray-500">
               <tr>
-                <th className="px-2 py-2">項目名</th>
-                <th className="px-2 py-2">種別</th>
-                <th className="px-2 py-2">単位</th>
-                <th className="px-2 py-2">価格</th>
-                <th className="px-2 py-2">所要時間</th>
-                <th className="px-2 py-2">標準数量</th>
+                <th className="px-2.5 py-2">項目名</th>
+                <th className="px-2.5 py-2">種別</th>
+                <th className="px-2.5 py-2">単位</th>
+                <th className="px-2.5 py-2">価格</th>
+                <th className="px-2.5 py-2">所要時間</th>
+                <th className="px-2.5 py-2">標準数量</th>
               </tr>
             </thead>
             <tbody className="divide-y text-gray-700">
               {menus.map((menu) => (
                 <tr key={menu.id}>
-                  <td className="px-2 py-2">{menu.name}</td>
-                  <td className="px-2 py-2">{menu.item_type}</td>
-                  <td className="px-2 py-2">{menu.billing_unit}</td>
-                  <td className="px-2 py-2">{menu.price}</td>
-                  <td className="px-2 py-2">{menu.duration_minutes ?? '-'} 分</td>
-                  <td className="px-2 py-2">{menu.default_quantity}</td>
+                  <td className="px-2.5 py-2">{menu.name}</td>
+                  <td className="px-2.5 py-2">{menu.item_type}</td>
+                  <td className="px-2.5 py-2">{menu.billing_unit}</td>
+                  <td className="px-2.5 py-2">{menu.price}</td>
+                  <td className="px-2.5 py-2">{menu.duration_minutes ?? '-'} 分</td>
+                  <td className="px-2.5 py-2">{menu.default_quantity}</td>
                 </tr>
               ))}
             </tbody>

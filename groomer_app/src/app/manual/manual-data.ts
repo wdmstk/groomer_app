@@ -187,7 +187,7 @@ export const manualSections: ManualSection[] = [
   {
     id: 'customers',
     title: '顧客管理',
-    path: '/customers',
+    path: '/customers/manage?view=customers',
     purpose: '顧客情報を登録し、LINE連携状態・LTV・会員ポータル導線まで含めて管理します。',
     procedures: [
       '顧客一覧タブの「新規登録」から氏名、連絡先、属性情報を入力して登録します。',
@@ -203,7 +203,7 @@ export const manualSections: ManualSection[] = [
   {
     id: 'pets',
     title: 'ペット管理',
-    path: '/pets',
+    path: '/customers/manage?view=pets',
     purpose: 'ペット基本情報と健康メモを管理します。',
     procedures: [
       '飼い主を選択し、ペット情報を入力して登録します。',

@@ -174,42 +174,47 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
           <p className="text-sm text-gray-500">スタッフがまだ登録されていません。</p>
         ) : (
           <>
-            <div className="space-y-3 md:hidden" data-testid="staffs-list-mobile">
+            <div className="space-y-2.5 md:hidden" data-testid="staffs-list-mobile">
               {staffs.map((staff) => {
                 const membership = staff.user_id ? membershipByUserId.get(staff.user_id) : undefined
                 return (
                 <article
                   key={staff.id}
-                  className="rounded border p-3 text-sm text-gray-700"
+                  className="rounded border border-gray-200 p-3 text-sm text-gray-700"
                   data-testid={`staff-row-${staff.id}`}
                 >
-                  <p className="font-semibold text-gray-900">{staff.full_name}</p>
-                  <p>メール: {staff.email ?? '未登録'}</p>
-                  <p>User ID: {staff.user_id ?? '未登録'}</p>
-                  <p>権限: {getMembershipLabel(staff.user_id ?? null)}</p>
+                  <p className="truncate font-semibold text-gray-900">{staff.full_name}</p>
+                  <p className="truncate text-xs text-gray-500">メール: {staff.email ?? '未登録'}</p>
+                  <p className="truncate text-xs text-gray-500">User ID: {staff.user_id ?? '未登録'}</p>
+                  <span className="mt-2 inline-flex rounded border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700">
+                    {getMembershipLabel(staff.user_id ?? null)}
+                  </span>
                   {canManageRoles && membership ? (
-                    <form action={`/api/store-memberships/${membership.id}/role`} method="post" className="mt-2 flex items-center gap-2">
+                    <form action={`/api/store-memberships/${membership.id}/role`} method="post" className="mt-2 flex items-center gap-1.5">
                       <select
                         name="role"
                         defaultValue={membership.role}
-                        className="rounded border p-1 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                        className="h-7 rounded border px-1.5 text-xs focus:ring-2 focus:ring-blue-400 outline-none"
                       >
                         <option value="owner">owner</option>
                         <option value="admin">admin</option>
                         <option value="staff">staff</option>
                       </select>
-                      <Button type="submit" className="bg-gray-700 hover:bg-gray-800">
+                      <Button type="submit" className="h-7 border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap">
                         権限変更
                       </Button>
                     </form>
                   ) : null}
-                  <div className="mt-2 flex items-center gap-2">
-                    <Link href={`/staffs?tab=list&edit=${staff.id}`} className="text-blue-600 text-sm">
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <Link
+                      href={`/staffs?tab=list&edit=${staff.id}`}
+                      className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                    >
                       編集
                     </Link>
                     <form action={`/api/staffs/${staff.id}`} method="post">
                       <input type="hidden" name="_method" value="delete" />
-                      <Button type="submit" className="bg-red-500 hover:bg-red-600">
+                      <Button type="submit" className="h-7 border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 hover:bg-red-100 whitespace-nowrap">
                         削除
                       </Button>
                     </form>
@@ -219,15 +224,13 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
               })}
             </div>
 
-            <div className="hidden overflow-x-auto md:block">
-              <table className="min-w-full text-sm text-left" data-testid="staffs-list">
-                <thead className="text-gray-500 border-b">
+            <div className="hidden md:block">
+              <table className="min-w-full table-fixed text-sm text-left" data-testid="staffs-list">
+                <thead className="border-b bg-gray-50 text-gray-500">
                   <tr>
-                    <th className="py-2 px-2">氏名</th>
-                    <th className="py-2 px-2">メールアドレス</th>
-                    <th className="py-2 px-2">User ID</th>
-                    <th className="py-2 px-2">権限</th>
-                    <th className="py-2 px-2">操作</th>
+                    <th className="px-2.5 py-2">スタッフ</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">権限</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -239,37 +242,43 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
                       className="text-gray-700"
                       data-testid={`staff-row-${staff.id}`}
                     >
-                      <td className="py-3 px-2 font-medium text-gray-900">{staff.full_name}</td>
-                      <td className="py-3 px-2">{staff.email ?? '未登録'}</td>
-                      <td className="py-3 px-2">{staff.user_id ?? '未登録'}</td>
-                      <td className="py-3 px-2">{getMembershipLabel(staff.user_id ?? null)}</td>
-                      <td className="py-3 px-2">
-                        <div className="flex items-center gap-2">
+                      <td className="px-2.5 py-2 align-top">
+                        <p className="truncate font-medium text-gray-900">{staff.full_name}</p>
+                        <p className="truncate text-xs text-gray-500">{staff.email ?? '未登録'}</p>
+                        <p className="truncate text-xs text-gray-500">User ID: {staff.user_id ?? '未登録'}</p>
+                      </td>
+                      <td className="px-2.5 py-2 align-top">
+                        <span className="inline-flex rounded border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700">
+                          {getMembershipLabel(staff.user_id ?? null)}
+                        </span>
+                      </td>
+                      <td className="px-2.5 py-2 align-top">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           {canManageRoles && membership ? (
-                            <form action={`/api/store-memberships/${membership.id}/role`} method="post" className="flex items-center gap-2">
+                            <form action={`/api/store-memberships/${membership.id}/role`} method="post" className="flex items-center gap-1.5">
                               <select
                                 name="role"
                                 defaultValue={membership.role}
-                                className="rounded border p-1 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                                className="h-7 rounded border px-1.5 text-xs focus:ring-2 focus:ring-blue-400 outline-none"
                               >
                                 <option value="owner">owner</option>
                                 <option value="admin">admin</option>
                                 <option value="staff">staff</option>
                               </select>
-                              <Button type="submit" className="bg-gray-700 hover:bg-gray-800">
+                              <Button type="submit" className="h-7 border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap">
                                 権限変更
                               </Button>
                             </form>
                           ) : null}
                           <Link
                             href={`/staffs?tab=list&edit=${staff.id}`}
-                            className="text-blue-600 text-sm"
+                            className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
                           >
                             編集
                           </Link>
                           <form action={`/api/staffs/${staff.id}`} method="post">
                             <input type="hidden" name="_method" value="delete" />
-                            <Button type="submit" className="bg-red-500 hover:bg-red-600">
+                            <Button type="submit" className="h-7 border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 hover:bg-red-100 whitespace-nowrap">
                               削除
                             </Button>
                           </form>

@@ -35,6 +35,7 @@ export async function POST(request: Request) {
   const isJson = request.headers.get('content-type')?.includes('application/json') ?? false
   const body = isJson ? await request.json().catch(() => null) : null
   const formData = isJson ? null : await request.formData()
+  const redirectTo = isJson ? null : formData?.get('redirect_to')?.toString().trim() || null
   const fullName = isJson
     ? typeof body?.full_name === 'string'
       ? body.full_name.trim()
@@ -107,5 +108,7 @@ export async function POST(request: Request) {
     return NextResponse.json(createdCustomer)
   }
 
-  return NextResponse.redirect(new URL('/customers', request.url))
+  const nextLocation =
+    redirectTo && redirectTo.startsWith('/') ? redirectTo : '/customers/manage?view=customers'
+  return NextResponse.redirect(new URL(nextLocation, request.url))
 }

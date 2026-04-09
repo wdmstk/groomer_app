@@ -81,22 +81,22 @@ export default async function BillingAlertsPage() {
 
       <Card>
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm text-left">
-            <thead className="border-b text-gray-500">
+          <table className="min-w-full table-fixed text-sm text-left">
+            <thead className="border-b bg-gray-50 text-gray-500">
               <tr>
-                <th className="px-2 py-2">店舗</th>
-                <th className="px-2 py-2">status</th>
-                <th className="px-2 py-2">試用残日数</th>
-                <th className="px-2 py-2">past_due_since</th>
+                <th className="px-2.5 py-2">店舗</th>
+                <th className="px-2.5 py-2">status</th>
+                <th className="px-2.5 py-2">試用残日数</th>
+                <th className="px-2.5 py-2">past_due_since</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {important.map((row) => (
                 <tr key={row.store_id} className="text-gray-700">
-                  <td className="px-2 py-3">{resolveStoreName(row.stores)}</td>
-                  <td className="px-2 py-3">{row.billing_status}</td>
-                  <td className="px-2 py-3">{row.daysLeft ?? '-'}</td>
-                  <td className="px-2 py-3">{row.past_due_since ?? '-'}</td>
+                  <td className="px-2.5 py-2">{resolveStoreName(row.stores)}</td>
+                  <td className="px-2.5 py-2">{row.billing_status}</td>
+                  <td className="px-2.5 py-2">{row.daysLeft ?? '-'}</td>
+                  <td className="px-2.5 py-2">{row.past_due_since ?? '-'}</td>
                 </tr>
               ))}
             </tbody>

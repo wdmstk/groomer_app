@@ -3,8 +3,9 @@ import { test, expect } from '@playwright/test'
 test.describe('会計一覧', () => {
   test.describe.configure({ mode: 'serial' })
 
+  // TRACE-015
   test('実運用に近い会計データを一覧表示できる', async ({ page }) => {
-    await page.goto('/payments?tab=list')
+    await page.goto('/payments')
 
     await expect(page.getByRole('heading', { name: '会計管理' })).toBeVisible()
     await expect(page.getByTestId('payments-list')).toBeVisible()
@@ -31,7 +32,7 @@ test.describe('会計一覧', () => {
   })
 
   test('新規会計モーダルを開ける', async ({ page }) => {
-    await page.goto('/payments?tab=list&modal=create&appointment_id=appt-003')
+    await page.goto('/payments?modal=create&appointment_id=appt-003')
 
     await expect(page.getByRole('heading', { name: '新規会計登録' })).toBeVisible()
     await expect(page.locator('select[name="appointment_id"]')).toBeVisible()
@@ -60,7 +61,7 @@ test.describe('会計一覧', () => {
   })
 
   test('POS会計で施術明細とホテル明細を取込できる', async ({ page }) => {
-    await page.goto('/payments?tab=list')
+    await page.goto('/payments')
 
     const panel = page.getByTestId('pos-checkout-panel')
     await expect(panel).toBeVisible()

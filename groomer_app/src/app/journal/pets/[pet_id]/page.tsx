@@ -133,7 +133,7 @@ export default async function PetJournalAlbumPage({ params }: RouteProps) {
     <main className="mx-auto max-w-3xl space-y-4 px-4 py-4">
       <header className="space-y-2">
         <p>
-          <Link href="/pets" className="text-sm text-sky-700 underline hover:text-sky-800">
+          <Link href="/customers/manage?view=pets" className="text-sm text-sky-700 underline hover:text-sky-800">
             ペット管理へ戻る
           </Link>
         </p>

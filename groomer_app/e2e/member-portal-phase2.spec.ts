@@ -37,7 +37,7 @@ test.describe('会員証URL Phase2', () => {
       })
     })
 
-    await page.goto('/customers/manage')
+    await page.goto('/customers/manage?view=detail&customer_id=customer-001&tab=basic')
 
     await expect(page.getByText('会員証URL')).toBeVisible()
     const issueButton = page.getByRole('button', { name: 'リクエスト対応で再発行' })

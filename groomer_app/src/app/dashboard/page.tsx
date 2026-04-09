@@ -185,7 +185,7 @@ const statusFlowActions = {
 const dashboardTabs = [
   { id: 'overview', label: '概要' },
   { id: 'operations', label: '当日運用' },
-  { id: 'followups', label: '再来店フォロー' },
+  { id: 'followups', label: '来店周期アラート' },
   { id: 'reoffers', label: '空き枠再販' },
 ] as const
 
@@ -324,7 +324,7 @@ function AppointmentDetailsPanel({
           <p>氏名: {customerName}</p>
           <p>電話: {customerPhone}</p>
           <p>メール: {customerEmail}</p>
-          <Link href={`/customers?tab=list&edit=${customerId}`} className="text-blue-700">
+          <Link href={`/customers/manage?customer_id=${customerId}`} className="text-blue-700">
             顧客詳細へ
           </Link>
         </div>
@@ -334,7 +334,7 @@ function AppointmentDetailsPanel({
           <p>犬種: {petBreed}</p>
           <p>性別: {petGender}</p>
           <p>注意事項: {petNotes}</p>
-          <Link href={`/pets?tab=list&edit=${petId}`} className="text-blue-700">
+          <Link href={`/customers/manage?customer_id=${customerId}&tab=${petId}`} className="text-blue-700">
             ペット詳細へ
           </Link>
         </div>
@@ -424,7 +424,7 @@ function AppointmentWorkflowActions({
         />
       ) : null}
       {!isPaid ? (
-        <Link href="/payments?tab=list&modal=create" className={secondaryLinkClass}>
+        <Link href="/payments?modal=create" className={secondaryLinkClass}>
           会計画面で詳細入力
         </Link>
       ) : null}
@@ -554,18 +554,18 @@ function AppointmentTable({
           </div>
 
           <div className="hidden overflow-x-auto md:block">
-            <table className="min-w-full text-sm text-left">
-            <thead className="border-b text-gray-500">
+            <table className="min-w-full table-fixed text-sm text-left">
+            <thead className="border-b bg-gray-50 text-gray-500">
               <tr>
-                <th className="px-2 py-2">日付</th>
-                <th className="px-2 py-2">時刻</th>
-                <th className="px-2 py-2">内容</th>
-                <th className="px-2 py-2">顧客</th>
-                <th className="px-2 py-2">ペット</th>
-                <th className="px-2 py-2">担当</th>
-                {showWorkflow ? <th className="px-2 py-2">ステータス</th> : null}
-                <th className="px-2 py-2">詳細</th>
-                {showWorkflow ? <th className="px-2 py-2">当日オペ</th> : null}
+                <th className="px-2.5 py-2">日付</th>
+                <th className="px-2.5 py-2">時刻</th>
+                <th className="px-2.5 py-2">内容</th>
+                <th className="px-2.5 py-2">顧客</th>
+                <th className="px-2.5 py-2">ペット</th>
+                <th className="px-2.5 py-2">担当</th>
+                {showWorkflow ? <th className="px-2.5 py-2">ステータス</th> : null}
+                <th className="px-2.5 py-2">詳細</th>
+                {showWorkflow ? <th className="px-2.5 py-2">当日オペ</th> : null}
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -591,22 +591,22 @@ function AppointmentTable({
 
                 return (
                   <tr key={appointment.id} className="align-top text-gray-700">
-                    <td className="px-2 py-3">{formatDateJst(appointment.start_time)}</td>
-                    <td className="px-2 py-3">
+                    <td className="px-2.5 py-2">{formatDateJst(appointment.start_time)}</td>
+                    <td className="px-2.5 py-2">
                       {formatTimeJst(appointment.start_time)} - {formatTimeJst(appointment.end_time)}
                     </td>
-                    <td className="px-2 py-3">{appointment.menu}</td>
-                    <td className="px-2 py-3 font-medium text-gray-900">{customerName}</td>
-                    <td className="px-2 py-3">{petName}</td>
-                    <td className="px-2 py-3">{staffName}</td>
+                    <td className="px-2.5 py-2">{appointment.menu}</td>
+                    <td className="px-2.5 py-2 font-medium text-gray-900">{customerName}</td>
+                    <td className="px-2.5 py-2">{petName}</td>
+                    <td className="px-2.5 py-2">{staffName}</td>
                     {showWorkflow ? (
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">
                         <span className="rounded bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">
                           {normalizedStatus}
                         </span>
                       </td>
                     ) : null}
-                    <td className="px-2 py-3">
+                    <td className="px-2.5 py-2">
                       <AppointmentDetailsPanel
                         customerName={customerName}
                         customerPhone={customerPhone}
@@ -621,7 +621,7 @@ function AppointmentTable({
                       />
                     </td>
                     {showWorkflow ? (
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">
                         <AppointmentWorkflowActions
                           appointment={appointment}
                           statusAction={statusAction}
@@ -1547,17 +1547,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <div className="mt-5 grid gap-3 md:grid-cols-3">
                 <div className="rounded-xl border border-white/10 bg-white/5 p-4"><p className="text-xs text-slate-300">30分以内の予約</p><p className="mt-2 text-2xl font-semibold">{within30MinAppointments.length} 件</p></div>
                 <div className="rounded-xl border border-white/10 bg-white/5 p-4"><p className="text-xs text-slate-300">未会計</p><p className="mt-2 text-2xl font-semibold">{unpaidTodayAppointments.length} 件</p></div>
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4"><p className="text-xs text-slate-300">フォロー今日期限</p><p className="mt-2 text-2xl font-semibold">{followupDueTodayCount} 件</p></div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4"><p className="text-xs text-slate-300">アラート今日期限</p><p className="mt-2 text-2xl font-semibold">{followupDueTodayCount} 件</p></div>
               </div>
             </Card>
             <Card>
               <div className="mb-4"><h2 className="text-lg font-semibold text-gray-900">次の一手</h2></div>
               <div className="space-y-3">
-                <Link href={buildDashboardHref('followups', followupWindowDays)} className="flex items-center justify-between rounded-xl border border-sky-200 bg-sky-50 px-4 py-3"><div><p className="text-sm font-semibold text-sky-900">再来店フォロー</p><p className="text-xs text-sky-700">高リスク {highRiskChurnCount} 件 / 未着手 {followupOpenCount} 件</p></div><span className="text-sm font-semibold text-sky-800">開く</span></Link>
+                <Link href={buildDashboardHref('followups', followupWindowDays)} className="flex items-center justify-between rounded-xl border border-sky-200 bg-sky-50 px-4 py-3"><div><p className="text-sm font-semibold text-sky-900">来店周期アラート</p><p className="text-xs text-sky-700">高リスク {highRiskChurnCount} 件 / 未着手 {followupOpenCount} 件</p></div><span className="text-sm font-semibold text-sky-800">開く</span></Link>
                 <Link href={buildDashboardHref('reoffers', followupWindowDays)} className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3"><div><p className="text-sm font-semibold text-emerald-900">空き枠再販</p><p className="text-xs text-emerald-700">受付 {reofferAcceptedCount} 件 / 予約化 {reofferAppointmentCreatedCount} 件</p></div><span className="text-sm font-semibold text-emerald-800">開く</span></Link>
                 <Link href={buildDashboardHref('operations', followupWindowDays)} className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"><div><p className="text-sm font-semibold text-amber-900">当日運用</p><p className="text-xs text-amber-700">近接予約 {within30MinAppointments.length} 件 / 遅延注意時間帯 {delayHotspotRows.length} 件</p></div><span className="text-sm font-semibold text-amber-800">開く</span></Link>
                 <Link href="/inventory/reorder-suggestions" className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-4 py-3"><div><p className="text-sm font-semibold text-rose-900">欠品予兆</p><p className="text-xs text-rose-700">発注提案と優先順位を確認</p></div><span className="text-sm font-semibold text-rose-800">開く</span></Link>
-                <Link href="/service-menus?tab=list" className="flex items-center justify-between rounded-xl border border-violet-200 bg-violet-50 px-4 py-3"><div><p className="text-sm font-semibold text-violet-900">所要時間補正</p><p className="text-xs text-violet-700">メニュー推奨時間を確認</p></div><span className="text-sm font-semibold text-violet-800">開く</span></Link>
+                <Link href="/service-menus" className="flex items-center justify-between rounded-xl border border-violet-200 bg-violet-50 px-4 py-3"><div><p className="text-sm font-semibold text-violet-900">所要時間補正</p><p className="text-xs text-violet-700">メニュー推奨時間を確認</p></div><span className="text-sm font-semibold text-violet-800">開く</span></Link>
               </div>
             </Card>
           </div>
@@ -1602,7 +1602,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </Card>
           <Card>
             <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-900">未会計アラート（本日）</h2><p className="text-sm text-gray-500">全 {unpaidTodayAppointments.length} 件</p></div>
-            {unpaidTodayAppointments.length === 0 ? <p className="text-sm text-gray-500">本日の未会計予約はありません。</p> : <div className="space-y-2">{unpaidTodayAppointments.map((appointment) => (<div key={appointment.id} className="flex flex-col gap-2 rounded border border-amber-200 bg-amber-50 p-3 text-sm md:flex-row md:items-center md:justify-between"><div><p className="font-semibold text-gray-900">{formatTimeJst(appointment.start_time)} / {getRelatedValue(appointment.pets, 'name') ?? '未登録'}</p><p className="text-gray-700">顧客: {getRelatedValue(appointment.customers, 'full_name') ?? '未登録'} / 担当: {getRelatedValue(appointment.staffs, 'full_name') ?? '未登録'}</p></div><Link href="/payments?tab=list&modal=create" className="inline-flex items-center rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white">会計へ</Link></div>))}</div>}
+            {unpaidTodayAppointments.length === 0 ? <p className="text-sm text-gray-500">本日の未会計予約はありません。</p> : <div className="space-y-2">{unpaidTodayAppointments.map((appointment) => (<div key={appointment.id} className="flex flex-col gap-2 rounded border border-amber-200 bg-amber-50 p-3 text-sm md:flex-row md:items-center md:justify-between"><div><p className="font-semibold text-gray-900">{formatTimeJst(appointment.start_time)} / {getRelatedValue(appointment.pets, 'name') ?? '未登録'}</p><p className="text-gray-700">顧客: {getRelatedValue(appointment.customers, 'full_name') ?? '未登録'} / 担当: {getRelatedValue(appointment.staffs, 'full_name') ?? '未登録'}</p></div><Link href="/payments?modal=create" className="inline-flex items-center rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white">会計へ</Link></div>))}</div>}
           </Card>
           <AppointmentTable title="当日の予約一覧" appointments={(todayAppointments as AppointmentRow[]) ?? []} latestRecordByPetId={latestRecordByPetId} showWorkflow paidAppointmentIds={paidTodayAppointmentIds} paymentIdByAppointmentId={paidPaymentIdByAppointmentId} signedConsentAppointmentIds={signedConsentAppointmentIds} />
           <AppointmentTable title="今後1週間の予約一覧" appointments={(upcomingAppointments as AppointmentRow[]) ?? []} latestRecordByPetId={latestRecordByPetId} />
@@ -1612,9 +1612,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       {activeTab === 'followups' ? (
         <>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <Card><p className="text-xs text-gray-500">再来店フォロー未着手</p><p className="text-2xl font-semibold text-gray-900">{followupOpenCount} 件</p></Card>
-            <Card><p className="text-xs text-gray-500">再来店フォロー対応中</p><p className="text-2xl font-semibold text-gray-900">{followupInProgressCount} 件</p></Card>
-            <Card><p className="text-xs text-gray-500">再来店フォロー保留</p><p className="text-2xl font-semibold text-gray-900">{followupSnoozedCount} 件</p><p className="text-xs text-gray-500">今日期限: {followupDueTodayCount} 件</p></Card>
+            <Card><p className="text-xs text-gray-500">来店周期アラート未着手</p><p className="text-2xl font-semibold text-gray-900">{followupOpenCount} 件</p></Card>
+            <Card><p className="text-xs text-gray-500">来店周期アラート対応中</p><p className="text-2xl font-semibold text-gray-900">{followupInProgressCount} 件</p></Card>
+            <Card><p className="text-xs text-gray-500">来店周期アラート保留</p><p className="text-2xl font-semibold text-gray-900">{followupSnoozedCount} 件</p><p className="text-xs text-gray-500">今日期限: {followupDueTodayCount} 件</p></Card>
             <Card><p className="text-xs text-gray-500">期間内の予約化</p><p className="text-2xl font-semibold text-gray-900">{followupBookedCount} 件</p><p className="text-xs text-gray-500">予約化率: {followupBookedRate}%</p></Card>
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -1643,8 +1643,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <Card>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">離脱予兆の優先対応リスト</h2>
-              <Link href="/customers?tab=alerts" className="text-sm font-semibold text-blue-700">
-                顧客一覧へ
+              <Link href="/customers/manage?view=alerts" className="text-sm font-semibold text-blue-700">
+                顧客ペット管理へ
               </Link>
             </div>
             {churnRiskRows.length === 0 ? (
@@ -1665,7 +1665,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Link href={`/customers?tab=list&edit=${row.customerId}`} className="rounded border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700">
+                      <Link href={`/customers/manage?view=customers&customer_edit=${row.customerId}`} className="rounded border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700">
                         顧客編集
                       </Link>
                       <Link href={`/appointments?tab=list&modal=create&followup_customer_id=${row.customerId}`} className="rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white">
@@ -1678,16 +1678,16 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             )}
           </Card>
           <Card>
-            <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-900">再来店フォロー隊列</h2><Link href="/customers?tab=alerts" className="text-sm font-semibold text-blue-700">一覧へ</Link></div>
-            {followupPriorityRows.length === 0 ? <p className="text-sm text-gray-500">対応中のフォローアップはありません。</p> : <div className="space-y-2">{followupPriorityRows.map((task) => (<div key={task.id} className="flex flex-col gap-1 rounded border border-sky-200 bg-sky-50 p-3 text-sm md:flex-row md:items-center md:justify-between"><div><p className="font-semibold text-gray-900">{getRelatedValue(task.customers, 'full_name') ?? '未登録'} / {task.status}</p><p className="text-gray-700">期限: {task.due_on ?? task.recommended_at.slice(0, 10)} / 電話: {getRelatedValue(task.customers, 'phone_number') ?? '未登録'} / LINE: {getRelatedValue(task.customers, 'line_id') ?? '未登録'}</p></div></div>))}</div>}
+            <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-900">再来店フォロー一覧</h2><Link href="/customers/manage?view=alerts" className="text-sm font-semibold text-blue-700">顧客ペット管理へ</Link></div>
+            {followupPriorityRows.length === 0 ? <p className="text-sm text-gray-500">対応中の再来店フォローはありません。</p> : <div className="space-y-2">{followupPriorityRows.map((task) => (<div key={task.id} className="flex flex-col gap-1 rounded border border-sky-200 bg-sky-50 p-3 text-sm md:flex-row md:items-center md:justify-between"><div><p className="font-semibold text-gray-900">{getRelatedValue(task.customers, 'full_name') ?? '未登録'} / {task.status}</p><p className="text-gray-700">期限: {task.due_on ?? task.recommended_at.slice(0, 10)} / 電話: {getRelatedValue(task.customers, 'phone_number') ?? '未登録'} / LINE: {getRelatedValue(task.customers, 'line_id') ?? '未登録'}</p></div></div>))}</div>}
           </Card>
           <Card>
             <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-900">来店周期アラート</h2><p className="text-sm text-gray-500">全 {revisitAlerts.length} 件</p></div>
-            {revisitAlerts.length === 0 ? <p className="text-sm text-gray-500">来店周期アラートはありません。</p> : <div className="space-y-2">{revisitAlerts.slice(0, 8).map((alert) => (<div key={alert.customerId} className="flex flex-col gap-1 rounded border border-amber-200 bg-amber-50 p-3 text-sm md:flex-row md:items-center md:justify-between"><div><p className="font-semibold text-gray-900">{alert.customerName}（{alert.overdueDays}日超過）</p><p className="text-gray-700">電話: {alert.phoneNumber ?? '未登録'} / LINE: {alert.lineId ?? '未登録'}</p></div></div>))}<div><Link href="/customers?tab=alerts" className="text-sm font-semibold text-blue-700">来店周期アラート一覧へ</Link></div></div>}
+            {revisitAlerts.length === 0 ? <p className="text-sm text-gray-500">来店周期アラートはありません。</p> : <div className="space-y-2">{revisitAlerts.slice(0, 8).map((alert) => (<div key={alert.customerId} className="flex flex-col gap-1 rounded border border-amber-200 bg-amber-50 p-3 text-sm md:flex-row md:items-center md:justify-between"><div><p className="font-semibold text-gray-900">{alert.customerName}（{alert.overdueDays}日超過）</p><p className="text-gray-700">電話: {alert.phoneNumber ?? '未登録'} / LINE: {alert.lineId ?? '未登録'}</p></div></div>))}<div><Link href="/customers/manage?view=alerts" className="text-sm font-semibold text-blue-700">顧客ペット管理で一覧を見る</Link></div></div>}
           </Card>
           <Card>
             <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-900">担当者別フォローKPI</h2><p className="text-sm text-gray-500">直近{followupWindowDays}日基準</p></div>
-            {followupStaffStats.length === 0 ? <p className="text-sm text-gray-500">担当者別データはまだありません。</p> : <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b text-gray-500"><tr><th className="px-2 py-2">担当者</th><th className="px-2 py-2">総件数</th><th className="px-2 py-2">未完了</th><th className="px-2 py-2">予約化</th><th className="px-2 py-2">予約化率</th></tr></thead><tbody className="divide-y">{followupStaffStats.map((row) => (<tr key={row.name} className="text-gray-700"><td className="px-2 py-3 font-medium text-gray-900">{row.name}</td><td className="px-2 py-3">{row.total} 件</td><td className="px-2 py-3">{row.active} 件</td><td className="px-2 py-3">{row.booked} 件</td><td className="px-2 py-3">{row.bookedRate}%</td></tr>))}</tbody></table></div>}
+            {followupStaffStats.length === 0 ? <p className="text-sm text-gray-500">担当者別データはまだありません。</p> : <div className="overflow-x-auto"><table className="min-w-full table-fixed text-left text-sm"><thead className="border-b bg-gray-50 text-gray-500"><tr><th className="px-2.5 py-2">担当者</th><th className="px-2.5 py-2">総件数</th><th className="px-2.5 py-2">未完了</th><th className="px-2.5 py-2">予約化</th><th className="px-2.5 py-2">予約化率</th></tr></thead><tbody className="divide-y">{followupStaffStats.map((row) => (<tr key={row.name} className="text-gray-700"><td className="px-2.5 py-2 font-medium text-gray-900">{row.name}</td><td className="px-2.5 py-2">{row.total} 件</td><td className="px-2.5 py-2">{row.active} 件</td><td className="px-2.5 py-2">{row.booked} 件</td><td className="px-2.5 py-2">{row.bookedRate}%</td></tr>))}</tbody></table></div>}
           </Card>
         </>
       ) : null}
@@ -1697,7 +1697,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <Card className={hasInstantBookableMenu ? '' : 'border border-amber-300 bg-amber-50'}>
             <div className="mb-2 flex items-center justify-between">
               <p className="text-sm font-semibold text-gray-900">即時確定対象メニュー</p>
-              <Link href="/service-menus?tab=list" className="text-xs font-semibold text-blue-700">
+              <Link href="/service-menus" className="text-xs font-semibold text-blue-700">
                 メニュー設定を開く
               </Link>
             </div>
@@ -1774,7 +1774,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <Card><SlotReofferPanel /></Card>
           <Card>
             <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-900">担当者別 再販KPI</h2><p className="text-sm text-gray-500">直近{followupWindowDays}日基準</p></div>
-            {reofferStaffStats.length === 0 ? <p className="text-sm text-gray-500">担当者別の再販データはまだありません。</p> : <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b text-gray-500"><tr><th className="px-2 py-2">担当者</th><th className="px-2 py-2">総件数</th><th className="px-2 py-2">受付完了</th><th className="px-2 py-2">予約化</th><th className="px-2 py-2">予約化率</th></tr></thead><tbody className="divide-y">{reofferStaffStats.map((row) => (<tr key={row.name} className="text-gray-700"><td className="px-2 py-3 font-medium text-gray-900">{row.name}</td><td className="px-2 py-3">{row.total} 件</td><td className="px-2 py-3">{row.accepted} 件</td><td className="px-2 py-3">{row.booked} 件</td><td className="px-2 py-3">{row.bookedRate}%</td></tr>))}</tbody></table></div>}
+            {reofferStaffStats.length === 0 ? <p className="text-sm text-gray-500">担当者別の再販データはまだありません。</p> : <div className="overflow-x-auto"><table className="min-w-full table-fixed text-left text-sm"><thead className="border-b bg-gray-50 text-gray-500"><tr><th className="px-2.5 py-2">担当者</th><th className="px-2.5 py-2">総件数</th><th className="px-2.5 py-2">受付完了</th><th className="px-2.5 py-2">予約化</th><th className="px-2.5 py-2">予約化率</th></tr></thead><tbody className="divide-y">{reofferStaffStats.map((row) => (<tr key={row.name} className="text-gray-700"><td className="px-2.5 py-2 font-medium text-gray-900">{row.name}</td><td className="px-2.5 py-2">{row.total} 件</td><td className="px-2.5 py-2">{row.accepted} 件</td><td className="px-2.5 py-2">{row.booked} 件</td><td className="px-2.5 py-2">{row.bookedRate}%</td></tr>))}</tbody></table></div>}
           </Card>
         </>
       ) : null}

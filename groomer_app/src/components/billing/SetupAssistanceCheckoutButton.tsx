@@ -5,13 +5,27 @@ import { SETUP_ASSISTANCE_FEE_JPY } from '@/lib/billing/pricing'
 
 type Provider = 'stripe' | 'komoju'
 
-export function SetupAssistanceCheckoutButton() {
+type SetupAssistanceCheckoutButtonProps = {
+  legalAgreed?: boolean
+  requireLegalAgreement?: boolean
+  onLegalAgreementRequired?: () => void
+}
+
+export function SetupAssistanceCheckoutButton({
+  legalAgreed = false,
+  requireLegalAgreement = false,
+  onLegalAgreementRequired,
+}: SetupAssistanceCheckoutButtonProps) {
   const [isLoading, setIsLoading] = useState<Provider | null>(null)
   const [error, setError] = useState('')
 
   async function startCheckout(provider: Provider) {
-    setIsLoading(provider)
     setError('')
+    if (requireLegalAgreement && !legalAgreed) {
+      onLegalAgreementRequired?.()
+      return
+    }
+    setIsLoading(provider)
     try {
       const response = await fetch('/api/billing/setup-assistance/checkout', {
         method: 'POST',
@@ -43,7 +57,7 @@ export function SetupAssistanceCheckoutButton() {
       <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
-          disabled={isLoading !== null}
+          disabled={isLoading !== null || (requireLegalAgreement && !legalAgreed)}
           onClick={() => {
             void startCheckout('stripe')
           }}
@@ -53,7 +67,7 @@ export function SetupAssistanceCheckoutButton() {
         </button>
         <button
           type="button"
-          disabled={isLoading !== null}
+          disabled={isLoading !== null || (requireLegalAgreement && !legalAgreed)}
           onClick={() => {
             void startCheckout('komoju')
           }}

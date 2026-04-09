@@ -38,7 +38,7 @@ export function MedicalRecordAiProPlusAnalyzeButton({ recordId }: MedicalRecordA
         type="button"
         onClick={handleAnalyze}
         disabled={loading}
-        className="px-2 py-1 text-xs bg-rose-600 hover:bg-rose-500"
+        className="h-7 whitespace-nowrap bg-rose-600 px-2 py-0 text-xs hover:bg-rose-500"
       >
         {loading ? '解析中...' : 'AI Pro+解析'}
       </Button>
@@ -47,4 +47,3 @@ export function MedicalRecordAiProPlusAnalyzeButton({ recordId }: MedicalRecordA
     </div>
   )
 }
-

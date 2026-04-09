@@ -423,17 +423,19 @@ export default async function VisitsPage({ searchParams }: VisitsPageProps) {
             <p className="text-sm text-gray-500">来店履歴がまだ登録されていません。</p>
           ) : (
             <>
-              <div className="space-y-3 md:hidden">
+              <div className="space-y-2.5 md:hidden">
                 {visitList.map((visit) => (
-                  <article key={visit.id} className="rounded border p-3 text-sm text-gray-700">
-                    <p className="font-semibold text-gray-900">
+                  <article key={visit.id} className="rounded border border-gray-200 p-3 text-sm text-gray-700">
+                    <p className="truncate font-semibold text-gray-900">
                       {getRelatedValue(visit.customers, 'full_name')} / {getVisitPetName(visit.appointments)}
                     </p>
-                    <p>予約ID: {visit.appointment_id ?? 'なし'}</p>
-                    <p>担当: {getRelatedValue(visit.staffs, 'full_name')}</p>
-                    <p>来店日時: {formatDateTimeJst(visit.visit_date)}</p>
-                    <p>メニュー: {visit.menu}</p>
-                    <p>
+                    <p className="mt-0.5 text-xs text-gray-500">担当: {getRelatedValue(visit.staffs, 'full_name')}</p>
+                    <p className="text-xs text-gray-500">予約ID: {visit.appointment_id ?? 'なし'}</p>
+                    <p className="mt-2 text-xs text-gray-500">来店日時</p>
+                    <p className="font-medium text-gray-900">{formatDateTimeJst(visit.visit_date)}</p>
+                    <p className="mt-2 text-xs text-gray-500">メニュー</p>
+                    <p className="truncate font-medium text-gray-900">{visit.menu}</p>
+                    <p className="mt-1">
                       内訳:{' '}
                       {visit.visit_menus && visit.visit_menus.length > 0
                         ? visit.visit_menus.map((menu) => menu.menu_name).join(' / ')
@@ -441,13 +443,16 @@ export default async function VisitsPage({ searchParams }: VisitsPageProps) {
                     </p>
                     <p>金額: {visit.total_amount.toLocaleString()} 円</p>
                     <p>備考: {visit.notes ?? '未登録'}</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <Link href={`/visits?tab=list&edit=${visit.id}`} className="text-blue-600 text-sm">
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <Link
+                        href={`/visits?tab=list&edit=${visit.id}`}
+                        className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                      >
                         編集
                       </Link>
                       <form action={`/api/visits/${visit.id}`} method="post">
                         <input type="hidden" name="_method" value="delete" />
-                        <Button type="submit" className="bg-red-500 hover:bg-red-600">
+                        <Button type="submit" className="h-7 border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 hover:bg-red-100 whitespace-nowrap">
                           削除
                         </Button>
                       </form>
@@ -457,50 +462,53 @@ export default async function VisitsPage({ searchParams }: VisitsPageProps) {
               </div>
 
               <div className="hidden overflow-x-auto md:block">
-                <table className="min-w-full text-sm text-left">
-                  <thead className="text-gray-500 border-b">
+                <table className="min-w-full table-fixed text-sm text-left">
+                  <thead className="border-b bg-gray-50 text-gray-500">
                     <tr>
-                      <th className="py-2 px-2">顧客</th>
-                      <th className="py-2 px-2">ペット</th>
-                      <th className="py-2 px-2">予約ID</th>
-                      <th className="py-2 px-2">担当</th>
-                      <th className="py-2 px-2">来店日時</th>
-                      <th className="py-2 px-2">メニュー</th>
-                      <th className="py-2 px-2">内訳</th>
-                      <th className="py-2 px-2">金額</th>
-                      <th className="py-2 px-2">備考</th>
-                      <th className="py-2 px-2">操作</th>
+                      <th className="px-2.5 py-2">対象</th>
+                      <th className="px-2.5 py-2 whitespace-nowrap">来店日時</th>
+                      <th className="px-2.5 py-2">メニュー</th>
+                      <th className="px-2.5 py-2 whitespace-nowrap">金額</th>
+                      <th className="px-2.5 py-2">備考</th>
+                      <th className="px-2.5 py-2 whitespace-nowrap">操作</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {visitList.map((visit) => (
                       <tr key={visit.id} className="text-gray-700">
-                        <td className="py-3 px-2 font-medium text-gray-900">
-                          {getRelatedValue(visit.customers, 'full_name')}
+                        <td className="px-2.5 py-2 align-top">
+                          <p className="truncate font-medium text-gray-900">
+                            {getRelatedValue(visit.customers, 'full_name')} / {getVisitPetName(visit.appointments)}
+                          </p>
+                          <p className="truncate text-xs text-gray-500">
+                            担当: {getRelatedValue(visit.staffs, 'full_name')}
+                          </p>
+                          <p className="text-xs text-gray-500">予約ID: {visit.appointment_id ?? 'なし'}</p>
                         </td>
-                        <td className="py-3 px-2">{getVisitPetName(visit.appointments)}</td>
-                        <td className="py-3 px-2">{visit.appointment_id ?? 'なし'}</td>
-                        <td className="py-3 px-2">{getRelatedValue(visit.staffs, 'full_name')}</td>
-                        <td className="py-3 px-2">{formatDateTimeJst(visit.visit_date)}</td>
-                        <td className="py-3 px-2">{visit.menu}</td>
-                        <td className="py-3 px-2">
-                          {visit.visit_menus && visit.visit_menus.length > 0
-                            ? visit.visit_menus.map((menu) => menu.menu_name).join(' / ')
-                            : '未登録'}
+                        <td className="px-2.5 py-2 whitespace-nowrap align-top">{formatDateTimeJst(visit.visit_date)}</td>
+                        <td className="px-2.5 py-2 align-top">
+                          <p className="truncate font-medium text-gray-900">{visit.menu}</p>
+                          <p className="line-clamp-2 text-xs text-gray-500">
+                            {visit.visit_menus && visit.visit_menus.length > 0
+                              ? visit.visit_menus.map((menu) => menu.menu_name).join(' / ')
+                              : '内訳: 未登録'}
+                          </p>
                         </td>
-                        <td className="py-3 px-2">{visit.total_amount.toLocaleString()} 円</td>
-                        <td className="py-3 px-2">{visit.notes ?? '未登録'}</td>
-                        <td className="py-3 px-2">
-                          <div className="flex items-center gap-2">
+                        <td className="px-2.5 py-2 whitespace-nowrap align-top">{visit.total_amount.toLocaleString()} 円</td>
+                        <td className="px-2.5 py-2 align-top">
+                          <p className="line-clamp-2 text-sm">{visit.notes ?? '未登録'}</p>
+                        </td>
+                        <td className="px-2.5 py-2 align-top">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <Link
                               href={`/visits?tab=list&edit=${visit.id}`}
-                              className="text-blue-600 text-sm"
+                              className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
                             >
                               編集
                             </Link>
                             <form action={`/api/visits/${visit.id}`} method="post">
                               <input type="hidden" name="_method" value="delete" />
-                              <Button type="submit" className="bg-red-500 hover:bg-red-600">
+                              <Button type="submit" className="h-7 border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 hover:bg-red-100 whitespace-nowrap">
                                 削除
                               </Button>
                             </form>
@@ -540,7 +548,7 @@ export default async function VisitsPage({ searchParams }: VisitsPageProps) {
           <div className="mt-5 rounded border p-3">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-sm font-semibold text-gray-900">優先フォロー対象（漏れ上位10件）</p>
-              <Link href="/customers" className="text-sm font-semibold text-blue-600">
+              <Link href="/customers/manage?view=alerts" className="text-sm font-semibold text-blue-600">
                 再来店フォローへ
               </Link>
             </div>

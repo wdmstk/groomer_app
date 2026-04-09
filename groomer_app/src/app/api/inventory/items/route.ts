@@ -84,5 +84,5 @@ export async function POST(request: Request) {
     after: createdItem,
   })
 
-  return NextResponse.redirect(new URL('/inventory/products?tab=list', request.url))
+  return NextResponse.redirect(new URL('/inventory/products', request.url))
 }

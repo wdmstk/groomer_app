@@ -1372,14 +1372,14 @@ export function HotelStaysManager({
               </Button>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm text-slate-900">
-                <thead className="border-b text-slate-600">
+              <table className="min-w-full table-fixed text-left text-sm text-slate-900">
+                <thead className="border-b bg-slate-100 text-slate-600">
                   <tr>
-                    <th className="px-2 py-2">コード</th>
-                    <th className="px-2 py-2">ペット</th>
-                    <th className="px-2 py-2">利用時間</th>
-                    <th className="px-2 py-2">ステータス</th>
-                    <th className="px-2 py-2">金額</th>
+                    <th className="px-2.5 py-2">コード</th>
+                    <th className="px-2.5 py-2">ペット</th>
+                    <th className="px-2.5 py-2">利用時間</th>
+                    <th className="px-2.5 py-2">ステータス</th>
+                    <th className="px-2.5 py-2">金額</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -1391,16 +1391,16 @@ export function HotelStaysManager({
                         selectedStayId === stay.id ? 'bg-sky-100 hover:bg-sky-100' : 'bg-slate-50 hover:bg-slate-100'
                       }`}
                     >
-                      <td className="px-2 py-3 font-medium text-slate-950">{stay.stay_code}</td>
-                      <td className="px-2 py-3 text-slate-900">
+                      <td className="px-2.5 py-2 font-medium text-slate-950">{stay.stay_code}</td>
+                      <td className="px-2.5 py-2 text-slate-900">
                         {pets.find((pet) => pet.id === stay.pet_id)?.label ?? stay.pet_id}
                       </td>
-                      <td className="px-2 py-3 text-slate-800">
+                      <td className="px-2.5 py-2 text-slate-800">
                         <p>{formatDateTime(stay.planned_check_in_at)}</p>
                         <p>{formatDateTime(stay.planned_check_out_at)}</p>
                       </td>
-                      <td className="px-2 py-3 text-slate-900">{statusLabel(stay.status)}</td>
-                      <td className="px-2 py-3 font-semibold text-slate-950">{formatMoney(stay.total_amount_jpy)}</td>
+                      <td className="px-2.5 py-2 text-slate-900">{statusLabel(stay.status)}</td>
+                      <td className="px-2.5 py-2 font-semibold text-slate-950">{formatMoney(stay.total_amount_jpy)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1430,7 +1430,7 @@ export function HotelStaysManager({
               {invoiceMessage ? (
                 <div className="mt-3 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
                   <p>{invoiceMessage}</p>
-                  <Link href="/payments?tab=list" className="mt-1 inline-block text-xs font-semibold text-emerald-700 underline">
+                  <Link href="/payments" className="mt-1 inline-block text-xs font-semibold text-emerald-700 underline">
                     会計管理を開く
                   </Link>
                 </div>
@@ -1670,35 +1670,36 @@ export function HotelStaysManager({
           ) : null}
 
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b text-gray-500">
+            <table className="min-w-full table-fixed text-left text-sm">
+              <thead className="border-b bg-gray-50 text-gray-500">
                 <tr>
-                  <th className="px-2 py-2">商品名</th>
-                  <th className="px-2 py-2">種別</th>
-                  <th className="px-2 py-2">単価</th>
-                  <th className="px-2 py-2">数量</th>
-                  <th className="px-2 py-2">定員</th>
-                  <th className="px-2 py-2">状態</th>
-                  <th className="px-2 py-2">操作</th>
+                  <th className="px-2.5 py-2">商品名</th>
+                  <th className="px-2.5 py-2">種別</th>
+                  <th className="px-2.5 py-2">単価</th>
+                  <th className="px-2.5 py-2">数量</th>
+                  <th className="px-2.5 py-2">定員</th>
+                  <th className="px-2.5 py-2">状態</th>
+                  <th className="px-2.5 py-2">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {menuItems.map((item) => (
                   <tr key={item.id} className="text-gray-700">
-                    <td className="px-2 py-3 font-medium text-gray-900">{item.name}</td>
-                    <td className="px-2 py-3">{item.item_type}</td>
-                    <td className="px-2 py-3">{formatMoney(item.price)}</td>
-                    <td className="px-2 py-3">{item.default_quantity}</td>
-                    <td className="px-2 py-3">{item.counts_toward_capacity ? '対象' : '対象外'}</td>
-                    <td className="px-2 py-3">{item.is_active ? '有効' : '無効'}</td>
-                    <td className="px-2 py-3">
-                      <div className="flex gap-2">
+                    <td className="px-2.5 py-2 font-medium text-gray-900">{item.name}</td>
+                    <td className="px-2.5 py-2">{item.item_type}</td>
+                    <td className="px-2.5 py-2">{formatMoney(item.price)}</td>
+                    <td className="px-2.5 py-2">{item.default_quantity}</td>
+                    <td className="px-2.5 py-2">{item.counts_toward_capacity ? '対象' : '対象外'}</td>
+                    <td className="px-2.5 py-2">{item.is_active ? '有効' : '無効'}</td>
+                    <td className="px-2.5 py-2">
+                      <div className="flex flex-wrap gap-1.5">
                         <Button
                           type="button"
                           onClick={() => {
                             setMenuItemDraft(buildMenuItemDraft(item))
                             setShowMenuItemForm(true)
                           }}
+                          className="h-7 px-2 py-0 text-xs"
                         >
                           編集
                         </Button>
@@ -1706,6 +1707,7 @@ export function HotelStaysManager({
                           type="button"
                           onClick={() => void deleteMenuItem(item.id)}
                           disabled={deletingMenuItemId === item.id}
+                          className="h-7 px-2 py-0 text-xs"
                         >
                           {deletingMenuItemId === item.id ? '削除中...' : '削除'}
                         </Button>

@@ -109,7 +109,7 @@ export async function POST(request: Request, context: RouteParams) {
     if (error) {
       return NextResponse.json({ message: error.message }, { status: 500 })
     }
-    return NextResponse.redirect(new URL('/service-menus?tab=list', request.url))
+    return NextResponse.redirect(new URL('/service-menus', request.url))
   }
 
   if (method === 'put' || method === 'patch') {

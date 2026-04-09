@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import BillingManagementContent from '@/components/billing/pages/BillingManagementContent'
 import BillingHistoryContent from '@/components/billing/pages/BillingHistoryContent'
+import BillingConnectionsContent from '@/components/billing/pages/BillingConnectionsContent'
 
 type RawSearchParams = Record<string, string | string[] | undefined>
-type BillingTab = 'management' | 'history'
+type BillingTab = 'management' | 'history' | 'connections'
 
 type BillingPageProps = {
   searchParams?: Promise<RawSearchParams>
@@ -12,6 +13,7 @@ type BillingPageProps = {
 const BILLING_TABS: Array<{ id: BillingTab; label: string }> = [
   { id: 'management', label: '決済管理' },
   { id: 'history', label: '決済履歴' },
+  { id: 'connections', label: '決済接続' },
 ]
 
 function firstParam(value: string | string[] | undefined) {
@@ -21,6 +23,7 @@ function firstParam(value: string | string[] | undefined) {
 
 function resolveTab(value: string | undefined): BillingTab {
   if (value === 'history') return 'history'
+  if (value === 'connections') return 'connections'
   return 'management'
 }
 
@@ -56,6 +59,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
 
       {tab === 'management' ? <BillingManagementContent searchParams={Promise.resolve({ message, error })} /> : null}
       {tab === 'history' ? <BillingHistoryContent /> : null}
+      {tab === 'connections' ? <BillingConnectionsContent /> : null}
     </section>
   )
 }

@@ -663,24 +663,24 @@ export function CronJobsManager() {
                 <div className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-900">
                   最新 medical_record_ai_video_jobs
                 </div>
-                <table className="min-w-full text-left text-xs">
-                  <thead className="border-b text-gray-500">
+                <table className="min-w-full table-fixed text-left text-xs">
+                  <thead className="border-b bg-gray-50 text-gray-500">
                     <tr>
-                      <th className="px-2 py-2">tier</th>
-                      <th className="px-2 py-2">status</th>
-                      <th className="px-2 py-2">provider</th>
-                      <th className="px-2 py-2">attempts</th>
-                      <th className="px-2 py-2">created</th>
+                      <th className="px-2.5 py-2">tier</th>
+                      <th className="px-2.5 py-2">status</th>
+                      <th className="px-2.5 py-2">provider</th>
+                      <th className="px-2.5 py-2">attempts</th>
+                      <th className="px-2.5 py-2">created</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {videoDashboard.latestVideoJobs.map((row) => (
                       <tr key={row.id} className="text-gray-700">
-                        <td className="px-2 py-2">{row.tier}</td>
-                        <td className="px-2 py-2">{row.status}</td>
-                        <td className="px-2 py-2">{row.provider ?? '-'}</td>
-                        <td className="px-2 py-2">{row.attempts}</td>
-                        <td className="px-2 py-2">{formatDateTime(row.createdAt)}</td>
+                        <td className="px-2.5 py-2">{row.tier}</td>
+                        <td className="px-2.5 py-2">{row.status}</td>
+                        <td className="px-2.5 py-2">{row.provider ?? '-'}</td>
+                        <td className="px-2.5 py-2">{row.attempts}</td>
+                        <td className="px-2.5 py-2">{formatDateTime(row.createdAt)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -691,22 +691,22 @@ export function CronJobsManager() {
                 <div className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-900">
                   最新 job_runs（medical-record-ai-video）
                 </div>
-                <table className="min-w-full text-left text-xs">
-                  <thead className="border-b text-gray-500">
+                <table className="min-w-full table-fixed text-left text-xs">
+                  <thead className="border-b bg-gray-50 text-gray-500">
                     <tr>
-                      <th className="px-2 py-2">status</th>
-                      <th className="px-2 py-2">trigger</th>
-                      <th className="px-2 py-2">started</th>
-                      <th className="px-2 py-2">finished</th>
+                      <th className="px-2.5 py-2">status</th>
+                      <th className="px-2.5 py-2">trigger</th>
+                      <th className="px-2.5 py-2">started</th>
+                      <th className="px-2.5 py-2">finished</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {videoDashboard.latestJobRuns.map((row) => (
                       <tr key={row.id} className="text-gray-700">
-                        <td className="px-2 py-2">{row.status}</td>
-                        <td className="px-2 py-2">{row.trigger}</td>
-                        <td className="px-2 py-2">{formatDateTime(row.startedAt)}</td>
-                        <td className="px-2 py-2">{formatDateTime(row.finishedAt)}</td>
+                        <td className="px-2.5 py-2">{row.status}</td>
+                        <td className="px-2.5 py-2">{row.trigger}</td>
+                        <td className="px-2.5 py-2">{formatDateTime(row.startedAt)}</td>
+                        <td className="px-2.5 py-2">{formatDateTime(row.finishedAt)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -746,15 +746,15 @@ export function CronJobsManager() {
           <p className="text-sm text-gray-600">保持中の lock はありません。</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b text-gray-500">
+            <table className="min-w-full table-fixed text-left text-sm">
+              <thead className="border-b bg-gray-50 text-gray-500">
                 <tr>
-                  <th className="px-2 py-2">job</th>
-                  <th className="px-2 py-2">jobRunId</th>
-                  <th className="px-2 py-2">state</th>
-                  <th className="px-2 py-2">expiresAt</th>
-                  <th className="px-2 py-2">updatedAt</th>
-                  <th className="px-2 py-2">action</th>
+                  <th className="px-2.5 py-2">job</th>
+                  <th className="px-2.5 py-2">jobRunId</th>
+                  <th className="px-2.5 py-2">state</th>
+                  <th className="px-2.5 py-2">expiresAt</th>
+                  <th className="px-2.5 py-2">updatedAt</th>
+                  <th className="px-2.5 py-2">action</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -766,8 +766,8 @@ export function CronJobsManager() {
                       key={lock.jobRunId}
                       className={expired ? 'bg-amber-50 text-amber-950' : 'text-gray-700'}
                     >
-                      <td className="px-2 py-3">{lock.jobName}</td>
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">{lock.jobName}</td>
+                      <td className="px-2.5 py-2">
                         <button
                           type="button"
                           onClick={() => void loadJobRunDetail(lock.jobRunId)}
@@ -776,7 +776,7 @@ export function CronJobsManager() {
                           {lock.jobRunId}
                         </button>
                       </td>
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">
                         <span
                           className={`rounded px-2 py-1 text-xs font-semibold ${
                             expired
@@ -787,9 +787,9 @@ export function CronJobsManager() {
                           {expired ? 'expired' : 'active'}
                         </span>
                       </td>
-                      <td className="px-2 py-3">{formatDateTime(lock.expiresAt)}</td>
-                      <td className="px-2 py-3">{formatDateTime(lock.updatedAt)}</td>
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">{formatDateTime(lock.expiresAt)}</td>
+                      <td className="px-2.5 py-2">{formatDateTime(lock.updatedAt)}</td>
+                      <td className="px-2.5 py-2">
                         {expired ? (
                           <button
                             type="button"
@@ -847,16 +847,16 @@ export function CronJobsManager() {
           <p className="text-sm text-gray-600">該当ジョブはありません。</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b text-gray-500">
+            <table className="min-w-full table-fixed text-left text-sm">
+              <thead className="border-b bg-gray-50 text-gray-500">
                 <tr>
-                  <th className="px-2 py-2">job</th>
-                  <th className="px-2 py-2">status</th>
-                  <th className="px-2 py-2">started</th>
-                  <th className="px-2 py-2">finished</th>
-                  <th className="px-2 py-2">trigger</th>
-                  <th className="px-2 py-2">error</th>
-                  <th className="px-2 py-2">action</th>
+                  <th className="px-2.5 py-2">job</th>
+                  <th className="px-2.5 py-2">status</th>
+                  <th className="px-2.5 py-2">started</th>
+                  <th className="px-2.5 py-2">finished</th>
+                  <th className="px-2.5 py-2">trigger</th>
+                  <th className="px-2.5 py-2">error</th>
+                  <th className="px-2.5 py-2">action</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -867,22 +867,22 @@ export function CronJobsManager() {
 
                   return (
                     <tr key={item.id} className="align-top text-gray-700">
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">
                         <div className="font-medium text-gray-900">{item.jobName}</div>
                         <div className="mt-1 text-xs text-gray-500">{item.id}</div>
                       </td>
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">
                         <span className="rounded bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">
                           {item.status}
                         </span>
                       </td>
-                      <td className="px-2 py-3">{formatDateTime(item.startedAt)}</td>
-                      <td className="px-2 py-3">{formatDateTime(item.finishedAt)}</td>
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">{formatDateTime(item.startedAt)}</td>
+                      <td className="px-2.5 py-2">{formatDateTime(item.finishedAt)}</td>
+                      <td className="px-2.5 py-2">
                         <div>{item.trigger}</div>
                         <div className="mt-1 text-xs text-gray-500">retries: {item.retries}</div>
                       </td>
-                      <td className="max-w-md px-2 py-3">
+                      <td className="max-w-md px-2.5 py-2">
                         <div className="whitespace-pre-wrap break-words">{item.lastError ?? '-'}</div>
                         {item.sourceJobRunId ? (
                           <button
@@ -894,7 +894,7 @@ export function CronJobsManager() {
                           </button>
                         ) : null}
                       </td>
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">
                         {!canRerun ? (
                           <button
                             type="button"

@@ -156,7 +156,7 @@ export async function POST(request: Request, context: RouteParams) {
       const message = error instanceof Error ? error.message : 'Failed to delete payment.'
       return NextResponse.json({ message }, { status: 500 })
     }
-    return NextResponse.redirect(new URL('/payments?tab=list', request.url))
+    return NextResponse.redirect(new URL('/payments', request.url))
   }
 
   if (method === 'put' || method === 'patch') {

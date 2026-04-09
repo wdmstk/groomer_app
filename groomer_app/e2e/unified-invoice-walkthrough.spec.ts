@@ -174,7 +174,6 @@ test.describe('統合会計ウォークスルー録画', () => {
     await page.locator('select[name="customer_id"]').selectOption('customer-001')
     await page.locator('select[name="pet_id"]').selectOption('pet-001')
     await page.locator('select[name="staff_id"]').selectOption('staff-001')
-    await page.locator('input[type="checkbox"][name="menu_ids"]').first().check()
     await page.getByRole('button', { name: '登録する' }).click()
     await page.waitForTimeout(800)
     if (page.url().includes('/api/appointments')) {
@@ -223,7 +222,7 @@ test.describe('統合会計ウォークスルー録画', () => {
     await page.getByRole('button', { name: '統合会計を作成' }).click()
     await page.waitForTimeout(800)
 
-    await page.goto('/payments?tab=list', { waitUntil: 'domcontentloaded' })
+    await page.goto('/payments', { waitUntil: 'domcontentloaded' })
     await expect(page.getByText('統合請求（β）')).toBeVisible()
     const openCheckoutButton = page.getByRole('button', { name: '会計確定', exact: true })
     await expect
@@ -249,6 +248,6 @@ test.describe('統合会計ウォークスルー録画', () => {
     expect(payResponse.ok()).toBeTruthy()
     await expect
       .poll(() => page.url(), { timeout: 10_000 })
-      .toMatch(/\/payments\?tab=list|\/receipts\//)
+      .toMatch(/\/payments|\/receipts\//)
   })
 })

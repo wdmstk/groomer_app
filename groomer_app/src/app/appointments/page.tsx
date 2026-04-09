@@ -58,6 +58,8 @@ type AppointmentConsentRow = {
 type AppointmentsPageProps = {
   searchParams?: Promise<{
     tab?: string
+    list_q?: string
+    show_all?: string
     modal?: string
     edit?: string
     followup_from?: string
@@ -86,6 +88,17 @@ const statusOptions = [
   'キャンセル',
   '無断キャンセル',
 ]
+
+function toCompactConsentActionLabel(actionLabel: string) {
+  if (actionLabel === '同意書を作成') return '同意書作成'
+  if (actionLabel === 'PDF表示') return '同意書PDF'
+  return actionLabel
+}
+
+function toCompactStatusActionLabel(actionLabel: string) {
+  if (actionLabel === '受付') return '受付開始'
+  return actionLabel
+}
 
 function buildConsentSummary(appointmentId: string, latestConsent: AppointmentConsentRow | null) {
   if (!latestConsent) {
@@ -180,6 +193,8 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
     resolvedSearchParams?.tab === 'calendar'
       ? 'calendar'
       : 'list'
+  const listQuery = (resolvedSearchParams?.list_q ?? '').trim()
+  const showAllAppointments = resolvedSearchParams?.show_all === '1'
   const isCreateModalOpen =
     resolvedSearchParams?.modal === 'create' || resolvedSearchParams?.tab === 'new'
   const editId = resolvedSearchParams?.edit
@@ -321,6 +336,28 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
       ).data
 
   const appointmentList = appointments ?? []
+  const normalizedListQuery = listQuery.toLowerCase()
+  const filteredAppointmentList = appointmentList.filter((appointment) => {
+    const status = appointment.status ?? '予約済'
+    const isCanceled = status === 'キャンセル' || status === '無断キャンセル'
+    const isCompleted = isAppointmentCompletedStatus(status)
+    if (!showAllAppointments && (isCanceled || isCompleted)) {
+      return false
+    }
+
+    if (!normalizedListQuery) {
+      return true
+    }
+
+    const customerName = getAppointmentRelatedValue(appointment.customers, 'full_name').toLowerCase()
+    const petName = getAppointmentRelatedValue(appointment.pets, 'name').toLowerCase()
+    const staffName = getAppointmentRelatedValue(appointment.staffs, 'full_name').toLowerCase()
+    return (
+      customerName.includes(normalizedListQuery) ||
+      petName.includes(normalizedListQuery) ||
+      staffName.includes(normalizedListQuery)
+    )
+  })
   const customerNoShowCounts = appointmentList.reduce(
     (acc, appointment) => {
       if (appointment.customer_id && appointment.status === '無断キャンセル') {
@@ -506,10 +543,12 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
 
       {activeTab === 'list' ? (
         <Card>
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-gray-900">予約一覧</h2>
             <div className="flex items-center gap-3">
-              <p className="text-sm text-gray-500">全 {appointmentList.length} 件</p>
+              <p className="text-sm text-gray-500">
+                表示 {filteredAppointmentList.length} / 全 {appointmentList.length} 件
+              </p>
               <Link
                 href="/appointments?tab=list&modal=create"
                 className="inline-flex items-center rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
@@ -518,127 +557,161 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
               </Link>
             </div>
           </div>
-          {appointmentList.length === 0 ? (
-            <p className="text-sm text-gray-500">予約がまだ登録されていません。</p>
+          <form
+            action="/appointments"
+            method="get"
+            className="mb-4 grid grid-cols-1 gap-2 rounded border border-gray-200 bg-gray-50 p-3 md:grid-cols-[1fr_auto_auto]"
+          >
+            <input type="hidden" name="tab" value="list" />
+            <input
+              type="text"
+              name="list_q"
+              defaultValue={listQuery}
+              placeholder="顧客・ペット・担当で検索"
+              className="h-9 rounded border border-gray-300 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <label className="inline-flex h-9 items-center gap-2 rounded border border-gray-300 bg-white px-3 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                name="show_all"
+                value="1"
+                defaultChecked={showAllAppointments}
+                className="h-4 w-4"
+              />
+              全表示
+            </label>
+            <Button type="submit">適用</Button>
+          </form>
+          {filteredAppointmentList.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              {appointmentList.length === 0
+                ? '予約がまだ登録されていません。'
+                : '条件に一致する予約がありません。'}
+            </p>
           ) : (
             <>
               <div className="space-y-3 md:hidden" data-testid="appointments-list-mobile">
-                {appointmentList.map((appointment) => {
+                {filteredAppointmentList.map((appointment) => {
                   const consentSummary = consentSummaryByAppointmentId.get(appointment.id) ?? buildConsentSummary(appointment.id, null)
                   const reservationBadge = getReservationPaymentBadge({
                     method: appointment.reservation_payment_method,
                     status: appointment.reservation_payment_status,
                   })
+                  const nextStatusAction = getAppointmentNextStatusAction(appointment.status)
                   const canClaimReservationCharge =
                     appointment.status === '無断キャンセル' &&
                     (appointment.reservation_payment_method === 'prepayment' ||
                       appointment.reservation_payment_method === 'card_hold')
+                  const compactConsentActionLabel = toCompactConsentActionLabel(consentSummary.actionLabel)
                   return (
                   <article
                     key={appointment.id}
-                    className="rounded border p-3 text-sm text-gray-700"
+                    className="rounded border border-gray-200 bg-white p-3 text-sm text-gray-700"
                     data-testid={`appointment-row-${appointment.id}`}
                   >
-                    <p className="font-semibold text-gray-900">
-                      {getAppointmentRelatedValue(appointment.customers, 'full_name')} /{' '}
-                      {getAppointmentRelatedValue(appointment.pets, 'name')}
-                    </p>
-                    <p>担当: {getAppointmentRelatedValue(appointment.staffs, 'full_name')}</p>
-                    <p>開始: {formatAppointmentDateTimeJst(appointment.start_time)}</p>
-                    <p>終了: {formatAppointmentDateTimeJst(appointment.end_time)}</p>
-                    <p>メニュー: {appointment.menu}</p>
-                    <p>所要時間: {appointment.duration} 分</p>
-                    <p>ステータス: {appointment.status ?? '予約済'}</p>
-                    {reservationBadge ? (
-                      <p>
-                        決済: <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${reservationBadge.className}`}>{reservationBadge.label}</span>
-                      </p>
-                    ) : null}
-                    <p>
-                      同意書:{' '}
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${consentSummary.badgeTone}`}>
-                        {consentSummary.badgeLabel}
+                    <div className="flex items-center gap-2 overflow-x-auto text-sm font-semibold text-gray-900 whitespace-nowrap">
+                      <span>{getAppointmentRelatedValue(appointment.customers, 'full_name')}</span>
+                      <span className="text-gray-400">/</span>
+                      <span>{getAppointmentRelatedValue(appointment.pets, 'name')}</span>
+                      <span className="text-gray-400">/</span>
+                      <span>{getAppointmentRelatedValue(appointment.staffs, 'full_name')}</span>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
+                      <p className="whitespace-nowrap">開始: {formatAppointmentDateTimeJst(appointment.start_time)}</p>
+                      <p className="whitespace-nowrap">終了: {formatAppointmentDateTimeJst(appointment.end_time)}</p>
+                      <p className="truncate">メニュー: {appointment.menu}</p>
+                      <p className="whitespace-nowrap">所要時間: {appointment.duration} 分</p>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                        {appointment.status ?? '予約済'}
                       </span>
-                    </p>
+                      {reservationBadge ? (
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${reservationBadge.className}`}>
+                          {reservationBadge.label}
+                        </span>
+                      ) : null}
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${consentSummary.badgeTone}`}>
+                        同意書: {consentSummary.badgeLabel}
+                      </span>
+                    </div>
                     {(() => {
                       const transition = getAppointmentStatusTransitionTime(appointment.status, appointment)
                       if (!transition?.value) return null
                       return (
-                        <p>
+                        <p className="mt-1 text-xs text-gray-500">
                           {transition.label}: {formatAppointmentDateTimeJst(transition.value)}
                         </p>
                       )
                     })()}
-                    <p>備考: {appointment.notes ?? '未登録'}</p>
-                    <div className="mt-2 flex items-center gap-2">
+                    <p className="mt-1 text-xs text-gray-600">備考: {appointment.notes ?? '未登録'}</p>
+                    <div className="mt-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {appointment.status === '予約申請' ? (
+                          <form action={`/api/appointments/${appointment.id}/confirm`} method="post" className="justify-self-start">
+                            <Button
+                              type="submit"
+                              className="h-7 whitespace-nowrap bg-emerald-600 px-2 text-xs hover:bg-emerald-700"
+                              data-testid={`appointment-confirm-${appointment.id}`}
+                            >
+                              申請確定
+                            </Button>
+                          </form>
+                        ) : nextStatusAction ? (
+                          <form action={`/api/appointments/${appointment.id}/status`} method="post" className="justify-self-start">
+                            <input type="hidden" name="next_status" value={nextStatusAction.nextStatus} />
+                            <input type="hidden" name="redirect_tab" value="list" />
+                            <Button
+                              type="submit"
+                              className="h-7 whitespace-nowrap bg-indigo-600 px-2 text-xs hover:bg-indigo-700"
+                              data-testid={`appointment-status-action-${appointment.id}`}
+                            >
+                              {toCompactStatusActionLabel(nextStatusAction.label)}
+                            </Button>
+                          </form>
+                        ) : isAppointmentCompletedStatus(appointment.status) ? (
+                          <Link
+                            href={`/appointments?tab=list&modal=create&followup_from=${appointment.id}`}
+                            className="inline-flex h-7 w-fit justify-self-start items-center rounded border border-emerald-300 px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                            data-testid={`appointment-followup-${appointment.id}`}
+                          >
+                            次回予約
+                          </Link>
+                        ) : null}
                       <Link
                         href={`/appointments?tab=list&edit=${appointment.id}`}
-                        className="text-blue-600 text-sm"
+                        className="inline-flex h-7 w-fit justify-self-start items-center rounded border border-blue-300 px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                       >
                         編集
                       </Link>
                       <Link
                         href={consentSummary.actionHref}
-                        className={consentSummary.actionClass}
+                        className="inline-flex h-7 w-fit justify-self-start items-center rounded border border-indigo-300 px-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
                         target={consentSummary.openInNewTab ? '_blank' : undefined}
                         rel={consentSummary.openInNewTab ? 'noopener noreferrer' : undefined}
                       >
-                        {consentSummary.actionLabel}
+                        {compactConsentActionLabel}
                       </Link>
-                      {appointment.status === '予約申請' ? (
-                        <form action={`/api/appointments/${appointment.id}/confirm`} method="post">
-                          <Button
-                            type="submit"
-                            className="bg-emerald-600 hover:bg-emerald-700"
-                            data-testid={`appointment-confirm-${appointment.id}`}
-                          >
-                            申請を確定
+                      <form action={`/api/appointments/${appointment.id}`} method="post" className="justify-self-start">
+                          <input type="hidden" name="_method" value="delete" />
+                          <Button type="submit" className="h-7 whitespace-nowrap bg-red-500 px-2 text-xs hover:bg-red-600">
+                            削除
                           </Button>
                         </form>
-                      ) : null}
-                      {(() => {
-                        const action = getAppointmentNextStatusAction(appointment.status)
-                        if (!action) return null
-                        return (
-                          <form action={`/api/appointments/${appointment.id}/status`} method="post">
-                            <input type="hidden" name="next_status" value={action.nextStatus} />
-                            <input type="hidden" name="redirect_tab" value="list" />
-                            <Button
-                              type="submit"
-                              className="bg-indigo-600 hover:bg-indigo-700"
-                              data-testid={`appointment-status-action-${appointment.id}`}
-                            >
-                              {action.label}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        {canClaimReservationCharge ? (
+                          <form
+                            action={`/api/appointments/${appointment.id}/reservation-payment/claim`}
+                            method="post"
+                          >
+                            <input type="hidden" name="redirect_to" value="/appointments?tab=list" />
+                            <Button type="submit" className="h-7 whitespace-nowrap bg-sky-600 px-2 text-xs hover:bg-sky-700">
+                              無断CXL請求
                             </Button>
                           </form>
-                        )
-                      })()}
-                      {canClaimReservationCharge ? (
-                        <form
-                          action={`/api/appointments/${appointment.id}/reservation-payment/claim`}
-                          method="post"
-                        >
-                          <input type="hidden" name="redirect_to" value="/appointments?tab=list" />
-                          <Button type="submit" className="bg-sky-600 hover:bg-sky-700">
-                            無断CXL請求
-                          </Button>
-                        </form>
-                      ) : null}
-                      {isAppointmentCompletedStatus(appointment.status) ? (
-                        <Link
-                              href={`/appointments?tab=list&modal=create&followup_from=${appointment.id}`}
-                              className="text-emerald-700 text-sm"
-                              data-testid={`appointment-followup-${appointment.id}`}
-                            >
-                          次回予約
-                        </Link>
-                      ) : null}
-                      <form action={`/api/appointments/${appointment.id}`} method="post">
-                        <input type="hidden" name="_method" value="delete" />
-                        <Button type="submit" className="bg-red-500 hover:bg-red-600">
-                          削除
-                        </Button>
-                      </form>
+                        ) : null}
+                      </div>
                     </div>
                   </article>
                   )
@@ -646,146 +719,152 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
               </div>
 
               <div className="hidden overflow-x-auto md:block">
-                <table className="min-w-full text-sm text-left" data-testid="appointments-list">
-                  <tbody className="divide-y">
-                    <tr className="text-gray-500 border-b">
-                      <th className="py-2 px-2">顧客</th>
-                      <th className="py-2 px-2">ペット</th>
-                      <th className="py-2 px-2">担当</th>
-                      <th className="py-2 px-2">開始</th>
-                      <th className="py-2 px-2">終了</th>
-                      <th className="py-2 px-2">メニュー</th>
-                      <th className="py-2 px-2">所要時間</th>
-                      <th className="py-2 px-2">ステータス</th>
-                      <th className="py-2 px-2">備考</th>
-                      <th className="py-2 px-2">操作</th>
+                <table className="min-w-[1160px] w-full table-fixed text-left text-sm" data-testid="appointments-list">
+                  <thead className="border-b text-xs text-gray-500">
+                    <tr>
+                      <th className="w-[29%] px-2 py-1.5">対象</th>
+                      <th className="w-[18%] px-2 py-1.5">時間</th>
+                      <th className="w-[18%] px-2 py-1.5">メニュー</th>
+                      <th className="w-[17%] px-2 py-1.5">状態</th>
+                      <th className="w-[18%] px-2 py-1.5">操作</th>
                     </tr>
-                    {appointmentList.map((appointment) => {
+                  </thead>
+                  <tbody className="divide-y">
+                    {filteredAppointmentList.map((appointment) => {
                       const consentSummary = consentSummaryByAppointmentId.get(appointment.id) ?? buildConsentSummary(appointment.id, null)
                       const reservationBadge = getReservationPaymentBadge({
                         method: appointment.reservation_payment_method,
                         status: appointment.reservation_payment_status,
                       })
-                      const canClaimReservationCharge =
-                        appointment.status === '無断キャンセル' &&
-                        (appointment.reservation_payment_method === 'prepayment' ||
-                          appointment.reservation_payment_method === 'card_hold')
-                      return (
-                      <tr
-                        key={appointment.id}
-                        className="text-gray-700"
-                        data-testid={`appointment-row-${appointment.id}`}
-                      >
-                        <td className="py-3 px-2 font-medium text-gray-900">
-                          {getAppointmentRelatedValue(appointment.customers, 'full_name')}
-                        </td>
-                        <td className="py-3 px-2">{getAppointmentRelatedValue(appointment.pets, 'name')}</td>
-                        <td className="py-3 px-2">
-                          {getAppointmentRelatedValue(appointment.staffs, 'full_name')}
-                        </td>
-                        <td className="py-3 px-2">{formatAppointmentDateTimeJst(appointment.start_time)}</td>
-                        <td className="py-3 px-2">{formatAppointmentDateTimeJst(appointment.end_time)}</td>
-                        <td className="py-3 px-2">{appointment.menu}</td>
-                        <td className="py-3 px-2">{appointment.duration} 分</td>
-                        <td className="py-3 px-2">
-                          <p>{appointment.status ?? '予約済'}</p>
-                          {reservationBadge ? (
-                            <p className="mt-1">
-                              <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${reservationBadge.className}`}>
-                                {reservationBadge.label}
-                              </span>
+                  const canClaimReservationCharge =
+                    appointment.status === '無断キャンセル' &&
+                    (appointment.reservation_payment_method === 'prepayment' ||
+                      appointment.reservation_payment_method === 'card_hold')
+                  const nextStatusAction = getAppointmentNextStatusAction(appointment.status)
+                  const compactConsentActionLabel = toCompactConsentActionLabel(consentSummary.actionLabel)
+                  return (
+                        <tr key={appointment.id} className="align-top text-gray-700" data-testid={`appointment-row-${appointment.id}`}>
+                          <td className="px-2 py-2">
+                            <div className="flex items-center gap-1 whitespace-nowrap font-semibold text-gray-900">
+                              <span>{getAppointmentRelatedValue(appointment.customers, 'full_name')}</span>
+                              <span className="text-gray-400">/</span>
+                              <span>{getAppointmentRelatedValue(appointment.pets, 'name')}</span>
+                              <span className="text-gray-400">/</span>
+                              <span>{getAppointmentRelatedValue(appointment.staffs, 'full_name')}</span>
+                            </div>
+                            <p className="mt-0.5 max-w-[260px] truncate text-xs text-gray-500">
+                              備考: {appointment.notes ?? '未登録'}
                             </p>
-                          ) : null}
-                          <p className="mt-1">
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${consentSummary.badgeTone}`}>
-                              {consentSummary.badgeLabel}
-                            </span>
-                          </p>
-                          {(() => {
-                            const transition = getAppointmentStatusTransitionTime(appointment.status, appointment)
-                            if (!transition?.value) return null
-                            return (
-                              <p className="text-xs text-gray-500">
-                                {transition.label}: {formatAppointmentDateTimeJst(transition.value)}
-                              </p>
-                            )
-                          })()}
-                        </td>
-                        <td className="py-3 px-2">{appointment.notes ?? '未登録'}</td>
-                        <td className="py-3 px-2">
-                          <div className="flex items-center gap-2">
-                            <Link
-                              href={`/appointments?tab=list&edit=${appointment.id}`}
-                              className="text-blue-600 text-sm"
-                            >
-                              編集
-                            </Link>
-                            <Link
-                              href={consentSummary.actionHref}
-                              className={consentSummary.actionClass}
-                              target={consentSummary.openInNewTab ? '_blank' : undefined}
-                              rel={consentSummary.openInNewTab ? 'noopener noreferrer' : undefined}
-                            >
-                              {consentSummary.actionLabel}
-                            </Link>
-                            {appointment.status === '予約申請' ? (
-                              <form action={`/api/appointments/${appointment.id}/confirm`} method="post">
-                                <Button
-                                  type="submit"
-                                  className="bg-emerald-600 hover:bg-emerald-700"
-                                  data-testid={`appointment-confirm-${appointment.id}`}
-                                >
-                                  申請を確定
-                                </Button>
-                              </form>
-                            ) : null}
+                          </td>
+                          <td className="px-2 py-2 text-xs text-gray-600">
+                            <p className="whitespace-nowrap">開始: {formatAppointmentDateTimeJst(appointment.start_time)}</p>
+                            <p className="mt-0.5 whitespace-nowrap">終了: {formatAppointmentDateTimeJst(appointment.end_time)}</p>
+                          </td>
+                          <td className="px-2 py-2 text-xs text-gray-600">
+                            <p className="max-w-[220px] truncate">メニュー: {appointment.menu}</p>
+                            <p className="mt-0.5 whitespace-nowrap">所要時間: {appointment.duration} 分</p>
+                          </td>
+                          <td className="px-2 py-2">
+                            <div className="grid gap-1">
+                              <div>
+                                <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                                  {appointment.status ?? '予約済'}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-1">
+                                {reservationBadge ? (
+                                  <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${reservationBadge.className}`}>
+                                    {reservationBadge.label}
+                                  </span>
+                                ) : null}
+                                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${consentSummary.badgeTone}`}>
+                                  同意書: {consentSummary.badgeLabel}
+                                </span>
+                              </div>
+                            </div>
                             {(() => {
-                              const action = getAppointmentNextStatusAction(appointment.status)
-                              if (!action) return null
+                              const transition = getAppointmentStatusTransitionTime(appointment.status, appointment)
+                              if (!transition?.value) return null
                               return (
-                                <form action={`/api/appointments/${appointment.id}/status`} method="post">
-                                  <input type="hidden" name="next_status" value={action.nextStatus} />
-                                  <input type="hidden" name="redirect_tab" value="list" />
-                                  <Button
-                                    type="submit"
-                                    className="bg-indigo-600 hover:bg-indigo-700"
-                                    data-testid={`appointment-status-action-${appointment.id}`}
-                                  >
-                                    {action.label}
-                                  </Button>
-                                </form>
+                                <p className="mt-0.5 text-xs text-gray-500">
+                                  {transition.label}: {formatAppointmentDateTimeJst(transition.value)}
+                                </p>
                               )
                             })()}
-                            {canClaimReservationCharge ? (
-                              <form
-                                action={`/api/appointments/${appointment.id}/reservation-payment/claim`}
-                                method="post"
-                              >
-                                <input type="hidden" name="redirect_to" value="/appointments?tab=list" />
-                                <Button type="submit" className="bg-sky-600 hover:bg-sky-700">
-                                  無断CXL請求
-                                </Button>
-                              </form>
-                            ) : null}
-                            {isAppointmentCompletedStatus(appointment.status) ? (
-                              <Link
-                                href={`/appointments?tab=list&modal=create&followup_from=${appointment.id}`}
-                                className="text-emerald-700 text-sm"
-                                data-testid={`appointment-followup-${appointment.id}`}
-                              >
-                                次回予約
-                              </Link>
-                            ) : null}
-                            <form action={`/api/appointments/${appointment.id}`} method="post">
-                              <input type="hidden" name="_method" value="delete" />
-                              <Button type="submit" className="bg-red-500 hover:bg-red-600">
-                                削除
-                              </Button>
-                            </form>
-                          </div>
-                        </td>
-                      </tr>
-                    )})}
+                          </td>
+                          <td className="px-2 py-2">
+                            <div>
+                              <div className="grid grid-cols-2 gap-1">
+                                {appointment.status === '予約申請' ? (
+                                  <form action={`/api/appointments/${appointment.id}/confirm`} method="post" className="justify-self-start">
+                                    <Button
+                                      type="submit"
+                                      className="h-7 whitespace-nowrap bg-emerald-600 px-2 text-xs hover:bg-emerald-700"
+                                      data-testid={`appointment-confirm-${appointment.id}`}
+                                    >
+                                      申請確定
+                                    </Button>
+                                  </form>
+                                ) : nextStatusAction ? (
+                                  <form action={`/api/appointments/${appointment.id}/status`} method="post" className="justify-self-start">
+                                    <input type="hidden" name="next_status" value={nextStatusAction.nextStatus} />
+                                    <input type="hidden" name="redirect_tab" value="list" />
+                                    <Button
+                                      type="submit"
+                                      className="h-7 whitespace-nowrap bg-indigo-600 px-2 text-xs hover:bg-indigo-700"
+                                      data-testid={`appointment-status-action-${appointment.id}`}
+                                    >
+                                      {toCompactStatusActionLabel(nextStatusAction.label)}
+                                    </Button>
+                                  </form>
+                                ) : isAppointmentCompletedStatus(appointment.status) ? (
+                                  <Link
+                                    href={`/appointments?tab=list&modal=create&followup_from=${appointment.id}`}
+                                    className="inline-flex h-7 w-fit justify-self-start items-center rounded border border-emerald-300 px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                                    data-testid={`appointment-followup-${appointment.id}`}
+                                  >
+                                    次回予約
+                                  </Link>
+                                ) : <span />}
+                                <Link
+                                  href={`/appointments?tab=list&edit=${appointment.id}`}
+                                  className="inline-flex h-7 w-fit justify-self-start items-center rounded border border-blue-300 px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                                >
+                                  編集
+                                </Link>
+                                <Link
+                                  href={consentSummary.actionHref}
+                                  className="inline-flex h-7 w-fit justify-self-start items-center rounded border border-indigo-300 px-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
+                                  target={consentSummary.openInNewTab ? '_blank' : undefined}
+                                  rel={consentSummary.openInNewTab ? 'noopener noreferrer' : undefined}
+                                >
+                                  {compactConsentActionLabel}
+                                </Link>
+                                <form action={`/api/appointments/${appointment.id}`} method="post" className="justify-self-start">
+                                  <input type="hidden" name="_method" value="delete" />
+                                  <Button type="submit" className="h-7 whitespace-nowrap bg-red-500 px-2 text-xs hover:bg-red-600">
+                                    削除
+                                  </Button>
+                                </form>
+                              </div>
+                              <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                                {canClaimReservationCharge ? (
+                                  <form
+                                    action={`/api/appointments/${appointment.id}/reservation-payment/claim`}
+                                    method="post"
+                                  >
+                                    <input type="hidden" name="redirect_to" value="/appointments?tab=list" />
+                                    <Button type="submit" className="h-7 whitespace-nowrap bg-sky-600 px-2 text-xs hover:bg-sky-700">
+                                      無断CXL請求
+                                    </Button>
+                                  </form>
+                                ) : null}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

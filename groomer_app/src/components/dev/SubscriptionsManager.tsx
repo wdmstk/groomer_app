@@ -367,16 +367,16 @@ export function SubscriptionsManager({
             <table className="min-w-full text-sm">
               <thead className="border-b text-left text-gray-500">
                 <tr>
-                  <th className="px-2 py-2">店舗名</th>
-                  <th className="px-2 py-2">店舗ステータス</th>
-                  <th className="px-2 py-2">課金ステータス</th>
-                  <th className="px-2 py-2">決済手段</th>
-                  <th className="px-2 py-2">プラン</th>
-                  <th className="px-2 py-2">AI申込/有効</th>
-                  <th className="px-2 py-2">月額(円)</th>
-                  <th className="px-2 py-2">ホテルOP</th>
-                  <th className="px-2 py-2">通知OP</th>
-                  <th className="px-2 py-2">試用終了予定</th>
+                  <th className="px-2.5 py-2">店舗名</th>
+                  <th className="px-2.5 py-2">店舗ステータス</th>
+                  <th className="px-2.5 py-2">課金ステータス</th>
+                  <th className="px-2.5 py-2">決済手段</th>
+                  <th className="px-2.5 py-2">プラン</th>
+                  <th className="px-2.5 py-2">AI申込/有効</th>
+                  <th className="px-2.5 py-2">月額(円)</th>
+                  <th className="px-2.5 py-2">ホテルOP</th>
+                  <th className="px-2.5 py-2">通知OP</th>
+                  <th className="px-2.5 py-2">試用終了予定</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -408,7 +408,7 @@ export function SubscriptionsManager({
                       key={store.id}
                       className={isActiveRow ? 'bg-blue-50' : 'text-gray-700'}
                     >
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">
                         <button
                           type="button"
                           onClick={() => setSelectedStoreId(store.id)}
@@ -417,25 +417,25 @@ export function SubscriptionsManager({
                           {store.name}
                         </button>
                       </td>
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">
                         {store.is_active ? STORE_STATUS_LABEL.active : STORE_STATUS_LABEL.inactive}
                       </td>
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">
                         {BILLING_STATUS_LABEL[subscription?.billing_status ?? 'inactive']}
                       </td>
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">
                         {subscription?.preferred_provider ? PROVIDER_LABEL[subscription.preferred_provider] : '-'}
                       </td>
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">
                         {planLabel(normalizePlanCode(subscription?.plan_code ?? 'light'))}
                       </td>
-                      <td className="px-2 py-3">
+                      <td className="px-2.5 py-2">
                         {aiPlanLabel(rowAiRequested)} / {aiPlanLabel(rowAiEffective)}
                       </td>
-                      <td className="px-2 py-3">{(subscription?.amount_jpy ?? 0).toLocaleString()}</td>
-                      <td className="px-2 py-3">{rowHotelRequested ? '申込ON' : '申込OFF'}</td>
-                      <td className="px-2 py-3">{rowNotificationRequested ? '申込ON' : '申込OFF'}</td>
-                      <td className="px-2 py-3">{trialEnd}</td>
+                      <td className="px-2.5 py-2">{(subscription?.amount_jpy ?? 0).toLocaleString()}</td>
+                      <td className="px-2.5 py-2">{rowHotelRequested ? '申込ON' : '申込OFF'}</td>
+                      <td className="px-2.5 py-2">{rowNotificationRequested ? '申込ON' : '申込OFF'}</td>
+                      <td className="px-2.5 py-2">{trialEnd}</td>
                     </tr>
                   )
                 })}

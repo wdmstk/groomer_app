@@ -280,13 +280,6 @@ function normalizeAiTagStatus(value: string | null | undefined): MedicalRecordAi
   }
 }
 
-function riskLabel(value: 'low' | 'medium' | 'high' | null | undefined) {
-  if (value === 'high') return '高'
-  if (value === 'medium') return '中'
-  if (value === 'low') return '低'
-  return '未算出'
-}
-
 function buildMedicalRecordsHref(params: {
   tab: 'list' | 'pending'
   aiTag?: string
@@ -936,76 +929,67 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                 {filteredRecordList.map((record) => {
                   const aiStatus = normalizeAiTagStatus(record.ai_tag_status)
                   const visibleTags = getVisibleMedicalRecordTags(record.tags, 4)
-
+                  const linkedAppointment =
+                    record.appointment_id ? appointmentById.get(record.appointment_id) : undefined
+                  const customerName = linkedAppointment
+                    ? getRelatedValue(linkedAppointment.customers, 'full_name')
+                    : '未登録'
                   return (
-                    <article key={record.id} className="rounded border p-3 text-sm text-gray-700">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="font-semibold text-gray-900">{getRelatedValue(record.pets, 'name')}</p>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${getMedicalRecordAiTagStatusTone(aiStatus)}`}
-                      >
-                        {getMedicalRecordAiTagStatusLabel(aiStatus)}
-                      </span>
-                    </div>
-                    <p>担当: {getRelatedValue(record.staffs, 'full_name')}</p>
-                    <p>施術日時: {formatDateTimeJst(record.record_date)}</p>
-                    <p>メニュー: {record.menu ?? '未登録'}</p>
-                    <p>状態: {record.status === 'finalized' ? '確定' : '下書き'}</p>
-                    <p>
-                      メディア: {(photoCountByRecordId.get(record.id) ?? 0) + (videoCountByRecordId.get(record.id) ?? 0)} 件
-                      （写真 {photoCountByRecordId.get(record.id) ?? 0} / 動画 {videoCountByRecordId.get(record.id) ?? 0}）
-                    </p>
-                    <p>所要時間: {record.duration ? `${record.duration} 分` : '未登録'}</p>
-                    <p>シャンプー: {record.shampoo_used ?? '未登録'}</p>
-                    <p>皮膚状態: {record.skin_condition ?? '未登録'}</p>
-                    <p>問題行動: {record.behavior_notes ?? '未登録'}</p>
-                    <p>注意事項: {record.caution_notes ?? '未登録'}</p>
-                    {aiProEnabled ? (
-                      <div className="mt-1 rounded border border-indigo-100 bg-indigo-50 px-2 py-1 text-xs text-indigo-900">
-                        {(() => {
-                          const insight = aiProInsightByRecordId.get(record.id)
-                          if (!insight) return 'AI Pro提案: 未解析'
-                          const nextDuration =
-                            typeof insight.estimated_next_duration_min === 'number' && Number.isFinite(insight.estimated_next_duration_min)
-                              ? `${insight.estimated_next_duration_min}分`
-                              : '未算出'
-                          return `AI Pro提案: 次回 ${nextDuration} / 毛玉 ${riskLabel(insight.matting_risk)} / 追加料金 ${riskLabel(insight.surcharge_risk)}`
-                        })()}
+                    <article key={record.id} className="rounded border border-gray-200 bg-white p-3 text-sm text-gray-700">
+                      <div className="flex items-center gap-1 whitespace-nowrap font-semibold text-gray-900">
+                        <span>{customerName}</span>
+                        <span className="text-gray-400">/</span>
+                        <span>{getRelatedValue(record.pets, 'name')}</span>
+                        <span className="text-gray-400">/</span>
+                        <span>{getRelatedValue(record.staffs, 'full_name')}</span>
                       </div>
-                    ) : null}
-                    {aiProPlusEnabled ? (
-                      <div className="mt-1 rounded border border-rose-100 bg-rose-50 px-2 py-1 text-xs text-rose-900">
-                        {(() => {
-                          const insight = aiProPlusInsightByRecordId.get(record.id)
-                          if (!insight) return 'AI Pro+気づき: 未解析'
-                          return `AI Pro+気づき: 歩行 ${riskLabel(insight.gait_risk)} / 皮膚 ${riskLabel(insight.skin_risk)} / 震え ${riskLabel(insight.tremor_risk)}`
-                        })()}
+                      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
+                        <p className="whitespace-nowrap">記録日: {formatDateTimeJst(record.record_date)}</p>
+                        <p className="whitespace-nowrap">所要: {record.duration ? `${record.duration}分` : '未登録'}</p>
+                        <p className="truncate">メニュー: {record.menu ?? '未登録'}</p>
+                        <p className="whitespace-nowrap">
+                          メディア: {(photoCountByRecordId.get(record.id) ?? 0) + (videoCountByRecordId.get(record.id) ?? 0)}件
+                        </p>
                       </div>
-                    ) : null}
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {visibleTags.length > 0 ? (
-                        visibleTags.map((tag) => (
-                          <Link
-                            key={tag}
-                            href={buildMedicalRecordsHref({
-                              tab: 'list',
-                              aiTag: tag,
-                              aiStatus: selectedAiStatus,
-                            })}
-                            className="rounded-full bg-violet-100 px-2 py-1 text-xs font-medium text-violet-900"
-                          >
-                            {tag}
-                          </Link>
-                        ))
-                      ) : (
-                        <span className="text-xs text-gray-500">AIタグなし</span>
-                      )}
-                    </div>
-                    <p className="mt-2 text-xs text-gray-500">
-                      最終解析: {record.ai_tag_last_analyzed_at ? formatDateTimeJst(record.ai_tag_last_analyzed_at) : '未実行'}
-                    </p>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex items-center gap-2">
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            record.status === 'finalized'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {record.status === 'finalized' ? '確定' : '下書き'}
+                        </span>
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getMedicalRecordAiTagStatusTone(aiStatus)}`}
+                        >
+                          {getMedicalRecordAiTagStatusLabel(aiStatus)}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {visibleTags.length > 0 ? (
+                          visibleTags.map((tag) => (
+                            <Link
+                              key={tag}
+                              href={buildMedicalRecordsHref({
+                                tab: 'list',
+                                aiTag: tag,
+                                aiStatus: selectedAiStatus,
+                              })}
+                              className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-900"
+                            >
+                              {tag}
+                            </Link>
+                          ))
+                        ) : (
+                          <span className="text-xs text-gray-500">AIタグなし</span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">
+                        最終解析: {record.ai_tag_last_analyzed_at ? formatDateTimeJst(record.ai_tag_last_analyzed_at) : '未実行'}
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
                         <Link
                           href={buildMedicalRecordsHref({
                             tab: 'list',
@@ -1013,146 +997,112 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                             aiTag: selectedAiTag,
                             aiStatus: selectedAiStatus,
                           })}
-                          className="text-blue-600 text-sm"
+                          className="inline-flex h-7 items-center rounded border border-blue-300 px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                         >
                           編集
                         </Link>
                         <form action={`/api/medical-records/${record.id}`} method="post">
                           <input type="hidden" name="_method" value="delete" />
-                          <Button type="submit" className="bg-red-500 hover:bg-red-600">
-                            削除
-                          </Button>
+                          <Button type="submit" className="h-7 px-2 text-xs bg-red-500 hover:bg-red-600">削除</Button>
                         </form>
                         {aiProEnabled ? <MedicalRecordAiProAnalyzeButton recordId={record.id} /> : null}
                         {aiProPlusEnabled ? <MedicalRecordAiProPlusAnalyzeButton recordId={record.id} /> : null}
+                        {record.status === 'finalized' ? <MedicalRecordShareButton recordId={record.id} /> : null}
                       </div>
-                      {record.status === 'finalized' ? <MedicalRecordShareButton recordId={record.id} /> : null}
-                    </div>
                     </article>
                   )
                 })}
               </div>
 
               <div className="hidden overflow-x-auto md:block">
-                <table className="min-w-full text-sm text-left">
-                  <thead className="text-gray-500 border-b">
+                <table className="min-w-[1080px] w-full table-fixed text-left text-sm">
+                  <thead className="border-b text-xs text-gray-500">
                     <tr>
-                      <th className="py-2 px-2">ペット</th>
-                      <th className="py-2 px-2">担当</th>
-                      <th className="py-2 px-2">施術日時</th>
-                      <th className="py-2 px-2">メニュー</th>
-                      <th className="py-2 px-2">状態</th>
-                      <th className="py-2 px-2">メディア</th>
-                      <th className="py-2 px-2">所要時間</th>
-                      <th className="py-2 px-2">シャンプー</th>
-                      <th className="py-2 px-2">皮膚状態</th>
-                      <th className="py-2 px-2">問題行動</th>
-                      <th className="py-2 px-2">注意事項</th>
-                      <th className="py-2 px-2">AIタグ</th>
-                      <th className="py-2 px-2">AI解析</th>
-                      {aiProEnabled ? <th className="py-2 px-2">AI Pro提案</th> : null}
-                      {aiProPlusEnabled ? <th className="py-2 px-2">AI Pro+気づき</th> : null}
-                      <th className="py-2 px-2">操作</th>
+                      <th className="w-[30%] px-2 py-1.5">対象</th>
+                      <th className="w-[15%] px-2 py-1.5">記録日</th>
+                      <th className="w-[22%] px-2 py-1.5">施術・タグ</th>
+                      <th className="w-[15%] px-2 py-1.5">状態</th>
+                      <th className="w-[18%] px-2 py-1.5">操作</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y" suppressHydrationWarning>
                     {filteredRecordList.map((record) => {
                       const aiStatus = normalizeAiTagStatus(record.ai_tag_status)
-                      const visibleTags = getVisibleMedicalRecordTags(record.tags)
-
+                      const visibleTags = getVisibleMedicalRecordTags(record.tags, 3)
+                      const linkedAppointment =
+                        record.appointment_id ? appointmentById.get(record.appointment_id) : undefined
+                      const customerName = linkedAppointment
+                        ? getRelatedValue(linkedAppointment.customers, 'full_name')
+                        : '未登録'
                       return (
-                        <tr key={record.id} className="text-gray-700 align-top">
-                        <td className="py-3 px-2 font-medium text-gray-900">
-                          {getRelatedValue(record.pets, 'name')}
-                        </td>
-                        <td className="py-3 px-2">{getRelatedValue(record.staffs, 'full_name')}</td>
-                        <td className="py-3 px-2">{formatDateTimeJst(record.record_date)}</td>
-                        <td className="py-3 px-2">{record.menu ?? '未登録'}</td>
-                        <td className="py-3 px-2">{record.status === 'finalized' ? '確定' : '下書き'}</td>
-                        <td className="py-3 px-2">
-                          {(photoCountByRecordId.get(record.id) ?? 0) + (videoCountByRecordId.get(record.id) ?? 0)} 件
-                          <span className="block text-xs text-gray-500">
-                            写真 {photoCountByRecordId.get(record.id) ?? 0} / 動画 {videoCountByRecordId.get(record.id) ?? 0}
-                          </span>
-                        </td>
-                        <td className="py-3 px-2">
-                          {record.duration ? `${record.duration} 分` : '未登録'}
-                        </td>
-                        <td className="py-3 px-2">{record.shampoo_used ?? '未登録'}</td>
-                        <td className="py-3 px-2">{record.skin_condition ?? '未登録'}</td>
-                        <td className="py-3 px-2">{record.behavior_notes ?? '未登録'}</td>
-                        <td className="py-3 px-2">{record.caution_notes ?? '未登録'}</td>
-                        <td className="py-3 px-2">
-                          <div className="flex max-w-48 flex-wrap gap-1.5">
-                            {visibleTags.length > 0 ? (
-                              visibleTags.map((tag) => (
-                                <Link
-                                  key={tag}
-                                  href={buildMedicalRecordsHref({
-                                    tab: 'list',
-                                    aiTag: tag,
-                                    aiStatus: selectedAiStatus,
-                                  })}
-                                  className="rounded-full bg-violet-100 px-2 py-1 text-xs font-medium text-violet-900"
-                                >
-                                  {tag}
-                                </Link>
-                              ))
-                            ) : (
-                              <span className="text-gray-500">なし</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-2">
-                          <div className="space-y-1">
-                            <span
-                              className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getMedicalRecordAiTagStatusTone(aiStatus)}`}
-                            >
-                              {getMedicalRecordAiTagStatusLabel(aiStatus)}
-                            </span>
-                            <p className="text-xs text-gray-500">
-                              {record.ai_tag_last_analyzed_at
-                                ? `最終: ${formatDateTimeJst(record.ai_tag_last_analyzed_at)}`
-                                : '最終: 未実行'}
+                        <tr key={record.id} className="align-top text-gray-700">
+                          <td className="px-2 py-2">
+                            <div className="flex items-center gap-1 whitespace-nowrap font-semibold text-gray-900">
+                              <span>{customerName}</span>
+                              <span className="text-gray-400">/</span>
+                              <span>{getRelatedValue(record.pets, 'name')}</span>
+                              <span className="text-gray-400">/</span>
+                              <span>{getRelatedValue(record.staffs, 'full_name')}</span>
+                            </div>
+                            <p className="mt-0.5 max-w-[260px] truncate text-xs text-gray-500">
+                              備考: {record.caution_notes ?? '未登録'}
                             </p>
-                          </div>
-                        </td>
-                        {aiProEnabled ? (
-                          <td className="py-3 px-2">
-                            {(() => {
-                              const insight = aiProInsightByRecordId.get(record.id)
-                              if (!insight) {
-                                return <span className="text-xs text-gray-500">未解析</span>
-                              }
-                              const traits = (insight.personality_traits ?? []).slice(0, 2).join(' / ')
-                              return (
-                                <div className="space-y-1 text-xs">
-                                  <p>次回: {insight.estimated_next_duration_min ? `${insight.estimated_next_duration_min}分` : '未算出'}</p>
-                                  <p>毛玉: {riskLabel(insight.matting_risk)} / 追加: {riskLabel(insight.surcharge_risk)}</p>
-                                  <p>性格: {traits || '未算出'}</p>
-                                </div>
-                              )
-                            })()}
                           </td>
-                        ) : null}
-                        {aiProPlusEnabled ? (
-                          <td className="py-3 px-2">
-                            {(() => {
-                              const insight = aiProPlusInsightByRecordId.get(record.id)
-                              if (!insight) return <span className="text-xs text-gray-500">未解析</span>
-                              return (
-                                <div className="space-y-1 text-xs">
-                                  <p>歩行: {riskLabel(insight.gait_risk)} / 呼吸: {riskLabel(insight.respiration_risk)}</p>
-                                  <p>皮膚: {riskLabel(insight.skin_risk)} / 震え: {riskLabel(insight.tremor_risk)}</p>
-                                  <p>ストレス: {riskLabel(insight.stress_level)} / 疲労: {riskLabel(insight.fatigue_level)}</p>
-                                </div>
-                              )
-                            })()}
+                          <td className="px-2 py-2 text-xs text-gray-600">
+                            <p className="whitespace-nowrap">{formatDateTimeJst(record.record_date)}</p>
+                            <p className="mt-0.5 whitespace-nowrap">
+                              {(photoCountByRecordId.get(record.id) ?? 0) + (videoCountByRecordId.get(record.id) ?? 0)}件
+                              （写{photoCountByRecordId.get(record.id) ?? 0}/動{videoCountByRecordId.get(record.id) ?? 0}）
+                            </p>
                           </td>
-                        ) : null}
-                        <td className="py-3 px-2">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
+                          <td className="px-2 py-2 text-xs text-gray-600">
+                            <p className="truncate">メニュー: {record.menu ?? '未登録'}</p>
+                            <p className="mt-0.5 whitespace-nowrap">所要: {record.duration ? `${record.duration}分` : '未登録'}</p>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {visibleTags.length > 0 ? (
+                                visibleTags.map((tag) => (
+                                  <Link
+                                    key={tag}
+                                    href={buildMedicalRecordsHref({
+                                      tab: 'list',
+                                      aiTag: tag,
+                                      aiStatus: selectedAiStatus,
+                                    })}
+                                    className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-medium text-violet-900"
+                                  >
+                                    {tag}
+                                  </Link>
+                                ))
+                              ) : (
+                                <span className="text-gray-500">AIタグなし</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-2 py-2">
+                            <div className="grid gap-1">
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span
+                                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                    record.status === 'finalized'
+                                      ? 'bg-emerald-100 text-emerald-700'
+                                      : 'bg-amber-100 text-amber-700'
+                                  }`}
+                                >
+                                  {record.status === 'finalized' ? '確定' : '下書き'}
+                                </span>
+                                <span
+                                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getMedicalRecordAiTagStatusTone(aiStatus)}`}
+                                >
+                                  {getMedicalRecordAiTagStatusLabel(aiStatus)}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                最終: {record.ai_tag_last_analyzed_at ? formatDateTimeJst(record.ai_tag_last_analyzed_at) : '未実行'}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-2 py-2">
+                            <div className="flex flex-wrap items-center gap-1.5">
                               <Link
                                 href={buildMedicalRecordsHref({
                                   tab: 'list',
@@ -1160,22 +1110,19 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                                   aiTag: selectedAiTag,
                                   aiStatus: selectedAiStatus,
                                 })}
-                                className="text-blue-600 text-sm"
+                                className="inline-flex h-7 items-center rounded border border-blue-300 px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                               >
                                 編集
                               </Link>
                               <form action={`/api/medical-records/${record.id}`} method="post">
                                 <input type="hidden" name="_method" value="delete" />
-                                <Button type="submit" className="bg-red-500 hover:bg-red-600">
-                                  削除
-                                </Button>
+                                <Button type="submit" className="h-7 px-2 text-xs bg-red-500 hover:bg-red-600">削除</Button>
                               </form>
                               {aiProEnabled ? <MedicalRecordAiProAnalyzeButton recordId={record.id} /> : null}
                               {aiProPlusEnabled ? <MedicalRecordAiProPlusAnalyzeButton recordId={record.id} /> : null}
+                              {record.status === 'finalized' ? <MedicalRecordShareButton recordId={record.id} /> : null}
                             </div>
-                            {record.status === 'finalized' ? <MedicalRecordShareButton recordId={record.id} /> : null}
-                          </div>
-                        </td>
+                          </td>
                         </tr>
                       )
                     })}

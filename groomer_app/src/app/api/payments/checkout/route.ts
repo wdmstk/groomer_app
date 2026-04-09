@@ -133,9 +133,9 @@ export async function POST(request: Request) {
   const origin = new URL(request.url).origin
   const successUrl =
     provider === 'stripe'
-      ? `${origin}/payments?tab=list&provider=stripe&status=success&session_id={CHECKOUT_SESSION_ID}`
-      : `${origin}/payments?tab=list&provider=komoju&status=success`
-  const cancelUrl = `${origin}/payments?tab=list&provider=${provider}&status=cancel`
+      ? `${origin}/payments?provider=stripe&status=success&session_id={CHECKOUT_SESSION_ID}`
+      : `${origin}/payments?provider=komoju&status=success`
+  const cancelUrl = `${origin}/payments?provider=${provider}&status=cancel`
   const metadata = {
     operation_type: 'appointment_payment',
     appointment_id: appointmentId,

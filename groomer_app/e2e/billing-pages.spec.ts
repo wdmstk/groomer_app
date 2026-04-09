@@ -4,7 +4,7 @@ test.describe('課金画面', () => {
   test('課金サマリーと料金内訳、要対応アラートを表示できる', async ({ page }) => {
     await page.goto('/billing')
 
-    await expect(page.getByRole('heading', { name: '決済管理（owner専用）' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '決済管理' }).first()).toBeVisible()
     await expect(page.getByRole('heading', { name: '要対応' })).toBeVisible()
     await expect(page.getByText('支払い遅延（past_due）状態です。')).toBeVisible()
     await expect(page.locator('p', { hasText: 'プラン' }).locator('span').filter({ hasText: 'スタンダード' })).toBeVisible()
@@ -16,6 +16,7 @@ test.describe('課金画面', () => {
     await expect(page.getByText('通知強化オプション')).toBeVisible()
     await expect(page.getByText('追加容量料金（月額）')).toBeVisible()
     await expect(page.getByText('20 GB')).toBeVisible()
+    await expect(page.getByTestId('billing-legal-agreement')).toHaveCount(1)
   })
 
   test('課金履歴で通知従量課金と webhook 失敗を表示できる', async ({ page }) => {
@@ -29,7 +30,6 @@ test.describe('課金画面', () => {
     await expect(page.getByRole('heading', { name: 'Webhook受信履歴' })).toBeVisible()
     await expect(page.getByRole('cell', { name: 'invoice.payment_failed', exact: true })).toBeVisible()
     await expect(page.getByRole('cell', { name: 'card_declined', exact: true }).first()).toBeVisible()
-    await expect(page.getByText('容量追加 決済完了')).toBeVisible()
-    await expect(page.getByText('決済管理へ戻る')).toBeVisible()
+    await expect(page.getByRole('cell', { name: '容量追加 決済完了' }).first()).toBeVisible()
   })
 })

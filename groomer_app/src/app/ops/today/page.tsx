@@ -289,7 +289,7 @@ export default async function OpsTodayPage() {
                     <OpsRevertStatusForm appointmentId={appointment.id} />
                   ) : null}
                   <Link
-                    href={`/payments?tab=list&modal=create&appointment_id=${appointment.id}`}
+                    href={`/payments?modal=create&appointment_id=${appointment.id}`}
                     className="rounded border border-blue-300 px-3 py-2 text-sm font-medium text-blue-700"
                   >
                     会計
@@ -309,7 +309,7 @@ export default async function OpsTodayPage() {
                     </Link>
                   ) : null}
                   <Link
-                    href={`/customers?tab=list&edit=${appointment.customer_id}`}
+                    href={`/customers/manage?view=customers&customer_edit=${appointment.customer_id}`}
                     className="rounded border border-emerald-300 px-3 py-2 text-sm font-medium text-emerald-700"
                   >
                     {hasLineId ? 'LINE送信（顧客編集）' : 'LINE ID登録'}
@@ -326,7 +326,7 @@ export default async function OpsTodayPage() {
           <Link href="/dashboard?tab=operations" className="rounded border px-3 py-2 text-sm text-gray-700">
             当日ダッシュボード
           </Link>
-          <Link href="/payments?tab=list&modal=create" className="rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white">
+          <Link href="/payments?modal=create" className="rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white">
             会計を開く
           </Link>
         </div>

@@ -17,6 +17,7 @@ async function gotoStable(page: Page, url: string) {
 }
 
 test.describe('在庫管理画面', () => {
+  // TRACE-018
   test('在庫ダッシュボードで不足と期限アラートを表示できる', async ({ page }) => {
     await gotoStable(page, '/inventory')
 
@@ -50,22 +51,26 @@ test.describe('在庫管理画面', () => {
   })
 
   test('商品マスタ一覧と作成・編集モーダル初期表示を確認できる', async ({ page }) => {
-    await gotoStable(page, '/inventory/products?tab=list')
+    await gotoStable(page, '/inventory/products')
+    const productsTable = page.getByTestId('inventory-products-table')
+    const item001Row = page.getByTestId('inventory-product-row-item-001')
+    const item002Row = page.getByTestId('inventory-product-row-item-002')
 
     await expect(page.getByRole('heading', { name: '商品マスタ管理' })).toBeVisible()
     await expect(page.getByText(/全 \d+ 件/)).toBeVisible()
-    await expect(page.getByText('トリマー商会 本店')).toBeVisible()
-    await expect(page.getByRole('cell', { name: '未設定', exact: true }).first()).toBeVisible()
-    await expect(page.getByText('無効')).toBeVisible()
+    await expect(productsTable).toBeVisible()
+    await expect(item001Row).toContainText('トリマー商会 本店')
+    await expect(item002Row).toContainText('未設定')
+    await expect(item002Row).toContainText('無効')
 
-    await gotoStable(page, '/inventory/products?tab=list&modal=create')
+    await gotoStable(page, '/inventory/products?modal=create')
 
     await expect(page.getByRole('heading', { name: '新規商品登録' })).toBeVisible()
     await expect(page.getByLabel('商品名')).toBeVisible()
     await expect(page.getByLabel('単位')).toHaveValue('個')
     await expect(page.getByRole('button', { name: '登録する' })).toBeVisible()
 
-    await gotoStable(page, '/inventory/products?tab=list&edit=item-001')
+    await gotoStable(page, '/inventory/products?edit=item-001')
 
     await expect(page.getByRole('heading', { name: '商品情報の更新' })).toBeVisible()
     await expect(page.getByLabel('商品名')).toHaveValue('トリートメント剤')
@@ -79,29 +84,35 @@ test.describe('在庫管理画面', () => {
     test.setTimeout(60_000)
 
     await gotoStable(page, '/inventory/stocks')
+    const stocksTable = page.getByTestId('inventory-stocks-table')
 
     await expect(page.getByRole('heading', { name: '在庫一覧' })).toBeVisible()
     await expect(page.getByText('表示件数: 3 件')).toBeVisible()
-    await expect(page.getByText('トリートメント剤')).toBeVisible()
-    await expect(page.getByRole('cell', { name: '2 本', exact: true })).toBeVisible()
+    await expect(stocksTable.getByText('トリートメント剤', { exact: true })).toBeVisible()
+    await expect(stocksTable.getByText('現在庫 2 本')).toBeVisible()
     await expect(page.getByText('不足').first()).toBeVisible()
 
     await gotoStable(page, '/inventory/stocks?low=1')
+    const lowStocksTable = page.getByTestId('inventory-stocks-table')
 
     await expect(page.getByText(/表示件数: \d+ 件/)).toBeVisible()
-    await expect(page.getByText('肉球クリーム')).toBeVisible()
-    await expect(page.getByRole('cell', { name: 'トリートメント剤', exact: true })).toBeVisible()
+    await expect(lowStocksTable.getByText('肉球クリーム', { exact: true })).toBeVisible()
+    await expect(lowStocksTable.getByText('トリートメント剤', { exact: true })).toBeVisible()
 
     await gotoStable(page, '/inventory/history')
+    const historyTable = page.getByTestId('inventory-history-table')
+    const historyRow001 = page.getByTestId('inventory-history-row-movement-001')
+    const historyRow003 = page.getByTestId('inventory-history-row-movement-003')
 
     await expect(page.getByRole('heading', { name: '在庫履歴' })).toBeVisible()
-    await expect(page.getByRole('cell', { name: 'トリートメント剤', exact: true })).toBeVisible()
-    await expect(page.getByRole('cell', { name: '出庫', exact: true })).toBeVisible()
-    await expect(page.getByText('-3 本')).toBeVisible()
-    await expect(page.getByText('トリミング施術で消費')).toBeVisible()
-    await expect(page.getByText('不明な商品')).toBeVisible()
-    await expect(page.getByText('棚卸調整')).toBeVisible()
-    await expect(page.getByText('-1')).toBeVisible()
+    await expect(historyTable).toBeVisible()
+    await expect(historyRow001).toContainText('トリートメント剤')
+    await expect(historyRow001).toContainText('出庫')
+    await expect(historyRow001).toContainText('-3 本')
+    await expect(historyRow001).toContainText('トリミング施術で消費')
+    await expect(historyRow003).toContainText('不明な商品')
+    await expect(historyRow003).toContainText('棚卸調整')
+    await expect(historyRow003).toContainText('-1')
 
     await gotoStable(page, '/inventory/reports')
 
@@ -120,6 +131,8 @@ test.describe('在庫管理画面', () => {
   test('入庫、出庫、発注管理の初期表示を確認できる', async ({ page }) => {
     test.setTimeout(90_000)
     await gotoStable(page, '/inventory/inbounds')
+    const inboundsTable = page.getByTestId('inventory-inbounds-table')
+    const inbound001Row = page.getByTestId('inventory-inbound-row-inbound-001')
 
     await expect(page.getByRole('heading', { name: '入庫登録' })).toBeVisible()
     await expect(page.getByLabel('商品')).toBeVisible()
@@ -128,21 +141,26 @@ test.describe('在庫管理画面', () => {
     await expect(page.getByRole('button', { name: '入庫を登録' })).toBeVisible()
     await expect(page.getByText('最新の入庫履歴')).toBeVisible()
     await expect(page.getByText('全 2 件')).toBeVisible()
-    await expect(page.getByText('+12 本')).toBeVisible()
-    await expect(page.getByText('850 円')).toBeVisible()
-    await expect(page.getByText('定期仕入れ')).toBeVisible()
+    await expect(inboundsTable).toBeVisible()
+    await expect(inbound001Row).toContainText('+12 本')
+    await expect(inbound001Row).toContainText('850 円')
+    await expect(inbound001Row).toContainText('定期仕入れ')
     await expect(page.getByText('不明な商品')).not.toBeVisible()
 
     await gotoStable(page, '/inventory/outbounds')
+    const outboundsTable = page.getByTestId('inventory-outbounds-table')
+    const outbound001Row = page.getByTestId('inventory-outbound-row-outbound-001')
+    const outbound002Row = page.getByTestId('inventory-outbound-row-outbound-002')
 
     await expect(page.getByRole('heading', { name: '出庫登録' })).toBeVisible()
     await expect(page.getByLabel('出庫理由')).toHaveValue('施術利用')
     await expect(page.getByRole('button', { name: '出庫を登録' })).toBeVisible()
     await expect(page.getByText('最新の出庫履歴')).toBeVisible()
     await expect(page.getByText('全 2 件')).toBeVisible()
-    await expect(page.getByText('-2 本')).toBeVisible()
-    await expect(page.getByRole('table').getByText('施術利用')).toBeVisible()
-    await expect(page.getByText('-1 個')).toBeVisible()
+    await expect(outboundsTable).toBeVisible()
+    await expect(outbound001Row).toContainText('-2 本')
+    await expect(outbound001Row).toContainText('施術利用')
+    await expect(outbound002Row).toContainText('-1 個')
 
     await gotoStable(page, '/inventory/purchase-orders')
 
@@ -165,6 +183,9 @@ test.describe('在庫管理画面', () => {
 
   test('棚卸で帳簿在庫付き商品選択と差異履歴を表示できる', async ({ page }) => {
     await gotoStable(page, '/inventory/stocktake')
+    const stocktakeTable = page.getByTestId('inventory-stocktake-table')
+    const stocktake001Row = page.getByTestId('inventory-stocktake-row-stocktake-001')
+    const stocktake002Row = page.getByTestId('inventory-stocktake-row-stocktake-002')
 
     await expect(page.getByRole('heading', { name: '棚卸', exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: '棚卸調整を登録' })).toBeVisible()
@@ -177,10 +198,11 @@ test.describe('在庫管理画面', () => {
     await expect(page.getByRole('button', { name: '差異を反映' })).toBeVisible()
 
     await expect(page.getByRole('heading', { name: '最新の棚卸調整履歴' })).toBeVisible()
-    await expect(page.getByRole('cell', { name: 'トリートメント剤', exact: true })).toBeVisible()
-    await expect(page.getByText('-1 本')).toBeVisible()
-    await expect(page.getByText('棚卸差異')).toBeVisible()
-    await expect(page.getByText('+2 個')).toBeVisible()
-    await expect(page.getByText('倉庫在庫を反映')).toBeVisible()
+    await expect(stocktakeTable).toBeVisible()
+    await expect(stocktake001Row).toContainText('トリートメント剤')
+    await expect(stocktake001Row).toContainText('-1 本')
+    await expect(stocktake001Row).toContainText('棚卸差異')
+    await expect(stocktake002Row).toContainText('+2 個')
+    await expect(stocktake002Row).toContainText('倉庫在庫を反映')
   })
 })

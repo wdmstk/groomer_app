@@ -365,74 +365,118 @@ export default async function AuditLogsPage({ searchParams }: AuditLogsPageProps
         {rows.length === 0 ? (
           <p className="text-sm text-gray-500">監査ログはまだありません。</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b text-gray-500">
-                <tr>
-                  <th className="px-2 py-2">日時</th>
-                  <th className="px-2 py-2">対象</th>
-                  <th className="px-2 py-2">操作</th>
-                  <th className="px-2 py-2">entity_id</th>
-                  <th className="px-2 py-2">actor_user_id</th>
-                  <th className="px-2 py-2">要約</th>
-                  <th className="px-2 py-2">詳細</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {rows.map((row) => (
-                  <tr key={row.id} className="align-top text-gray-700">
-                    <td className="px-2 py-3">{formatDateTime(row.created_at)}</td>
-                    <td className="px-2 py-3">{row.entity_type}</td>
-                    <td className="px-2 py-3">
-                      <span className={`rounded px-2 py-1 text-xs font-semibold ${getActionTone(row.action)}`}>
-                        {row.action}
-                      </span>
-                    </td>
-                    <td className="px-2 py-3 text-xs text-gray-600">{row.entity_id}</td>
-                    <td className="px-2 py-3 text-xs text-gray-600">{row.actor_user_id ?? '-'}</td>
-                    <td className="max-w-sm px-2 py-3 text-xs text-gray-600">
-                      {row.entity_type === 'member_portal_link' ? (
-                        <p>{summarizeMemberPortalLog(row) || '-'}</p>
-                      ) : (
-                        <>
-                          <p>before: {summarizeValue(row.before)}</p>
-                          <p className="mt-1">after: {summarizeValue(row.after)}</p>
-                          <p className="mt-1">payload: {summarizeValue(row.payload)}</p>
-                        </>
-                      )}
-                    </td>
-                    <td className="max-w-md px-2 py-3">
-                      <details className="rounded border bg-gray-50 p-2">
-                        <summary className="cursor-pointer text-xs font-semibold text-gray-700">
-                          JSONを開く
-                        </summary>
-                        <div className="mt-2 space-y-2">
-                          <div>
-                            <p className="mb-1 text-xs font-semibold text-gray-500">before</p>
-                            <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-white p-2 text-xs text-gray-600">
-                              {formatJson(row.before)}
-                            </pre>
-                          </div>
-                          <div>
-                            <p className="mb-1 text-xs font-semibold text-gray-500">after</p>
-                            <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-white p-2 text-xs text-gray-600">
-                              {formatJson(row.after)}
-                            </pre>
-                          </div>
-                          <div>
-                            <p className="mb-1 text-xs font-semibold text-gray-500">payload</p>
-                            <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-white p-2 text-xs text-gray-600">
-                              {formatJson(row.payload)}
-                            </pre>
-                          </div>
-                        </div>
-                      </details>
-                    </td>
+          <>
+            <div className="space-y-2.5 md:hidden">
+              {rows.map((row) => (
+                <article key={row.id} className="rounded border border-gray-200 p-3 text-sm text-gray-700">
+                  <p className="text-xs text-gray-500">{formatDateTime(row.created_at)}</p>
+                  <p className="mt-1 truncate font-semibold text-gray-900">{row.entity_type}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className={`rounded px-2 py-0.5 text-xs font-semibold ${getActionTone(row.action)}`}>
+                      {row.action}
+                    </span>
+                    <span className="truncate text-xs text-gray-500">entity: {row.entity_id}</span>
+                  </div>
+                  <p className="truncate text-xs text-gray-500">actor: {row.actor_user_id ?? '-'}</p>
+                  <p className="mt-1 line-clamp-3 text-xs text-gray-600">
+                    {row.entity_type === 'member_portal_link'
+                      ? summarizeMemberPortalLog(row) || '-'
+                      : `before: ${summarizeValue(row.before)} / after: ${summarizeValue(row.after)}`}
+                  </p>
+                  <details className="mt-2 rounded border bg-gray-50 p-2">
+                    <summary className="cursor-pointer text-xs font-semibold text-gray-700">JSONを開く</summary>
+                    <div className="mt-2 space-y-2">
+                      <div>
+                        <p className="mb-1 text-xs font-semibold text-gray-500">before</p>
+                        <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-white p-2 text-xs text-gray-600">
+                          {formatJson(row.before)}
+                        </pre>
+                      </div>
+                      <div>
+                        <p className="mb-1 text-xs font-semibold text-gray-500">after</p>
+                        <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-white p-2 text-xs text-gray-600">
+                          {formatJson(row.after)}
+                        </pre>
+                      </div>
+                      <div>
+                        <p className="mb-1 text-xs font-semibold text-gray-500">payload</p>
+                        <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-white p-2 text-xs text-gray-600">
+                          {formatJson(row.payload)}
+                        </pre>
+                      </div>
+                    </div>
+                  </details>
+                </article>
+              ))}
+            </div>
+            <div className="hidden md:block" data-testid="audit-logs-table-wrap">
+              <table className="min-w-full table-fixed text-left text-sm" data-testid="audit-logs-table">
+                <thead className="border-b bg-gray-50 text-gray-500">
+                  <tr>
+                    <th className="px-2.5 py-2">ログ</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap">操作</th>
+                    <th className="px-2.5 py-2">要約</th>
+                    <th className="px-2.5 py-2">詳細</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y">
+                  {rows.map((row) => (
+                    <tr key={row.id} className="align-top text-gray-700" data-testid={`audit-log-row-${row.id}`}>
+                      <td className="px-2.5 py-2">
+                        <p>{formatDateTime(row.created_at)}</p>
+                        <p className="truncate text-xs text-gray-500">{row.entity_type}</p>
+                        <p className="truncate text-xs text-gray-500">entity: {row.entity_id}</p>
+                        <p className="truncate text-xs text-gray-500">actor: {row.actor_user_id ?? '-'}</p>
+                      </td>
+                      <td className="px-2.5 py-2">
+                        <span className={`rounded px-2 py-0.5 text-xs font-semibold ${getActionTone(row.action)}`}>
+                          {row.action}
+                        </span>
+                      </td>
+                      <td className="px-2.5 py-2 text-xs text-gray-600">
+                        {row.entity_type === 'member_portal_link' ? (
+                          <p>{summarizeMemberPortalLog(row) || '-'}</p>
+                        ) : (
+                          <>
+                            <p>before: {summarizeValue(row.before)}</p>
+                            <p className="mt-1">after: {summarizeValue(row.after)}</p>
+                            <p className="mt-1">payload: {summarizeValue(row.payload)}</p>
+                          </>
+                        )}
+                      </td>
+                      <td className="px-2.5 py-2">
+                        <details className="rounded border bg-gray-50 p-2" data-testid={`audit-log-json-${row.id}`}>
+                          <summary className="cursor-pointer text-xs font-semibold text-gray-700">
+                            JSONを開く
+                          </summary>
+                          <div className="mt-2 space-y-2">
+                            <div>
+                              <p className="mb-1 text-xs font-semibold text-gray-500">before</p>
+                              <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-white p-2 text-xs text-gray-600">
+                                {formatJson(row.before)}
+                              </pre>
+                            </div>
+                            <div>
+                              <p className="mb-1 text-xs font-semibold text-gray-500">after</p>
+                              <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-white p-2 text-xs text-gray-600">
+                                {formatJson(row.after)}
+                              </pre>
+                            </div>
+                            <div>
+                              <p className="mb-1 text-xs font-semibold text-gray-500">payload</p>
+                              <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-white p-2 text-xs text-gray-600">
+                                {formatJson(row.payload)}
+                              </pre>
+                            </div>
+                          </div>
+                        </details>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
         <div className="mt-4 flex items-center justify-between border-t pt-4 text-sm text-gray-600">
           <Link

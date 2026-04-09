@@ -128,7 +128,7 @@ describe('remaining heavy pages', () => {
 
     render(await CustomersManagePage({ searchParams: Promise.resolve({}) }))
 
-    expect(screen.getByRole('heading', { level: 1, name: '顧客管理（β）' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1, name: '顧客ペット管理' })).toBeTruthy()
   })
 
   it('renders journal pet page in e2e mode', async () => {

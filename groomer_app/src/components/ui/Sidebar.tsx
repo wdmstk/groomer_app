@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { StoreSwitcher } from './StoreSwitcher'
 import {
   canAccessRouteByPlan,
@@ -74,9 +74,7 @@ const storeNavSections: NavSection[] = [
   {
     title: '顧客業務',
     links: [
-      { href: '/customers', label: '顧客管理' },
-      { href: '/customers/manage', label: '顧客管理（β）' },
-      { href: '/pets', label: 'ペット管理' },
+      { href: '/customers/manage', label: '顧客ペット管理' },
       { href: '/service-menus', label: '施術メニュー管理' },
       { href: '/appointments', label: '予約管理' },
       { href: '/medical-records', label: 'ペットカルテ管理' },
@@ -149,17 +147,7 @@ export function Sidebar() {
   const [uiTheme, setUiTheme] = useState<UiTheme>(resolveClientUiThemeSnapshot)
   const [themeMessage, setThemeMessage] = useState('')
   const [isThemeSaving, setIsThemeSaving] = useState(false)
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
-    if (typeof window === 'undefined') return {}
-    const raw = window.sessionStorage.getItem(SIDEBAR_EXPANDED_SECTIONS_STORAGE_KEY)
-    if (!raw) return {}
-    try {
-      const parsed = JSON.parse(raw) as Record<string, boolean>
-      return parsed && typeof parsed === 'object' ? parsed : {}
-    } catch {
-      return {}
-    }
-  })
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
   const persistedTitle = useSyncExternalStore(
     () => () => {},
     () => (typeof window === 'undefined' ? '' : window.sessionStorage.getItem('active_store_name') ?? ''),
@@ -214,6 +202,19 @@ export function Sidebar() {
     : 'store'
   const activeNavSections = activeNavMode === 'hq' ? hqNavSections : storeNavSections
   const modeLabel = activeNavMode === 'hq' ? '本部運用' : '店舗運用'
+
+  useEffect(() => {
+    const raw = window.sessionStorage.getItem(SIDEBAR_EXPANDED_SECTIONS_STORAGE_KEY)
+    if (!raw) return
+    try {
+      const parsed = JSON.parse(raw) as Record<string, boolean>
+      if (parsed && typeof parsed === 'object') {
+        setExpandedSections(parsed)
+      }
+    } catch {
+      setExpandedSections({})
+    }
+  }, [])
 
   const handleActiveStoreNameChange = useCallback((name: string) => {
     setTitle((prev) => (prev === name ? prev : name))

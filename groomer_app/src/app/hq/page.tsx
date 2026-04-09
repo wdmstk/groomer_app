@@ -279,27 +279,27 @@ export default async function HeadquartersPage({ searchParams }: PageProps) {
       <Card>
         <h2 className="text-lg font-semibold text-gray-900">店舗比較</h2>
         <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b text-gray-500">
+          <table className="min-w-full table-fixed text-left text-sm">
+            <thead className="border-b bg-gray-50 text-gray-500">
               <tr>
-                <th className="px-2 py-2">店舗</th>
-                <th className="px-2 py-2">予約件数</th>
-                <th className="px-2 py-2">完了率</th>
-                <th className="px-2 py-2">キャンセル率</th>
-                <th className="px-2 py-2">売上</th>
-                <th className="px-2 py-2">売上構成比</th>
-                <th className="px-2 py-2">監査ログ</th>
+                <th className="px-2.5 py-2">店舗</th>
+                <th className="px-2.5 py-2">予約件数</th>
+                <th className="px-2.5 py-2">完了率</th>
+                <th className="px-2.5 py-2">キャンセル率</th>
+                <th className="px-2.5 py-2">売上</th>
+                <th className="px-2.5 py-2">売上構成比</th>
+                <th className="px-2.5 py-2">監査ログ</th>
               </tr>
             </thead>
             <tbody className="divide-y text-gray-700">
               {rows.map((row) => (
                 <tr key={row.storeId}>
-                  <td className="px-2 py-3 font-medium text-gray-900">{row.storeName}</td>
-                  <td className="px-2 py-3">{row.appointmentCount.toLocaleString()} 件</td>
-                  <td className="px-2 py-3">{row.completionRate.toFixed(1)}%</td>
-                  <td className="px-2 py-3">{row.cancelRate.toFixed(1)}%</td>
-                  <td className="px-2 py-3">{Math.round(row.salesAmount).toLocaleString()} 円</td>
-                  <td className="px-2 py-3">
+                  <td className="px-2.5 py-2 font-medium text-gray-900">{row.storeName}</td>
+                  <td className="px-2.5 py-2">{row.appointmentCount.toLocaleString()} 件</td>
+                  <td className="px-2.5 py-2">{row.completionRate.toFixed(1)}%</td>
+                  <td className="px-2.5 py-2">{row.cancelRate.toFixed(1)}%</td>
+                  <td className="px-2.5 py-2">{Math.round(row.salesAmount).toLocaleString()} 円</td>
+                  <td className="px-2.5 py-2">
                     <div className="min-w-[120px]">
                       <div className="h-2 w-full rounded bg-slate-200">
                         <div
@@ -314,7 +314,7 @@ export default async function HeadquartersPage({ searchParams }: PageProps) {
                       </p>
                     </div>
                   </td>
-                  <td className="px-2 py-3">{row.auditCount.toLocaleString()} 件</td>
+                  <td className="px-2.5 py-2">{row.auditCount.toLocaleString()} 件</td>
                 </tr>
               ))}
             </tbody>

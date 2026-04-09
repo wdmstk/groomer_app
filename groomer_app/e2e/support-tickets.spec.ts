@@ -7,6 +7,7 @@ test.describe('サポート問い合わせ', () => {
     await expect(page.getByRole('heading', { name: '問い合わせ' })).toBeVisible()
   })
 
+  // TRACE-020
   test('チケット一覧、起票、コメント追記を表示できる', async ({ page }) => {
     let mode: 'initial' | 'created' | 'commented' = 'initial'
 

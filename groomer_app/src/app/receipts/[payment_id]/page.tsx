@@ -140,25 +140,25 @@ export default async function ReceiptPage({ params }: ReceiptPageProps) {
         <div>
           <h2 className="text-sm font-semibold text-gray-900">施術内訳</h2>
           <div className="mt-2 overflow-hidden rounded border">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full table-fixed text-sm">
               <thead className="bg-gray-50 text-gray-500">
                 <tr>
-                  <th className="px-3 py-2 text-left">メニュー</th>
-                  <th className="px-3 py-2 text-right">金額</th>
-                  <th className="px-3 py-2 text-right">時間</th>
+                  <th className="px-2.5 py-2 text-left">メニュー</th>
+                  <th className="px-2.5 py-2 text-right">金額</th>
+                  <th className="px-2.5 py-2 text-right">時間</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {appointmentMenus.map((menu) => (
                   <tr key={`${menu.menu_name}-${menu.price}`} className="text-gray-700">
-                    <td className="px-3 py-2">{menu.menu_name}</td>
-                    <td className="px-3 py-2 text-right">{menu.price.toLocaleString()} 円</td>
-                    <td className="px-3 py-2 text-right">{menu.duration} 分</td>
+                    <td className="px-2.5 py-2">{menu.menu_name}</td>
+                    <td className="px-2.5 py-2 text-right">{menu.price.toLocaleString()} 円</td>
+                    <td className="px-2.5 py-2 text-right">{menu.duration} 分</td>
                   </tr>
                 ))}
                 {appointmentMenus.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="px-3 py-4 text-center text-gray-500">
+                    <td colSpan={3} className="px-2.5 py-2 text-center text-gray-500">
                       施術内訳がありません。
                     </td>
                   </tr>

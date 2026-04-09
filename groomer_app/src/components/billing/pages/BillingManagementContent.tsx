@@ -1,9 +1,7 @@
 import nextDynamic from 'next/dynamic'
 import { Card } from '@/components/ui/Card'
 import { requireOwnerStoreMembership } from '@/lib/auth/store-owner'
-import Link from 'next/link'
 import {
-  billingOperationTypeLabel,
   formatBillingDateOnlyJst,
   formatBillingDateTimeJst,
   getBillingStatusBadgeClass,
@@ -22,10 +20,6 @@ import {
   STORAGE_ADDON_UNIT_GB,
 } from '@/lib/billing/pricing'
 
-const PaymentMethodButtons = nextDynamic(
-  () => import('@/components/billing/PaymentMethodButtons').then((mod) => mod.PaymentMethodButtons)
-)
-
 const BillingOperationsPanel = nextDynamic(
   () => import('@/components/billing/BillingOperationsPanel').then((mod) => mod.BillingOperationsPanel),
   {
@@ -33,20 +27,13 @@ const BillingOperationsPanel = nextDynamic(
   }
 )
 
-const SetupAssistanceCheckoutButton = nextDynamic(
-  () => import('@/components/billing/SetupAssistanceCheckoutButton').then((mod) => mod.SetupAssistanceCheckoutButton)
-)
-
-const StorageAddonCheckoutPanel = nextDynamic(
-  () => import('@/components/billing/StorageAddonCheckoutPanel').then((mod) => mod.StorageAddonCheckoutPanel)
-)
-const StorePaymentProviderConnectionsPanel = nextDynamic(
+const BillingCheckoutAgreementSection = nextDynamic(
   () =>
-    import('@/components/billing/StorePaymentProviderConnectionsPanel').then(
-      (mod) => mod.StorePaymentProviderConnectionsPanel
+    import('@/components/billing/BillingCheckoutAgreementSection').then(
+      (mod) => mod.BillingCheckoutAgreementSection
     ),
   {
-    loading: () => <p className="text-sm text-gray-500">接続設定を読み込み中...</p>,
+    loading: () => <p className="text-sm text-gray-500">決済パネルを読み込み中...</p>,
   }
 )
 
@@ -68,13 +55,6 @@ type BillingPageProps = {
     message?: string
     error?: string
   }>
-}
-type ProviderConnectionView = {
-  provider: 'stripe' | 'komoju'
-  is_active: boolean
-  has_secret_key: boolean
-  has_webhook_secret: boolean
-  komoju_api_base_url: string | null
 }
 
 async function fetchStoreSubscriptionWithAiFallback(admin: ReturnType<typeof createAdminSupabaseClient>, storeId: string) {
@@ -139,45 +119,6 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           .eq('store_id', storeId)
           .order('updated_at', { ascending: false })
       ).data
-  const operations = isPlaywrightE2E
-    ? billingPageFixtures.operations
-    : (
-        await adminClient
-          .from('billing_operations')
-          .select('created_at, provider, operation_type, amount_jpy, reason, status, result_message')
-          .eq('store_id', storeId)
-          .order('created_at', { ascending: false })
-          .limit(20)
-      ).data
-  const providerConnections: ProviderConnectionView[] = isPlaywrightE2E
-    ? [
-        {
-          provider: 'stripe',
-          is_active: true,
-          has_secret_key: true,
-          has_webhook_secret: true,
-          komoju_api_base_url: null,
-        },
-        {
-          provider: 'komoju',
-          is_active: false,
-          has_secret_key: false,
-          has_webhook_secret: false,
-          komoju_api_base_url: null,
-        },
-      ]
-    : ((
-        await adminClient
-          .from('store_payment_provider_connections' as never)
-          .select('provider, is_active, secret_key, webhook_secret, komoju_api_base_url')
-          .eq('store_id', storeId)
-      ).data?.map((row) => ({
-        provider: (row as { provider: 'stripe' | 'komoju' }).provider,
-        is_active: Boolean((row as { is_active: boolean | null }).is_active),
-        has_secret_key: Boolean((row as { secret_key: string | null }).secret_key),
-        has_webhook_secret: Boolean((row as { webhook_secret: string | null }).webhook_secret),
-        komoju_api_base_url: (row as { komoju_api_base_url: string | null }).komoju_api_base_url,
-      })) ?? []) as ProviderConnectionView[]
   const storagePolicy = isPlaywrightE2E
     ? billingPageFixtures.storagePolicy
     : (
@@ -265,12 +206,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold text-gray-900">決済管理（owner専用）</h1>
-        <div>
-          <Link href="/billing?tab=history" className="text-sm font-semibold text-blue-700 hover:underline">
-            決済履歴を見る
-          </Link>
-        </div>
+        <h1 className="text-2xl font-semibold text-gray-900">決済管理</h1>
       </div>
       {params?.message ? (
         <Card className="border border-emerald-200 bg-emerald-50">
@@ -550,64 +486,15 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <Card className="p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Storage</p>
-          <h2 className="text-lg font-semibold text-gray-900">容量追加の決済</h2>
-          <p className="mt-1.5 text-sm text-gray-700">
-            容量追加分だけを決済します。現在の追加容量は {extraCapacityGb}GB です。
-          </p>
-          <div className="mt-4">
-            <StorageAddonCheckoutPanel />
-          </div>
-          <p className="mt-3 text-xs text-gray-500">
-            使用量や超過時ポリシーの詳細は
-            {' '}
-            <Link href="/settings?tab=storage" className="font-semibold text-blue-700 hover:underline">
-              容量設定
-            </Link>
-            {' '}
-            で確認できます。
-          </p>
-        </Card>
-
-        <Card className="p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Checkout</p>
-          <h2 className="text-lg font-semibold text-gray-900">基本料金・オプション料金の決済</h2>
-          <p className="mt-1.5 text-sm text-gray-700">
-            基本料金と有効化中オプションの契約決済を開始します。
-          </p>
-          <div className="mt-4">
-            <PaymentMethodButtons
-              defaultPlanCode={storeSubscription?.plan_code ?? 'light'}
-              defaultBillingCycle={storeSubscription?.billing_cycle ?? 'monthly'}
-              hotelOptionEnabled={hotelOptionRequested}
-              notificationOptionEnabled={notificationOptionRequested}
-              aiPlanCode={aiPlanRequested}
-              ownerActiveStoreCount={ownerActiveStoreCount}
-            />
-          </div>
-        </Card>
-      </div>
-
-      <Card className="p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">One-time</p>
-        <h2 className="text-lg font-semibold text-gray-900">初期設定代行</h2>
-        <p className="mt-1.5 text-sm text-gray-700">
-          初期設定代行のみを決済します。決済完了後に運営側で設定作業を開始します。
-        </p>
-        <div className="mt-4">
-          <SetupAssistanceCheckoutButton />
-        </div>
-      </Card>
-
-      <Card className="p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Customer Payment Accounts</p>
-        <h2 className="text-lg font-semibold text-gray-900">店舗別 顧客決済アカウント接続</h2>
-        <div className="mt-4">
-          <StorePaymentProviderConnectionsPanel initialConnections={providerConnections} />
-        </div>
-      </Card>
+      <BillingCheckoutAgreementSection
+        extraCapacityGb={extraCapacityGb}
+        defaultPlanCode={storeSubscription?.plan_code ?? 'light'}
+        defaultBillingCycle={storeSubscription?.billing_cycle ?? 'monthly'}
+        hotelOptionEnabled={hotelOptionRequested}
+        notificationOptionEnabled={notificationOptionRequested}
+        aiPlanCode={aiPlanRequested}
+        ownerActiveStoreCount={ownerActiveStoreCount}
+      />
 
       <Card className="p-5">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Operations</p>
@@ -615,74 +502,6 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         <div className="mt-4">
           <BillingOperationsPanel preferredProvider={storeSubscription?.preferred_provider ?? null} />
         </div>
-      </Card>
-
-      <Card className="p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Provider Status</p>
-        <h2 className="text-lg font-semibold text-gray-900">プロバイダ状態</h2>
-        {billingSubscriptions && billingSubscriptions.length > 0 ? (
-          <div className="mt-3 overflow-x-auto">
-            <table className="min-w-full text-sm text-left">
-              <thead className="border-b text-gray-500">
-                <tr>
-                  <th className="px-2 py-2 font-medium">provider</th>
-                  <th className="px-2 py-2 font-medium">status</th>
-                  <th className="px-2 py-2 font-medium">provider_subscription_id</th>
-                  <th className="px-2 py-2 font-medium">current_period_end</th>
-                  <th className="px-2 py-2 font-medium">updated_at</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {billingSubscriptions.map((row) => (
-                  <tr key={`${row.provider}-${row.provider_subscription_id ?? 'none'}`} className="text-gray-700">
-                    <td className="px-2 py-2.5">{row.provider}</td>
-                    <td className="px-2 py-2.5">{row.status}</td>
-                    <td className="px-2 py-2.5">{row.provider_subscription_id ?? '-'}</td>
-                    <td className="px-2 py-2.5">{formatBillingDateTimeJst(row.current_period_end ?? null)}</td>
-                    <td className="px-2 py-2.5">{formatBillingDateTimeJst(row.updated_at ?? null)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-gray-500">まだ決済履歴がありません。</p>
-        )}
-      </Card>
-
-      <Card className="p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Activity Log</p>
-        <h2 className="text-lg font-semibold text-gray-900">最近の操作履歴</h2>
-        {operations && operations.length > 0 ? (
-          <div className="mt-3 overflow-x-auto">
-            <table className="min-w-full text-sm text-left">
-              <thead className="border-b text-gray-500">
-                <tr>
-                  <th className="px-2 py-2 font-medium">日時</th>
-                  <th className="px-2 py-2 font-medium">provider</th>
-                  <th className="px-2 py-2 font-medium">operation</th>
-                  <th className="px-2 py-2 font-medium">amount</th>
-                  <th className="px-2 py-2 font-medium">status</th>
-                  <th className="px-2 py-2 font-medium">reason/result</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {operations.map((row, index) => (
-                  <tr key={`${row.created_at}-${index}`} className="text-gray-700">
-                    <td className="px-2 py-2.5">{formatBillingDateTimeJst(row.created_at)}</td>
-                    <td className="px-2 py-2.5">{row.provider}</td>
-                    <td className="px-2 py-2.5">{billingOperationTypeLabel(row.operation_type)}</td>
-                    <td className="px-2 py-2.5">{row.amount_jpy ?? '-'}</td>
-                    <td className="px-2 py-2.5">{row.status}</td>
-                    <td className="px-2 py-2.5">{row.reason || row.result_message || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-gray-500">まだ操作履歴がありません。</p>
-        )}
       </Card>
     </section>
   )

@@ -117,35 +117,35 @@ export default async function HqMenuTemplateDeliveriesPage() {
       <Card>
         <h2 className="text-lg font-semibold text-gray-900">配信リクエスト一覧</h2>
         <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b text-gray-500">
+          <table className="min-w-full table-fixed text-left text-sm">
+            <thead className="border-b bg-gray-50 text-gray-500">
               <tr>
-                <th className="px-2 py-2">delivery_id</th>
-                <th className="px-2 py-2">source</th>
-                <th className="px-2 py-2">targets</th>
-                <th className="px-2 py-2">scope</th>
-                <th className="px-2 py-2">status</th>
-                <th className="px-2 py-2">作成</th>
-                <th className="px-2 py-2">適用</th>
+                <th className="px-2.5 py-2">delivery_id</th>
+                <th className="px-2.5 py-2">source</th>
+                <th className="px-2.5 py-2">targets</th>
+                <th className="px-2.5 py-2">scope</th>
+                <th className="px-2.5 py-2">status</th>
+                <th className="px-2.5 py-2">作成</th>
+                <th className="px-2.5 py-2">適用</th>
               </tr>
             </thead>
             <tbody className="divide-y text-gray-700">
               {deliveries.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-2 py-4 text-center text-gray-500">
+                  <td colSpan={7} className="px-2.5 py-2 text-center text-gray-500">
                     配信リクエストはありません。
                   </td>
                 </tr>
               ) : (
                 deliveries.map((delivery) => (
                   <tr key={delivery.id}>
-                    <td className="px-2 py-2 font-mono text-xs">{delivery.id}</td>
-                    <td className="px-2 py-2 font-mono text-xs">{delivery.source_store_id}</td>
-                    <td className="px-2 py-2 text-xs">{delivery.target_store_ids.join(', ')}</td>
-                    <td className="px-2 py-2">{delivery.overwrite_scope}</td>
-                    <td className="px-2 py-2">{delivery.status}</td>
-                    <td className="px-2 py-2">{formatDateTime(delivery.created_at)}</td>
-                    <td className="px-2 py-2">{formatDateTime(delivery.applied_at)}</td>
+                    <td className="px-2.5 py-2 font-mono text-xs">{delivery.id}</td>
+                    <td className="px-2.5 py-2 font-mono text-xs">{delivery.source_store_id}</td>
+                    <td className="px-2.5 py-2 text-xs">{delivery.target_store_ids.join(', ')}</td>
+                    <td className="px-2.5 py-2">{delivery.overwrite_scope}</td>
+                    <td className="px-2.5 py-2">{delivery.status}</td>
+                    <td className="px-2.5 py-2">{formatDateTime(delivery.created_at)}</td>
+                    <td className="px-2.5 py-2">{formatDateTime(delivery.applied_at)}</td>
                   </tr>
                 ))
               )}

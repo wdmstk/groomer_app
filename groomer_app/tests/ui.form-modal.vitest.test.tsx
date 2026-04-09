@@ -36,13 +36,13 @@ describe('FormModal component', () => {
     pushMock.mockClear()
 
     render(
-      <FormModal title="顧客登録" closeRedirectTo="/customers">
+      <FormModal title="顧客登録" closeRedirectTo="/customers/manage">
         <div>フォーム本文</div>
       </FormModal>,
     )
 
     fireEvent.click(screen.getByRole('button', { name: '閉じる' }))
     expect(pushMock).toHaveBeenCalledTimes(1)
-    expect(pushMock).toHaveBeenCalledWith('/customers')
+    expect(pushMock).toHaveBeenCalledWith('/customers/manage')
   })
 })

@@ -17,6 +17,7 @@
     "lint:files": "eslint --cache --cache-location .eslintcache --quiet",
     "test": "node --import ./tests/register-alias.mjs --test",
     "test:vitest": "vitest run",
+    "test:traceability": "node ./scripts/verify-traceability.mjs",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "types:generate:supabase": "node ./scripts/generate-supabase-types.mjs"
