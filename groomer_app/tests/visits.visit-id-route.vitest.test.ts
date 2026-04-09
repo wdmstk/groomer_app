@@ -219,6 +219,27 @@ describe('visits [visit_id] route PUT', () => {
     })
   })
 
+  // TRACE-041
+  it('returns 400 when total_amount is not numeric', async () => {
+    const { PUT } = await import('../src/app/api/visits/[visit_id]/route')
+    const response = await PUT(
+      buildJsonRequest({
+        customer_id: 'customer-1',
+        staff_id: 'staff-1',
+        appointment_id: 'appt-1',
+        visit_date: '2026-04-09T10:00',
+        menu: 'シャンプー',
+        total_amount: 'abc',
+      }),
+      { params: Promise.resolve({ visit_id: 'visit-1' }) }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: '合計金額は数値で入力してください。',
+    })
+  })
+
   // TRACE-012
   it('returns 409 when another visit already uses the same appointment', async () => {
     createStoreScopedClientMock.mockResolvedValue({

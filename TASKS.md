@@ -299,7 +299,7 @@ Completed tasks should be marked:
   - [x] [P5] `/api/visits` `/api/visits/[visit_id]` 境界ケース（時刻/店舗整合）を追補
   - [x] [P6] `/api/visits/[visit_id]` 店舗整合性不正時の `400` をテストで固定
   - [x] [P7] `/api/visits` POST の `total_amount` 数値不正（NaN/非数）を `400` で拒否する
-  - [ ] [P8] `/api/visits/[visit_id]` PUT の `total_amount` 数値不正（NaN/非数）を `400` で拒否する
+  - [x] [P8] `/api/visits/[visit_id]` PUT の `total_amount` 数値不正（NaN/非数）を `400` で拒否する
   - [ ] [P9] `followups status` 正常系（`in_progress -> resolved_no_need` 成功時の `resolved` イベント整合）を追加
   - [ ] 後続の顧客管理β改善指示を反映
 

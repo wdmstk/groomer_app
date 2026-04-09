@@ -72,13 +72,18 @@ export async function PUT(request: Request, { params }: RouteParams) {
     .eq('store_id', storeId)
     .maybeSingle()
   const body = await request.json()
+  const rawTotalAmount = body.total_amount
+  const parsedTotalAmount =
+    rawTotalAmount === null || rawTotalAmount === undefined || rawTotalAmount === ''
+      ? null
+      : Number(rawTotalAmount)
   const payload = {
     customer_id: body.customer_id ?? null,
     appointment_id: body.appointment_id ?? null,
     staff_id: body.staff_id ?? null,
     visit_date: toUtcIsoFromJstInput(body.visit_date),
     menu: body.menu ?? null,
-    total_amount: body.total_amount ?? null,
+    total_amount: parsedTotalAmount,
     notes: body.notes ?? null,
   }
 
@@ -98,8 +103,12 @@ export async function PUT(request: Request, { params }: RouteParams) {
     return NextResponse.json({ message: '施術メニューは必須です。' }, { status: 400 })
   }
 
-  if (!payload.total_amount) {
+  if (payload.total_amount === null) {
     return NextResponse.json({ message: '合計金額は必須です。' }, { status: 400 })
+  }
+
+  if (!Number.isFinite(payload.total_amount)) {
+    return NextResponse.json({ message: '合計金額は数値で入力してください。' }, { status: 400 })
   }
 
   const checks = await Promise.all([
