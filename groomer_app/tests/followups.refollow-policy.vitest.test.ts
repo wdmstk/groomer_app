@@ -81,3 +81,25 @@ test('buildBlockedCustomerIdsByRefollowPolicy unblocks exactly at cooldown bound
   expect(blocked.has('no-need-boundary')).toBe(false)
   expect(blocked.has('lost-boundary')).toBe(false)
 })
+
+test('buildBlockedCustomerIdsByRefollowPolicy handles timezone-offset timestamps consistently', () => {
+  const now = new Date('2026-04-08T00:00:00+09:00').getTime()
+
+  const blocked = buildBlockedCustomerIdsByRefollowPolicy(
+    [
+      { customer_id: 'no-need-z', status: 'resolved_no_need', resolved_at: '2026-02-06T15:00:00.000Z' },
+      { customer_id: 'no-need-jst', status: 'resolved_no_need', resolved_at: '2026-02-07T00:00:00+09:00' },
+      { customer_id: 'no-need-1sec-short', status: 'resolved_no_need', resolved_at: '2026-02-07T00:00:01+09:00' },
+    ],
+    now,
+    {
+      snoozedDays: 7,
+      noNeedDays: 60,
+      lostDays: 90,
+    }
+  )
+
+  expect(blocked.has('no-need-z')).toBe(false)
+  expect(blocked.has('no-need-jst')).toBe(false)
+  expect(blocked.has('no-need-1sec-short')).toBe(true)
+})
