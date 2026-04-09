@@ -68,7 +68,7 @@
     - `/settings?tab=public-reserve` の保存フォーム `redirect_to` 一貫性
 
 ## 残存リスク
-- fixture依存が強いテストは、本番相当の統合不整合を見逃す可能性がある。
+- fixture依存が強いテストは、本番相当の統合不整合を見逃す可能性がある（ただし、来店周期アラートは `TRACE-048` で状態遷移を持つ実データ近似シナリオを追加済み）。
 - 日付境界・時差境界・状態遷移の組み合わせ（境界ケース）が、領域によっては不足している。
 - APIルート契約テストが体系的に整備されていない。
 
@@ -77,7 +77,7 @@
    - 機能追加/変更ごとに `TRACE-xxx` を同一PRで更新
    - `test:traceability` を必須チェックとして維持
 2. 残存リスクの継続監視
-   - fixture依存が高い領域の実データ近似E2Eを段階追加
+   - fixture依存が高い領域（ホテル/サポート等）の実データ近似E2Eを段階追加
    - 日付境界/時差境界のケースを優先的に補強
 
 ## 仕様トレーサビリティ表（初版）
@@ -86,6 +86,7 @@
 | TRACE-001 | 来店周期アラート: 3区分表示（未着手候補/対応中/対応済） | `e2e/customers-followup-alerts.spec.ts` | `未着手 顧客` は未着手候補のみ、`対応中 顧客` は対応中のみ、`対応済 顧客` は対応済のみ表示 |
 | TRACE-002 | 来店周期アラート: 対象期間 7/30/all 切替 | `e2e/customers-followup-alerts.spec.ts` | `対象期間` を `30`/`7` で古い対応済が非表示、`all` で再表示 |
 | TRACE-003 | 来店周期アラート: 再フォロー期限超過時の復帰 | `e2e/customers-followup-alerts.spec.ts` | 同一顧客が未着手候補に表示され、対応済から除外される |
+| TRACE-048 | 来店周期アラート: 実データ近似の状態遷移 | `e2e/customers-followup-alerts.spec.ts` | 候補→キュー追加→対応開始→不要完了で、未着手候補/対応中/対応済の各表が連動更新される |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
