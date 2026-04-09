@@ -419,4 +419,112 @@ test.describe('顧客管理β 来店周期アラート', () => {
     await expect(resolvedSection).toContainText('実運用近似 顧客')
     await expect(resolvedSection).toContainText('不要')
   })
+
+  // TRACE-049
+  test('実データ近似: 担当者/期限フィルタで対応中一覧が絞り込まれる', async ({ page }) => {
+    const assignees = [
+      { user_id: 'user-1', full_name: '担当A' },
+      { user_id: 'user-2', full_name: '担当B' },
+    ]
+    const templates = {
+      next_visit_suggestion_line: {
+        body: 'test',
+      },
+    }
+    const today = new Date().toISOString().slice(0, 10)
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+
+    const tasks = [
+      {
+        id: 'task-filter-a',
+        customer_id: 'customer-filter-a',
+        pet_id: null,
+        source_appointment_id: null,
+        last_visit_at: '2026-02-01T00:00:00.000Z',
+        recommended_at: '2026-03-01T00:00:00.000Z',
+        status: 'in_progress',
+        due_on: yesterday,
+        snoozed_until: null,
+        assigned_user_id: 'user-1',
+        resolved_at: null,
+        updated_at: '2026-04-10T00:00:00.000Z',
+        resolution_note: null,
+        recommendation_reason: 'default',
+        last_contacted_at: null,
+        last_contact_method: null,
+        assignee_name: '担当A',
+        events: [],
+        customers: { full_name: '絞込対象A', phone_number: '090-1111-1111', line_id: 'line-a' },
+        pets: null,
+      },
+      {
+        id: 'task-filter-b',
+        customer_id: 'customer-filter-b',
+        pet_id: null,
+        source_appointment_id: null,
+        last_visit_at: '2026-02-03T00:00:00.000Z',
+        recommended_at: '2026-03-03T00:00:00.000Z',
+        status: 'in_progress',
+        due_on: today,
+        snoozed_until: null,
+        assigned_user_id: 'user-2',
+        resolved_at: null,
+        updated_at: '2026-04-10T00:00:00.000Z',
+        resolution_note: null,
+        recommendation_reason: 'default',
+        last_contacted_at: null,
+        last_contact_method: null,
+        assignee_name: '担当B',
+        events: [],
+        customers: { full_name: '絞込対象B', phone_number: '090-2222-2222', line_id: 'line-b' },
+        pets: null,
+      },
+    ]
+
+    await page.route('**/api/followups?**', async (route) => {
+      const url = new URL(route.request().url())
+      const assignee = url.searchParams.get('assignee')
+      const due = url.searchParams.get('due')
+
+      let filtered = [...tasks]
+      if (assignee === 'me') {
+        filtered = filtered.filter((task) => task.assigned_user_id === 'user-1')
+      } else if (assignee) {
+        filtered = filtered.filter((task) => task.assigned_user_id === assignee)
+      }
+      if (due === 'today') {
+        filtered = filtered.filter((task) => task.due_on === today)
+      } else if (due === 'overdue') {
+        filtered = filtered.filter((task) => task.due_on < today)
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          tasks: filtered,
+          candidates: [],
+          assignees,
+          templates,
+        }),
+      })
+    })
+
+    await page.goto('/customers/manage?view=alerts')
+
+    const inProgressSection = page.locator('div.rounded.border.bg-white.p-3').filter({
+      has: page.getByRole('heading', { name: '対応中' }),
+    })
+
+    await expect(inProgressSection).toContainText('絞込対象A')
+    await expect(inProgressSection).toContainText('絞込対象B')
+
+    await page.getByLabel('担当者').selectOption('me')
+    await expect(inProgressSection).toContainText('絞込対象A')
+    await expect(inProgressSection).not.toContainText('絞込対象B')
+
+    await page.getByLabel('期限').selectOption('overdue')
+    await expect(inProgressSection).toContainText('絞込対象A')
+    await expect(inProgressSection).not.toContainText('絞込対象B')
+  })
 })
