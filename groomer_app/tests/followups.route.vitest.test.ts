@@ -182,4 +182,24 @@ describe('followups route GET query filters', () => {
       ])
     )
   })
+
+  // TRACE-053
+  it('ignores invalid status query value and keeps request safe', async () => {
+    const { query, calls } = createTaskQueryRecorder()
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase: createSupabaseMock(query),
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+    const response = await GET(
+      new Request('http://localhost/api/followups?status=invalid_status&include_candidates=0')
+    )
+
+    expect(response.status).toBe(200)
+    const hasStatusFilter = calls.some((call) => call.method === 'eq' && call.column === 'status')
+    expect(hasStatusFilter).toBe(false)
+  })
 })
