@@ -317,8 +317,11 @@ Completed tasks should be marked:
   - [x] [P20] `followups` API(GET) の `status` が無効値の場合にフィルタ未適用で安全動作することをルートテストで固定
   - [x] [P21-0] P21着手準備（`include_candidates=true` 経路テスト追加の事前モック設計）
   - [x] [P21] `followups` API(GET) の `include_candidates=true` 経路で、再フォローブロック日数（7/60/90系）が候補除外に効く境界をルートテストで固定
-  - [ ] [P22] `include_candidates=true` 経路で `window_days` が候補算出（`recommended_at`）に効く境界をルートテストで固定
-  - [ ] [P23] 監査レポートの残存リスクと次アクションを再更新（P20/P21反映）
+  - [x] [P22-0] P22着手準備（作業ブランチ `test/TASK-448-followups-candidate-window-boundary` を作成）
+  - [x] [P22] `include_candidates=true` 経路で `window_days` が候補算出（`recommended_at`）に効く境界をルートテストで固定
+  - [x] [P23] 監査レポートの残存リスクと次アクションを再更新（P20/P21反映）
+  - [ ] [P24] `followups` ルートテストの重複モックをヘルパー化して保守性を改善
+  - [ ] [P25] `followups` E2Eとルートテストの対応表（TRACE対応）をTASKS内に簡易索引化
   - [ ] 後続の顧客管理β改善指示を反映
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）

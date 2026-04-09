@@ -356,4 +356,127 @@ describe('followups route GET query filters', () => {
     expect(payload.candidates.map((row) => row.customer_id)).toContain('customer-released')
     expect(payload.candidates.map((row) => row.customer_id)).not.toContain('customer-blocked')
   })
+
+  // TRACE-055
+  it('applies window_days boundary to candidates when include_candidates=true', async () => {
+    const tasksQuery = {
+      data: [] as Array<Record<string, unknown>>,
+      error: null as { message: string } | null,
+      select() {
+        return this
+      },
+      order() {
+        return this
+      },
+      eq() {
+        return this
+      },
+      gte() {
+        return this
+      },
+      lt() {
+        return this
+      },
+      in() {
+        return this
+      },
+    }
+
+    const supabase = {
+      from(table: string) {
+        if (table === 'customer_followup_tasks') {
+          return {
+            ...tasksQuery,
+            select(columns?: string) {
+              if (columns?.includes('customers(')) {
+                return tasksQuery
+              }
+              return {
+                ...tasksQuery,
+                data: [],
+              }
+            },
+          }
+        }
+        if (table === 'customer_followup_events') {
+          return { ...tasksQuery, data: [] }
+        }
+        if (table === 'staffs') {
+          return { ...tasksQuery, data: [{ id: 'staff-1', user_id: 'user-1', full_name: '担当A' }] }
+        }
+        if (table === 'notification_templates') {
+          return { ...tasksQuery, data: [] }
+        }
+        if (table === 'customers') {
+          return {
+            ...tasksQuery,
+            data: [
+              { id: 'customer-in-window', full_name: '直近候補 顧客', phone_number: null, line_id: null },
+              { id: 'customer-out-window', full_name: '期間外候補 顧客', phone_number: null, line_id: null },
+            ],
+          }
+        }
+        if (table === 'visits') {
+          return {
+            ...tasksQuery,
+            data: [
+              // 45日後が 2026-04-05 となるため window_days=7 で対象内
+              { customer_id: 'customer-in-window', visit_date: '2026-02-19T00:00:00.000Z', appointment_id: null },
+              // 45日後が 2026-02-15 となるため window_days=7 では対象外
+              { customer_id: 'customer-out-window', visit_date: '2026-01-01T00:00:00.000Z', appointment_id: null },
+            ],
+          }
+        }
+        if (table === 'appointments') {
+          return { ...tasksQuery, data: [] }
+        }
+        if (table === 'pets') {
+          return { ...tasksQuery, data: [] }
+        }
+        if (table === 'store_customer_management_settings') {
+          return {
+            ...tasksQuery,
+            data: {
+              followup_snoozed_refollow_days: 7,
+              followup_no_need_refollow_days: 60,
+              followup_lost_refollow_days: 90,
+            },
+            maybeSingle() {
+              return this
+            },
+          }
+        }
+        return { ...tasksQuery, data: [] }
+      },
+    }
+
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase,
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+
+    const responseInWindow = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=7')
+    )
+    expect(responseInWindow.status).toBe(200)
+    const payloadInWindow = (await responseInWindow.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+    expect(payloadInWindow.candidates.map((row) => row.customer_id)).toContain('customer-in-window')
+    expect(payloadInWindow.candidates.map((row) => row.customer_id)).not.toContain('customer-out-window')
+
+    const responseAllWindow = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=all')
+    )
+    expect(responseAllWindow.status).toBe(200)
+    const payloadAllWindow = (await responseAllWindow.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+    expect(payloadAllWindow.candidates.map((row) => row.customer_id)).toContain('customer-in-window')
+    expect(payloadAllWindow.candidates.map((row) => row.customer_id)).toContain('customer-out-window')
+  })
 })
