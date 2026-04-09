@@ -88,6 +88,9 @@
 | TRACE-003 | 来店周期アラート: 再フォロー期限超過時の復帰 | `e2e/customers-followup-alerts.spec.ts` | 同一顧客が未着手候補に表示され、対応済から除外される |
 | TRACE-048 | 来店周期アラート: 実データ近似の状態遷移 | `e2e/customers-followup-alerts.spec.ts` | 候補→キュー追加→対応開始→不要完了で、未着手候補/対応中/対応済の各表が連動更新される |
 | TRACE-049 | 来店周期アラート: 担当者/期限フィルタの連動 | `e2e/customers-followup-alerts.spec.ts` | `担当者=自分` + `期限=overdue` の選択で、対応中一覧が該当担当・期限超過の行だけに絞り込まれる |
+| TRACE-050 | followups API(GET): `assignee=me` + `due=overdue` + `window_days` 組み合わせ | `tests/followups.route.vitest.test.ts` | `assigned_user_id=user.id`・`due_on<today`・`recommended_at>=now-7days` が同時に適用される |
+| TRACE-051 | followups API(GET): `window_days=all` の境界 | `tests/followups.route.vitest.test.ts` | `recommended_at` の `gte` フィルタが適用されない |
+| TRACE-052 | followups API(GET): `due=today` + 明示 `assignee` の組み合わせ | `tests/followups.route.vitest.test.ts` | `assigned_user_id=<指定値>` と `due_on=today` の `eq` フィルタが同時に適用される |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |

@@ -310,8 +310,11 @@ Completed tasks should be marked:
   - [x] [P15] `followups` のfixture依存が高いE2Eを実データ近似シナリオへ1本追加する（残存リスク対策）
   - [x] [P16] 監査レポートの「残存リスク」更新（追加テストの反映と次の優先ギャップ再定義）
   - [x] [P17] 来店周期アラートE2Eの実データ近似シナリオを追加（担当者変更・フィルタ状態維持）
-  - [ ] [P18] `followups` APIの `window_days`/`due`/`assignee` 組み合わせ境界をルートテストへ追加
-  - [ ] [P19] 監査レポートの優先ギャップを再評価し、次PR対象をTASKSへ固定化
+  - [x] [P18-0] P18着手準備（作業ブランチ `test/TASK-448-followups-route-query-boundaries` を作成）
+  - [x] [P18] `followups` APIの `window_days`/`due`/`assignee` 組み合わせ境界をルートテストへ追加
+  - [x] [P19] 監査レポートの優先ギャップを再評価し、次PR対象をTASKSへ固定化
+  - [ ] [P20] `followups` API(GET) の `status` が無効値の場合にフィルタ未適用で安全動作することをルートテストで固定
+  - [ ] [P21] `followups` API(GET) の `include_candidates=true` 経路で、再フォローブロック日数（7/60/90系）が候補除外に効く境界をルートテストで固定
   - [ ] 後続の顧客管理β改善指示を反映
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）
