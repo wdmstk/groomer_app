@@ -45,3 +45,39 @@ test('buildBlockedCustomerIdsByRefollowPolicy respects snoozed/no_need/lost cool
   expect(blocked.has('lost-recent')).toBe(true)
   expect(blocked.has('lost-old')).toBe(false)
 })
+
+// TRACE-021
+test('buildBlockedCustomerIdsByRefollowPolicy unblocks exactly at cooldown boundary', () => {
+  const now = new Date('2026-04-08T00:00:00.000Z').getTime()
+  const day = 24 * 60 * 60 * 1000
+
+  const blocked = buildBlockedCustomerIdsByRefollowPolicy(
+    [
+      {
+        customer_id: 'snoozed-boundary',
+        status: 'snoozed',
+        updated_at: new Date(now - 7 * day).toISOString(),
+      },
+      {
+        customer_id: 'no-need-boundary',
+        status: 'resolved_no_need',
+        resolved_at: new Date(now - 60 * day).toISOString(),
+      },
+      {
+        customer_id: 'lost-boundary',
+        status: 'resolved_lost',
+        resolved_at: new Date(now - 90 * day).toISOString(),
+      },
+    ],
+    now,
+    {
+      snoozedDays: 7,
+      noNeedDays: 60,
+      lostDays: 90,
+    }
+  )
+
+  expect(blocked.has('snoozed-boundary')).toBe(false)
+  expect(blocked.has('no-need-boundary')).toBe(false)
+  expect(blocked.has('lost-boundary')).toBe(false)
+})
