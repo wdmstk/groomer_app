@@ -68,7 +68,7 @@
     - `/settings?tab=public-reserve` の保存フォーム `redirect_to` 一貫性
 
 ## 残存リスク
-- fixture依存が強いテストは、本番相当の統合不整合を見逃す可能性がある（ただし、来店周期アラートは `TRACE-048` で状態遷移を持つ実データ近似シナリオを追加済み）。
+- fixture依存が強いテストは、本番相当の統合不整合を見逃す可能性がある（来店周期アラートは `TRACE-048` `TRACE-049` で実データ近似を追加、`followups` ルートは `TRACE-050`〜`TRACE-055` でクエリ境界を補強済み）。
 - 日付境界・時差境界・状態遷移の組み合わせ（境界ケース）が、領域によっては不足している。
 - APIルート契約テストが体系的に整備されていない。
 
@@ -79,6 +79,8 @@
 2. 残存リスクの継続監視
    - fixture依存が高い領域（ホテル/サポート等）の実データ近似E2Eを段階追加
    - 日付境界/時差境界のケースを優先的に補強
+3. `followups` ルートの候補算出境界の回帰監視
+   - `include_candidates=true` 経路の `window_days` / クールダウン境界を継続監視
 
 ## 仕様トレーサビリティ表（初版）
 | Test ID | 仕様項目 | テストファイル | 検証アサーション（抜粋） |
@@ -93,6 +95,7 @@
 | TRACE-052 | followups API(GET): `due=today` + 明示 `assignee` の組み合わせ | `tests/followups.route.vitest.test.ts` | `assigned_user_id=<指定値>` と `due_on=today` の `eq` フィルタが同時に適用される |
 | TRACE-053 | followups API(GET): 不正 `status` クエリの安全動作 | `tests/followups.route.vitest.test.ts` | 無効 `status` 指定時は `status` フィルタを適用せず、`200` で安全に応答する |
 | TRACE-054 | followups API(GET): `include_candidates=true` の再フォロークールダウン境界 | `tests/followups.route.vitest.test.ts` | `resolved_no_need` のクールダウン内顧客は候補除外、クールダウン超過顧客は候補に復帰する |
+| TRACE-055 | followups API(GET): `include_candidates=true` の `window_days` 候補境界 | `tests/followups.route.vitest.test.ts` | `window_days=7` では直近候補のみ、`window_days=all` では期間外候補も含まれる |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
