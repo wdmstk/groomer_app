@@ -315,8 +315,10 @@ Completed tasks should be marked:
   - [x] [P19] 監査レポートの優先ギャップを再評価し、次PR対象をTASKSへ固定化
   - [x] [P20-0] P20着手準備（作業ブランチ `test/TASK-448-followups-status-invalid-guard` を作成）
   - [x] [P20] `followups` API(GET) の `status` が無効値の場合にフィルタ未適用で安全動作することをルートテストで固定
-  - [ ] [P21-0] P21着手準備（`include_candidates=true` 経路テスト追加の事前モック設計）
-  - [ ] [P21] `followups` API(GET) の `include_candidates=true` 経路で、再フォローブロック日数（7/60/90系）が候補除外に効く境界をルートテストで固定
+  - [x] [P21-0] P21着手準備（`include_candidates=true` 経路テスト追加の事前モック設計）
+  - [x] [P21] `followups` API(GET) の `include_candidates=true` 経路で、再フォローブロック日数（7/60/90系）が候補除外に効く境界をルートテストで固定
+  - [ ] [P22] `include_candidates=true` 経路で `window_days` が候補算出（`recommended_at`）に効く境界をルートテストで固定
+  - [ ] [P23] 監査レポートの残存リスクと次アクションを再更新（P20/P21反映）
   - [ ] 後続の顧客管理β改善指示を反映
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）
