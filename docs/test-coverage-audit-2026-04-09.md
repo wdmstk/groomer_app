@@ -92,6 +92,7 @@
 | TRACE-051 | followups API(GET): `window_days=all` の境界 | `tests/followups.route.vitest.test.ts` | `recommended_at` の `gte` フィルタが適用されない |
 | TRACE-052 | followups API(GET): `due=today` + 明示 `assignee` の組み合わせ | `tests/followups.route.vitest.test.ts` | `assigned_user_id=<指定値>` と `due_on=today` の `eq` フィルタが同時に適用される |
 | TRACE-053 | followups API(GET): 不正 `status` クエリの安全動作 | `tests/followups.route.vitest.test.ts` | 無効 `status` 指定時は `status` フィルタを適用せず、`200` で安全に応答する |
+| TRACE-054 | followups API(GET): `include_candidates=true` の再フォロークールダウン境界 | `tests/followups.route.vitest.test.ts` | `resolved_no_need` のクールダウン内顧客は候補除外、クールダウン超過顧客は候補に復帰する |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
