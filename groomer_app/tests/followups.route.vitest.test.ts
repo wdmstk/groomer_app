@@ -605,4 +605,50 @@ describe('followups route GET query filters', () => {
       payloadBase.candidates.map((row) => row.customer_id)
     )
   })
+
+  // TRACE-060
+  it('applies window_days=30 boundary to candidates when include_candidates=true', async () => {
+    const supabase = createCandidateSupabaseMock({
+      activeTaskRows: [],
+      customers: [
+        { id: 'customer-in-7', full_name: '7日内候補 顧客', phone_number: null, line_id: null },
+        { id: 'customer-in-30', full_name: '30日内候補 顧客', phone_number: null, line_id: null },
+        { id: 'customer-out-30', full_name: '30日外候補 顧客', phone_number: null, line_id: null },
+      ],
+      visits: [
+        // 45日後が 2026-04-05 となり window_days=7 / 30 の対象
+        { customer_id: 'customer-in-7', visit_date: '2026-02-19T00:00:00.000Z', appointment_id: null },
+        // 45日後が 2026-03-20 となり window_days=30 のみ対象
+        { customer_id: 'customer-in-30', visit_date: '2026-02-03T00:00:00.000Z', appointment_id: null },
+        // 45日後が 2026-02-15 となり window_days=30 の対象外
+        { customer_id: 'customer-out-30', visit_date: '2026-01-01T00:00:00.000Z', appointment_id: null },
+      ],
+      settings: {
+        followup_snoozed_refollow_days: 7,
+        followup_no_need_refollow_days: 60,
+        followup_lost_refollow_days: 90,
+      },
+    })
+
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase,
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+
+    const response30 = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=30')
+    )
+    expect(response30.status).toBe(200)
+    const payload30 = (await response30.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+    const candidateIds30 = payload30.candidates.map((row) => row.customer_id)
+    expect(candidateIds30).toContain('customer-in-7')
+    expect(candidateIds30).toContain('customer-in-30')
+    expect(candidateIds30).not.toContain('customer-out-30')
+  })
 })
