@@ -296,7 +296,7 @@ Completed tasks should be marked:
   - [x] [P2] `followups status` 正常系（`snoozed` 成功時の応答とイベント整合）を追加
   - [x] [P3] `followups events` 異常系（`contacted_line payload.body` 空白のみ）を追加
   - [x] [P4] `followups events` 異常系（dedupe時の副作用ログinsert失敗ハンドリング）を追加
-  - [ ] [P5] `/api/visits` `/api/visits/[visit_id]` 境界ケース（時刻/店舗整合）を追補
+  - [x] [P5] `/api/visits` `/api/visits/[visit_id]` 境界ケース（時刻/店舗整合）を追補
   - [ ] 後続の顧客管理β改善指示を反映
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）
