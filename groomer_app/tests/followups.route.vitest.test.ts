@@ -94,6 +94,84 @@ function createSupabaseMock(taskQuery: ReturnType<typeof createTaskQueryRecorder
   }
 }
 
+function createChainQuery<T>(data: T) {
+  return {
+    data,
+    error: null as { message: string } | null,
+    select() {
+      return this
+    },
+    order() {
+      return this
+    },
+    eq() {
+      return this
+    },
+    gte() {
+      return this
+    },
+    lt() {
+      return this
+    },
+    in() {
+      return this
+    },
+    maybeSingle() {
+      return this
+    },
+  }
+}
+
+function createCandidateSupabaseMock(params: {
+  taskRows?: Array<Record<string, unknown>>
+  activeTaskRows: Array<Record<string, unknown>>
+  customers: Array<Record<string, unknown>>
+  visits: Array<Record<string, unknown>>
+  settings: {
+    followup_snoozed_refollow_days: number
+    followup_no_need_refollow_days: number
+    followup_lost_refollow_days: number
+  }
+}) {
+  return {
+    from(table: string) {
+      if (table === 'customer_followup_tasks') {
+        return {
+          ...createChainQuery(params.taskRows ?? []),
+          select(columns?: string) {
+            if (columns?.includes('customers(')) {
+              return createChainQuery(params.taskRows ?? [])
+            }
+            return createChainQuery(params.activeTaskRows)
+          },
+        }
+      }
+      if (table === 'customer_followup_events') {
+        return createChainQuery([])
+      }
+      if (table === 'staffs') {
+        return createChainQuery([{ id: 'staff-1', user_id: 'user-1', full_name: '担当A' }])
+      }
+      if (table === 'notification_templates') {
+        return createChainQuery([])
+      }
+      if (table === 'customers') {
+        return createChainQuery(params.customers)
+      }
+      if (table === 'visits') {
+        return createChainQuery(params.visits)
+      }
+      if (table === 'appointments' || table === 'pets') {
+        return createChainQuery([])
+      }
+      if (table === 'store_customer_management_settings') {
+        return createChainQuery(params.settings)
+      }
+      return createChainQuery([])
+    },
+  }
+}
+
 describe('followups route GET query filters', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -205,137 +283,37 @@ describe('followups route GET query filters', () => {
 
   // TRACE-054
   it('applies refollow cooldown policy when include_candidates=true', async () => {
-    const tasksQuery = {
-      data: [] as Array<Record<string, unknown>>,
-      error: null as { message: string } | null,
-      select() {
-        return this
+    const supabase = createCandidateSupabaseMock({
+      activeTaskRows: [
+        {
+          customer_id: 'customer-blocked',
+          snoozed_until: null,
+          status: 'resolved_no_need',
+          resolved_at: '2026-03-20T00:00:00.000Z',
+          updated_at: '2026-03-20T00:00:00.000Z',
+        },
+        {
+          customer_id: 'customer-released',
+          snoozed_until: null,
+          status: 'resolved_no_need',
+          resolved_at: '2026-03-01T00:00:00.000Z',
+          updated_at: '2026-03-01T00:00:00.000Z',
+        },
+      ],
+      customers: [
+        { id: 'customer-blocked', full_name: 'クールダウン中 顧客', phone_number: null, line_id: null },
+        { id: 'customer-released', full_name: '再候補 顧客', phone_number: null, line_id: null },
+      ],
+      visits: [
+        { customer_id: 'customer-blocked', visit_date: '2026-01-01T00:00:00.000Z', appointment_id: null },
+        { customer_id: 'customer-released', visit_date: '2026-01-01T00:00:00.000Z', appointment_id: null },
+      ],
+      settings: {
+        followup_snoozed_refollow_days: 7,
+        followup_no_need_refollow_days: 30,
+        followup_lost_refollow_days: 90,
       },
-      order() {
-        return this
-      },
-      eq() {
-        return this
-      },
-      gte() {
-        return this
-      },
-      lt() {
-        return this
-      },
-      in() {
-        return this
-      },
-    }
-
-    const activeTasks = [
-      {
-        customer_id: 'customer-blocked',
-        snoozed_until: null,
-        status: 'resolved_no_need',
-        resolved_at: '2026-03-20T00:00:00.000Z',
-        updated_at: '2026-03-20T00:00:00.000Z',
-      },
-      {
-        customer_id: 'customer-released',
-        snoozed_until: null,
-        status: 'resolved_no_need',
-        resolved_at: '2026-03-01T00:00:00.000Z',
-        updated_at: '2026-03-01T00:00:00.000Z',
-      },
-    ]
-
-    const supabase = {
-      from(table: string) {
-        if (table === 'customer_followup_tasks') {
-          return {
-            ...tasksQuery,
-            select(columns?: string) {
-              if (columns?.includes('customers(')) {
-                return tasksQuery
-              }
-              return {
-                ...tasksQuery,
-                data: activeTasks,
-              }
-            },
-          }
-        }
-        if (table === 'customer_followup_events') {
-          return {
-            ...tasksQuery,
-            data: [],
-          }
-        }
-        if (table === 'staffs') {
-          return {
-            ...tasksQuery,
-            data: [{ id: 'staff-1', user_id: 'user-1', full_name: '担当A' }],
-          }
-        }
-        if (table === 'notification_templates') {
-          return {
-            ...tasksQuery,
-            data: [],
-          }
-        }
-        if (table === 'customers') {
-          return {
-            ...tasksQuery,
-            data: [
-              { id: 'customer-blocked', full_name: 'クールダウン中 顧客', phone_number: null, line_id: null },
-              { id: 'customer-released', full_name: '再候補 顧客', phone_number: null, line_id: null },
-            ],
-          }
-        }
-        if (table === 'visits') {
-          return {
-            ...tasksQuery,
-            data: [
-              {
-                customer_id: 'customer-blocked',
-                visit_date: '2026-01-01T00:00:00.000Z',
-                appointment_id: null,
-              },
-              {
-                customer_id: 'customer-released',
-                visit_date: '2026-01-01T00:00:00.000Z',
-                appointment_id: null,
-              },
-            ],
-          }
-        }
-        if (table === 'appointments') {
-          return {
-            ...tasksQuery,
-            data: [],
-          }
-        }
-        if (table === 'pets') {
-          return {
-            ...tasksQuery,
-            data: [],
-          }
-        }
-        if (table === 'store_customer_management_settings') {
-          return {
-            ...tasksQuery,
-            data: {
-              followup_snoozed_refollow_days: 7,
-              followup_no_need_refollow_days: 30,
-              followup_lost_refollow_days: 90,
-            },
-            maybeSingle() {
-              return this
-            },
-          }
-        }
-        return {
-          ...tasksQuery,
-          data: [],
-        }
-      },
-    }
+    })
 
     getFollowupRouteContextMock.mockResolvedValue({
       supabase,
@@ -359,96 +337,24 @@ describe('followups route GET query filters', () => {
 
   // TRACE-055
   it('applies window_days boundary to candidates when include_candidates=true', async () => {
-    const tasksQuery = {
-      data: [] as Array<Record<string, unknown>>,
-      error: null as { message: string } | null,
-      select() {
-        return this
+    const supabase = createCandidateSupabaseMock({
+      activeTaskRows: [],
+      customers: [
+        { id: 'customer-in-window', full_name: '直近候補 顧客', phone_number: null, line_id: null },
+        { id: 'customer-out-window', full_name: '期間外候補 顧客', phone_number: null, line_id: null },
+      ],
+      visits: [
+        // 45日後が 2026-04-05 となるため window_days=7 で対象内
+        { customer_id: 'customer-in-window', visit_date: '2026-02-19T00:00:00.000Z', appointment_id: null },
+        // 45日後が 2026-02-15 となるため window_days=7 では対象外
+        { customer_id: 'customer-out-window', visit_date: '2026-01-01T00:00:00.000Z', appointment_id: null },
+      ],
+      settings: {
+        followup_snoozed_refollow_days: 7,
+        followup_no_need_refollow_days: 60,
+        followup_lost_refollow_days: 90,
       },
-      order() {
-        return this
-      },
-      eq() {
-        return this
-      },
-      gte() {
-        return this
-      },
-      lt() {
-        return this
-      },
-      in() {
-        return this
-      },
-    }
-
-    const supabase = {
-      from(table: string) {
-        if (table === 'customer_followup_tasks') {
-          return {
-            ...tasksQuery,
-            select(columns?: string) {
-              if (columns?.includes('customers(')) {
-                return tasksQuery
-              }
-              return {
-                ...tasksQuery,
-                data: [],
-              }
-            },
-          }
-        }
-        if (table === 'customer_followup_events') {
-          return { ...tasksQuery, data: [] }
-        }
-        if (table === 'staffs') {
-          return { ...tasksQuery, data: [{ id: 'staff-1', user_id: 'user-1', full_name: '担当A' }] }
-        }
-        if (table === 'notification_templates') {
-          return { ...tasksQuery, data: [] }
-        }
-        if (table === 'customers') {
-          return {
-            ...tasksQuery,
-            data: [
-              { id: 'customer-in-window', full_name: '直近候補 顧客', phone_number: null, line_id: null },
-              { id: 'customer-out-window', full_name: '期間外候補 顧客', phone_number: null, line_id: null },
-            ],
-          }
-        }
-        if (table === 'visits') {
-          return {
-            ...tasksQuery,
-            data: [
-              // 45日後が 2026-04-05 となるため window_days=7 で対象内
-              { customer_id: 'customer-in-window', visit_date: '2026-02-19T00:00:00.000Z', appointment_id: null },
-              // 45日後が 2026-02-15 となるため window_days=7 では対象外
-              { customer_id: 'customer-out-window', visit_date: '2026-01-01T00:00:00.000Z', appointment_id: null },
-            ],
-          }
-        }
-        if (table === 'appointments') {
-          return { ...tasksQuery, data: [] }
-        }
-        if (table === 'pets') {
-          return { ...tasksQuery, data: [] }
-        }
-        if (table === 'store_customer_management_settings') {
-          return {
-            ...tasksQuery,
-            data: {
-              followup_snoozed_refollow_days: 7,
-              followup_no_need_refollow_days: 60,
-              followup_lost_refollow_days: 90,
-            },
-            maybeSingle() {
-              return this
-            },
-          }
-        }
-        return { ...tasksQuery, data: [] }
-      },
-    }
+    })
 
     getFollowupRouteContextMock.mockResolvedValue({
       supabase,
