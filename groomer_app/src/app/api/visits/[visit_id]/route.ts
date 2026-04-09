@@ -292,13 +292,16 @@ export async function POST(request: Request, context: RouteParams) {
       .eq('id', visit_id)
       .eq('store_id', storeId)
       .maybeSingle()
+    const rawTotalAmount = formData.get('total_amount')?.toString() ?? ''
+    const parsedTotalAmount =
+      rawTotalAmount.trim() === '' ? null : Number(rawTotalAmount)
     const payload = {
       customer_id: formData.get('customer_id')?.toString() || null,
       appointment_id: formData.get('appointment_id')?.toString() || null,
       staff_id: formData.get('staff_id')?.toString() || null,
       visit_date: toUtcIsoFromJstInput(formData.get('visit_date')?.toString() || null),
       menu: formData.get('menu')?.toString() || null,
-      total_amount: formData.get('total_amount') ? Number(formData.get('total_amount')) : null,
+      total_amount: parsedTotalAmount,
       notes: formData.get('notes')?.toString() || null,
     }
 
@@ -318,8 +321,12 @@ export async function POST(request: Request, context: RouteParams) {
       return NextResponse.json({ message: '施術メニューは必須です。' }, { status: 400 })
     }
 
-    if (!payload.total_amount) {
+    if (payload.total_amount === null) {
       return NextResponse.json({ message: '合計金額は必須です。' }, { status: 400 })
+    }
+
+    if (!Number.isFinite(payload.total_amount)) {
+      return NextResponse.json({ message: '合計金額は数値で入力してください。' }, { status: 400 })
     }
 
     const checks = await Promise.all([

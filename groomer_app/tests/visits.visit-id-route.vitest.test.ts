@@ -20,6 +20,19 @@ function buildJsonRequest(body: unknown) {
   })
 }
 
+function buildFormMethodRequest(values: Record<string, string | undefined>) {
+  const formData = new FormData()
+  Object.entries(values).forEach(([key, value]) => {
+    if (value !== undefined) {
+      formData.set(key, value)
+    }
+  })
+  return new Request('http://localhost/api/visits/visit-1', {
+    method: 'POST',
+    body: formData,
+  })
+}
+
 function createVisitIdSupabaseMock(options?: {
   customerExists?: boolean
   staffExists?: boolean
@@ -264,6 +277,28 @@ describe('visits [visit_id] route PUT', () => {
     await expect(response.json()).resolves.toMatchObject({
       message: 'この予約にはすでに来店履歴が登録されています。',
       visit_id: 'visit-dup-2',
+    })
+  })
+
+  // TRACE-043
+  it('returns 400 when _method=put form submission has non-numeric total_amount', async () => {
+    const { POST } = await import('../src/app/api/visits/[visit_id]/route')
+    const response = await POST(
+      buildFormMethodRequest({
+        _method: 'put',
+        customer_id: 'customer-1',
+        staff_id: 'staff-1',
+        appointment_id: 'appt-1',
+        visit_date: '2026-04-09T10:00',
+        menu: 'シャンプー',
+        total_amount: 'abc',
+      }),
+      { params: Promise.resolve({ visit_id: 'visit-1' }) }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: '合計金額は数値で入力してください。',
     })
   })
 })
