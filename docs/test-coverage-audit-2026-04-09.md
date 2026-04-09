@@ -91,6 +91,7 @@
 | TRACE-022 | followups status API: 解決済みからの不正再開遷移拒否 | `tests/followups.status-route.vitest.test.ts` | `resolved_no_need -> in_progress` が `400` + 不正遷移メッセージ |
 | TRACE-006 | followups events API: 不正event_typeの拒否 | `tests/followups.events-route.vitest.test.ts` | `bad_event` で `400` + `有効な event_type を指定してください。` |
 | TRACE-007 | followups events API: 解決済みへの連絡記録禁止 | `tests/followups.events-route.vitest.test.ts` | `resolved_*` タスクに `contacted_line` を追加すると `400` |
+| TRACE-025 | followups events API: 解決済みへのメモ記録は許可 | `tests/followups.events-route.vitest.test.ts` | `resolved_*` タスクに `note_added` を追加でき `201` を返す |
 | TRACE-023 | followups events API: 電話連絡resultの許可値制限 | `tests/followups.events-route.vitest.test.ts` | `contacted_phone` で許可外 `result` を送ると `400` |
 | TRACE-024 | followups events API: 同日同チャネル重複送信の拒否 | `tests/followups.events-route.vitest.test.ts` | 同一 followup + 同日 + 同チャネルは `409`（重複送信防止） |
 | TRACE-021 | followups再フォロー判定: クールダウン境界日の解除 | `tests/followups.refollow-policy.vitest.test.ts` | `snoozed/no_need/lost` が「ちょうど閾値日」でブロック解除されることを確認 |

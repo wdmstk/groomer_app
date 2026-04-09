@@ -147,6 +147,29 @@ describe('followups events route', () => {
     })
   })
 
+  // TRACE-025
+  it('allows note_added event for resolved task', async () => {
+    assertFollowupTaskInStoreMock.mockResolvedValue({
+      data: {
+        id: 'task-1',
+        customer_id: 'customer-1',
+        status: 'resolved_lost',
+      },
+    })
+    const { POST } = await import('../src/app/api/followups/[followup_id]/events/route')
+    const response = await POST(
+      buildRequest({
+        event_type: 'note_added',
+        payload: { note: '次回見込みは低い' },
+      }),
+      {
+        params: Promise.resolve({ followup_id: 'task-1' }),
+      }
+    )
+
+    expect(response.status).toBe(201)
+  })
+
   // TRACE-023
   it('returns 400 when contacted_phone payload has invalid result', async () => {
     const { POST } = await import('../src/app/api/followups/[followup_id]/events/route')
