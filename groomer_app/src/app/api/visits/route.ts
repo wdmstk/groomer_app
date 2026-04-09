@@ -66,6 +66,7 @@ export async function POST(request: Request) {
   const visitDateIso = toUtcIsoFromJstInput(visitDate)
   const menu = formData.get('menu')?.toString().trim()
   const totalAmount = formData.get('total_amount')?.toString()
+  const parsedTotalAmount = totalAmount !== undefined ? Number(totalAmount) : NaN
 
   if (!customerId) {
     return NextResponse.json({ message: '顧客の選択は必須です。' }, { status: 400 })
@@ -87,6 +88,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: '合計金額は必須です。' }, { status: 400 })
   }
 
+  if (!Number.isFinite(parsedTotalAmount)) {
+    return NextResponse.json({ message: '合計金額は数値で入力してください。' }, { status: 400 })
+  }
+
   const payload = {
     store_id: storeId,
     customer_id: customerId,
@@ -94,7 +99,7 @@ export async function POST(request: Request) {
     staff_id: staffId,
     visit_date: visitDateIso,
     menu,
-    total_amount: Number(totalAmount),
+    total_amount: parsedTotalAmount,
     notes: formData.get('notes')?.toString() || null,
   }
 

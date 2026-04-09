@@ -114,6 +114,7 @@
 | TRACE-037 | visits API(POST): 不正visit_date形式の拒否 | `tests/visits.route.vitest.test.ts` | `visit_date` が無効形式の場合 `400` + `来店日時は必須です。` |
 | TRACE-038 | visits API(PUT): 不正visit_date形式の拒否 | `tests/visits.visit-id-route.vitest.test.ts` | `visit_date` が無効形式の場合 `400` + `来店日時は必須です。` |
 | TRACE-039 | visits API(PUT): 店舗整合性不正の拒否 | `tests/visits.visit-id-route.vitest.test.ts` | 顧客/担当/予約のいずれかが店舗不整合の場合 `400` |
+| TRACE-040 | visits API(POST): 合計金額の非数入力拒否 | `tests/visits.route.vitest.test.ts` | `total_amount` が非数の場合 `400` + `合計金額は数値で入力してください。` |
 | TRACE-013 | 来店履歴ページ: 主要タブ表示 | `e2e/visits-page.spec.ts` | `list/revisit/followup/cycle/quality` 各見出しを確認 |
 | TRACE-014 | 顧客一覧ページ: 基本情報表示とモーダル導線 | `e2e/customers-list.spec.ts` | 顧客行の主要項目（氏名/電話/LTV等）表示と `新規顧客登録` モーダル起動を確認 |
 | TRACE-015 | 会計一覧ページ: 一覧表示と領収書表示 | `e2e/payments-list.spec.ts` | 会計行の金額/ステータス表示、`領収書` で支払情報と明細表示を確認 |
