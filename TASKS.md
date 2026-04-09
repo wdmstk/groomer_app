@@ -323,11 +323,14 @@ Completed tasks should be marked:
   - [x] [P24-0] P24着手準備（作業ブランチ `test/TASK-448-followups-test-helper-refactor` を作成）
   - [x] [P24] `followups` ルートテストの重複モックをヘルパー化して保守性を改善
   - [x] [P25] `followups` E2Eとルートテストの対応表（TRACE対応）をTASKS内に簡易索引化
-  - [ ] [P26] `followups` ルートテストの候補算出ケース（未来予約あり顧客の除外）を追加
+  - [x] [P26-0] P26着手準備（作業ブランチ `test/TASK-448-followups-future-booking-exclusion` を作成）
+  - [x] [P26] `followups` ルートテストの候補算出ケース（未来予約あり顧客の除外）を追加
+  - [x] [P27] 監査レポートに `followups` 候補除外ロジック（未来予約）を追記
+  - [ ] [P28] `include_candidates=true` 経路の `status` クエリ指定時に候補算出が不変であることをルートテストで固定
   - [ ] 後続の顧客管理β改善指示を反映
   - [x] [IDX-1] `followups` テスト索引（TRACE対応）をTASKSへ記録
     E2E: `TRACE-001` `TRACE-002` `TRACE-003` `TRACE-048` `TRACE-049` -> `groomer_app/e2e/customers-followup-alerts.spec.ts`
-    Route: `TRACE-050` `TRACE-051` `TRACE-052` `TRACE-053` `TRACE-054` `TRACE-055` -> `groomer_app/tests/followups.route.vitest.test.ts`
+    Route: `TRACE-050` `TRACE-051` `TRACE-052` `TRACE-053` `TRACE-054` `TRACE-055` `TRACE-056` -> `groomer_app/tests/followups.route.vitest.test.ts`
     Route(status/events): `TRACE-004`〜`TRACE-007`, `TRACE-022`〜`TRACE-036`, `TRACE-042` -> `groomer_app/tests/followups.status-route.vitest.test.ts` / `groomer_app/tests/followups.events-route.vitest.test.ts`
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）
