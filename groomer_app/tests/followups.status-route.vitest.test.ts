@@ -114,6 +114,19 @@ describe('followups status route', () => {
     })
   })
 
+  // TRACE-026
+  it('returns 400 when request has no updatable fields', async () => {
+    const { PATCH } = await import('../src/app/api/followups/[followup_id]/status/route')
+    const response = await PATCH(buildRequest({}), {
+      params: Promise.resolve({ followup_id: 'task-1' }),
+    })
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: '更新対象がありません。',
+    })
+  })
+
   it('returns 400 when resolved transition does not include resolution_type', async () => {
     const { PATCH } = await import('../src/app/api/followups/[followup_id]/status/route')
     const response = await PATCH(buildRequest({ status: 'resolved_no_need' }), {
