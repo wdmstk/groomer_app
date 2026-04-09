@@ -220,6 +220,41 @@ describe('followups status route', () => {
     })
   })
 
+  // TRACE-034
+  it('returns 200 and records snoozed event consistently when snoozed update succeeds', async () => {
+    const captured: { updated: Record<string, unknown> | null; event: Record<string, unknown> | null } = {
+      updated: null,
+      event: null,
+    }
+    const supabase = {
+      from(table: string) {
+        if (table === 'store_memberships') return createSupabaseMock().from(table)
+        if (table === 'customer_followup_tasks') {
+          return {
+            update(payload: Record<string, unknown>) {
+              captured.updated = payload
+              return { eq() { return this }, select() { return { single: async () => ({ data: { id: 'task-1', status: payload.status, snoozed_until: payload.snoozed_until }, error: null }) } } }
+            },
+          }
+        }
+        if (table === 'customer_followup_events') {
+          return { insert: async (payload: Record<string, unknown>) => { captured.event = payload; return { error: null } } }
+        }
+        return { insert: async () => ({ error: null }) }
+      },
+    }
+    getFollowupRouteContextMock.mockResolvedValue({ supabase, storeId: 'store-1', user: { id: 'user-1' } })
+    const { PATCH } = await import('../src/app/api/followups/[followup_id]/status/route')
+    const response = await PATCH(buildRequest({ status: 'snoozed', snoozed_until: '2026-04-20T00:00:00.000Z' }), {
+      params: Promise.resolve({ followup_id: 'task-1' }),
+    })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({ task: { id: 'task-1', status: 'snoozed', snoozed_until: '2026-04-20T00:00:00.000Z' } })
+    expect(captured.updated?.status).toBe('snoozed')
+    expect(captured.event?.event_type).toBe('snoozed')
+  })
+
   it('returns 400 when assigned_user_id is not an active store member', async () => {
     getFollowupRouteContextMock.mockResolvedValue({
       supabase: createSupabaseMock({ memberExists: false }),
