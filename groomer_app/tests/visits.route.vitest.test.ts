@@ -192,6 +192,25 @@ describe('visits route POST', () => {
     })
   })
 
+  // TRACE-040
+  it('returns 400 when total_amount is not numeric', async () => {
+    const { POST } = await import('../src/app/api/visits/route')
+    const response = await POST(
+      buildFormRequest({
+        customer_id: 'customer-1',
+        staff_id: 'staff-1',
+        visit_date: '2026-04-09T10:00',
+        menu: 'シャンプー',
+        total_amount: 'abc',
+      })
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: '合計金額は数値で入力してください。',
+    })
+  })
+
   // TRACE-011
   it('redirects to existing visit when appointment already has a visit', async () => {
     createStoreScopedClientMock.mockResolvedValue({
