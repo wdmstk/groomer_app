@@ -111,6 +111,8 @@
 | TRACE-010 | visits API(POST): 必須/店舗整合性チェック | `tests/visits.route.vitest.test.ts` | `customer_id` 欠落で `400`、店舗不整合で `400` |
 | TRACE-011 | visits API(POST): 予約重複時の既存編集導線 | `tests/visits.route.vitest.test.ts` | 既存来店ありで `307` + `/visits?tab=list&edit=...` |
 | TRACE-012 | visits API(PUT): 予約重複409 | `tests/visits.visit-id-route.vitest.test.ts` | 同一予約に別来店がある場合 `409` + `visit_id` を返却 |
+| TRACE-037 | visits API(POST): 不正visit_date形式の拒否 | `tests/visits.route.vitest.test.ts` | `visit_date` が無効形式の場合 `400` + `来店日時は必須です。` |
+| TRACE-038 | visits API(PUT): 不正visit_date形式の拒否 | `tests/visits.visit-id-route.vitest.test.ts` | `visit_date` が無効形式の場合 `400` + `来店日時は必須です。` |
 | TRACE-013 | 来店履歴ページ: 主要タブ表示 | `e2e/visits-page.spec.ts` | `list/revisit/followup/cycle/quality` 各見出しを確認 |
 | TRACE-014 | 顧客一覧ページ: 基本情報表示とモーダル導線 | `e2e/customers-list.spec.ts` | 顧客行の主要項目（氏名/電話/LTV等）表示と `新規顧客登録` モーダル起動を確認 |
 | TRACE-015 | 会計一覧ページ: 一覧表示と領収書表示 | `e2e/payments-list.spec.ts` | 会計行の金額/ステータス表示、`領収書` で支払情報と明細表示を確認 |

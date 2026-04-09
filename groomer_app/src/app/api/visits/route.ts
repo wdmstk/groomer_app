@@ -63,6 +63,7 @@ export async function POST(request: Request) {
   const staffId = formData.get('staff_id')?.toString()
   const appointmentId = formData.get('appointment_id')?.toString()
   const visitDate = formData.get('visit_date')?.toString()
+  const visitDateIso = toUtcIsoFromJstInput(visitDate)
   const menu = formData.get('menu')?.toString().trim()
   const totalAmount = formData.get('total_amount')?.toString()
 
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: '担当スタッフの選択は必須です。' }, { status: 400 })
   }
 
-  if (!visitDate) {
+  if (!visitDateIso) {
     return NextResponse.json({ message: '来店日時は必須です。' }, { status: 400 })
   }
 
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
     customer_id: customerId,
     appointment_id: appointmentId || null,
     staff_id: staffId,
-    visit_date: toUtcIsoFromJstInput(visitDate),
+    visit_date: visitDateIso,
     menu,
     total_amount: Number(totalAmount),
     notes: formData.get('notes')?.toString() || null,

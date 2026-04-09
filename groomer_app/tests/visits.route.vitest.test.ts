@@ -173,6 +173,25 @@ describe('visits route POST', () => {
     })
   })
 
+  // TRACE-037
+  it('returns 400 when visit_date is invalid format', async () => {
+    const { POST } = await import('../src/app/api/visits/route')
+    const response = await POST(
+      buildFormRequest({
+        customer_id: 'customer-1',
+        staff_id: 'staff-1',
+        visit_date: 'invalid-date',
+        menu: 'シャンプー',
+        total_amount: '5500',
+      })
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: '来店日時は必須です。',
+    })
+  })
+
   // TRACE-011
   it('redirects to existing visit when appointment already has a visit', async () => {
     createStoreScopedClientMock.mockResolvedValue({

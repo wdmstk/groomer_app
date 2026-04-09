@@ -172,6 +172,27 @@ describe('visits [visit_id] route PUT', () => {
     })
   })
 
+  // TRACE-038
+  it('returns 400 when visit_date is invalid format', async () => {
+    const { PUT } = await import('../src/app/api/visits/[visit_id]/route')
+    const response = await PUT(
+      buildJsonRequest({
+        customer_id: 'customer-1',
+        staff_id: 'staff-1',
+        appointment_id: 'appt-1',
+        visit_date: 'invalid-date',
+        menu: 'シャンプー',
+        total_amount: 5500,
+      }),
+      { params: Promise.resolve({ visit_id: 'visit-1' }) }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: '来店日時は必須です。',
+    })
+  })
+
   // TRACE-012
   it('returns 409 when another visit already uses the same appointment', async () => {
     createStoreScopedClientMock.mockResolvedValue({
