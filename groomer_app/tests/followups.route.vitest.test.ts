@@ -127,6 +127,8 @@ function createCandidateSupabaseMock(params: {
   activeTaskRows: Array<Record<string, unknown>>
   customers: Array<Record<string, unknown>>
   visits: Array<Record<string, unknown>>
+  appointments?: Array<Record<string, unknown>>
+  pets?: Array<Record<string, unknown>>
   settings: {
     followup_snoozed_refollow_days: number
     followup_no_need_refollow_days: number
@@ -161,8 +163,11 @@ function createCandidateSupabaseMock(params: {
       if (table === 'visits') {
         return createChainQuery(params.visits)
       }
-      if (table === 'appointments' || table === 'pets') {
-        return createChainQuery([])
+      if (table === 'appointments') {
+        return createChainQuery(params.appointments ?? [])
+      }
+      if (table === 'pets') {
+        return createChainQuery(params.pets ?? [])
       }
       if (table === 'store_customer_management_settings') {
         return createChainQuery(params.settings)
@@ -384,5 +389,55 @@ describe('followups route GET query filters', () => {
     }
     expect(payloadAllWindow.candidates.map((row) => row.customer_id)).toContain('customer-in-window')
     expect(payloadAllWindow.candidates.map((row) => row.customer_id)).toContain('customer-out-window')
+  })
+
+  // TRACE-056
+  it('excludes customers with future bookings from include_candidates results', async () => {
+    const supabase = createCandidateSupabaseMock({
+      activeTaskRows: [],
+      customers: [
+        { id: 'customer-future-booking', full_name: '未来予約あり 顧客', phone_number: null, line_id: null },
+        { id: 'customer-no-future', full_name: '未来予約なし 顧客', phone_number: null, line_id: null },
+      ],
+      visits: [
+        { customer_id: 'customer-future-booking', visit_date: '2026-01-10T00:00:00.000Z', appointment_id: null },
+        { customer_id: 'customer-no-future', visit_date: '2026-01-10T00:00:00.000Z', appointment_id: null },
+      ],
+      appointments: [
+        {
+          id: 'appt-future-1',
+          customer_id: 'customer-future-booking',
+          pet_id: null,
+          staff_id: null,
+          start_time: '2026-04-20T00:00:00.000Z',
+          status: '予約確定',
+        },
+      ],
+      settings: {
+        followup_snoozed_refollow_days: 7,
+        followup_no_need_refollow_days: 60,
+        followup_lost_refollow_days: 90,
+      },
+    })
+
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase,
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+    const response = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=all')
+    )
+    expect(response.status).toBe(200)
+
+    const payload = (await response.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+    const candidateIds = payload.candidates.map((row) => row.customer_id)
+    expect(candidateIds).toContain('customer-no-future')
+    expect(candidateIds).not.toContain('customer-future-booking')
   })
 })
