@@ -126,6 +126,30 @@ describe('followups status route', () => {
     })
   })
 
+  // TRACE-022
+  it('returns 400 when status transition is not allowed from resolved task', async () => {
+    assertFollowupTaskInStoreMock.mockResolvedValue({
+      data: {
+        id: 'task-1',
+        status: 'resolved_no_need',
+        snoozed_until: null,
+        resolved_at: '2026-04-01T00:00:00.000Z',
+        resolution_type: 'no_need',
+        resolution_note: '不要',
+        assigned_user_id: null,
+      },
+    })
+    const { PATCH } = await import('../src/app/api/followups/[followup_id]/status/route')
+    const response = await PATCH(buildRequest({ status: 'in_progress' }), {
+      params: Promise.resolve({ followup_id: 'task-1' }),
+    })
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: '不正な status 遷移です: resolved_no_need -> in_progress',
+    })
+  })
+
   it('returns 400 when assigned_user_id is not an active store member', async () => {
     getFollowupRouteContextMock.mockResolvedValue({
       supabase: createSupabaseMock({ memberExists: false }),
