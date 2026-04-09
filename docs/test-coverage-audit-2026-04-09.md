@@ -87,6 +87,7 @@
 | TRACE-002 | 来店周期アラート: 対象期間 7/30/all 切替 | `e2e/customers-followup-alerts.spec.ts` | `対象期間` を `30`/`7` で古い対応済が非表示、`all` で再表示 |
 | TRACE-003 | 来店周期アラート: 再フォロー期限超過時の復帰 | `e2e/customers-followup-alerts.spec.ts` | 同一顧客が未着手候補に表示され、対応済から除外される |
 | TRACE-048 | 来店周期アラート: 実データ近似の状態遷移 | `e2e/customers-followup-alerts.spec.ts` | 候補→キュー追加→対応開始→不要完了で、未着手候補/対応中/対応済の各表が連動更新される |
+| TRACE-049 | 来店周期アラート: 担当者/期限フィルタの連動 | `e2e/customers-followup-alerts.spec.ts` | `担当者=自分` + `期限=overdue` の選択で、対応中一覧が該当担当・期限超過の行だけに絞り込まれる |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
