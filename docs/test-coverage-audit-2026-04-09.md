@@ -95,6 +95,7 @@
 | TRACE-031 | followups status API: openからresolved_bookedへの直遷移拒否 | `tests/followups.status-route.vitest.test.ts` | `open -> resolved_booked` は `400`（in_progress経由必須） |
 | TRACE-033 | followups status API: 担当者解除（null指定）の許可 | `tests/followups.status-route.vitest.test.ts` | `assigned_user_id: null` の更新は `200` で成功 |
 | TRACE-034 | followups status API: snoozed成功時の応答/イベント整合 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` 更新成功で `200` かつ `event_type=snoozed` を記録 |
+| TRACE-042 | followups status API: resolved成功時の応答/イベント整合 | `tests/followups.status-route.vitest.test.ts` | `in_progress -> resolved_no_need` 成功で `200` かつ `event_type=resolved` を記録 |
 | TRACE-006 | followups events API: 不正event_typeの拒否 | `tests/followups.events-route.vitest.test.ts` | `bad_event` で `400` + `有効な event_type を指定してください。` |
 | TRACE-007 | followups events API: 解決済みへの連絡記録禁止 | `tests/followups.events-route.vitest.test.ts` | `resolved_*` タスクに `contacted_line` を追加すると `400` |
 | TRACE-025 | followups events API: 解決済みへのメモ記録は許可 | `tests/followups.events-route.vitest.test.ts` | `resolved_*` タスクに `note_added` を追加でき `201` を返す |
