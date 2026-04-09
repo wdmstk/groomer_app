@@ -104,6 +104,7 @@
 | TRACE-029 | followups events API: 顧客未存在時の連絡記録拒否 | `tests/followups.events-route.vitest.test.ts` | `contacted_phone` 実行時に顧客が見つからない場合 `404` |
 | TRACE-030 | followups events API: LINE ID未登録時のLINE連絡拒否 | `tests/followups.events-route.vitest.test.ts` | `contacted_line` 実行時に顧客LINE ID未登録なら `400` |
 | TRACE-035 | followups events API: 空白本文のLINE連絡拒否 | `tests/followups.events-route.vitest.test.ts` | `contacted_line` で `payload.body` が空白のみの場合 `400` |
+| TRACE-036 | followups events API: dedupe副作用ログ失敗時も重複拒否を維持 | `tests/followups.events-route.vitest.test.ts` | dedupe検出時に副作用insertが失敗しても主応答は `409` |
 | TRACE-021 | followups再フォロー判定: クールダウン境界日の解除 | `tests/followups.refollow-policy.vitest.test.ts` | `snoozed/no_need/lost` が「ちょうど閾値日」でブロック解除されることを確認 |
 | TRACE-008 | 店舗顧客管理設定API: 権限制御 | `tests/stores.customer-management-settings.route.vitest.test.ts` | 未認証 `401`、`staff` 権限で `403` |
 | TRACE-009 | 店舗顧客管理設定API: クランプ/安全リダイレクト | `tests/stores.customer-management-settings.route.vitest.test.ts` | 極端値が `1..365` / `5..100` へ補正、`//evil...` は既定リダイレクトへ |
