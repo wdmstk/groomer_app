@@ -193,6 +193,32 @@ describe('visits [visit_id] route PUT', () => {
     })
   })
 
+  // TRACE-039
+  it('returns 400 when store consistency check fails', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createVisitIdSupabaseMock({ customerExists: false }),
+      storeId: 'store-1',
+    })
+
+    const { PUT } = await import('../src/app/api/visits/[visit_id]/route')
+    const response = await PUT(
+      buildJsonRequest({
+        customer_id: 'customer-1',
+        staff_id: 'staff-1',
+        appointment_id: 'appt-1',
+        visit_date: '2026-04-09T10:00',
+        menu: 'シャンプー',
+        total_amount: 5500,
+      }),
+      { params: Promise.resolve({ visit_id: 'visit-1' }) }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: '顧客・担当・予約の店舗整合性が不正です。',
+    })
+  })
+
   // TRACE-012
   it('returns 409 when another visit already uses the same appointment', async () => {
     createStoreScopedClientMock.mockResolvedValue({
