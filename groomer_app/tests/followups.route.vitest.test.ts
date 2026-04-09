@@ -497,4 +497,58 @@ describe('followups route GET query filters', () => {
       payloadAll.candidates.map((row) => row.customer_id)
     )
   })
+
+  // TRACE-058
+  it('keeps candidate calculation invariant when include_candidates=true with due query', async () => {
+    const supabase = createCandidateSupabaseMock({
+      taskRows: [
+        {
+          id: 'task-due-1',
+          customer_id: 'customer-task-only',
+          status: 'in_progress',
+          due_on: '2026-04-09',
+          recommended_at: '2026-03-01T00:00:00.000Z',
+          customers: { full_name: 'タスク顧客' },
+          pets: null,
+        },
+      ],
+      activeTaskRows: [],
+      customers: [{ id: 'customer-b', full_name: '候補B', phone_number: null, line_id: null }],
+      visits: [{ customer_id: 'customer-b', visit_date: '2026-01-10T00:00:00.000Z', appointment_id: null }],
+      settings: {
+        followup_snoozed_refollow_days: 7,
+        followup_no_need_refollow_days: 60,
+        followup_lost_refollow_days: 90,
+      },
+    })
+
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase,
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+
+    const responseBase = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=all')
+    )
+    expect(responseBase.status).toBe(200)
+    const payloadBase = (await responseBase.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+
+    const responseWithDue = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=all&due=overdue')
+    )
+    expect(responseWithDue.status).toBe(200)
+    const payloadWithDue = (await responseWithDue.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+
+    expect(payloadWithDue.candidates.map((row) => row.customer_id)).toEqual(
+      payloadBase.candidates.map((row) => row.customer_id)
+    )
+  })
 })
