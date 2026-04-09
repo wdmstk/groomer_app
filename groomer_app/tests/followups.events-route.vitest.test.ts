@@ -330,4 +330,23 @@ describe('followups events route', () => {
       message: 'LINE連絡記録では payload.body が必須です。',
     })
   })
+
+  // TRACE-035
+  it('returns 400 when contacted_line payload body is whitespace only', async () => {
+    const { POST } = await import('../src/app/api/followups/[followup_id]/events/route')
+    const response = await POST(
+      buildRequest({
+        event_type: 'contacted_line',
+        payload: { body: '   ' },
+      }),
+      {
+        params: Promise.resolve({ followup_id: 'task-1' }),
+      }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: 'LINE連絡記録では payload.body が必須です。',
+    })
+  })
 })
