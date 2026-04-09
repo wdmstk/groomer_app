@@ -277,6 +277,8 @@ Completed tasks should be marked:
   - [x] `Journal E2E` の遷移フレーク対策として `gotoStable` 再試行を導入（`e2e/journal-pages.spec.ts`）
   - [x] Playwright E2E起動時の `/` 参照でSupabase必須エラーが出ないよう、`app/page.tsx` に `PLAYWRIGHT_E2E` ガードを追加（`/lp` へ即時リダイレクト）
   - [x] `Journal E2E` ワークフローの Node 実行環境を `24` へ統一し、CI上の `.ts` 実行エラー（`ERR_UNKNOWN_FILE_EXTENSION`）を解消
+  - [x] `docs/test-coverage-audit-2026-04-09.md` を再確認し、`次アクション` を実態に合わせて「整備」から「運用継続」へ更新
+  - [x] 残存リスク対策として `followups` 再フォロー判定の日付境界テストを追加（`TRACE-021`: ちょうど閾値日の解除判定）
   - [ ] 後続の顧客管理β改善指示を反映
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）

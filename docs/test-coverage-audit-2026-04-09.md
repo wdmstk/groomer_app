@@ -73,8 +73,12 @@
 - APIルート契約テストが体系的に整備されていない。
 
 ## 次アクション（優先順）
-1. 仕様トレーサビリティ表を整備・運用
-   - 仕様項目 -> テストファイル -> 検証アサーション
+1. 仕様トレーサビリティ表の運用継続
+   - 機能追加/変更ごとに `TRACE-xxx` を同一PRで更新
+   - `test:traceability` を必須チェックとして維持
+2. 残存リスクの継続監視
+   - fixture依存が高い領域の実データ近似E2Eを段階追加
+   - 日付境界/時差境界のケースを優先的に補強
 
 ## 仕様トレーサビリティ表（初版）
 | Test ID | 仕様項目 | テストファイル | 検証アサーション（抜粋） |
@@ -86,6 +90,7 @@
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-006 | followups events API: 不正event_typeの拒否 | `tests/followups.events-route.vitest.test.ts` | `bad_event` で `400` + `有効な event_type を指定してください。` |
 | TRACE-007 | followups events API: 解決済みへの連絡記録禁止 | `tests/followups.events-route.vitest.test.ts` | `resolved_*` タスクに `contacted_line` を追加すると `400` |
+| TRACE-021 | followups再フォロー判定: クールダウン境界日の解除 | `tests/followups.refollow-policy.vitest.test.ts` | `snoozed/no_need/lost` が「ちょうど閾値日」でブロック解除されることを確認 |
 | TRACE-008 | 店舗顧客管理設定API: 権限制御 | `tests/stores.customer-management-settings.route.vitest.test.ts` | 未認証 `401`、`staff` 権限で `403` |
 | TRACE-009 | 店舗顧客管理設定API: クランプ/安全リダイレクト | `tests/stores.customer-management-settings.route.vitest.test.ts` | 極端値が `1..365` / `5..100` へ補正、`//evil...` は既定リダイレクトへ |
 | TRACE-010 | visits API(POST): 必須/店舗整合性チェック | `tests/visits.route.vitest.test.ts` | `customer_id` 欠落で `400`、店舗不整合で `400` |
