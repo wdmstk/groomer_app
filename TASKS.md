@@ -332,11 +332,14 @@ Completed tasks should be marked:
   - [x] [P30-0] P30着手準備（作業ブランチ `test/TASK-448-followups-due-query-candidate-invariance` を作成）
   - [x] [P30] `followups` ルートテストの `due=today/overdue` と `include_candidates=true` 併用時の候補不変性を固定
   - [x] [P31] 監査レポートに `include_candidates` + `due` 不変性の検証項目を追記
-  - [ ] [P32] `include_candidates=true` 経路の `assignee` クエリ指定時に候補算出が不変であることをルートテストで固定
+  - [x] [P32-0] P32着手準備（作業ブランチ `test/TASK-448-followups-assignee-query-candidate-invariance` を作成）
+  - [x] [P32] `include_candidates=true` 経路の `assignee` クエリ指定時に候補算出が不変であることをルートテストで固定
+  - [x] [P33] 監査レポートに `include_candidates` + `assignee` 不変性の検証項目を追記
+  - [ ] [P34] `include_candidates=true` 経路の `window_days=30` 境界（7/all に加えて30）をルートテストで固定
   - [ ] 後続の顧客管理β改善指示を反映
   - [x] [IDX-1] `followups` テスト索引（TRACE対応）をTASKSへ記録
     E2E: `TRACE-001` `TRACE-002` `TRACE-003` `TRACE-048` `TRACE-049` -> `groomer_app/e2e/customers-followup-alerts.spec.ts`
-    Route: `TRACE-050` `TRACE-051` `TRACE-052` `TRACE-053` `TRACE-054` `TRACE-055` `TRACE-056` `TRACE-057` `TRACE-058` -> `groomer_app/tests/followups.route.vitest.test.ts`
+    Route: `TRACE-050` `TRACE-051` `TRACE-052` `TRACE-053` `TRACE-054` `TRACE-055` `TRACE-056` `TRACE-057` `TRACE-058` `TRACE-059` -> `groomer_app/tests/followups.route.vitest.test.ts`
     Route(status/events): `TRACE-004`〜`TRACE-007`, `TRACE-022`〜`TRACE-036`, `TRACE-042` -> `groomer_app/tests/followups.status-route.vitest.test.ts` / `groomer_app/tests/followups.events-route.vitest.test.ts`
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）
