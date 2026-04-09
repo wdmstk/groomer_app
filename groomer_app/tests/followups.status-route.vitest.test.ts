@@ -114,6 +114,25 @@ describe('followups status route', () => {
     })
   })
 
+  // TRACE-032
+  it('returns 400 when snoozed transition includes invalid snoozed_until', async () => {
+    const { PATCH } = await import('../src/app/api/followups/[followup_id]/status/route')
+    const response = await PATCH(
+      buildRequest({
+        status: 'snoozed',
+        snoozed_until: 'not-a-date',
+      }),
+      {
+        params: Promise.resolve({ followup_id: 'task-1' }),
+      }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: 'snoozed status では snoozed_until が必須です。',
+    })
+  })
+
   // TRACE-026
   it('returns 400 when request has no updatable fields', async () => {
     const { PATCH } = await import('../src/app/api/followups/[followup_id]/status/route')
