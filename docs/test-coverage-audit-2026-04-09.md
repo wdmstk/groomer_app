@@ -68,7 +68,7 @@
     - `/settings?tab=public-reserve` の保存フォーム `redirect_to` 一貫性
 
 ## 残存リスク
-- fixture依存が強いテストは、本番相当の統合不整合を見逃す可能性がある（来店周期アラートは `TRACE-048` `TRACE-049` で実データ近似を追加、`followups` ルートは `TRACE-050`〜`TRACE-070` でクエリ境界を補強済み）。
+- fixture依存が強いテストは、本番相当の統合不整合を見逃す可能性がある（来店周期アラートは `TRACE-048` `TRACE-049` で実データ近似を追加、`followups` ルートは `TRACE-050`〜`TRACE-071` でクエリ境界を補強済み）。
 - 日付境界・時差境界・状態遷移の組み合わせ（境界ケース）が、領域によっては不足している。
 - APIルート契約テストが体系的に整備されていない。
 
@@ -111,6 +111,7 @@
 | TRACE-068 | followups API(GET): `include_candidates=true` と `window_days=30`+`due` 併用の不変性 | `tests/followups.route.vitest.test.ts` | `window_days=30` で `due` 指定有無にかかわらず候補算出結果（`candidates`）が変わらない |
 | TRACE-069 | followups API(GET): `include_candidates=true` と `window_days=7`+`status` 併用の不変性 | `tests/followups.route.vitest.test.ts` | `window_days=7` で `status` 指定有無にかかわらず候補算出結果（`candidates`）が変わらない |
 | TRACE-070 | followups API(GET): `include_candidates=true` と `window_days=7`+`assignee` 併用の不変性 | `tests/followups.route.vitest.test.ts` | `window_days=7` で `assignee` 指定有無にかかわらず候補算出結果（`candidates`）が変わらない |
+| TRACE-071 | followups API(GET): `include_candidates=true` と `window_days=7`+`due` 併用の不変性 | `tests/followups.route.vitest.test.ts` | `window_days=7` で `due` 指定有無にかかわらず候補算出結果（`candidates`）が変わらない |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
