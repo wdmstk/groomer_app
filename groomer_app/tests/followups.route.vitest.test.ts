@@ -1473,4 +1473,118 @@ describe('followups route GET query filters', () => {
       payloadBase.candidates.map((row) => row.customer_id)
     )
   })
+
+  // TRACE-076
+  it('keeps candidate calculation invariant when include_candidates=true with window_days=all and due=overdue+assignee=user-2 queries', async () => {
+    const supabase = createCandidateSupabaseMock({
+      taskRows: [
+        {
+          id: 'task-windowall-due-overdue-user2-1',
+          customer_id: 'customer-task-only',
+          status: 'in_progress',
+          due_on: '2026-04-09',
+          assigned_user_id: 'user-2',
+          recommended_at: '2026-03-10T00:00:00.000Z',
+          customers: { full_name: 'タスク顧客' },
+          pets: null,
+        },
+      ],
+      activeTaskRows: [],
+      customers: [{ id: 'customer-s', full_name: '候補S', phone_number: null, line_id: null }],
+      visits: [{ customer_id: 'customer-s', visit_date: '2026-01-11T00:00:00.000Z', appointment_id: null }],
+      settings: {
+        followup_snoozed_refollow_days: 7,
+        followup_no_need_refollow_days: 60,
+        followup_lost_refollow_days: 90,
+      },
+    })
+
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase,
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+
+    const responseBase = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=all')
+    )
+    expect(responseBase.status).toBe(200)
+    const payloadBase = (await responseBase.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+
+    const responseWithCombinedQuery = await GET(
+      new Request(
+        'http://localhost/api/followups?include_candidates=true&window_days=all&due=overdue&assignee=user-2'
+      )
+    )
+    expect(responseWithCombinedQuery.status).toBe(200)
+    const payloadWithCombinedQuery = (await responseWithCombinedQuery.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+
+    expect(payloadWithCombinedQuery.candidates.map((row) => row.customer_id)).toEqual(
+      payloadBase.candidates.map((row) => row.customer_id)
+    )
+  })
+
+  // TRACE-077
+  it('keeps candidate calculation invariant when include_candidates=true with window_days=all and status=open+due=today+assignee=user-2 queries', async () => {
+    const supabase = createCandidateSupabaseMock({
+      taskRows: [
+        {
+          id: 'task-windowall-open-due-today-user2-1',
+          customer_id: 'customer-task-only',
+          status: 'open',
+          due_on: '2026-04-10',
+          assigned_user_id: 'user-2',
+          recommended_at: '2026-03-11T00:00:00.000Z',
+          customers: { full_name: 'タスク顧客' },
+          pets: null,
+        },
+      ],
+      activeTaskRows: [],
+      customers: [{ id: 'customer-t', full_name: '候補T', phone_number: null, line_id: null }],
+      visits: [{ customer_id: 'customer-t', visit_date: '2026-01-12T00:00:00.000Z', appointment_id: null }],
+      settings: {
+        followup_snoozed_refollow_days: 7,
+        followup_no_need_refollow_days: 60,
+        followup_lost_refollow_days: 90,
+      },
+    })
+
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase,
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+
+    const responseBase = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=all')
+    )
+    expect(responseBase.status).toBe(200)
+    const payloadBase = (await responseBase.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+
+    const responseWithCombinedQuery = await GET(
+      new Request(
+        'http://localhost/api/followups?include_candidates=true&window_days=all&status=open&due=today&assignee=user-2'
+      )
+    )
+    expect(responseWithCombinedQuery.status).toBe(200)
+    const payloadWithCombinedQuery = (await responseWithCombinedQuery.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+
+    expect(payloadWithCombinedQuery.candidates.map((row) => row.customer_id)).toEqual(
+      payloadBase.candidates.map((row) => row.customer_id)
+    )
+  })
 })
