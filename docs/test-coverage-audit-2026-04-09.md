@@ -130,6 +130,18 @@
 | TRACE-088 | followups API(GET): `include_candidates=true` と不正 `window_days` 指定の安全動作 | `tests/followups.route.vitest.test.ts` | 不正 `window_days` は `all` と同等扱いになり候補算出結果（`candidates`）が一致する |
 | TRACE-089 | followups API(GET): `include_candidates=false` 時の候補算出スキップ契約 | `tests/followups.route.vitest.test.ts` | `include_candidates=false` で `candidates=[]` を返し、候補算出用テーブル参照が発生しない |
 | TRACE-090 | followups API(GET): `due=today/overdue` のJST日付境界判定 | `tests/followups.route.vitest.test.ts` | JST基準日（例: `2026-04-11`）で `due_on=today` / `due_on<today` のフィルタ値が評価される |
+| TRACE-091 | customers API(GET): 顧客一覧取得の基本契約 | `tests/customers.route.vitest.test.ts` | 正常時に `200` で顧客配列を返す |
+| TRACE-092 | customers API(POST): `full_name` 必須バリデーション | `tests/customers.route.vitest.test.ts` | `full_name` 欠落で `400` + `氏名は必須です。` |
+| TRACE-093 | customers API(POST): `tags` 正規化（trim/空要素除去） | `tests/customers.route.vitest.test.ts` | JSON配列タグを正規化し、監査ログ `after.tags` に反映される |
+| TRACE-094 | customers API(POST-form): 不正 `redirect_to` の安全フォールバック | `tests/customers.route.vitest.test.ts` | 外部URL指定時も `307` で `/customers/manage?view=customers` へ遷移する |
+| TRACE-095 | customers/[customer_id] API(PUT): `full_name` 必須バリデーション | `tests/customers.customer-id-route.vitest.test.ts` | `full_name` が空の場合 `400` + `氏名は必須です。` |
+| TRACE-096 | customers/[customer_id] API(POST): 不正 `_method` の拒否 | `tests/customers.customer-id-route.vitest.test.ts` | `_method=unknown` は `405` + `Unsupported method` |
+| TRACE-097 | customers/[customer_id] API(POST put/patch): 更新後リダイレクトとタグ正規化 | `tests/customers.customer-id-route.vitest.test.ts` | `_method=put` で `307` リダイレクトし、`tags` が正規化され監査ログに反映される |
+| TRACE-098 | customers/[customer_id] API(DELETE): 依存削除と監査ログ連携 | `tests/customers.customer-id-route.vitest.test.ts` | `deleteCustomerWithDependencies` 呼び出し後に `200` 成功応答と `deleted` 監査ログ記録が行われる |
+| TRACE-099 | customers/ltv API(GET): LTV集計取得の正常契約 | `tests/customers.ltv-route.vitest.test.ts` | 集計取得成功時に `200` でLTV配列を返す |
+| TRACE-100 | customers/ltv API(GET): 例外時のエラー応答契約 | `tests/customers.ltv-route.vitest.test.ts` | 集計処理が例外の場合 `500` + 例外メッセージを返す |
+| TRACE-101 | customers/[customer_id]/member-portal-reissue-requests API(GET): 未認証拒否 | `tests/customers.member-portal-reissue-requests-route.vitest.test.ts` | 未認証時は `401` + `Unauthorized` を返す |
+| TRACE-102 | customers/[customer_id]/member-portal-reissue-requests API(GET): pending応答整形 | `tests/customers.member-portal-reissue-requests-route.vitest.test.ts` | `pendingRequest` を `requestedAt` / `note` 形式へ整形して返す |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
