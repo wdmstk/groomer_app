@@ -923,4 +923,59 @@ describe('followups route GET query filters', () => {
       payloadBase.candidates.map((row) => row.customer_id)
     )
   })
+
+  // TRACE-066
+  it('keeps candidate calculation invariant when include_candidates=true with window_days=30 and status query', async () => {
+    const supabase = createCandidateSupabaseMock({
+      taskRows: [
+        {
+          id: 'task-window30-status-1',
+          customer_id: 'customer-task-only',
+          status: 'in_progress',
+          recommended_at: '2026-03-15T00:00:00.000Z',
+          customers: { full_name: 'タスク顧客' },
+          pets: null,
+        },
+      ],
+      activeTaskRows: [],
+      customers: [{ id: 'customer-i', full_name: '候補I', phone_number: null, line_id: null }],
+      visits: [{ customer_id: 'customer-i', visit_date: '2026-02-03T00:00:00.000Z', appointment_id: null }],
+      settings: {
+        followup_snoozed_refollow_days: 7,
+        followup_no_need_refollow_days: 60,
+        followup_lost_refollow_days: 90,
+      },
+    })
+
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase,
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+
+    const responseBase = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=30')
+    )
+    expect(responseBase.status).toBe(200)
+    const payloadBase = (await responseBase.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+
+    const responseWithStatus = await GET(
+      new Request(
+        'http://localhost/api/followups?include_candidates=true&window_days=30&status=in_progress'
+      )
+    )
+    expect(responseWithStatus.status).toBe(200)
+    const payloadWithStatus = (await responseWithStatus.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+
+    expect(payloadWithStatus.candidates.map((row) => row.customer_id)).toEqual(
+      payloadBase.candidates.map((row) => row.customer_id)
+    )
+  })
 })
