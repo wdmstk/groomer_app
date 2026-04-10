@@ -365,11 +365,14 @@ Completed tasks should be marked:
   - [x] [P52-0] P52着手準備（作業ブランチ `test/TASK-448-followups-window7-status-candidate-invariance` を作成）
   - [x] [P52] `include_candidates=true` 経路で `window_days=7` + `status` 併用時の候補不変性をルートテストで固定
   - [x] [P53] 監査レポートに `include_candidates` + `window_days=7`+`status` 併用不変性の検証項目を追記
-  - [ ] [P54] `include_candidates=true` 経路で `window_days=7` + `assignee` 併用時の候補不変性をルートテストで固定
+  - [x] [P54-0] P54着手準備（作業ブランチ `test/TASK-448-followups-window7-assignee-candidate-invariance` を作成）
+  - [x] [P54] `include_candidates=true` 経路で `window_days=7` + `assignee` 併用時の候補不変性をルートテストで固定
+  - [x] [P55] 監査レポートに `include_candidates` + `window_days=7`+`assignee` 併用不変性の検証項目を追記
+  - [ ] [P56] `include_candidates=true` 経路で `window_days=7` + `due` 併用時の候補不変性をルートテストで固定
   - [ ] 後続の顧客管理β改善指示を反映
   - [x] [IDX-1] `followups` テスト索引（TRACE対応）をTASKSへ記録
     E2E: `TRACE-001` `TRACE-002` `TRACE-003` `TRACE-048` `TRACE-049` -> `groomer_app/e2e/customers-followup-alerts.spec.ts`
-    Route: `TRACE-050` `TRACE-051` `TRACE-052` `TRACE-053` `TRACE-054` `TRACE-055` `TRACE-056` `TRACE-057` `TRACE-058` `TRACE-059` `TRACE-060` `TRACE-061` `TRACE-062` `TRACE-063` `TRACE-064` `TRACE-065` `TRACE-066` `TRACE-067` `TRACE-068` `TRACE-069` -> `groomer_app/tests/followups.route.vitest.test.ts`
+    Route: `TRACE-050` `TRACE-051` `TRACE-052` `TRACE-053` `TRACE-054` `TRACE-055` `TRACE-056` `TRACE-057` `TRACE-058` `TRACE-059` `TRACE-060` `TRACE-061` `TRACE-062` `TRACE-063` `TRACE-064` `TRACE-065` `TRACE-066` `TRACE-067` `TRACE-068` `TRACE-069` `TRACE-070` -> `groomer_app/tests/followups.route.vitest.test.ts`
     Route(status/events): `TRACE-004`〜`TRACE-007`, `TRACE-022`〜`TRACE-036`, `TRACE-042` -> `groomer_app/tests/followups.status-route.vitest.test.ts` / `groomer_app/tests/followups.events-route.vitest.test.ts`
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）
