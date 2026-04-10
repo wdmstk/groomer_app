@@ -705,4 +705,58 @@ describe('followups route GET query filters', () => {
       payloadBase.candidates.map((row) => row.customer_id)
     )
   })
+
+  // TRACE-062
+  it('keeps candidate calculation invariant when include_candidates=true with assignee=unassigned', async () => {
+    const supabase = createCandidateSupabaseMock({
+      taskRows: [
+        {
+          id: 'task-unassigned-1',
+          customer_id: 'customer-task-only',
+          status: 'open',
+          assigned_user_id: null,
+          recommended_at: '2026-03-01T00:00:00.000Z',
+          customers: { full_name: 'タスク顧客' },
+          pets: null,
+        },
+      ],
+      activeTaskRows: [],
+      customers: [{ id: 'customer-e', full_name: '候補E', phone_number: null, line_id: null }],
+      visits: [{ customer_id: 'customer-e', visit_date: '2026-01-10T00:00:00.000Z', appointment_id: null }],
+      settings: {
+        followup_snoozed_refollow_days: 7,
+        followup_no_need_refollow_days: 60,
+        followup_lost_refollow_days: 90,
+      },
+    })
+
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase,
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+
+    const responseBase = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=all')
+    )
+    expect(responseBase.status).toBe(200)
+    const payloadBase = (await responseBase.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+
+    const responseWithUnassigned = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=all&assignee=unassigned')
+    )
+    expect(responseWithUnassigned.status).toBe(200)
+    const payloadWithUnassigned = (await responseWithUnassigned.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+
+    expect(payloadWithUnassigned.candidates.map((row) => row.customer_id)).toEqual(
+      payloadBase.candidates.map((row) => row.customer_id)
+    )
+  })
 })
