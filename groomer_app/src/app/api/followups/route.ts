@@ -32,6 +32,11 @@ function resolveBooleanFlag(value: string | null) {
   return value === 'true' || value === '1'
 }
 
+function getJstDateOnly(now = new Date()) {
+  const jstText = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' })
+  return /^\d{4}-\d{2}-\d{2}$/.test(jstText) ? jstText : now.toISOString().slice(0, 10)
+}
+
 export async function GET(request: Request) {
   const allowed = await getFollowupRouteContext()
   if ('error' in allowed) return allowed.error
@@ -72,7 +77,7 @@ export async function GET(request: Request) {
     taskQuery = taskQuery.eq('assigned_user_id', assignee)
   }
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = getJstDateOnly(new Date())
   if (due === 'today') {
     taskQuery = taskQuery.eq('due_on', today)
   } else if (due === 'overdue') {

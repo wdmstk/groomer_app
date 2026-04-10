@@ -2043,4 +2043,154 @@ describe('followups route GET query filters', () => {
       payloadBase.candidates.map((row) => row.customer_id)
     )
   })
+
+  // TRACE-086
+  it('keeps candidate calculation invariant when include_candidates=true with window_days=all and status=resolved_booked query', async () => {
+    const supabase = createCandidateSupabaseMock({
+      taskRows: [
+        {
+          id: 'task-windowall-resolved-booked-1',
+          customer_id: 'customer-task-only',
+          status: 'resolved_booked',
+          due_on: '2026-04-12',
+          assigned_user_id: 'user-1',
+          recommended_at: '2026-03-21T00:00:00.000Z',
+          customers: { full_name: 'タスク顧客' },
+          pets: null,
+        },
+      ],
+      activeTaskRows: [],
+      customers: [{ id: 'customer-ac', full_name: '候補AC', phone_number: null, line_id: null }],
+      visits: [{ customer_id: 'customer-ac', visit_date: '2026-01-21T00:00:00.000Z', appointment_id: null }],
+      settings: {
+        followup_snoozed_refollow_days: 7,
+        followup_no_need_refollow_days: 60,
+        followup_lost_refollow_days: 90,
+      },
+    })
+
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase,
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+    const baseResponse = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=all')
+    )
+    expect(baseResponse.status).toBe(200)
+    const basePayload = (await baseResponse.json()) as { candidates: Array<{ customer_id: string }> }
+
+    const withStatusResponse = await GET(
+      new Request(
+        'http://localhost/api/followups?include_candidates=true&window_days=all&status=resolved_booked'
+      )
+    )
+    expect(withStatusResponse.status).toBe(200)
+    const withStatusPayload = (await withStatusResponse.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+
+    expect(withStatusPayload.candidates.map((row) => row.customer_id)).toEqual(
+      basePayload.candidates.map((row) => row.customer_id)
+    )
+  })
+
+  // TRACE-088
+  it('treats invalid window_days as all and keeps candidate calculation safe', async () => {
+    const supabase = createCandidateSupabaseMock({
+      taskRows: [],
+      activeTaskRows: [],
+      customers: [{ id: 'customer-ad', full_name: '候補AD', phone_number: null, line_id: null }],
+      visits: [{ customer_id: 'customer-ad', visit_date: '2026-01-22T00:00:00.000Z', appointment_id: null }],
+      settings: {
+        followup_snoozed_refollow_days: 7,
+        followup_no_need_refollow_days: 60,
+        followup_lost_refollow_days: 90,
+      },
+    })
+
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase,
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+    const allResponse = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=all')
+    )
+    expect(allResponse.status).toBe(200)
+    const allPayload = (await allResponse.json()) as { candidates: Array<{ customer_id: string }> }
+
+    const invalidResponse = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=invalid')
+    )
+    expect(invalidResponse.status).toBe(200)
+    const invalidPayload = (await invalidResponse.json()) as {
+      candidates: Array<{ customer_id: string }>
+    }
+
+    expect(invalidPayload.candidates.map((row) => row.customer_id)).toEqual(
+      allPayload.candidates.map((row) => row.customer_id)
+    )
+  })
+
+  // TRACE-089
+  it('returns empty candidates and avoids candidate queries when include_candidates=false', async () => {
+    const taskQuery = createEqOnlyQuery([])
+    const supabase = {
+      from(table: string) {
+        if (table === 'customer_followup_tasks') return taskQuery
+        if (table === 'staffs') return createEqOnlyQuery([{ user_id: 'user-1', full_name: '担当A' }])
+        if (table === 'notification_templates') return createTemplateQuery()
+        throw new Error(`unexpected table access: ${table}`)
+      },
+    }
+
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase,
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+    const response = await GET(
+      new Request('http://localhost/api/followups?include_candidates=false&window_days=all')
+    )
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as { candidates: unknown[] }
+    expect(payload.candidates).toEqual([])
+  })
+
+  // TRACE-090
+  it('uses JST date boundary for due=today/overdue filters', async () => {
+    vi.setSystemTime(new Date('2026-04-10T15:30:00.000Z')) // JST: 2026-04-11 00:30
+
+    const { query, calls } = createTaskQueryRecorder()
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase: createSupabaseMock(query),
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+
+    const todayResponse = await GET(
+      new Request('http://localhost/api/followups?include_candidates=0&due=today')
+    )
+    expect(todayResponse.status).toBe(200)
+    expect(calls).toEqual(expect.arrayContaining([{ method: 'eq', column: 'due_on', value: '2026-04-11' }]))
+
+    const overdueResponse = await GET(
+      new Request('http://localhost/api/followups?include_candidates=0&due=overdue')
+    )
+    expect(overdueResponse.status).toBe(200)
+    expect(calls).toEqual(expect.arrayContaining([{ method: 'lt', column: 'due_on', value: '2026-04-11' }]))
+  })
 })
