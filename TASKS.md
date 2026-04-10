@@ -387,10 +387,14 @@ Completed tasks should be marked:
   - [x] [P67] `include_candidates=true` 経路で `window_days=all` + `status=snoozed`+`assignee=unassigned` 併用時の候補不変性をルートテストで固定
   - [x] [P68] `include_candidates=true` 経路で `window_days=all` + `status=in_progress`+`due=all`+`assignee=user-2` 併用時の候補不変性をルートテストで固定
   - [x] [P69] 監査レポートとTRACE索引へ `TRACE-078`/`TRACE-079` を反映
+  - [x] [P70-0] P70着手準備（作業ブランチ `test/TASK-448-followups-all-window-invariance-v5` を作成）
+  - [x] [P70] `include_candidates=true` 経路で `window_days=all` + `status=resolved_no_need`+`due=overdue`+`assignee=me` 併用時の候補不変性をルートテストで固定
+  - [x] [P71] `include_candidates=true` 経路で `window_days=all` + `due=today`+`assignee=unassigned` 併用時の候補不変性をルートテストで固定
+  - [x] [P72] 監査レポートとTRACE索引へ `TRACE-080`/`TRACE-081` を反映
   - [ ] 後続の顧客管理β改善指示を反映
   - [x] [IDX-1] `followups` テスト索引（TRACE対応）をTASKSへ記録
     E2E: `TRACE-001` `TRACE-002` `TRACE-003` `TRACE-048` `TRACE-049` -> `groomer_app/e2e/customers-followup-alerts.spec.ts`
-    Route: `TRACE-050` `TRACE-051` `TRACE-052` `TRACE-053` `TRACE-054` `TRACE-055` `TRACE-056` `TRACE-057` `TRACE-058` `TRACE-059` `TRACE-060` `TRACE-061` `TRACE-062` `TRACE-063` `TRACE-064` `TRACE-065` `TRACE-066` `TRACE-067` `TRACE-068` `TRACE-069` `TRACE-070` `TRACE-071` `TRACE-072` `TRACE-073` `TRACE-074` `TRACE-075` `TRACE-076` `TRACE-077` `TRACE-078` `TRACE-079` -> `groomer_app/tests/followups.route.vitest.test.ts`
+    Route: `TRACE-050` `TRACE-051` `TRACE-052` `TRACE-053` `TRACE-054` `TRACE-055` `TRACE-056` `TRACE-057` `TRACE-058` `TRACE-059` `TRACE-060` `TRACE-061` `TRACE-062` `TRACE-063` `TRACE-064` `TRACE-065` `TRACE-066` `TRACE-067` `TRACE-068` `TRACE-069` `TRACE-070` `TRACE-071` `TRACE-072` `TRACE-073` `TRACE-074` `TRACE-075` `TRACE-076` `TRACE-077` `TRACE-078` `TRACE-079` `TRACE-080` `TRACE-081` -> `groomer_app/tests/followups.route.vitest.test.ts`
     Route(status/events): `TRACE-004`〜`TRACE-007`, `TRACE-022`〜`TRACE-036`, `TRACE-042` -> `groomer_app/tests/followups.status-route.vitest.test.ts` / `groomer_app/tests/followups.events-route.vitest.test.ts`
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）
