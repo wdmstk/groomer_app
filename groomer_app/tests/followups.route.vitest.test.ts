@@ -286,6 +286,27 @@ describe('followups route GET query filters', () => {
     expect(hasStatusFilter).toBe(false)
   })
 
+  // TRACE-111
+  it('applies status filter when status query value is valid', async () => {
+    const { query, calls } = createTaskQueryRecorder()
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase: createSupabaseMock(query),
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+    const response = await GET(
+      new Request('http://localhost/api/followups?status=in_progress&include_candidates=0')
+    )
+
+    expect(response.status).toBe(200)
+    expect(calls).toEqual(
+      expect.arrayContaining([{ method: 'eq', column: 'status', value: 'in_progress' }])
+    )
+  })
+
   // TRACE-054
   it('applies refollow cooldown policy when include_candidates=true', async () => {
     const supabase = createCandidateSupabaseMock({

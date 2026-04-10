@@ -142,6 +142,15 @@
 | TRACE-100 | customers/ltv API(GET): 例外時のエラー応答契約 | `tests/customers.ltv-route.vitest.test.ts` | 集計処理が例外の場合 `500` + 例外メッセージを返す |
 | TRACE-101 | customers/[customer_id]/member-portal-reissue-requests API(GET): 未認証拒否 | `tests/customers.member-portal-reissue-requests-route.vitest.test.ts` | 未認証時は `401` + `Unauthorized` を返す |
 | TRACE-102 | customers/[customer_id]/member-portal-reissue-requests API(GET): pending応答整形 | `tests/customers.member-portal-reissue-requests-route.vitest.test.ts` | `pendingRequest` を `requestedAt` / `note` 形式へ整形して返す |
+| TRACE-103 | appointments API(GET): 予約一覧取得の基本契約 | `tests/appointments.route.vitest.test.ts` | 正常時に `200` で予約配列を返す |
+| TRACE-104 | appointments API(POST): `Accept: application/json` のJSON応答契約 | `tests/appointments.route.vitest.test.ts` | JSON受理時は `200` で `{ id, groupId, appointment }` を返し、監査ログ記録が呼ばれる |
+| TRACE-105 | appointments API(POST): 競合時のエラー契約 | `tests/appointments.route.vitest.test.ts` | サービス層競合時は `409` + `conflict` を含むJSONを返す |
+| TRACE-106 | appointments/[appointment_id] API(POST): `_method=delete` の削除導線 | `tests/appointments.appointment-id-route.vitest.test.ts` | 削除成功時に `303` で `/appointments?tab=list` へ遷移し、削除サービスが呼ばれる |
+| TRACE-107 | appointments/[appointment_id] API(POST): 不正 `_method` の拒否 | `tests/appointments.appointment-id-route.vitest.test.ts` | `_method=unknown` は `405` + `Unsupported method` を返す |
+| TRACE-108 | appointments/[appointment_id] API(PUT): サービス層バリデーションエラーの透過 | `tests/appointments.appointment-id-route.vitest.test.ts` | サービス層が `AppointmentServiceError(400)` を返した場合、同じ `400` とメッセージを返す |
+| TRACE-109 | visits API(GET): 来店一覧取得の基本契約 | `tests/visits.route.vitest.test.ts` | 正常時に `200` で来店配列を返す |
+| TRACE-110 | visits API(GET): 一覧取得失敗時のエラー応答契約 | `tests/visits.route.vitest.test.ts` | クエリエラー時に `500` + エラーメッセージを返す |
+| TRACE-111 | followups API(GET): 有効 `status` クエリの適用契約 | `tests/followups.route.vitest.test.ts` | `status=in_progress` 指定時に `status` フィルタ（`eq`）が適用される |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
