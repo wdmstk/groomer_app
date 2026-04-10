@@ -126,6 +126,10 @@
 | TRACE-083 | followups API(GET): `include_candidates=true` と `window_days=all`+`due=all`+`assignee=user-999` 併用の不変性 | `tests/followups.route.vitest.test.ts` | `window_days=all` で複合クエリ指定有無にかかわらず候補算出結果（`candidates`）が変わらない |
 | TRACE-084 | followups API(GET): `include_candidates=true` と `window_days=all`+`status=resolved_lost`+`due=all`+`assignee=me` 併用の不変性 | `tests/followups.route.vitest.test.ts` | `window_days=all` で複合クエリ指定有無にかかわらず候補算出結果（`candidates`）が変わらない |
 | TRACE-085 | followups API(GET): `include_candidates=true` と `window_days=all`+不正`status`+`due=today`+`assignee=unassigned` 併用の不変性 | `tests/followups.route.vitest.test.ts` | `window_days=all` で不正 `status` を含むクエリ指定有無にかかわらず候補算出結果（`candidates`）が変わらない |
+| TRACE-086 | followups API(GET): `include_candidates=true` と `window_days=all`+`status=resolved_booked` 併用の不変性 | `tests/followups.route.vitest.test.ts` | `window_days=all` で `status=resolved_booked` 指定有無にかかわらず候補算出結果（`candidates`）が変わらない |
+| TRACE-088 | followups API(GET): `include_candidates=true` と不正 `window_days` 指定の安全動作 | `tests/followups.route.vitest.test.ts` | 不正 `window_days` は `all` と同等扱いになり候補算出結果（`candidates`）が一致する |
+| TRACE-089 | followups API(GET): `include_candidates=false` 時の候補算出スキップ契約 | `tests/followups.route.vitest.test.ts` | `include_candidates=false` で `candidates=[]` を返し、候補算出用テーブル参照が発生しない |
+| TRACE-090 | followups API(GET): `due=today/overdue` のJST日付境界判定 | `tests/followups.route.vitest.test.ts` | JST基準日（例: `2026-04-11`）で `due_on=today` / `due_on<today` のフィルタ値が評価される |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |

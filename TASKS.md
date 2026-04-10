@@ -399,10 +399,19 @@ Completed tasks should be marked:
   - [x] [P76] `include_candidates=true` 経路で `window_days=all` + `status=resolved_lost`+`due=all`+`assignee=me` 併用時の候補不変性をルートテストで固定
   - [x] [P77] `include_candidates=true` 経路で `window_days=all` + 不正`status`+`due=today`+`assignee=unassigned` 併用時の候補不変性をルートテストで固定
   - [x] [P78] 監査レポートとTRACE索引へ `TRACE-084`/`TRACE-085` を反映
+  - [x] [P79-0] P79着手準備（作業ブランチ `test/TASK-448-followups-p79-p83-batch` を作成）
+  - [x] [P79] `include_candidates=true` 経路で `window_days=all` + `status=resolved_booked` 併用時の候補不変性をルートテストで固定（`TRACE-086`）
+  - [x] [P81] `include_candidates=true` 経路で不正 `window_days` 指定を `all` と同等に扱う安全動作をルートテストで固定（`TRACE-088`）
+  - [x] [P82] `include_candidates=false` で候補算出を行わず `candidates=[]` を返す契約をルートテストで固定（`TRACE-089`）
+  - [x] [P83] `due=today/overdue` の基準日がJST日付境界で評価されることをルートテストと実装で固定（`TRACE-090`）
+  - [x] [P84] `include_candidates=true` 経路の `window_days=all` + `status=resolved_lost` 不変性は `TRACE-084` で担保済みを再確認
+  - [x] [P85] `include_candidates=true` 経路の `window_days=all` + 不正 `status`+`due=today`+`assignee=unassigned` 不変性は `TRACE-085` で担保済みを再確認
+  - [x] [P86] `include_candidates=true` 経路の未来予約除外は `TRACE-056` で担保済みを再確認
+  - [x] [P87] 監査レポートとTRACE索引へ `TRACE-086` `TRACE-088` `TRACE-089` `TRACE-090` を反映
   - [ ] 後続の顧客管理β改善指示を反映
   - [x] [IDX-1] `followups` テスト索引（TRACE対応）をTASKSへ記録
     E2E: `TRACE-001` `TRACE-002` `TRACE-003` `TRACE-048` `TRACE-049` -> `groomer_app/e2e/customers-followup-alerts.spec.ts`
-    Route: `TRACE-050` `TRACE-051` `TRACE-052` `TRACE-053` `TRACE-054` `TRACE-055` `TRACE-056` `TRACE-057` `TRACE-058` `TRACE-059` `TRACE-060` `TRACE-061` `TRACE-062` `TRACE-063` `TRACE-064` `TRACE-065` `TRACE-066` `TRACE-067` `TRACE-068` `TRACE-069` `TRACE-070` `TRACE-071` `TRACE-072` `TRACE-073` `TRACE-074` `TRACE-075` `TRACE-076` `TRACE-077` `TRACE-078` `TRACE-079` `TRACE-080` `TRACE-081` `TRACE-082` `TRACE-083` `TRACE-084` `TRACE-085` -> `groomer_app/tests/followups.route.vitest.test.ts`
+    Route: `TRACE-050` `TRACE-051` `TRACE-052` `TRACE-053` `TRACE-054` `TRACE-055` `TRACE-056` `TRACE-057` `TRACE-058` `TRACE-059` `TRACE-060` `TRACE-061` `TRACE-062` `TRACE-063` `TRACE-064` `TRACE-065` `TRACE-066` `TRACE-067` `TRACE-068` `TRACE-069` `TRACE-070` `TRACE-071` `TRACE-072` `TRACE-073` `TRACE-074` `TRACE-075` `TRACE-076` `TRACE-077` `TRACE-078` `TRACE-079` `TRACE-080` `TRACE-081` `TRACE-082` `TRACE-083` `TRACE-084` `TRACE-085` `TRACE-086` `TRACE-088` `TRACE-089` `TRACE-090` -> `groomer_app/tests/followups.route.vitest.test.ts`
     Route(status/events): `TRACE-004`〜`TRACE-007`, `TRACE-022`〜`TRACE-036`, `TRACE-042` -> `groomer_app/tests/followups.status-route.vitest.test.ts` / `groomer_app/tests/followups.events-route.vitest.test.ts`
 
 ## サイドバー見た目改善（カテゴリ名とメニューの視認性分離）
