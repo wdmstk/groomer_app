@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-b4-settings-ops-hq-support-coverage`
+- 現在の作業ブランチ: `chore/TASK-449-final-coverage-judgement`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -245,7 +245,7 @@ Completed tasks should be marked:
   - [x] B4追加: `npx vitest run tests/stores.misc-routes.vitest.test.ts tests/support.routes.vitest.test.ts tests/dev-subscriptions.route.vitest.test.ts tests/hq.kpi-summary.route.vitest.test.ts` 実行（10/10 pass）
   - [x] B4追加: `npm run test:traceability` / `npm run lint` 実行（pass）
   - [x] PR-B4（設定/管理/dev/hq/法務/サポート）を実装・PR作成（#68）
-  - [ ] 監査レポート更新（最終網羅判定と残リスク明記）
+  - [x] 監査レポート更新（最終網羅判定と残リスク明記）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
@@ -260,8 +260,16 @@ Completed tasks should be marked:
   - [x] ページ/APIルート全件数を再集計（79/176）
   - [x] 台帳と監査レポートの整合方針を決定（TRACE運用継続）
   - [x] 既存テストとの重複/不足の機械抽出結果を台帳へ反映（直接参照スキャンを作成）
-  - [ ] 除外対象（低リスク静的ページ等）の明示ルールを定義
-  - [ ] 大塊PRごとのDoD（必須テスト実行セット）を確定
+  - [x] 除外対象（低リスク静的ページ等）の明示ルールを定義
+    - 除外可能対象は「静的案内/法務系でフォーム送信・外部連携・権限制御を持たないページ」に限定する。
+    - 除外時は台帳に「除外理由」「代替検証（リンク切れ/表示スモーク）」を明記し、`test:traceability` 対象外であることを明示する。
+    - APIルートは原則除外不可。例外は「廃止予定で実運用から切離済み」かつ「呼び出し導線なし」の場合のみ。
+  - [x] 大塊PRごとのDoD（必須テスト実行セット）を確定
+    - DoD共通: 対象領域のTRACE追加、対象Vitest通過、`npm run test:traceability`、`npm run lint` 通過、TASK更新、PR本文にTRACE記載。
+    - DoD-B1: customers/appointments/visits/followups ルート契約テストを含むこと。
+    - DoD-B2: payments/invoices/pos/inventory ルート契約テストを含むこと。
+    - DoD-B3: hotel/consents/medical/webhooks ルート契約テストを含むこと。
+    - DoD-B4: stores/support/dev/hq ルート契約テストを含み、法務は「対象APIなし」を明記すること。
 
 ## 顧客管理βページ改善（会員証URLカード配色統一）
 - Task ID: `TASK-448`
