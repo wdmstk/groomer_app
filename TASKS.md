@@ -257,7 +257,7 @@ Completed tasks should be marked:
   - [x] C3着手: 予約事前決済API（`/api/appointments/[appointment_id]/reservation-payment/checkout` `/api/appointments/[appointment_id]/reservation-payment/claim`）のルート契約テストを追加（`TRACE-175`〜`TRACE-182`）
   - [x] C3着手: 監査レポートにTRACE行を追加し、網羅対象を更新
   - [x] C3着手: `npx vitest run tests/appointments.reservation-payment-routes.vitest.test.ts` / `npm run test:traceability` / `npm run lint` を通過
-  - [ ] C3着手: PR作成（大塊運用を維持）
+  - [x] C3着手: PR作成（大塊運用を維持 / #72）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
