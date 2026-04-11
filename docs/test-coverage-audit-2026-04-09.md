@@ -24,8 +24,8 @@
 - `expect` または `assert` が存在しないテストファイルは確認されなかった
 
 ## 最終網羅判定（2026-04-12）
-- 判定: `大塊PR（B1〜B4 + C1〜C6-A）で優先領域のルート契約テスト補強を継続中`
-- 追加TRACE: `TRACE-091`〜`TRACE-219`（B1〜B4 + C1 + C2 + C3 + C4 + C5 + C6-A）
+- 判定: `大塊PR（B1〜B4 + C1〜C6-B）で優先領域のルート契約テスト補強を継続中`
+- 追加TRACE: `TRACE-091`〜`TRACE-239`（B1〜B4 + C1 + C2 + C3 + C4 + C5 + C6-A + C6-B）
 - 直近検証結果:
   - `npm run test:traceability` => `218 rows verified`
   - C6-A追加分の対象Vitest（`admin-cron` / `platform-observability` / `notifications-and-checkout`）と `npm run lint` は通過
@@ -272,6 +272,26 @@
 | TRACE-217 | notify/email API(POST): 必須項目欠落時の拒否 | `tests/notifications-and-checkout.routes.vitest.test.ts` | `to/subject/html` 欠落時に `400` を返す |
 | TRACE-218 | notify/line API(POST): 必須項目欠落時の拒否 | `tests/notifications-and-checkout.routes.vitest.test.ts` | `to/message` 欠落時に `400` を返す |
 | TRACE-219 | payments/checkout API(POST): 未認証拒否 | `tests/notifications-and-checkout.routes.vitest.test.ts` | `supabase.auth.getUser` が未認証のとき `401` + `Unauthorized` を返す |
+| TRACE-220 | customers/member-portal-link API(POST): 未認証拒否 | `tests/customers-public-contact.routes.vitest.test.ts` | `supabase.auth.getUser` が未認証のとき `401` + `Unauthorized` を返す |
+| TRACE-221 | customers/member-portal-link/revoke API(POST): 顧客未存在時の404契約 | `tests/customers-public-contact.routes.vitest.test.ts` | 対象顧客が見つからない場合 `404` + `対象顧客が見つかりません。` を返す |
+| TRACE-222 | pets API(GET): 空データ時の空配列返却契約 | `tests/customers-public-contact.routes.vitest.test.ts` | 取得結果が `null` の場合でも `200` + `[]` を返す |
+| TRACE-223 | pets API(POST): ペット名必須バリデーション | `tests/customers-public-contact.routes.vitest.test.ts` | `name` 欠落時に `400` + `ペット名は必須です。` を返す |
+| TRACE-224 | staffs API(GET): DB障害時の500応答契約 | `tests/customers-public-contact.routes.vitest.test.ts` | スタッフ一覧取得エラー時に `500` + DBメッセージを返す |
+| TRACE-225 | staffs/[staff_id] API(PUT): 氏名必須バリデーション | `tests/customers-public-contact.routes.vitest.test.ts` | `full_name` 欠落時に `400` + `氏名は必須です。` を返す |
+| TRACE-226 | staffs/[staff_id]/chat-access API(POST): `user_id` 未設定ガード | `tests/customers-public-contact.routes.vitest.test.ts` | 対象スタッフの `user_id` が無い場合 `400` を返す |
+| TRACE-227 | service-menus API(POST): 価格必須バリデーション | `tests/customers-public-contact.routes.vitest.test.ts` | `price` 欠落時に `400` + `価格は必須です。` を返す |
+| TRACE-228 | service-menus/[menu_id] API(POST): 不正 `_method` 拒否 | `tests/customers-public-contact.routes.vitest.test.ts` | 未対応 `_method` 指定時に `405` + `Unsupported method` を返す |
+| TRACE-229 | service-menus/duration-suggestions API(GET): 学習候補生成契約 | `tests/customers-public-contact.routes.vitest.test.ts` | サンプル5件以上かつ乖離10分以上のメニューのみ推奨行として返す |
+| TRACE-230 | public/consents/[token] API(GET): ドキュメント未存在404 | `tests/public-member-portal-consents.routes.vitest.test.ts` | 署名対象が見つからない場合 `404` + `document not found.` を返す |
+| TRACE-231 | public/consents/[token]/sign API(GET): メソッド制約 | `tests/public-member-portal-consents.routes.vitest.test.ts` | `GET` 呼び出し時に `405` + POST利用メッセージを返す |
+| TRACE-232 | public/member-portal/[token] API(GET): サービス例外status透過 | `tests/public-member-portal-consents.routes.vitest.test.ts` | `MemberPortalServiceError(410)` をそのまま `410` で返す |
+| TRACE-233 | public/member-portal/[token]/prefill API(GET): 応答マッピング契約 | `tests/public-member-portal-consents.routes.vitest.test.ts` | `store/customer/pet/recommendedMenuIds` をそのまま返す |
+| TRACE-234 | public/member-portal/[token]/reissue-request API(POST): トークン形式検証 | `tests/public-member-portal-consents.routes.vitest.test.ts` | 不正トークン形式時に `400` + `会員証URLが不正です。` を返す |
+| TRACE-235 | public/member-portal/[token]/waitlist API(POST): 入力検証エラー返却 | `tests/public-member-portal-consents.routes.vitest.test.ts` | 検証エラー文言を `400` で返す |
+| TRACE-236 | public/reserve/[store_id] API(GET): サービス例外status透過 | `tests/public-reserve.routes.vitest.test.ts` | `PublicReservationServiceError(404)` をそのまま `404` で返す |
+| TRACE-237 | public/reserve/[store_id] API(POST): 予約作成後の監査ログ記録契約 | `tests/public-reserve.routes.vitest.test.ts` | 会員証経由で予約作成成功時に監査ログ挿入が2回呼ばれ、予約ペイロードを返す |
+| TRACE-238 | public/reserve/[store_id]/qr-lookup API(POST): サービス例外status透過 | `tests/public-reserve.routes.vitest.test.ts` | `PublicReservationServiceError(400)` をそのまま `400` で返す |
+| TRACE-239 | public/reserve/cancel API(POST): 空トークン委譲契約 | `tests/public-reserve.routes.vitest.test.ts` | `token` 欠落時に空文字でサービスへ委譲し、戻り値をそのまま返す |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
