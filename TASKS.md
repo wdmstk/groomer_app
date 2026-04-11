@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-coverage-c6d-ops-batch`
+- 現在の作業ブランチ: `test/TASK-449-coverage-c7a-pages-e2e-batch`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -292,7 +292,19 @@ Completed tasks should be marked:
   - [x] C6-D実行ログ: `npx vitest run tests/medical-records.detail-routes.vitest.test.ts tests/journal.routes.vitest.test.ts tests/dev-support.routes.vitest.test.ts tests/stores.additional-routes.vitest.test.ts`（20/20 pass）
   - [x] C6-D実行ログ: `npm run test:traceability`（`278 rows verified`）
   - [x] C6-D実行ログ: `npm run lint`（pass）
-  - [ ] C7: ページ系の「薄い検証」補強（実データ近似E2Eの拡張バッチ）を事前計画に沿って実施（`TRACE-280`〜）
+  - [x] C7: ページ系の「薄い検証」補強（実データ近似E2Eの拡張バッチ）を事前計画に沿って実施（`TRACE-280`〜`TRACE-287`）
+  - [x] C7-A: 公開ページ群（`/lp`・法務）E2Eスモークを追加（`TRACE-280`〜`TRACE-283`）
+  - [x] C7-B: 認証導線ページ（`/login` `/signup`）のE2Eスモークを追加（`TRACE-284`〜`TRACE-285`）
+  - [x] C7-C: サポート画面（`/support-chat` `/support-tickets`）のE2Eスモークを追加（`TRACE-286`〜`TRACE-287`）
+  - [x] C7-A実行ログ: `npx playwright test e2e/public-legal-pages.spec.ts --project=chromium`（4/4 pass）
+  - [x] C7-A実行ログ: `npm run test:traceability`（`282 rows verified`）
+  - [x] C7-A実行ログ: `npm run lint`（pass）
+  - [x] C7-B実行ログ: `npx playwright test e2e/auth-pages.spec.ts --project=chromium`（2/2 pass）
+  - [x] C7-B実行ログ: `npm run test:traceability`（`284 rows verified`）
+  - [x] C7-B実行ログ: `npm run lint`（pass）
+  - [x] C7-C実行ログ: `npx playwright test e2e/support-chat.spec.ts e2e/support-tickets.spec.ts --project=chromium`（3/3 pass）
+  - [x] C7-C実行ログ: `npm run test:traceability`（`286 rows verified`）
+  - [x] C7-C実行ログ: `npm run lint`（pass）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
