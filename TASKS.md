@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-coverage-c5-next-batch`
+- 現在の作業ブランチ: `test/TASK-449-coverage-c6-planned-batches`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -266,6 +266,21 @@ Completed tasks should be marked:
   - [x] C5着手: 監査レポートにTRACE行を追加し、網羅対象を更新
   - [x] C5着手: `npx vitest run tests/settings.routes.vitest.test.ts` / `npm run test:traceability` / `npm run lint` を通過
   - [x] C5着手: PR作成（大塊運用を維持 / #74）
+  - [x] C6事前チェック: 未対応APIルートを機械抽出して再棚卸し（175中61件テスト済み、114件未対応）
+  - [x] C6事前チェック: `TASK/TRACE` を先出しで固定し、以降は計画順で実装する方針を明記
+  - [x] C6-A: 管理/定期実行系APIの契約テストを一括追加（`TRACE-200`〜`TRACE-219`）
+    - 対象: `admin(8)` `cron(14)` `ai-reports(1)` `metrics(1)` `security(1)` `upload(2)` `notification-templates(2)` `notify(2)` `payments/checkout(1)`
+  - [ ] C6-B: 顧客接点/公開導線APIの契約テストを一括追加（`TRACE-220`〜`TRACE-239`）
+    - 対象: `public(10)` `customers/member-portal-link系(2)` `pets(2)` `staffs(3)` `service-menus(3)`
+  - [ ] C6-C: 業務ドメインAPI（ホテル/在庫/HQ/再提案）の契約テストを一括追加（`TRACE-240`〜`TRACE-259`）
+    - 対象: `hotel(7)` `inventory未対応(8)` `hq未対応(6)` `reoffers(5)` `consents詳細(5)` `appointments詳細(4)`
+  - [ ] C6-D: 記録/運用API（カルテ/日誌/dev）の契約テストを一括追加（`TRACE-260`〜`TRACE-279`）
+    - 対象: `medical-records詳細(15)` `journal(4)` `dev support系(4)` `stores未対応(4)`
+  - [ ] C6-E: C6全体のトレーサビリティ更新と回帰実行（`TRACE-200`〜`TRACE-279` の表追記、`test:traceability`、対象Vitest、`lint`）
+  - [x] C6-A実行ログ: `npx vitest run tests/admin-cron.routes.vitest.test.ts tests/platform-observability.routes.vitest.test.ts tests/notifications-and-checkout.routes.vitest.test.ts`（20/20 pass）
+  - [x] C6-A実行ログ: `npm run test:traceability`（`218 rows verified`）
+  - [x] C6-A実行ログ: `npm run lint`（pass）
+  - [ ] C7: ページ系の「薄い検証」補強（実データ近似E2Eの拡張バッチ）を事前計画に沿って実施（`TRACE-280`〜）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件

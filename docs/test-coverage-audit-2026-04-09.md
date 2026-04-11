@@ -23,12 +23,12 @@
 - テストファイル数: `134`
 - `expect` または `assert` が存在しないテストファイルは確認されなかった
 
-## 最終網羅判定（2026-04-11）
-- 判定: `大塊PR（B1〜B4）で優先領域のルート契約テスト補強を完了`
-- 追加TRACE: `TRACE-091`〜`TRACE-199`（B1〜B4 + C1 + C2 + C3 + C4 + C5）
+## 最終網羅判定（2026-04-12）
+- 判定: `大塊PR（B1〜B4 + C1〜C6-A）で優先領域のルート契約テスト補強を継続中`
+- 追加TRACE: `TRACE-091`〜`TRACE-219`（B1〜B4 + C1 + C2 + C3 + C4 + C5 + C6-A）
 - 直近検証結果:
-  - `npm run test:traceability` => `198 rows verified`
-  - 各バッチの対象Vitest（B1〜B4）と `npm run lint` はすべて通過
+  - `npm run test:traceability` => `218 rows verified`
+  - C6-A追加分の対象Vitest（`admin-cron` / `platform-observability` / `notifications-and-checkout`）と `npm run lint` は通過
 - 除外/未対象の扱い:
   - 法務系API（`/api/legal/*`）は現時点で `src/app/api` 配下にルート未実装のため、B4では対象外として記録
   - 静的案内ページは除外可能だが、除外時は台帳で理由と代替検証を明記する運用に統一
@@ -252,6 +252,26 @@
 | TRACE-197 | settings/storage-policy API(POST): フォーム更新失敗時のエラー遷移 | `tests/settings.routes.vitest.test.ts` | 更新失敗時に `redirect_to` へ `?error=` を付与して `307` で返す |
 | TRACE-198 | settings/theme API(POST): 不正テーマ値の拒否 | `tests/settings.routes.vitest.test.ts` | 許可外テーマ値を `400` + `Invalid theme value.` で拒否する |
 | TRACE-199 | settings/theme API(POST): スタッフ未存在時の404契約 | `tests/settings.routes.vitest.test.ts` | 更新対象スタッフが0件のとき `404` + `Staff profile not found.` を返す |
+| TRACE-200 | admin/billing rehearsal API(POST): `targetMonthJst` 形式バリデーション | `tests/admin-cron.routes.vitest.test.ts` | `targetMonthJst=YYYY-MM` 以外は `400` + 必須エラーメッセージを返す |
+| TRACE-201 | admin/webhook retry API(POST): `webhookEventId` 必須バリデーション | `tests/admin-cron.routes.vitest.test.ts` | `webhookEventId` 欠落時に `400` + 必須エラーメッセージを返す |
+| TRACE-202 | admin/webhook retry API(POST): 再処理対象未存在時の404契約 | `tests/admin-cron.routes.vitest.test.ts` | 対象イベントが見つからない場合 `404` + `Webhook event not found.` を返す |
+| TRACE-203 | admin/cron job-locks API(GET): developer guard 失敗の透過 | `tests/admin-cron.routes.vitest.test.ts` | `requireDeveloperAdmin` が `ok=false` のとき同じ `status/message` を返す |
+| TRACE-204 | admin/cron job-runs detail API(GET): `CronServiceError` 透過 | `tests/admin-cron.routes.vitest.test.ts` | `getJobRunById` が `CronServiceError(404)` のとき `404` で返す |
+| TRACE-205 | admin/cron rerun API(POST): 成功時レスポンス契約 | `tests/admin-cron.routes.vitest.test.ts` | 成功時に `message=Job rerun completed.` とサービス戻り値を返す |
+| TRACE-206 | admin/cron medical-record-ai-video dashboard API(GET): `limit` パース契約 | `tests/admin-cron.routes.vitest.test.ts` | `?limit=15` 指定時にサービスへ `limit:15` が渡される |
+| TRACE-207 | cron billing-reminders API(GET): 未認可時エラー応答と失敗記録 | `tests/admin-cron.routes.vitest.test.ts` | 認可失敗で `401` を返し、`finishJobRun(status=failed)` が呼ばれる |
+| TRACE-208 | cron notification-usage-billing API(GET): 成功時の開始/終了記録 | `tests/admin-cron.routes.vitest.test.ts` | `startJobRun`→ジョブ実行→`finishJobRun(status=succeeded)` が順に呼ばれる |
+| TRACE-209 | ai-reports monthly API(GET): 不正 `month` 指定のフォールバック | `tests/platform-observability.routes.vitest.test.ts` | 不正 `month` 指定時は当月 `YYYY-MM` で検索して `200` 応答する |
+| TRACE-210 | metrics appointments API(POST): 不正 `event_type` 拒否 | `tests/platform-observability.routes.vitest.test.ts` | 許可外 `event_type` で `400` + `Unsupported appointment metric event_type.` を返す |
+| TRACE-211 | security csp-report API(POST): 不正JSONの安全無視 | `tests/platform-observability.routes.vitest.test.ts` | 不正JSON受信時に `204` を返し、DB insert を実行しない |
+| TRACE-212 | upload API(POST): 画像以外ファイル拒否 | `tests/platform-observability.routes.vitest.test.ts` | `text/plain` 等の非画像ファイルを `400` で拒否する |
+| TRACE-213 | upload/video API(POST): 50MB超過拒否 | `tests/platform-observability.routes.vitest.test.ts` | 50MB超過の動画アップロードを `400` で拒否する |
+| TRACE-214 | notification-templates API(GET): `scope=notifications` の対象キー制限 | `tests/notifications-and-checkout.routes.vitest.test.ts` | 通知スコープ取得で `hotel_stay_report_line` を返却しない |
+| TRACE-215 | notification-templates API(PATCH): 必須項目バリデーション | `tests/notifications-and-checkout.routes.vitest.test.ts` | `body` 空文字等で `400` + 必須エラーメッセージを返す |
+| TRACE-216 | notification-templates test-send API(POST): `target` 必須バリデーション | `tests/notifications-and-checkout.routes.vitest.test.ts` | `target` 欠落時に `400` + 必須エラーメッセージを返す |
+| TRACE-217 | notify/email API(POST): 必須項目欠落時の拒否 | `tests/notifications-and-checkout.routes.vitest.test.ts` | `to/subject/html` 欠落時に `400` を返す |
+| TRACE-218 | notify/line API(POST): 必須項目欠落時の拒否 | `tests/notifications-and-checkout.routes.vitest.test.ts` | `to/message` 欠落時に `400` を返す |
+| TRACE-219 | payments/checkout API(POST): 未認証拒否 | `tests/notifications-and-checkout.routes.vitest.test.ts` | `supabase.auth.getUser` が未認証のとき `401` + `Unauthorized` を返す |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
