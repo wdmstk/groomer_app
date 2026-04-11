@@ -166,6 +166,16 @@
 | TRACE-124 | invoices/[invoice_id] API(PATCH): 編集不可ステータスの拒否 | `tests/invoices.invoice-id-routes.vitest.test.ts` | `paid/void` は `409` + `INVOICE_NOT_EDITABLE...` を返す |
 | TRACE-125 | invoices/[invoice_id]/pay API(POST): 既存会計の再利用契約 | `tests/invoices.invoice-id-routes.vitest.test.ts` | 既存会計がある場合 `200` で `reused: true` を返す |
 | TRACE-126 | invoices/[invoice_id]/pay API(POST): void請求の会計禁止 | `tests/invoices.invoice-id-routes.vitest.test.ts` | `status=void` は `409` + `INVOICE_NOT_EDITABLE...` を返す |
+| TRACE-127 | pos/sessions/open API(POST): 開局重複時の409契約 | `tests/pos.routes.vitest.test.ts` | 既にopenセッションがある場合 `409` + `POS_SESSION_ALREADY_OPEN` を返す |
+| TRACE-128 | pos/sessions/[session_id]/close API(POST): 不正JSON入力の拒否 | `tests/pos.routes.vitest.test.ts` | 不正JSON時に `400` + `POS_INVALID_JSON` を返す |
+| TRACE-129 | pos/orders API(POST): 明細必須バリデーション | `tests/pos.routes.vitest.test.ts` | `lines` が空配列の場合 `400` + `POS_LINES_REQUIRED` を返す |
+| TRACE-130 | pos/orders/[order_id]/confirm API(POST): 決済方法必須バリデーション | `tests/pos.routes.vitest.test.ts` | `method` 未指定時に `400` + `POS_PAYMENT_METHOD_REQUIRED` を返す |
+| TRACE-131 | pos/orders/[order_id]/void API(POST): 取消理由必須バリデーション | `tests/pos.routes.vitest.test.ts` | `reason` 未指定時に `400` + `POS_VOID_REASON_REQUIRED` を返す |
+| TRACE-132 | pos/cash-drawer-events API(POST): 金額の下限バリデーション | `tests/pos.routes.vitest.test.ts` | `amount < 0` の場合 `400` + `POS_AMOUNT_INVALID` を返す |
+| TRACE-133 | inventory/items API(POST): 商品名必須バリデーション | `tests/inventory.routes.vitest.test.ts` | `name` 未指定時に `400` + `商品名は必須です。` を返す |
+| TRACE-134 | inventory/movements API(POST): 出庫時在庫不足の拒否 | `tests/inventory.routes.vitest.test.ts` | 現在庫より多い `outbound` は `400` + 在庫不足メッセージを返す |
+| TRACE-135 | inventory/stocktake API(POST): 差分ゼロ時の早期リダイレクト | `tests/inventory.routes.vitest.test.ts` | `actual_quantity` と現在庫が同一の場合 `307` で `/inventory/stocktake` へ遷移する |
+| TRACE-136 | inventory/movements API(GET): 在庫履歴取得の基本契約 | `tests/inventory.routes.vitest.test.ts` | 正常時に `200` で在庫移動配列を返す |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
