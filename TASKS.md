@@ -261,7 +261,7 @@ Completed tasks should be marked:
   - [x] C4着手: 招待/メンバーシップ系API（`/api/store-invites/accept` `/api/store-invites` `/api/store-memberships/[membership_id]/role`）のルート契約テストを追加（`TRACE-183`〜`TRACE-190`）
   - [x] C4着手: 監査レポートにTRACE行を追加し、網羅対象を更新
   - [x] C4着手: `npx vitest run tests/store-invites-memberships.routes.vitest.test.ts` / `npm run test:traceability` / `npm run lint` を通過
-  - [ ] C4着手: PR作成（大塊運用を維持）
+  - [x] C4着手: PR作成（大塊運用を維持 / #73）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
