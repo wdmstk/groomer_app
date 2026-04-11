@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-coverage-next-batch`
+- 現在の作業ブランチ: `test/TASK-449-coverage-c4-store-invites-memberships`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -258,6 +258,10 @@ Completed tasks should be marked:
   - [x] C3着手: 監査レポートにTRACE行を追加し、網羅対象を更新
   - [x] C3着手: `npx vitest run tests/appointments.reservation-payment-routes.vitest.test.ts` / `npm run test:traceability` / `npm run lint` を通過
   - [x] C3着手: PR作成（大塊運用を維持 / #72）
+  - [x] C4着手: 招待/メンバーシップ系API（`/api/store-invites/accept` `/api/store-invites` `/api/store-memberships/[membership_id]/role`）のルート契約テストを追加（`TRACE-183`〜`TRACE-190`）
+  - [x] C4着手: 監査レポートにTRACE行を追加し、網羅対象を更新
+  - [x] C4着手: `npx vitest run tests/store-invites-memberships.routes.vitest.test.ts` / `npm run test:traceability` / `npm run lint` を通過
+  - [ ] C4着手: PR作成（大塊運用を維持）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
