@@ -176,6 +176,16 @@
 | TRACE-134 | inventory/movements API(POST): 出庫時在庫不足の拒否 | `tests/inventory.routes.vitest.test.ts` | 現在庫より多い `outbound` は `400` + 在庫不足メッセージを返す |
 | TRACE-135 | inventory/stocktake API(POST): 差分ゼロ時の早期リダイレクト | `tests/inventory.routes.vitest.test.ts` | `actual_quantity` と現在庫が同一の場合 `307` で `/inventory/stocktake` へ遷移する |
 | TRACE-136 | inventory/movements API(GET): 在庫履歴取得の基本契約 | `tests/inventory.routes.vitest.test.ts` | 正常時に `200` で在庫移動配列を返す |
+| TRACE-137 | hotel/stays API(POST): 不正JSON入力の拒否 | `tests/hotel.routes.vitest.test.ts` | 不正JSON時に `400` + `Invalid JSON body.` を返す |
+| TRACE-138 | hotel/transports API(POST): `stay_id` 必須バリデーション | `tests/hotel.routes.vitest.test.ts` | `stay_id` 未指定時に `400` + `stay_id is required.` を返す |
+| TRACE-139 | consents/templates API(POST): 不正JSON入力の拒否 | `tests/consents.routes.vitest.test.ts` | 不正JSON時に `400` + `invalid json body.` を返す |
+| TRACE-140 | consents/templates API(POST): `name` 必須バリデーション | `tests/consents.routes.vitest.test.ts` | `name` 未指定時に `400` + `name is required.` を返す |
+| TRACE-141 | consents/documents API(POST): 入力検証エラーの400契約 | `tests/consents.routes.vitest.test.ts` | バリデーション `ok=false` の場合 `400` + 検証メッセージを返す |
+| TRACE-142 | medical-records API(POST): サービス層バリデーションエラー透過 | `tests/medical-records.routes.vitest.test.ts` | `MedicalRecordServiceError(400)` 時に `400` と同メッセージを返す |
+| TRACE-143 | medical-records API(POST): 予期しない例外の500契約 | `tests/medical-records.routes.vitest.test.ts` | 予期しない `Error` 発生時に `500` + 例外メッセージを返す |
+| TRACE-144 | webhooks/line API(POST): 署名不一致の拒否 | `tests/webhooks.routes.vitest.test.ts` | 署名検証失敗時に `400` + `Invalid signature` を返す |
+| TRACE-145 | webhooks/stripe API(POST): 秘密鍵未設定時の拒否 | `tests/webhooks.routes.vitest.test.ts` | Webhook secret 未設定時に `500` + `Missing Stripe webhook secrets` を返す |
+| TRACE-146 | webhooks/komoju API(POST): 秘密鍵未設定時の拒否 | `tests/webhooks.routes.vitest.test.ts` | Webhook secret 未設定時に `500` + `Missing KOMOJU webhook secrets` を返す |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
