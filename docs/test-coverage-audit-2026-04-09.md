@@ -25,7 +25,7 @@
 
 ## 最終網羅判定（2026-04-12）
 - 判定: `大塊PR（B1〜B4 + C1〜C6-D）で優先領域のルート契約テスト補強を継続中`
-- 追加TRACE: `TRACE-091`〜`TRACE-287`（B1〜B4 + C1 + C2 + C3 + C4 + C5 + C6-A + C6-B + C6-C + C6-D + C7-A + C7-B + C7-C）
+- 追加TRACE: `TRACE-091`〜`TRACE-294`（B1〜B4 + C1 + C2 + C3 + C4 + C5 + C6-A + C6-B + C6-C + C6-D + C7-A + C7-B + C7-C + C8）
 - 直近検証結果:
   - C6-D追加分の対象Vitest（`medical-records.detail-routes` / `journal.routes` / `dev-support.routes` / `stores.additional-routes`）は通過
   - `npm run test:traceability` => `278 rows verified`
@@ -341,6 +341,13 @@
 | TRACE-285 | 新規登録ページ: 同意導線の表示契約                                                                                                    | `e2e/auth-pages.spec.ts`                                              | `/signup` で同意チェック、法務リンク3種、未同意時の `登録する` 無効状態が表示される                                       |
 | TRACE-286 | サポートチャットページ: owner view 基本導線の表示契約                                                                                 | `e2e/support-chat.spec.ts`                                            | `/support-chat` で会話履歴・入力欄・送信導線が表示され、送信後に最新メッセージが表示される                               |
 | TRACE-287 | サポートチケットページ: 基本表示導線の契約                                                                                           | `e2e/support-tickets.spec.ts`                                         | `/support-chat` への導線表示を含むサポートページの基本表示契約を確認する                                                  |
+| TRACE-288 | マニュアル目次: 主要導線の表示契約                                                                                                   | `e2e/manual-pages.spec.ts`                                            | `/manual` で見出し・更新日・`用語集ページを開く` リンクが表示される                                                        |
+| TRACE-289 | マニュアル目次→セクション: 遷移契約                                                                                                  | `e2e/manual-pages.spec.ts`                                            | `/manual` からセクションリンクを押下し `/manual/[sectionId]?flow=` へ遷移できる                                           |
+| TRACE-290 | 用語集ページ: 表示と目次戻り導線                                                                                                     | `e2e/manual-pages.spec.ts`                                            | `/manual/glossary` で見出し・用語表示を確認し、`目次に戻る` で `/manual` へ戻れる                                          |
+| TRACE-291 | セクションページ: 目次/用語集の戻り導線表示                                                                                          | `e2e/manual-pages.spec.ts`                                            | `/manual/login` で見出し・path表示・`目次に戻る`・`用語集ページ` リンクが表示される                                         |
+| TRACE-292 | dev manual: 未許可アクセス時の表示契約                                                                                               | `e2e/manual-pages.spec.ts`                                            | `/dev/manual` でアクセス制限メッセージを表示する                                                                           |
+| TRACE-293 | hq manual: 機能アクセス制限時のリダイレクト契約                                                                                       | `e2e/manual-pages.spec.ts`                                            | `/hq/manual` へアクセス時、feature gate により `/dashboard` へ遷移する                                                     |
+| TRACE-294 | セクションページ: flowクエリの前後導線引き継ぎ契約                                                                                   | `e2e/manual-pages.spec.ts`                                            | `/manual/login?flow=flow-initial` で `前へ/次へ` リンクに `flow` クエリが保持される                                        |
 | TRACE-004 | followups status API: 不正statusの拒否                                                                                                | `tests/followups.status-route.vitest.test.ts`                         | `bad_status` で `400` + `有効な status を指定してください。`                                                             |
 | TRACE-005 | followups status API: snoozed必須項目                                                                                                 | `tests/followups.status-route.vitest.test.ts`                         | `status=snoozed` かつ `snoozed_until` 欠落で `400`                                                                       |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否                                                                                         | `tests/followups.status-route.vitest.test.ts`                         | `status=snoozed` かつ無効日付 `snoozed_until` で `400`                                                                   |
