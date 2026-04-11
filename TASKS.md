@@ -244,7 +244,7 @@ Completed tasks should be marked:
   - [x] B4追加: `TRACE` 追記と監査レポート更新（settings/ops/dev/hq/legal/support系）
   - [x] B4追加: `npx vitest run tests/stores.misc-routes.vitest.test.ts tests/support.routes.vitest.test.ts tests/dev-subscriptions.route.vitest.test.ts tests/hq.kpi-summary.route.vitest.test.ts` 実行（10/10 pass）
   - [x] B4追加: `npm run test:traceability` / `npm run lint` 実行（pass）
-  - [ ] PR-B4（設定/管理/dev/hq/法務/サポート）を実装・PR作成
+  - [x] PR-B4（設定/管理/dev/hq/法務/サポート）を実装・PR作成（#68）
   - [ ] 監査レポート更新（最終網羅判定と残リスク明記）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
