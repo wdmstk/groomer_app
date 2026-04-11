@@ -25,9 +25,9 @@
 
 ## 最終網羅判定（2026-04-11）
 - 判定: `大塊PR（B1〜B4）で優先領域のルート契約テスト補強を完了`
-- 追加TRACE: `TRACE-091`〜`TRACE-190`（B1〜B4 + C1 + C2 + C3 + C4）
+- 追加TRACE: `TRACE-091`〜`TRACE-199`（B1〜B4 + C1 + C2 + C3 + C4 + C5）
 - 直近検証結果:
-  - `npm run test:traceability` => `189 rows verified`
+  - `npm run test:traceability` => `198 rows verified`
   - 各バッチの対象Vitest（B1〜B4）と `npm run lint` はすべて通過
 - 除外/未対象の扱い:
   - 法務系API（`/api/legal/*`）は現時点で `src/app/api` 配下にルート未実装のため、B4では対象外として記録
@@ -243,6 +243,15 @@
 | TRACE-188 | store-memberships/[membership_id]/role API(PATCH): role入力バリデーション | `tests/store-invites-memberships.routes.vitest.test.ts` | `owner/admin/staff` 以外は `400` を返す |
 | TRACE-189 | store-memberships/[membership_id]/role API(PATCH): 最後のowner変更禁止 | `tests/store-invites-memberships.routes.vitest.test.ts` | ownerが1名のみの状態でowner降格要求時に `400` を返す |
 | TRACE-190 | store-memberships/[membership_id]/role API(PATCH): 正常更新契約 | `tests/store-invites-memberships.routes.vitest.test.ts` | role更新成功時に `200` + `ロールを更新しました。` を返す |
+| TRACE-191 | settings/notification-settings API(GET): 通知オプション利用不可プラン拒否 | `tests/settings.routes.vitest.test.ts` | オプション購入不可プラン時に `403` + 利用不可メッセージを返す |
+| TRACE-192 | settings/notification-settings API(POST): 通知設定正規化契約 | `tests/settings.routes.vitest.test.ts` | `followup_days` 重複/範囲外を正規化し、`monthly_message_limit_with_option >= monthly_message_limit` を満たして保存する |
+| TRACE-193 | settings/payment-provider-connections API(POST): provider入力制限 | `tests/settings.routes.vitest.test.ts` | `provider` が `stripe/komoju` 以外の場合 `400` を返す |
+| TRACE-194 | settings/payment-provider-connections API(POST): 既存秘匿値の維持契約 | `tests/settings.routes.vitest.test.ts` | 空文字入力時は既存 `secret_key/webhook_secret/komoju_api_base_url` を保持して更新する |
+| TRACE-195 | settings/reservation-payment-settings API(POST): 取消率/課金モードの正規化 | `tests/settings.routes.vitest.test.ts` | 取消率を `0..100` にクランプし、許可外 `no_show_charge_mode` を既定値へフォールバックする |
+| TRACE-196 | settings/storage-policy API(POST): ownerガードエラー透過 | `tests/settings.routes.vitest.test.ts` | `requireOwnerStoreMembership` 失敗時に同じ `status/message` を返す |
+| TRACE-197 | settings/storage-policy API(POST): フォーム更新失敗時のエラー遷移 | `tests/settings.routes.vitest.test.ts` | 更新失敗時に `redirect_to` へ `?error=` を付与して `307` で返す |
+| TRACE-198 | settings/theme API(POST): 不正テーマ値の拒否 | `tests/settings.routes.vitest.test.ts` | 許可外テーマ値を `400` + `Invalid theme value.` で拒否する |
+| TRACE-199 | settings/theme API(POST): スタッフ未存在時の404契約 | `tests/settings.routes.vitest.test.ts` | 更新対象スタッフが0件のとき `404` + `Staff profile not found.` を返す |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
