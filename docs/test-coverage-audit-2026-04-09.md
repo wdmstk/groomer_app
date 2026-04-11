@@ -24,11 +24,12 @@
 - `expect` または `assert` が存在しないテストファイルは確認されなかった
 
 ## 最終網羅判定（2026-04-12）
-- 判定: `大塊PR（B1〜B4 + C1〜C6-B）で優先領域のルート契約テスト補強を継続中`
-- 追加TRACE: `TRACE-091`〜`TRACE-259`（B1〜B4 + C1 + C2 + C3 + C4 + C5 + C6-A + C6-B + C6-C）
+- 判定: `大塊PR（B1〜B4 + C1〜C6-D）で優先領域のルート契約テスト補強を継続中`
+- 追加TRACE: `TRACE-091`〜`TRACE-279`（B1〜B4 + C1 + C2 + C3 + C4 + C5 + C6-A + C6-B + C6-C + C6-D）
 - 直近検証結果:
-  - `npm run test:traceability` => `218 rows verified`
-  - C6-A追加分の対象Vitest（`admin-cron` / `platform-observability` / `notifications-and-checkout`）と `npm run lint` は通過
+  - C6-D追加分の対象Vitest（`medical-records.detail-routes` / `journal.routes` / `dev-support.routes` / `stores.additional-routes`）は通過
+  - `npm run test:traceability` => `278 rows verified`
+  - `npm run lint` => pass
 - 除外/未対象の扱い:
   - 法務系API（`/api/legal/*`）は現時点で `src/app/api` 配下にルート未実装のため、B4では対象外として記録
   - 静的案内ページは除外可能だが、除外時は台帳で理由と代替検証を明記する運用に統一
@@ -312,6 +313,26 @@
 | TRACE-257 | appointments/[appointment_id]/confirm API(POST): 予約申請以外の確定拒否 | `tests/appointments.detail-routes.vitest.test.ts` | 対象ステータスが `予約申請` 以外の場合 `400` を返す |
 | TRACE-258 | appointments/[appointment_id]/status API(POST): 不正遷移拒否 | `tests/appointments.detail-routes.vitest.test.ts` | 期待遷移外の `next_status` 指定時に `400` + 不正遷移メッセージを返す |
 | TRACE-259 | consents/documents/[document_id]/pdf API(GET): PDF未生成ガード | `tests/consents.routes.vitest.test.ts` | `pdf_path` 未設定時に `409` + `pdf not generated yet.` を返す |
+| TRACE-260 | medical-records/[record_id]/share API(POST): カルテ未存在の404契約 | `tests/medical-records.detail-routes.vitest.test.ts` | 対象カルテ未存在時に `404` + `対象カルテが見つかりません。` を返す |
+| TRACE-261 | medical-records/[record_id]/share API(POST): 未確定カルテ共有の拒否 | `tests/medical-records.detail-routes.vitest.test.ts` | `status!=finalized` のカルテ共有要求を `400` で拒否する |
+| TRACE-262 | medical-records/[record_id]/share-line API(POST): 予約未紐付けガード | `tests/medical-records.detail-routes.vitest.test.ts` | `appointment_id` 欠落時に `400` + 予約未紐付けメッセージを返す |
+| TRACE-263 | medical-records/[record_id]/ai-tags API(POST): カルテ未存在の404契約 | `tests/medical-records.detail-routes.vitest.test.ts` | 対象カルテ未存在時に `404` + `対象カルテが見つかりません。` を返す |
+| TRACE-264 | medical-records/videos API(GET): `medical_record_id` 必須バリデーション | `tests/medical-records.detail-routes.vitest.test.ts` | `medical_record_id` 欠落時に `400` + 必須エラーを返す |
+| TRACE-265 | medical-records/videos/[video_id]/play-url API(GET): 動画未存在404契約 | `tests/medical-records.detail-routes.vitest.test.ts` | 対象動画未存在時に `404` + `Video not found.` を返す |
+| TRACE-266 | medical-records/videos/[video_id]/line-short API(POST): LINE送信秒数制約 | `tests/medical-records.detail-routes.vitest.test.ts` | 10〜20秒外の動画を `400` で拒否する |
+| TRACE-267 | medical-records/videos/[video_id]/thumbnail API(POST): 既存サムネ再利用契約 | `tests/medical-records.detail-routes.vitest.test.ts` | `thumbnail_path` 既存時に `reused: true` で返す |
+| TRACE-268 | medical-records/videos/[video_id]/share-line API(POST): LINE未登録顧客ガード | `tests/medical-records.detail-routes.vitest.test.ts` | 顧客 `line_id` 未登録時に `400` + `LINE送信先が未登録です。` を返す |
+| TRACE-269 | medical-records/[record_id] API(POST): 不正 `_method` 拒否 | `tests/medical-records.detail-routes.vitest.test.ts` | 未対応 `_method` 指定時に `405` + `Unsupported method` を返す |
+| TRACE-270 | medical-records/[record_id] API(GET): 取得失敗時の500契約 | `tests/medical-records.detail-routes.vitest.test.ts` | DBエラー時に `500` + エラーメッセージを返す |
+| TRACE-271 | medical-records/[record_id] API(PUT): サービス層エラー透過 | `tests/medical-records.detail-routes.vitest.test.ts` | `MedicalRecordServiceError` の `status/message` をそのまま返す |
+| TRACE-272 | journal/entries API(POST): 不正JSON拒否 | `tests/journal.routes.vitest.test.ts` | 不正JSONボディ時に `400` + `Invalid JSON body.` を返す |
+| TRACE-273 | journal/entries API(POST): publish権限ガード | `tests/journal.routes.vitest.test.ts` | `publish=true` かつ `canPublish=false` で `403` を返す |
+| TRACE-274 | journal/entries/[entry_id] API(PATCH): visibility入力制約 | `tests/journal.routes.vitest.test.ts` | `visibility` が `owner/internal` 以外の場合 `400` を返す |
+| TRACE-275 | journal/pets/[pet_id]/timeline API(GET): マッピング取得失敗の500契約 | `tests/journal.routes.vitest.test.ts` | `journal_entry_pets` 取得エラー時に `500` + エラーメッセージを返す |
+| TRACE-276 | dev/support-chat/messages API(GET): `store_id` 必須バリデーション | `tests/dev-support.routes.vitest.test.ts` | `store_id` 欠落時に `400` + `store_id は必須です。` を返す |
+| TRACE-277 | dev/support-tickets API(PATCH): 更新対象なしガード | `tests/dev-support.routes.vitest.test.ts` | 更新内容未指定時に `400` + `更新内容がありません。` を返す |
+| TRACE-278 | stores/bootstrap API(POST): 未認証拒否 | `tests/stores.additional-routes.vitest.test.ts` | 認証ユーザー不在時に `401` + `Unauthorized` を返す |
+| TRACE-279 | stores/public-reserve-blocked-dates API(POST): 未認証拒否 | `tests/stores.additional-routes.vitest.test.ts` | 認証ユーザー不在時に `401` + `Unauthorized` を返す |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
