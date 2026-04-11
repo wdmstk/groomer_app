@@ -186,6 +186,16 @@
 | TRACE-144 | webhooks/line API(POST): 署名不一致の拒否 | `tests/webhooks.routes.vitest.test.ts` | 署名検証失敗時に `400` + `Invalid signature` を返す |
 | TRACE-145 | webhooks/stripe API(POST): 秘密鍵未設定時の拒否 | `tests/webhooks.routes.vitest.test.ts` | Webhook secret 未設定時に `500` + `Missing Stripe webhook secrets` を返す |
 | TRACE-146 | webhooks/komoju API(POST): 秘密鍵未設定時の拒否 | `tests/webhooks.routes.vitest.test.ts` | Webhook secret 未設定時に `500` + `Missing KOMOJU webhook secrets` を返す |
+| TRACE-147 | stores/active API(POST): `storeId` 必須バリデーション | `tests/stores.misc-routes.vitest.test.ts` | `storeId` 未指定時に `400` + `storeId is required.` を返す |
+| TRACE-148 | stores/member-card-settings API(POST): 未認証拒否 | `tests/stores.misc-routes.vitest.test.ts` | 未認証時に `401` + `Unauthorized` を返す |
+| TRACE-149 | stores/ltv-rank-settings API(POST): しきい値順序バリデーション | `tests/stores.misc-routes.vitest.test.ts` | 売上しきい値が `gold >= silver >= bronze` を満たさない場合 `400` を返す |
+| TRACE-150 | stores/public-reserve-slot-settings API(POST): 営業時間入力バリデーション | `tests/stores.misc-routes.vitest.test.ts` | 開始/終了時刻欠落時に `400` + 営業時間エラーメッセージを返す |
+| TRACE-151 | support-tickets API(POST): 件名必須バリデーション | `tests/support.routes.vitest.test.ts` | `subject` 未指定時に `400` + `件名は必須です。` を返す |
+| TRACE-152 | support-tickets API(PATCH): `ticket_id` 必須バリデーション | `tests/support.routes.vitest.test.ts` | `ticket_id` 未指定時に `400` + `ticket_id は必須です。` を返す |
+| TRACE-153 | support-chat/messages API(POST): 空メッセージ拒否 | `tests/support.routes.vitest.test.ts` | 空白メッセージ時に `400` + `メッセージは必須です。` を返す |
+| TRACE-154 | dev/subscriptions/[store_id] API(POST): 課金ステータス不正入力の拒否 | `tests/dev-subscriptions.route.vitest.test.ts` | 不正 `billing_status` で `303` リダイレクトし、エラーメッセージを返す |
+| TRACE-155 | hq/kpi-summary API(GET): 未認証拒否 | `tests/hq.kpi-summary.route.vitest.test.ts` | 未認証時に `401` + `ログインが必要です。` を返す |
+| TRACE-156 | hq/kpi-summary API(GET): HQ閲覧対象なしの403契約 | `tests/hq.kpi-summary.route.vitest.test.ts` | HQ権限対象店舗が無い場合 `403` + Pro対象なしメッセージを返す |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |

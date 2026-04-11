@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-b3-hotel-consent-medical-notify-coverage`
+- 現在の作業ブランチ: `test/TASK-449-b4-settings-ops-hq-support-coverage`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -236,7 +236,15 @@ Completed tasks should be marked:
   - [x] B3追加: `npx vitest run tests/hotel.routes.vitest.test.ts tests/consents.routes.vitest.test.ts tests/medical-records.routes.vitest.test.ts tests/webhooks.routes.vitest.test.ts` 実行（10/10 pass）
   - [x] B3追加: `npm run test:traceability` / `npm run lint` 実行（pass）
   - [x] PR-B3（ホテル/同意書/医療記録/通知）を実装・PR作成（#67）
-  - [ ] PR-B4（設定/管理/dev/hq/法務/サポート）を実装・PR作成
+  - [x] B4追加: `/api/stores/*` 設定系ルート契約テストを追加（`TRACE-147`〜`TRACE-150`）
+  - [x] B4追加: `/api/support-tickets*` 運用管理系ルート契約テストを追加（`TRACE-151`〜`TRACE-153`）
+  - [x] B4追加: `/api/dev/*` 開発補助系ルート契約テストを追加（`TRACE-154`）
+  - [x] B4追加: `/api/hq/*` HQ運用系ルート契約テストを追加（`TRACE-155`〜`TRACE-156`）
+  - [x] B4追加: `/api/legal/*` 法務系ルート契約テストは対象ルート未存在（`src/app/api` 配下に `legal/terms/privacy/compliance` なし）
+  - [x] B4追加: `TRACE` 追記と監査レポート更新（settings/ops/dev/hq/legal/support系）
+  - [x] B4追加: `npx vitest run tests/stores.misc-routes.vitest.test.ts tests/support.routes.vitest.test.ts tests/dev-subscriptions.route.vitest.test.ts tests/hq.kpi-summary.route.vitest.test.ts` 実行（10/10 pass）
+  - [x] B4追加: `npm run test:traceability` / `npm run lint` 実行（pass）
+  - [x] PR-B4（設定/管理/dev/hq/法務/サポート）を実装・PR作成（#68）
   - [ ] 監査レポート更新（最終網羅判定と残リスク明記）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
