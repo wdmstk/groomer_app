@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('サポートチャット', () => {
+  // TRACE-286
   test('owner view で会話表示と送信導線を確認できる', async ({ page }) => {
     let mode: 'initial' | 'sent' = 'initial'
 

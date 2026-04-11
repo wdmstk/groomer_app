@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('サポート問い合わせ', () => {
+  // TRACE-287
   test('support-chat は E2E owner view を表示する', async ({ page }) => {
     await page.goto('/support-chat')
     await expect(page).toHaveURL(/\/support-chat$/)
