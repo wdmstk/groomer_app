@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-b1-appointments-visits-followups-batch`
+- 現在の作業ブランチ: `test/TASK-449-b2-payments-pos-inventory-batch`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -214,7 +214,10 @@ Completed tasks should be marked:
   - [x] B1第2弾: `/api/followups` 系既存テストの不足ケースを補完（`TRACE-111`）
   - [x] B1第2弾: 監査レポートへ `TRACE-103`〜`TRACE-111` を追記
   - [x] B1第2弾: `npx vitest run tests/appointments.route.vitest.test.ts tests/appointments.appointment-id-route.vitest.test.ts tests/visits.route.vitest.test.ts tests/followups.route.vitest.test.ts` 実行（54/54 pass）
-  - [ ] PR-B1（顧客/予約/来店/フォローアップ）を実装・PR作成
+  - [x] PR-B1（顧客/予約/来店/フォローアップ）を実装・PR作成
+  - [x] B2先行着手: `/api/payments` `/api/payments/[payment_id]` ルート契約テストを追加（`TRACE-112`〜`TRACE-119`）
+  - [x] B2追加: `TRACE` 追記と監査レポート更新（payments系）
+  - [x] B2追加: `npx vitest run tests/payments.route.vitest.test.ts tests/payments.payment-id-route.vitest.test.ts` 実行（8/8 pass）
   - [ ] PR-B2（会計/請求/POS/在庫）を実装・PR作成
   - [ ] PR-B3（ホテル/同意書/医療記録/通知）を実装・PR作成
   - [ ] PR-B4（設定/管理/dev/hq/法務/サポート）を実装・PR作成

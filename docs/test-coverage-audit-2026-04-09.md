@@ -151,6 +151,14 @@
 | TRACE-109 | visits API(GET): 来店一覧取得の基本契約 | `tests/visits.route.vitest.test.ts` | 正常時に `200` で来店配列を返す |
 | TRACE-110 | visits API(GET): 一覧取得失敗時のエラー応答契約 | `tests/visits.route.vitest.test.ts` | クエリエラー時に `500` + エラーメッセージを返す |
 | TRACE-111 | followups API(GET): 有効 `status` クエリの適用契約 | `tests/followups.route.vitest.test.ts` | `status=in_progress` 指定時に `status` フィルタ（`eq`）が適用される |
+| TRACE-112 | payments API(GET): 会計一覧取得の基本契約 | `tests/payments.route.vitest.test.ts` | 正常時に `200` で会計配列を返す |
+| TRACE-113 | payments API(POST): ヘッダ冪等キーの引き継ぎ契約 | `tests/payments.route.vitest.test.ts` | form側に未指定でも `x-idempotency-key` が作成入力へ反映される |
+| TRACE-114 | payments API(POST): 不正 `redirect_to` の安全フォールバック | `tests/payments.route.vitest.test.ts` | 外部URL指定時も `/receipts/{payment_id}` へ遷移する |
+| TRACE-115 | payments API(POST): サービス層バリデーションエラー透過 | `tests/payments.route.vitest.test.ts` | `PaymentServiceError` の status/message をそのまま返す |
+| TRACE-116 | payments/[payment_id] API(GET): 会計詳細取得の基本契約 | `tests/payments.payment-id-route.vitest.test.ts` | 正常時に `200` で会計詳細を返す |
+| TRACE-117 | payments/[payment_id] API(POST): `_method=delete` の削除導線 | `tests/payments.payment-id-route.vitest.test.ts` | 削除成功時に `/payments` へ遷移し、削除サービスが呼ばれる |
+| TRACE-118 | payments/[payment_id] API(POST): 不正 `_method` の拒否 | `tests/payments.payment-id-route.vitest.test.ts` | `_method=unknown` は `405` + `Unsupported method` を返す |
+| TRACE-119 | payments/[payment_id] API(PUT): サービス層バリデーションエラー透過 | `tests/payments.payment-id-route.vitest.test.ts` | `PaymentServiceError` の status/message をそのまま返す |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
