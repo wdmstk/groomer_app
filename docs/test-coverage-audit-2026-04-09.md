@@ -25,7 +25,7 @@
 
 ## 最終網羅判定（2026-04-11）
 - 判定: `大塊PR（B1〜B4）で優先領域のルート契約テスト補強を完了`
-- 追加TRACE: `TRACE-091`〜`TRACE-174`（B1〜B4 + C1 + C2）
+- 追加TRACE: `TRACE-091`〜`TRACE-182`（B1〜B4 + C1 + C2 + C3）
 - 直近検証結果:
   - `npm run test:traceability` => `155 rows verified`
   - 各バッチの対象Vitest（B1〜B4）と `npm run lint` はすべて通過
@@ -227,6 +227,14 @@
 | TRACE-172 | billing/setup-assistance/checkout API(POST): 不正provider時のフォールバック | `tests/billing.checkout-routes.vitest.test.ts` | 許可外 `provider` 指定時は `stripe` フォールバックで決済セッションを作成する |
 | TRACE-173 | billing/storage-addon/checkout API(POST): 容量追加セッション再利用契約 | `tests/billing.checkout-routes.vitest.test.ts` | `subscriptionScope=storage_addon` の再利用セッションがある場合 `reused: true` を返す |
 | TRACE-174 | billing/storage-addon/checkout API(POST): units正規化（最小1）契約 | `tests/billing.checkout-routes.vitest.test.ts` | 不正 `units` 入力時も `units=1` として扱い、`addon_gb=10` `amount_jpy=300` を返す |
+| TRACE-175 | appointments reservation-payment checkout API(POST): 未認証拒否 | `tests/appointments.reservation-payment-routes.vitest.test.ts` | 未認証時に `401` + `Unauthorized` を返す |
+| TRACE-176 | appointments reservation-payment checkout API(POST): 予約未存在の404契約 | `tests/appointments.reservation-payment-routes.vitest.test.ts` | 対象予約がない場合 `404` + エラーメッセージを返す |
+| TRACE-177 | appointments reservation-payment checkout API(POST): 事前決済設定OFF時の拒否 | `tests/appointments.reservation-payment-routes.vitest.test.ts` | 店舗の事前決済設定が無効時に `400` を返す |
+| TRACE-178 | appointments reservation-payment checkout API(POST): 事前決済対象外予約の拒否 | `tests/appointments.reservation-payment-routes.vitest.test.ts` | `reservation_payment_method != prepayment` の場合 `400` を返す |
+| TRACE-179 | appointments reservation-payment checkout API(POST): 金額0円時の拒否 | `tests/appointments.reservation-payment-routes.vitest.test.ts` | 決済対象合計が0円以下の場合 `400` を返す |
+| TRACE-180 | appointments reservation-payment checkout API(POST): プロバイダ接続未設定時の拒否 | `tests/appointments.reservation-payment-routes.vitest.test.ts` | 店舗のプロバイダ接続情報が無い場合 `400` を返す |
+| TRACE-181 | appointments reservation-payment claim API(POST): 無断キャンセル以外の拒否 | `tests/appointments.reservation-payment-routes.vitest.test.ts` | `appointment.status != 無断キャンセル` の場合 `400` を返す |
+| TRACE-182 | appointments reservation-payment claim API(POST): 請求処理成功時のリダイレクト契約 | `tests/appointments.reservation-payment-routes.vitest.test.ts` | 請求更新成功時に `303` リダイレクトし、監査ログ記録を呼び出す |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
