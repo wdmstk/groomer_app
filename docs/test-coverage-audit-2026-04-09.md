@@ -25,7 +25,7 @@
 
 ## 最終網羅判定（2026-04-11）
 - 判定: `大塊PR（B1〜B4）で優先領域のルート契約テスト補強を完了`
-- 追加TRACE: `TRACE-091`〜`TRACE-156`（B1〜B4）
+- 追加TRACE: `TRACE-091`〜`TRACE-168`（B1〜B4 + C1）
 - 直近検証結果:
   - `npm run test:traceability` => `155 rows verified`
   - 各バッチの対象Vitest（B1〜B4）と `npm run lint` はすべて通過
@@ -209,6 +209,18 @@
 | TRACE-154 | dev/subscriptions/[store_id] API(POST): 課金ステータス不正入力の拒否 | `tests/dev-subscriptions.route.vitest.test.ts` | 不正 `billing_status` で `303` リダイレクトし、エラーメッセージを返す |
 | TRACE-155 | hq/kpi-summary API(GET): 未認証拒否 | `tests/hq.kpi-summary.route.vitest.test.ts` | 未認証時に `401` + `ログインが必要です。` を返す |
 | TRACE-156 | hq/kpi-summary API(GET): HQ閲覧対象なしの403契約 | `tests/hq.kpi-summary.route.vitest.test.ts` | HQ権限対象店舗が無い場合 `403` + Pro対象なしメッセージを返す |
+| TRACE-157 | auth/login API(POST): ログイン成功時の遷移契約 | `tests/auth.routes.vitest.test.ts` | 認証成功時に `301` で `/dashboard` へリダイレクトする |
+| TRACE-158 | auth/login API(POST): ログイン失敗時のエラー遷移契約 | `tests/auth.routes.vitest.test.ts` | 認証失敗時に `301` で `/login?error=...` へリダイレクトする |
+| TRACE-159 | auth/logout API(POST): ログアウト遷移契約 | `tests/auth.routes.vitest.test.ts` | `signOut` 実行後に `301` で `/login` へリダイレクトする |
+| TRACE-160 | billing/options API(POST): ownerガードエラー透過 | `tests/billing.routes.vitest.test.ts` | `requireOwnerStoreMembership` が失敗した場合、同じ status/message を返す |
+| TRACE-161 | billing/options API(POST): 対象外プランのオプション申込拒否 | `tests/billing.routes.vitest.test.ts` | オプション契約不可プランで有効化要求時、`307` リダイレクト + エラーメッセージを返す |
+| TRACE-162 | billing/options API(POST): requested列未適用時の移行ガイダンス | `tests/billing.routes.vitest.test.ts` | `*_requested` 列不足エラー時、マイグレーション案内付きで `/billing?error=...` へ遷移する |
+| TRACE-163 | billing/preferred-provider API(POST): 不正provider拒否 | `tests/billing.routes.vitest.test.ts` | `provider` が `stripe/komoju` 以外の場合 `400` を返す |
+| TRACE-164 | billing/preferred-provider API(POST): 不正billing_statusのフォールバック | `tests/billing.routes.vitest.test.ts` | 現在ステータスが許可外値でも `trialing` で `updateStoreSubscriptionStatus` を呼ぶ |
+| TRACE-165 | billing/subscription/actions API(POST): 不正action拒否 | `tests/billing.routes.vitest.test.ts` | 許可外 `action` の場合 `400` + `invalid action.` を返す |
+| TRACE-166 | billing/subscription/actions API(POST): 対象サブスク未存在の404契約 | `tests/billing.routes.vitest.test.ts` | 対象サブスクが見つからない場合 `404` + エラーメッセージを返す |
+| TRACE-167 | billing/subscription/actions API(POST): 返金依頼記録契約 | `tests/billing.routes.vitest.test.ts` | `refund_request` で `insertBillingOperation` を記録し、`200` で成功メッセージを返す |
+| TRACE-168 | billing/subscription/actions API(POST): 即時解約フロー契約 | `tests/billing.routes.vitest.test.ts` | `cancel_immediately` でプロバイダ解約・状態更新を実行し、`200` で成功メッセージを返す |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
