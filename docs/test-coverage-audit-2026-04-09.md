@@ -25,7 +25,7 @@
 
 ## 最終網羅判定（2026-04-11）
 - 判定: `大塊PR（B1〜B4）で優先領域のルート契約テスト補強を完了`
-- 追加TRACE: `TRACE-091`〜`TRACE-168`（B1〜B4 + C1）
+- 追加TRACE: `TRACE-091`〜`TRACE-174`（B1〜B4 + C1 + C2）
 - 直近検証結果:
   - `npm run test:traceability` => `155 rows verified`
   - 各バッチの対象Vitest（B1〜B4）と `npm run lint` はすべて通過
@@ -221,6 +221,12 @@
 | TRACE-166 | billing/subscription/actions API(POST): 対象サブスク未存在の404契約 | `tests/billing.routes.vitest.test.ts` | 対象サブスクが見つからない場合 `404` + エラーメッセージを返す |
 | TRACE-167 | billing/subscription/actions API(POST): 返金依頼記録契約 | `tests/billing.routes.vitest.test.ts` | `refund_request` で `insertBillingOperation` を記録し、`200` で成功メッセージを返す |
 | TRACE-168 | billing/subscription/actions API(POST): 即時解約フロー契約 | `tests/billing.routes.vitest.test.ts` | `cancel_immediately` でプロバイダ解約・状態更新を実行し、`200` で成功メッセージを返す |
+| TRACE-169 | billing/stripe/checkout API(POST): ownerメール欠落時の拒否 | `tests/billing.checkout-routes.vitest.test.ts` | ownerメールが空の場合 `400` + `User email is required.` を返す |
+| TRACE-170 | billing/stripe/checkout API(POST): 再利用セッション返却契約 | `tests/billing.checkout-routes.vitest.test.ts` | 再利用可能セッションがある場合 `reused: true` で既存 `checkout_url/session_id` を返す |
+| TRACE-171 | billing/komoju/checkout API(POST): 既存有効契約時の409契約 | `tests/billing.checkout-routes.vitest.test.ts` | 既存 `active/trialing/past_due` 契約がある場合 `409` + 解約誘導メッセージを返す |
+| TRACE-172 | billing/setup-assistance/checkout API(POST): 不正provider時のフォールバック | `tests/billing.checkout-routes.vitest.test.ts` | 許可外 `provider` 指定時は `stripe` フォールバックで決済セッションを作成する |
+| TRACE-173 | billing/storage-addon/checkout API(POST): 容量追加セッション再利用契約 | `tests/billing.checkout-routes.vitest.test.ts` | `subscriptionScope=storage_addon` の再利用セッションがある場合 `reused: true` を返す |
+| TRACE-174 | billing/storage-addon/checkout API(POST): units正規化（最小1）契約 | `tests/billing.checkout-routes.vitest.test.ts` | 不正 `units` 入力時も `units=1` として扱い、`addon_gb=10` `amount_jpy=300` を返す |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |
