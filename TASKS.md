@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-coverage-c4-store-invites-memberships`
+- 現在の作業ブランチ: `test/TASK-449-coverage-c5-next-batch`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -262,6 +262,10 @@ Completed tasks should be marked:
   - [x] C4着手: 監査レポートにTRACE行を追加し、網羅対象を更新
   - [x] C4着手: `npx vitest run tests/store-invites-memberships.routes.vitest.test.ts` / `npm run test:traceability` / `npm run lint` を通過
   - [x] C4着手: PR作成（大塊運用を維持 / #73）
+  - [x] C5着手: settings系API（`/api/settings/notification-settings` `/api/settings/payment-provider-connections` `/api/settings/reservation-payment-settings` `/api/settings/storage-policy` `/api/settings/theme`）のルート契約テストを追加（`TRACE-191`〜`TRACE-199`）
+  - [x] C5着手: 監査レポートにTRACE行を追加し、網羅対象を更新
+  - [x] C5着手: `npx vitest run tests/settings.routes.vitest.test.ts` / `npm run test:traceability` / `npm run lint` を通過
+  - [ ] C5着手: PR作成（大塊運用を維持）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
