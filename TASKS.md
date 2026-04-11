@@ -227,7 +227,7 @@ Completed tasks should be marked:
   - [x] B2追加: `npx vitest run tests/pos.routes.vitest.test.ts tests/inventory.routes.vitest.test.ts` 実行（10/10 pass）
   - [x] B2追加: `npx vitest run tests/payments.route.vitest.test.ts tests/payments.payment-id-route.vitest.test.ts tests/invoices.route.vitest.test.ts tests/invoices.invoice-id-routes.vitest.test.ts tests/pos.routes.vitest.test.ts tests/inventory.routes.vitest.test.ts` 実行（25/25 pass）
   - [x] B2追加: `npm run test:traceability` / `npm run lint` 実行（pass）
-  - [ ] PR-B2（会計/請求/POS/在庫）を実装・PR作成
+  - [x] PR-B2（会計/請求/POS/在庫）を実装・PR作成（#66）
   - [ ] PR-B3（ホテル/同意書/医療記録/通知）を実装・PR作成
   - [ ] PR-B4（設定/管理/dev/hq/法務/サポート）を実装・PR作成
   - [ ] 監査レポート更新（最終網羅判定と残リスク明記）
