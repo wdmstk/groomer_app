@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-b2-pos-inventory-route-coverage`
+- 現在の作業ブランチ: `test/TASK-449-b3-hotel-consent-medical-notify-coverage`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -228,6 +228,13 @@ Completed tasks should be marked:
   - [x] B2追加: `npx vitest run tests/payments.route.vitest.test.ts tests/payments.payment-id-route.vitest.test.ts tests/invoices.route.vitest.test.ts tests/invoices.invoice-id-routes.vitest.test.ts tests/pos.routes.vitest.test.ts tests/inventory.routes.vitest.test.ts` 実行（25/25 pass）
   - [x] B2追加: `npm run test:traceability` / `npm run lint` 実行（pass）
   - [x] PR-B2（会計/請求/POS/在庫）を実装・PR作成（#66）
+  - [x] B3追加: `/api/hotel/*` ルート契約テストを追加（`TRACE-137`〜`TRACE-138`）
+  - [x] B3追加: `/api/consents/*` ルート契約テストを追加（`TRACE-139`〜`TRACE-141`）
+  - [x] B3追加: `/api/medical-records/*` ルート契約テストを追加（`TRACE-142`〜`TRACE-143`）
+  - [x] B3追加: `/api/line/*` `/api/webhooks/*` 通知系ルート契約テストを追加（`TRACE-144`〜`TRACE-146`）
+  - [x] B3追加: `TRACE` 追記と監査レポート更新（hotel/consents/medical/notify系）
+  - [x] B3追加: `npx vitest run tests/hotel.routes.vitest.test.ts tests/consents.routes.vitest.test.ts tests/medical-records.routes.vitest.test.ts tests/webhooks.routes.vitest.test.ts` 実行（10/10 pass）
+  - [x] B3追加: `npm run test:traceability` / `npm run lint` 実行（pass）
   - [ ] PR-B3（ホテル/同意書/医療記録/通知）を実装・PR作成
   - [ ] PR-B4（設定/管理/dev/hq/法務/サポート）を実装・PR作成
   - [ ] 監査レポート更新（最終網羅判定と残リスク明記）
