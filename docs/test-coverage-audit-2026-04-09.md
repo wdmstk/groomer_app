@@ -25,7 +25,7 @@
 
 ## 最終網羅判定（2026-04-12）
 - 判定: `大塊PR（B1〜B4 + C1〜C6-B）で優先領域のルート契約テスト補強を継続中`
-- 追加TRACE: `TRACE-091`〜`TRACE-239`（B1〜B4 + C1 + C2 + C3 + C4 + C5 + C6-A + C6-B）
+- 追加TRACE: `TRACE-091`〜`TRACE-259`（B1〜B4 + C1 + C2 + C3 + C4 + C5 + C6-A + C6-B + C6-C）
 - 直近検証結果:
   - `npm run test:traceability` => `218 rows verified`
   - C6-A追加分の対象Vitest（`admin-cron` / `platform-observability` / `notifications-and-checkout`）と `npm run lint` は通過
@@ -292,6 +292,26 @@
 | TRACE-237 | public/reserve/[store_id] API(POST): 予約作成後の監査ログ記録契約 | `tests/public-reserve.routes.vitest.test.ts` | 会員証経由で予約作成成功時に監査ログ挿入が2回呼ばれ、予約ペイロードを返す |
 | TRACE-238 | public/reserve/[store_id]/qr-lookup API(POST): サービス例外status透過 | `tests/public-reserve.routes.vitest.test.ts` | `PublicReservationServiceError(400)` をそのまま `400` で返す |
 | TRACE-239 | public/reserve/cancel API(POST): 空トークン委譲契約 | `tests/public-reserve.routes.vitest.test.ts` | `token` 欠落時に空文字でサービスへ委譲し、戻り値をそのまま返す |
+| TRACE-240 | hotel/menu-items API(POST): 未認証拒否 | `tests/hotel.routes.vitest.test.ts` | 未認証時に `401` + `Unauthorized` を返す |
+| TRACE-241 | hotel/menu-items/season-toggle API(POST): season_mode入力制約 | `tests/hotel.routes.vitest.test.ts` | `season_mode` が `normal/high_season` 以外の場合 `400` を返す |
+| TRACE-242 | hotel/settings API(PATCH): 不正JSON拒否 | `tests/hotel.routes.vitest.test.ts` | 不正JSONボディ時に `400` + `Invalid JSON body.` を返す |
+| TRACE-243 | hotel/stays/[stay_id]/report-line API(POST): `report_body` 必須 | `tests/hotel.routes.vitest.test.ts` | 空白のみ `report_body` の場合 `400` + 必須エラーを返す |
+| TRACE-244 | hotel/transports/[transport_id] API(DELETE): 権限ガード | `tests/hotel.routes.vitest.test.ts` | owner/admin 以外のロールは `403` で削除拒否される |
+| TRACE-245 | inventory/purchase-orders API(POST): 仕入先必須バリデーション | `tests/inventory.routes.vitest.test.ts` | `supplier_name` 欠落時に `400` + `仕入先は必須です。` を返す |
+| TRACE-246 | inventory/purchase-orders/[order_id] API(POST): 不正 `_method` 拒否 | `tests/inventory.routes.vitest.test.ts` | 未対応 `_method` 指定時に `405` + `Unsupported method` を返す |
+| TRACE-247 | inventory/purchase-orders/[order_id]/items API(POST): 数量下限バリデーション | `tests/inventory.routes.vitest.test.ts` | `quantity <= 0` の場合 `400` + 数量エラーを返す |
+| TRACE-248 | inventory/purchase-orders/draft-from-suggestions API(POST): 未選択ガード | `tests/inventory.routes.vitest.test.ts` | `selected_item_id` 未指定時に `400` + `提案対象が選択されていません。` を返す |
+| TRACE-249 | inventory/stocks/export API(GET): CSVエクスポート契約 | `tests/inventory.routes.vitest.test.ts` | `200` + `text/csv` を返し、ヘッダー行を含むCSV本文を返却する |
+| TRACE-250 | hq/menu-templates API(POST): 不正JSON拒否 | `tests/hq.menu-template-routes.vitest.test.ts` | 不正JSONボディ時に `400` + `JSON ボディを指定してください。` を返す |
+| TRACE-251 | hq/menu-templates API(POST): targetStoreIds必須バリデーション | `tests/hq.menu-template-routes.vitest.test.ts` | `targetStoreIds` 空配列時に `400` + 必須エラーを返す |
+| TRACE-252 | hq/menu-template-deliveries API(GET): 未認証拒否 | `tests/hq.menu-template-routes.vitest.test.ts` | 未認証時に `401` + `ログインが必要です。` を返す |
+| TRACE-253 | reoffers/[reoffer_id]/status API(PATCH): status入力制約 | `tests/reoffers.routes.vitest.test.ts` | 許可外 `status` 指定時に `400` + `status が不正です。` を返す |
+| TRACE-254 | reoffers/[reoffer_id]/approve-send API(POST): 再販未存在404契約 | `tests/reoffers.routes.vitest.test.ts` | 対象再販レコードが見つからない場合 `404` を返す |
+| TRACE-255 | reoffers/[reoffer_id]/approve-send API(POST): draft以外送信拒否 | `tests/reoffers.routes.vitest.test.ts` | `status != draft` の再販は `400` + 送信不可メッセージを返す |
+| TRACE-256 | reoffers/waitlists API(POST): 顧客未指定時リダイレクト契約 | `tests/reoffers.routes.vitest.test.ts` | `customer_id` 欠落時は `303` で `redirect_to` へ戻す |
+| TRACE-257 | appointments/[appointment_id]/confirm API(POST): 予約申請以外の確定拒否 | `tests/appointments.detail-routes.vitest.test.ts` | 対象ステータスが `予約申請` 以外の場合 `400` を返す |
+| TRACE-258 | appointments/[appointment_id]/status API(POST): 不正遷移拒否 | `tests/appointments.detail-routes.vitest.test.ts` | 期待遷移外の `next_status` 指定時に `400` + 不正遷移メッセージを返す |
+| TRACE-259 | consents/documents/[document_id]/pdf API(GET): PDF未生成ガード | `tests/consents.routes.vitest.test.ts` | `pdf_path` 未設定時に `409` + `pdf not generated yet.` を返す |
 | TRACE-004 | followups status API: 不正statusの拒否 | `tests/followups.status-route.vitest.test.ts` | `bad_status` で `400` + `有効な status を指定してください。` |
 | TRACE-005 | followups status API: snoozed必須項目 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ `snoozed_until` 欠落で `400` |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否 | `tests/followups.status-route.vitest.test.ts` | `status=snoozed` かつ無効日付 `snoozed_until` で `400` |

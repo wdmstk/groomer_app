@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-coverage-c6b-next-batch`
+- 現在の作業ブランチ: `test/TASK-449-coverage-c6c-domain-batch`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -273,7 +273,8 @@ Completed tasks should be marked:
   - [x] C6-B: 顧客接点/公開導線APIの契約テストを一括追加（`TRACE-220`〜`TRACE-239`）
     - 対象: `public(10)` `customers/member-portal-link系(2)` `pets(2)` `staffs(3)` `service-menus(3)`
   - [x] C6-B着手: 作業ブランチ `test/TASK-449-coverage-c6b-next-batch` を作成
-  - [ ] C6-C: 業務ドメインAPI（ホテル/在庫/HQ/再提案）の契約テストを一括追加（`TRACE-240`〜`TRACE-259`）
+  - [x] C6-C着手: 作業ブランチ `test/TASK-449-coverage-c6c-domain-batch` を作成
+  - [x] C6-C: 業務ドメインAPI（ホテル/在庫/HQ/再提案）の契約テストを一括追加（`TRACE-240`〜`TRACE-259`）
     - 対象: `hotel(7)` `inventory未対応(8)` `hq未対応(6)` `reoffers(5)` `consents詳細(5)` `appointments詳細(4)`
   - [ ] C6-D: 記録/運用API（カルテ/日誌/dev）の契約テストを一括追加（`TRACE-260`〜`TRACE-279`）
     - 対象: `medical-records詳細(15)` `journal(4)` `dev support系(4)` `stores未対応(4)`
@@ -284,6 +285,9 @@ Completed tasks should be marked:
   - [x] C6-B実行ログ: `npx vitest run tests/customers-public-contact.routes.vitest.test.ts tests/public-member-portal-consents.routes.vitest.test.ts tests/public-reserve.routes.vitest.test.ts`（20/20 pass）
   - [x] C6-B実行ログ: `npm run test:traceability`（`238 rows verified`）
   - [x] C6-B実行ログ: `npm run lint`（pass）
+  - [x] C6-C実行ログ: `npx vitest run tests/hotel.routes.vitest.test.ts tests/inventory.routes.vitest.test.ts tests/hq.menu-template-routes.vitest.test.ts tests/reoffers.routes.vitest.test.ts tests/appointments.detail-routes.vitest.test.ts tests/consents.routes.vitest.test.ts`（29/29 pass）
+  - [x] C6-C実行ログ: `npm run test:traceability`（`258 rows verified`）
+  - [x] C6-C実行ログ: `npm run lint`（pass）
   - [ ] C7: ページ系の「薄い検証」補強（実データ近似E2Eの拡張バッチ）を事前計画に沿って実施（`TRACE-280`〜）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`

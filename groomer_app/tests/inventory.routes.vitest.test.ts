@@ -133,6 +133,67 @@ function createStockQuerySupabaseMock(currentRows: Array<{ quantity_delta: numbe
   }
 }
 
+function createAuthOnlySupabaseMock() {
+  return {
+    auth: {
+      getUser: async () => ({ data: { user: { id: 'user-1' } } }),
+    },
+    from(_table: string) {
+      throw new Error('Unexpected table')
+    },
+  }
+}
+
+function createInventoryExportSupabaseMock() {
+  return {
+    from(table: string) {
+      if (table === 'inventory_items') {
+        return {
+          select() {
+            return {
+              eq() {
+                return this
+              },
+              order: async () => ({
+                data: [
+                  {
+                    id: 'item-1',
+                    name: 'シャンプー',
+                    category: '用品',
+                    unit: '本',
+                    supplier_name: '仕入先A',
+                    optimal_stock: 5,
+                    is_active: true,
+                  },
+                ],
+                error: null,
+              }),
+            }
+          },
+        }
+      }
+
+      if (table === 'inventory_movements') {
+        return {
+          select() {
+            return {
+              eq() {
+                return this
+              },
+              in: async () => ({
+                data: [{ item_id: 'item-1', quantity_delta: 2 }],
+                error: null,
+              }),
+            }
+          },
+        }
+      }
+
+      throw new Error(`Unexpected table: ${table}`)
+    },
+  }
+}
+
 describe('inventory routes', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -230,5 +291,95 @@ describe('inventory routes', () => {
         quantity_delta: 2,
       },
     ])
+  })
+
+  // TRACE-245
+  it('POST /api/inventory/purchase-orders returns 400 when supplier_name is missing', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createAuthOnlySupabaseMock(),
+      storeId: 'store-1',
+    })
+    const { POST } = await import('../src/app/api/inventory/purchase-orders/route')
+    const form = new FormData()
+    const response = await POST(
+      new Request('http://localhost/api/inventory/purchase-orders', {
+        method: 'POST',
+        body: form,
+      })
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ message: '仕入先は必須です。' })
+  })
+
+  // TRACE-246
+  it('POST /api/inventory/purchase-orders/[order_id] returns 405 for unsupported _method', async () => {
+    const { POST } = await import('../src/app/api/inventory/purchase-orders/[order_id]/route')
+    const form = new FormData()
+    form.set('_method', 'patchx')
+    const response = await POST(
+      new Request('http://localhost/api/inventory/purchase-orders/order-1', {
+        method: 'POST',
+        body: form,
+      }),
+      { params: Promise.resolve({ order_id: 'order-1' }) }
+    )
+
+    expect(response.status).toBe(405)
+    await expect(response.json()).resolves.toEqual({ message: 'Unsupported method' })
+  })
+
+  // TRACE-247
+  it('POST /api/inventory/purchase-orders/[order_id]/items returns 400 for non-positive quantity', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createAuthOnlySupabaseMock(),
+      storeId: 'store-1',
+    })
+    const { POST } = await import('../src/app/api/inventory/purchase-orders/[order_id]/items/route')
+    const form = new FormData()
+    form.set('item_name', 'シャンプー')
+    form.set('quantity', '0')
+    form.set('unit_cost', '100')
+    const response = await POST(
+      new Request('http://localhost/api/inventory/purchase-orders/order-1/items', {
+        method: 'POST',
+        body: form,
+      }),
+      { params: Promise.resolve({ order_id: 'order-1' }) }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ message: '数量は0より大きい値を指定してください。' })
+  })
+
+  // TRACE-248
+  it('POST /api/inventory/purchase-orders/draft-from-suggestions returns 400 when no item is selected', async () => {
+    const { POST } = await import('../src/app/api/inventory/purchase-orders/draft-from-suggestions/route')
+    const form = new FormData()
+    const response = await POST(
+      new Request('http://localhost/api/inventory/purchase-orders/draft-from-suggestions', {
+        method: 'POST',
+        body: form,
+      })
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ message: '提案対象が選択されていません。' })
+  })
+
+  // TRACE-249
+  it('GET /api/inventory/stocks/export returns csv with expected headers', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createInventoryExportSupabaseMock(),
+      storeId: 'store-1',
+    })
+    const { GET } = await import('../src/app/api/inventory/stocks/export/route')
+    const response = await GET()
+    const csv = await response.text()
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toContain('text/csv')
+    expect(csv).toContain('商品名,カテゴリ,単位,仕入先,現在庫,適正在庫,状態')
+    expect(csv).toContain('シャンプー,用品,本,仕入先A,2,5,不足')
   })
 })
