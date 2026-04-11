@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `chore/TASK-449-final-coverage-judgement`
+- 現在の作業ブランチ: `test/TASK-449-coverage-next-batch`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -246,6 +246,10 @@ Completed tasks should be marked:
   - [x] B4追加: `npm run test:traceability` / `npm run lint` 実行（pass）
   - [x] PR-B4（設定/管理/dev/hq/法務/サポート）を実装・PR作成（#68）
   - [x] 監査レポート更新（最終網羅判定と残リスク明記）
+  - [x] C1着手: 認証/課金系API（`/api/auth/*` `/api/billing/*`）のルート契約テストを一括追加（`TRACE-157`〜`TRACE-168`）
+  - [x] C1着手: 監査レポートにTRACE行を追加し、網羅対象を更新
+  - [x] C1着手: `npx vitest run tests/auth.routes.vitest.test.ts tests/billing.routes.vitest.test.ts` / `npm run test:traceability` / `npm run lint` を通過
+  - [x] C1着手: PR作成（大塊運用を維持 / #70）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
