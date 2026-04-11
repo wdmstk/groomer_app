@@ -265,7 +265,7 @@ Completed tasks should be marked:
   - [x] C5着手: settings系API（`/api/settings/notification-settings` `/api/settings/payment-provider-connections` `/api/settings/reservation-payment-settings` `/api/settings/storage-policy` `/api/settings/theme`）のルート契約テストを追加（`TRACE-191`〜`TRACE-199`）
   - [x] C5着手: 監査レポートにTRACE行を追加し、網羅対象を更新
   - [x] C5着手: `npx vitest run tests/settings.routes.vitest.test.ts` / `npm run test:traceability` / `npm run lint` を通過
-  - [ ] C5着手: PR作成（大塊運用を維持）
+  - [x] C5着手: PR作成（大塊運用を維持 / #74）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
