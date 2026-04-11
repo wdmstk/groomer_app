@@ -236,3 +236,65 @@ describe('visits route POST', () => {
     )
   })
 })
+
+function createGetSupabaseMock(options?: {
+  rows?: Array<Record<string, unknown>>
+  errorMessage?: string | null
+}) {
+  const rows = options?.rows ?? [{ id: 'visit-1', menu: 'シャンプー' }]
+  const errorMessage = options?.errorMessage ?? null
+
+  return {
+    from(table: string) {
+      if (table !== 'visits') {
+        throw new Error(`Unexpected table: ${table}`)
+      }
+      return {
+        select() {
+          return {
+            eq() {
+              return this
+            },
+            order: async () => ({
+              data: errorMessage ? null : rows,
+              error: errorMessage ? { message: errorMessage } : null,
+            }),
+          }
+        },
+      }
+    },
+  }
+}
+
+describe('visits route GET', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    vi.clearAllMocks()
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createGetSupabaseMock(),
+      storeId: 'store-1',
+    })
+  })
+
+  // TRACE-109
+  it('returns visit list', async () => {
+    const { GET } = await import('../src/app/api/visits/route')
+    const response = await GET()
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual([{ id: 'visit-1', menu: 'シャンプー' }])
+  })
+
+  // TRACE-110
+  it('returns 500 when visit list query fails', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createGetSupabaseMock({ errorMessage: 'visits select failed' }),
+      storeId: 'store-1',
+    })
+    const { GET } = await import('../src/app/api/visits/route')
+    const response = await GET()
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({ message: 'visits select failed' })
+  })
+})
