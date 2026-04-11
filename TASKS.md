@@ -249,7 +249,7 @@ Completed tasks should be marked:
   - [x] C1着手: 認証/課金系API（`/api/auth/*` `/api/billing/*`）のルート契約テストを一括追加（`TRACE-157`〜`TRACE-168`）
   - [x] C1着手: 監査レポートにTRACE行を追加し、網羅対象を更新
   - [x] C1着手: `npx vitest run tests/auth.routes.vitest.test.ts tests/billing.routes.vitest.test.ts` / `npm run test:traceability` / `npm run lint` を通過
-  - [ ] C1着手: PR作成（大塊運用を維持）
+  - [x] C1着手: PR作成（大塊運用を維持 / #70）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
