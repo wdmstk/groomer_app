@@ -235,7 +235,7 @@ Completed tasks should be marked:
   - [x] B3追加: `TRACE` 追記と監査レポート更新（hotel/consents/medical/notify系）
   - [x] B3追加: `npx vitest run tests/hotel.routes.vitest.test.ts tests/consents.routes.vitest.test.ts tests/medical-records.routes.vitest.test.ts tests/webhooks.routes.vitest.test.ts` 実行（10/10 pass）
   - [x] B3追加: `npm run test:traceability` / `npm run lint` 実行（pass）
-  - [ ] PR-B3（ホテル/同意書/医療記録/通知）を実装・PR作成
+  - [x] PR-B3（ホテル/同意書/医療記録/通知）を実装・PR作成（#67）
   - [ ] PR-B4（設定/管理/dev/hq/法務/サポート）を実装・PR作成
   - [ ] 監査レポート更新（最終網羅判定と残リスク明記）
 - 全件洗い出し台帳:
