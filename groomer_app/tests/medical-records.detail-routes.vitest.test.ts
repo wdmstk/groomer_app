@@ -40,6 +40,48 @@ vi.mock('@/lib/medical-records/ai-tags', () => ({
   runMedicalRecordAiTagJob: vi.fn(async () => undefined),
 }))
 
+vi.mock('@/lib/medical-records/ai-assist', () => ({
+  enqueueMedicalRecordAiAssistJob: vi.fn(async () => ({ id: 'assist-job-1' })),
+  hasAiAssistAccess: vi.fn(() => true),
+  runMedicalRecordAiAssistJob: vi.fn(async () => undefined),
+}))
+
+vi.mock('@/lib/medical-records/ai-pro-plus', () => ({
+  buildAiProPlusHighlightPath: vi.fn(() => 'store-1/record-1/highlight.mp4'),
+  deriveMedicalRecordAiProPlusHealthInsight: vi.fn(() => ({
+    gaitRisk: 0,
+    skinRisk: 0,
+    tremorRisk: 0,
+    respirationRisk: 0,
+    stressLevel: 0,
+    fatigueLevel: 0,
+    summary: 'summary',
+    confidence: 0.5,
+  })),
+  hasAiProPlusAccess: vi.fn(() => false),
+}))
+
+vi.mock('@/lib/medical-records/ai-pro', () => ({
+  deriveMedicalRecordAiProInsight: vi.fn(() => ({
+    modelTier: 'pro',
+    personalityTraits: [],
+    behaviorScore: 0,
+    cooperationScore: 0,
+    stressScore: 0,
+    estimatedNextDurationMin: 0,
+    mattingRisk: 0,
+    surchargeRisk: 0,
+    highlightedScenes: [],
+    confidence: 0.5,
+    sourceVideoCount: 0,
+  })),
+  hasAiProAccess: vi.fn(() => false),
+}))
+
+vi.mock('@/lib/medical-records/ai-video-jobs', () => ({
+  enqueueMedicalRecordVideoAiJob: vi.fn(async () => ({ id: 'video-job-1' })),
+}))
+
 vi.mock('@/lib/line', () => ({
   sendLineMessage: vi.fn(async () => ({ success: true })),
 }))
@@ -51,6 +93,7 @@ function createSupabaseMock(options?: {
   customer?: unknown
   video?: unknown
   videoError?: { message: string } | null
+  subscription?: unknown
 }) {
   const medicalRecord = options?.medicalRecord ?? null
   const medicalRecordError = options?.medicalRecordError ?? null
@@ -58,6 +101,7 @@ function createSupabaseMock(options?: {
   const customer = options?.customer ?? null
   const video = options?.video ?? null
   const videoError = options?.videoError ?? null
+  const subscription = options?.subscription ?? { ai_plan_code_effective: 'none', ai_plan_code: 'none' }
 
   const auth = {
     getUser: async () => ({ data: { user: { id: 'user-1' } } }),
@@ -159,6 +203,18 @@ function createSupabaseMock(options?: {
           single: async () => ({ data: video, error: videoError }),
         }
         return query
+      }
+
+      if (table === 'store_subscriptions') {
+        return {
+          select() {
+            return this
+          },
+          eq() {
+            return this
+          },
+          maybeSingle: async () => ({ data: subscription, error: null }),
+        }
       }
 
       throw new Error(`Unexpected table: ${table}`)
@@ -414,5 +470,117 @@ describe('medical-records detail routes', () => {
 
     expect(response.status).toBe(422)
     await expect(response.json()).resolves.toEqual({ message: 'validation failed' })
+  })
+
+  // TRACE-386
+  it('POST /api/medical-records/[record_id]/ai-assist returns 404 when record is missing', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createSupabaseMock({ medicalRecord: null }),
+      storeId: 'store-1',
+    })
+
+    const { POST } = await import('../src/app/api/medical-records/[record_id]/ai-assist/route')
+    const response = await POST(
+      new Request('http://localhost/api/medical-records/record-1/ai-assist', { method: 'POST' }),
+      { params: Promise.resolve({ record_id: 'record-1' }) }
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({ message: '対象カルテが見つかりません。' })
+  })
+
+  // TRACE-387
+  it('POST /api/medical-records/[record_id]/ai-pro-plus returns 403 without AI Pro+ plan', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createSupabaseMock({
+        subscription: { ai_plan_code_effective: 'none', ai_plan_code: 'none' },
+      }),
+      storeId: 'store-1',
+    })
+
+    const { POST } = await import('../src/app/api/medical-records/[record_id]/ai-pro-plus/route')
+    const response = await POST(
+      new Request('http://localhost/api/medical-records/record-1/ai-pro-plus', { method: 'POST' }),
+      { params: Promise.resolve({ record_id: 'record-1' }) }
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({ message: 'AI Pro+の契約が必要です。' })
+  })
+
+  // TRACE-388
+  it('POST /api/medical-records/[record_id]/ai-pro returns 403 without AI Pro plan', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createSupabaseMock({
+        subscription: { ai_plan_code_effective: 'none', ai_plan_code: 'none' },
+      }),
+      storeId: 'store-1',
+    })
+
+    const { POST } = await import('../src/app/api/medical-records/[record_id]/ai-pro/route')
+    const response = await POST(
+      new Request('http://localhost/api/medical-records/record-1/ai-pro', { method: 'POST' }),
+      { params: Promise.resolve({ record_id: 'record-1' }) }
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({ message: 'AI Pro以上の契約が必要です。' })
+  })
+
+  // TRACE-389
+  it('POST /api/medical-records/videos/[video_id]/ai-assist returns 404 when video is missing', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createSupabaseMock({ video: null }),
+      storeId: 'store-1',
+    })
+
+    const { POST } = await import('../src/app/api/medical-records/videos/[video_id]/ai-assist/route')
+    const response = await POST(
+      new Request('http://localhost/api/medical-records/videos/video-1/ai-assist', { method: 'POST' }),
+      { params: Promise.resolve({ video_id: 'video-1' }) }
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({ message: '対象動画が見つかりません。' })
+  })
+
+  // TRACE-390
+  it('POST /api/medical-records/videos/[video_id]/ai-pro-plus returns 403 without AI Pro+ plan', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createSupabaseMock({
+        video: { id: 'video-1', medical_record_id: 'record-1' },
+        subscription: { ai_plan_code_effective: 'none', ai_plan_code: 'none' },
+      }),
+      storeId: 'store-1',
+    })
+
+    const { POST } = await import('../src/app/api/medical-records/videos/[video_id]/ai-pro-plus/route')
+    const response = await POST(
+      new Request('http://localhost/api/medical-records/videos/video-1/ai-pro-plus', { method: 'POST' }),
+      { params: Promise.resolve({ video_id: 'video-1' }) }
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({ message: 'AI Pro+の契約が必要です。' })
+  })
+
+  // TRACE-391
+  it('POST /api/medical-records/videos/[video_id]/ai-pro returns 403 without AI Pro plan', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createSupabaseMock({
+        video: { id: 'video-1', medical_record_id: 'record-1' },
+        subscription: { ai_plan_code_effective: 'none', ai_plan_code: 'none' },
+      }),
+      storeId: 'store-1',
+    })
+
+    const { POST } = await import('../src/app/api/medical-records/videos/[video_id]/ai-pro/route')
+    const response = await POST(
+      new Request('http://localhost/api/medical-records/videos/video-1/ai-pro', { method: 'POST' }),
+      { params: Promise.resolve({ video_id: 'video-1' }) }
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({ message: 'AI Pro以上の契約が必要です。' })
   })
 })

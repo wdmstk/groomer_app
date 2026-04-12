@@ -114,6 +114,7 @@ describe('platform/observability routes', () => {
   })
 
   // TRACE-210
+  // TRACE-392
   it('POST /api/metrics/appointments rejects unsupported event_type with 400', async () => {
     createStoreScopedClientMock.mockResolvedValueOnce({
       storeId: 'store-1',
@@ -142,6 +143,7 @@ describe('platform/observability routes', () => {
   })
 
   // TRACE-211
+  // TRACE-396
   it('POST /api/security/csp-report returns 204 for invalid payload without insert', async () => {
     const { POST } = await import('../src/app/api/security/csp-report/route')
     const response = await POST(

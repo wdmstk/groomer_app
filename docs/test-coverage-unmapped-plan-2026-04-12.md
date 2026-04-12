@@ -88,15 +88,15 @@
 - [x] TRACE-383 `groomer_app/src/app/api/inventory/purchase-order-items/[line_id]/route.ts`
 - [x] TRACE-384 `groomer_app/src/app/api/inventory/reorder-suggestions/route.ts`
 - [x] TRACE-385 `groomer_app/src/app/api/journal/entries/[entry_id]/notify/route.ts`
-- [ ] TRACE-386 `groomer_app/src/app/api/medical-records/[record_id]/ai-assist/route.ts`
-- [ ] TRACE-387 `groomer_app/src/app/api/medical-records/[record_id]/ai-pro-plus/route.ts`
-- [ ] TRACE-388 `groomer_app/src/app/api/medical-records/[record_id]/ai-pro/route.ts`
-- [ ] TRACE-389 `groomer_app/src/app/api/medical-records/videos/[video_id]/ai-assist/route.ts`
-- [ ] TRACE-390 `groomer_app/src/app/api/medical-records/videos/[video_id]/ai-pro-plus/route.ts`
-- [ ] TRACE-391 `groomer_app/src/app/api/medical-records/videos/[video_id]/ai-pro/route.ts`
-- [ ] TRACE-392 `groomer_app/src/app/api/metrics/appointments/route.ts`
-- [ ] TRACE-393 `groomer_app/src/app/api/notification-templates/test-send/route.ts`
-- [ ] TRACE-394 `groomer_app/src/app/api/public/reserve/[store_id]/slots/route.ts`
-- [ ] TRACE-395 `groomer_app/src/app/api/reoffers/[reoffer_id]/phone-log/route.ts`
-- [ ] TRACE-396 `groomer_app/src/app/api/security/csp-report/route.ts`
-- [ ] TRACE-397 `groomer_app/src/app/api/stores/kpi-thresholds/route.ts`
+- [x] TRACE-386 `groomer_app/src/app/api/medical-records/[record_id]/ai-assist/route.ts`
+- [x] TRACE-387 `groomer_app/src/app/api/medical-records/[record_id]/ai-pro-plus/route.ts`
+- [x] TRACE-388 `groomer_app/src/app/api/medical-records/[record_id]/ai-pro/route.ts`
+- [x] TRACE-389 `groomer_app/src/app/api/medical-records/videos/[video_id]/ai-assist/route.ts`
+- [x] TRACE-390 `groomer_app/src/app/api/medical-records/videos/[video_id]/ai-pro-plus/route.ts`
+- [x] TRACE-391 `groomer_app/src/app/api/medical-records/videos/[video_id]/ai-pro/route.ts`
+- [x] TRACE-392 `groomer_app/src/app/api/metrics/appointments/route.ts`
+- [x] TRACE-393 `groomer_app/src/app/api/notification-templates/test-send/route.ts`
+- [x] TRACE-394 `groomer_app/src/app/api/public/reserve/[store_id]/slots/route.ts`
+- [x] TRACE-395 `groomer_app/src/app/api/reoffers/[reoffer_id]/phone-log/route.ts`
+- [x] TRACE-396 `groomer_app/src/app/api/security/csp-report/route.ts`
+- [x] TRACE-397 `groomer_app/src/app/api/stores/kpi-thresholds/route.ts`
