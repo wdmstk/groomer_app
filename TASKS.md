@@ -639,6 +639,7 @@ Completed tasks should be marked:
   - [x] [P87] 監査レポートとTRACE索引へ `TRACE-086` `TRACE-088` `TRACE-089` `TRACE-090` を反映
   - [x] 新規顧客向けWEB予約導線を追加（顧客一覧/顧客詳細から `/reserve/{store_id}` を案内）
   - [x] 新規顧客向けWEB予約導線を再配置（顧客ペット管理から撤去し、公開予約設定 + 予約管理ヘッダーへ移設）
+  - [x] ログイン中でも公開予約フォーム（`/reserve/{store_id}`）を開けるよう認可ガードを調整
   - [x] [IDX-1] `followups` テスト索引（TRACE対応）をTASKSへ記録
     E2E: `TRACE-001` `TRACE-002` `TRACE-003` `TRACE-048` `TRACE-049` -> `groomer_app/e2e/customers-followup-alerts.spec.ts`
     Route: `TRACE-050` `TRACE-051` `TRACE-052` `TRACE-053` `TRACE-054` `TRACE-055` `TRACE-056` `TRACE-057` `TRACE-058` `TRACE-059` `TRACE-060` `TRACE-061` `TRACE-062` `TRACE-063` `TRACE-064` `TRACE-065` `TRACE-066` `TRACE-067` `TRACE-068` `TRACE-069` `TRACE-070` `TRACE-071` `TRACE-072` `TRACE-073` `TRACE-074` `TRACE-075` `TRACE-076` `TRACE-077` `TRACE-078` `TRACE-079` `TRACE-080` `TRACE-081` `TRACE-082` `TRACE-083` `TRACE-084` `TRACE-085` `TRACE-086` `TRACE-088` `TRACE-089` `TRACE-090` -> `groomer_app/tests/followups.route.vitest.test.ts`
