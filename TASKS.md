@@ -365,6 +365,7 @@ Completed tasks should be marked:
     - [x] C12-B実行ログ: `npx vitest run tests/customers-public-contact.routes.vitest.test.ts tests/dev-support.routes.vitest.test.ts tests/hotel.routes.vitest.test.ts tests/hq.menu-template-routes.vitest.test.ts tests/inventory.routes.vitest.test.ts tests/journal.routes.vitest.test.ts`（46/46 pass）
     - [x] C12-B実行ログ: `npm run test:traceability`（`384 rows verified`）
     - [x] C12-B実行ログ: `npm run lint`（pass）
+    - [x] C12-B: PR作成（#85）
     - [ ] C12-C予定: `TRACE-386`〜`TRACE-397` のルート契約テスト補強と監査反映
   - [ ] C13: C11/C12の一括回帰（対象Vitest/Playwright、`test:traceability`、`lint`）と監査レポート更新
 - 全件洗い出し台帳:
