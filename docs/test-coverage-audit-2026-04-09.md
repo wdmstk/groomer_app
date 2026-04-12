@@ -24,10 +24,10 @@
 - `expect` または `assert` が存在しないテストファイルは確認されなかった
 
 ## 最終網羅判定（2026-04-12）
-- 判定: `大塊PR（B1〜B4 + C1〜C6-D + C7〜C11 + C12-A + C12-B + C12-C）で優先領域のルート契約テスト補強を継続中`
-- 追加TRACE: `TRACE-091`〜`TRACE-397`（B1〜B4 + C1 + C2 + C3 + C4 + C5 + C6-A + C6-B + C6-C + C6-D + C7-A + C7-B + C7-C + C8 + C9 + C10 + C11 + C12-A + C12-B + C12-C）
+- 判定: `大塊PR（B1〜B4 + C1〜C6-D + C7〜C13）を完了し、TRACEベースの優先領域補強と一括回帰を完了`
+- 追加TRACE: `TRACE-091`〜`TRACE-397`（B1〜B4 + C1 + C2 + C3 + C4 + C5 + C6-A + C6-B + C6-C + C6-D + C7-A + C7-B + C7-C + C8 + C9 + C10 + C11 + C12-A + C12-B + C12-C + C13回帰）
 - 直近検証結果:
-  - C12-C追加分の対象Vitest（`medical-records.detail-routes` / `public-reserve.routes` / `reoffers.routes` / `stores.additional-routes` / `notifications-and-checkout.routes` / `platform-observability.routes`）は通過
+  - C13一括回帰: C11対象Playwright/Vitest、C12対象Vitestを実行（Playwright 1件timeoutは同ファイル再実行で通過）
   - `npm run test:traceability` => `396 rows verified`
   - `npm run lint` => pass
 - 除外/未対象の扱い:
