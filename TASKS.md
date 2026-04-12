@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-coverage-c12b`
+- 現在の作業ブランチ: `test/TASK-449-coverage-c12c`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -366,7 +366,16 @@ Completed tasks should be marked:
     - [x] C12-B実行ログ: `npm run test:traceability`（`384 rows verified`）
     - [x] C12-B実行ログ: `npm run lint`（pass）
     - [x] C12-B: PR作成（#85）
-    - [ ] C12-C予定: `TRACE-386`〜`TRACE-397` のルート契約テスト補強と監査反映
+    - [x] C12-C着手: 作業ブランチ `test/TASK-449-coverage-c12c` を作成し、`TRACE-386`〜`TRACE-397` の実装順を固定
+    - [x] C12-C実装: `medical-records ai*` + `public reserve slots` + `reoffers phone-log` + `stores kpi-thresholds` のルート契約テストを追加（`TRACE-386`〜`TRACE-391`, `TRACE-394`, `TRACE-395`, `TRACE-397`）
+    - [x] C12-C実装: 既存テストへのTRACE紐付けを追記（`TRACE-392`, `TRACE-393`, `TRACE-396`）
+    - [x] C12-C実行ログ: `npx vitest run tests/medical-records.detail-routes.vitest.test.ts tests/public-reserve.routes.vitest.test.ts tests/reoffers.routes.vitest.test.ts tests/stores.additional-routes.vitest.test.ts tests/notifications-and-checkout.routes.vitest.test.ts tests/platform-observability.routes.vitest.test.ts`（42/42 pass）
+    - [x] C12-C実行ログ: `npm run test:traceability`（`396 rows verified`）
+    - [x] C12-C実行ログ: `npm run lint`（pass）
+    - [x] C12-C反映: `docs/test-coverage-unmapped-plan-2026-04-12.md` の `TRACE-386`〜`TRACE-397` を完了化
+    - [x] C12-C反映: `docs/test-coverage-audit-2026-04-09.md` へ `TRACE-386`〜`TRACE-397` を追記し、最終網羅判定を更新
+    - [x] C12-C: 監査更新後の再検証（`test:traceability`、`lint`）を完了
+    - [ ] C12-C予定: commit / push / PR作成
   - [ ] C13: C11/C12の一括回帰（対象Vitest/Playwright、`test:traceability`、`lint`）と監査レポート更新
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`

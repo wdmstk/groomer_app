@@ -81,4 +81,32 @@ describe('stores additional routes', () => {
     expect(response.status).toBe(401)
     await expect(response.json()).resolves.toEqual({ message: 'Unauthorized' })
   })
+
+  // TRACE-397
+  it('POST /api/stores/kpi-thresholds returns 401 when user is not authenticated', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      storeId: 'store-1',
+      supabase: {
+        auth: {
+          getUser: async () => ({
+            data: { user: null },
+          }),
+        },
+      },
+    })
+
+    const form = new FormData()
+    form.set('public_reserve_conflict_warn_threshold_percent', '15')
+    form.set('public_reserve_staff_bias_warn_threshold_percent', '75')
+    const { POST } = await import('../src/app/api/stores/kpi-thresholds/route')
+    const response = await POST(
+      new Request('http://localhost/api/stores/kpi-thresholds', {
+        method: 'POST',
+        body: form,
+      })
+    )
+
+    expect(response.status).toBe(401)
+    await expect(response.json()).resolves.toEqual({ message: 'Unauthorized' })
+  })
 })

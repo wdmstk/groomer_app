@@ -117,6 +117,7 @@ describe('notification and checkout routes', () => {
   })
 
   // TRACE-216
+  // TRACE-393
   it('POST /api/notification-templates/test-send returns 400 when target is missing', async () => {
     const { POST } = await import('../src/app/api/notification-templates/test-send/route')
     const response = await POST(

@@ -129,4 +129,20 @@ describe('reoffers routes', () => {
     expect(response.status).toBe(303)
     expect(response.headers.get('location')).toBe('http://localhost/customers/manage?view=alerts')
   })
+
+  // TRACE-395
+  it('POST /api/reoffers/[reoffer_id]/phone-log returns 400 for invalid result', async () => {
+    const { POST } = await import('../src/app/api/reoffers/[reoffer_id]/phone-log/route')
+    const response = await POST(
+      new Request('http://localhost/api/reoffers/reoffer-1/phone-log', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ result: 'invalid_status', note: 'memo' }),
+      }),
+      { params: Promise.resolve({ reoffer_id: 'reoffer-1' }) }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ message: 'result が不正です。' })
+  })
 })

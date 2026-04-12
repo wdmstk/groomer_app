@@ -156,4 +156,19 @@ describe('public reserve routes', () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ok: true, status: 'cancelled' })
   })
+
+  // TRACE-394
+  it('GET /api/public/reserve/[store_id]/slots returns 400 for invalid target_date format', async () => {
+    const { GET } = await import('../src/app/api/public/reserve/[store_id]/slots/route')
+    const response = await GET(
+      new Request('http://localhost/api/public/reserve/store-1/slots?menu_ids=menu-1&target_date=2026/04/12'),
+      { params: Promise.resolve({ store_id: 'store-1' }) }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      slots: [],
+      message: '候補日の形式が不正です。',
+    })
+  })
 })
