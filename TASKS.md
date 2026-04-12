@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-coverage-c11-c12-plan-first`
+- 現在の作業ブランチ: `test/TASK-449-coverage-c12b`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -360,7 +360,11 @@ Completed tasks should be marked:
     - [x] C12-A実行ログ: `npm run lint`（pass）
     - [x] C12-A: PR作成（#84）
     - [x] C12-A追補: `main` 取り込み時の競合解消（`TASKS.md` / `docs/test-coverage-audit-2026-04-09.md` / `docs/test-coverage-unmapped-plan-2026-04-12.md`）
-    - [ ] C12-B予定: `TRACE-373`〜`TRACE-385` のルート契約テスト補強と監査反映
+    - [x] C12-B着手: 作業ブランチ `test/TASK-449-coverage-c12b` を作成し、`TRACE-373`〜`TRACE-385` の実装順を固定
+    - [x] C12-B: `customers member-portal-link` + `dev support threads` + `hotel/hq/inventory` + `journal notify` のルート契約テスト補強（`TRACE-373`〜`TRACE-385`）
+    - [x] C12-B実行ログ: `npx vitest run tests/customers-public-contact.routes.vitest.test.ts tests/dev-support.routes.vitest.test.ts tests/hotel.routes.vitest.test.ts tests/hq.menu-template-routes.vitest.test.ts tests/inventory.routes.vitest.test.ts tests/journal.routes.vitest.test.ts`（46/46 pass）
+    - [x] C12-B実行ログ: `npm run test:traceability`（`384 rows verified`）
+    - [x] C12-B実行ログ: `npm run lint`（pass）
     - [ ] C12-C予定: `TRACE-386`〜`TRACE-397` のルート契約テスト補強と監査反映
   - [ ] C13: C11/C12の一括回帰（対象Vitest/Playwright、`test:traceability`、`lint`）と監査レポート更新
 - 全件洗い出し台帳:

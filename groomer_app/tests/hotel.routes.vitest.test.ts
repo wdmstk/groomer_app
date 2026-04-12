@@ -175,4 +175,20 @@ describe('hotel routes', () => {
       message: 'Only owner/admin can delete transport rows.',
     })
   })
+
+  // TRACE-377
+  it('PATCH /api/hotel/menu-items/[item_id] returns 400 for invalid JSON body', async () => {
+    const { PATCH } = await import('../src/app/api/hotel/menu-items/[item_id]/route')
+    const response = await PATCH(
+      new Request('http://localhost/api/hotel/menu-items/item-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: '{',
+      }),
+      { params: Promise.resolve({ item_id: 'item-1' }) }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ message: 'Invalid JSON body.' })
+  })
 })

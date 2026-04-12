@@ -204,4 +204,48 @@ describe('journal routes', () => {
     expect(response.status).toBe(500)
     await expect(response.json()).resolves.toEqual({ message: 'mapping failed' })
   })
+
+  // TRACE-385
+  it('POST /api/journal/entries/[entry_id]/notify returns 400 when recipient cannot be resolved', async () => {
+    requireJournalStoreContextMock.mockResolvedValueOnce({
+      ok: true,
+      storeId: 'store-1',
+      staffId: 'staff-1',
+      permissions: {
+        canCreate: true,
+        canPublish: true,
+        canViewInternal: true,
+      },
+      supabase: {
+        from(table: string) {
+          if (table === 'journal_entries') {
+            return {
+              select() {
+                return {
+                  eq() {
+                    return this
+                  },
+                  maybeSingle: async () => ({ data: { id: 'entry-1', customer_id: null, status: 'draft' }, error: null }),
+                }
+              },
+            }
+          }
+          throw new Error(`Unexpected table: ${table}`)
+        },
+      },
+    })
+
+    const { POST } = await import('../src/app/api/journal/entries/[entry_id]/notify/route')
+    const response = await POST(
+      new Request('http://localhost/api/journal/entries/entry-1/notify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ channel: 'line' }),
+      }),
+      { params: Promise.resolve({ entry_id: 'entry-1' }) }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ message: 'recipient_customer_id is required.' })
+  })
 })

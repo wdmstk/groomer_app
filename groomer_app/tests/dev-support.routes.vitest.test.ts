@@ -64,4 +64,55 @@ describe('dev support routes', () => {
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toEqual({ message: '更新内容がありません。' })
   })
+
+  // TRACE-375
+  it('GET /api/dev/support-chat/threads returns guard status/message when unauthorized', async () => {
+    requireDeveloperAdminMock.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      message: 'Forbidden',
+    })
+
+    const { GET } = await import('../src/app/api/dev/support-chat/threads/route')
+    const response = await GET()
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({ message: 'Forbidden' })
+  })
+
+  // TRACE-376
+  it('GET /api/dev/support-tickets/threads returns 500 when ticket query fails', async () => {
+    createAdminSupabaseClientMock.mockReturnValue({
+      from(table: string) {
+        if (table === 'stores') {
+          return {
+            select() {
+              return {
+                order: async () => ({ data: [{ id: 'store-1', name: '店舗1', is_active: true }], error: null }),
+              }
+            },
+          }
+        }
+        if (table === 'support_tickets') {
+          return {
+            select() {
+              return {
+                order() {
+                  return this
+                },
+                limit: async () => ({ data: null, error: { message: 'ticket query failed' } }),
+              }
+            },
+          }
+        }
+        throw new Error(`Unexpected table: ${table}`)
+      },
+    })
+
+    const { GET } = await import('../src/app/api/dev/support-tickets/threads/route')
+    const response = await GET()
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({ message: 'ticket query failed' })
+  })
 })

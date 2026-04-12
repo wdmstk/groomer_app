@@ -382,4 +382,67 @@ describe('inventory routes', () => {
     expect(csv).toContain('商品名,カテゴリ,単位,仕入先,現在庫,適正在庫,状態')
     expect(csv).toContain('シャンプー,用品,本,仕入先A,2,5,不足')
   })
+
+  // TRACE-382
+  it('POST /api/inventory/items/[item_id] returns 405 for unsupported method', async () => {
+    const { POST } = await import('../src/app/api/inventory/items/[item_id]/route')
+    const form = new FormData()
+    form.set('_method', 'patchx')
+    const response = await POST(
+      new Request('http://localhost/api/inventory/items/item-1', {
+        method: 'POST',
+        body: form,
+      }),
+      { params: Promise.resolve({ item_id: 'item-1' }) }
+    )
+
+    expect(response.status).toBe(405)
+    await expect(response.json()).resolves.toEqual({ message: 'Unsupported method' })
+  })
+
+  // TRACE-383
+  it('POST /api/inventory/purchase-order-items/[line_id] returns 405 for unsupported method', async () => {
+    const { POST } = await import('../src/app/api/inventory/purchase-order-items/[line_id]/route')
+    const form = new FormData()
+    form.set('_method', 'patch')
+    const response = await POST(
+      new Request('http://localhost/api/inventory/purchase-order-items/line-1', {
+        method: 'POST',
+        body: form,
+      }),
+      { params: Promise.resolve({ line_id: 'line-1' }) }
+    )
+
+    expect(response.status).toBe(405)
+    await expect(response.json()).resolves.toEqual({ message: 'Unsupported method' })
+  })
+
+  // TRACE-384
+  it('GET /api/inventory/reorder-suggestions returns 500 when query fails', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      storeId: 'store-1',
+      supabase: {
+        from(table: string) {
+          if (table !== 'inventory_reorder_suggestion_v') {
+            throw new Error(`Unexpected table: ${table}`)
+          }
+          return {
+            select() {
+              return {
+                eq() {
+                  return this
+                },
+                order: async () => ({ data: null, error: { message: 'reorder query failed' } }),
+              }
+            },
+          }
+        },
+      },
+    })
+    const { GET } = await import('../src/app/api/inventory/reorder-suggestions/route')
+    const response = await GET(new Request('http://localhost/api/inventory/reorder-suggestions'))
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({ message: 'reorder query failed' })
+  })
 })
