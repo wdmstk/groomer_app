@@ -372,6 +372,7 @@ export function ReserveForm({
         appointmentId?: string
         groupId?: string
         status?: string
+        reservationPaymentMethod?: 'none' | 'prepayment' | 'card_hold'
       }
       if (!response.ok) {
         setError(json.message ?? '予約申請に失敗しました。')
@@ -390,7 +391,13 @@ export function ReserveForm({
         ...prev,
       ])
       setCurrentGroupId(json.groupId ?? currentGroupId)
-      setMessage(json.message ?? '予約申請を受け付けました。')
+      const defaultMessage =
+        json.reservationPaymentMethod === 'prepayment'
+          ? '予約を受け付けました。事前決済対象として処理されます。'
+          : json.reservationPaymentMethod === 'card_hold'
+            ? '予約申請を受け付けました。承認後に決済処理されます。'
+            : '予約申請を受け付けました。'
+      setMessage(json.message ?? defaultMessage)
       setPetName('')
       setPetBreed('')
       setPetGender('')

@@ -4,6 +4,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { estimateDurationMinutes } from '@/lib/appointments/duration'
 import { ensureAppointmentGroupId } from '@/lib/appointments/groups'
 import { validateAppointmentConflict } from '@/lib/appointments/conflict'
+import { getInitialReservationPaymentState } from '@/lib/appointments/reservation-payment'
 import {
   buildSlotCandidates,
   getPublicReserveSlotConfig,
@@ -161,6 +162,17 @@ export async function createPublicReservation(params: {
       },
       async fetchSelectedMenus(storeId, menuIds) {
         return fetchSelectedMenus(admin, storeId, menuIds)
+      },
+      async fetchReservationPaymentSettings(storeId) {
+        const { data } = await admin
+          .from('store_reservation_payment_settings')
+          .select('prepayment_enabled, card_hold_enabled')
+          .eq('store_id', storeId)
+          .maybeSingle()
+        return {
+          prepayment_enabled: Boolean(data?.prepayment_enabled),
+          card_hold_enabled: Boolean(data?.card_hold_enabled),
+        }
       },
       async estimateDuration({ storeId, petId, staffId, menus }) {
         return estimateDurationMinutes({
@@ -328,8 +340,10 @@ export async function createPublicReservation(params: {
         menuSummaryNames,
         duration,
         status,
+        reservationPaymentMethod,
         notes,
       }) {
+        const reservationPaymentState = getInitialReservationPaymentState(reservationPaymentMethod)
         const { data, error } = await admin
           .from('appointments')
           .insert({
@@ -344,6 +358,10 @@ export async function createPublicReservation(params: {
             duration,
             status,
             notes,
+            reservation_payment_method: reservationPaymentMethod,
+            reservation_payment_status: reservationPaymentState.reservationPaymentStatus,
+            reservation_payment_paid_at: reservationPaymentState.reservationPaymentPaidAt,
+            reservation_payment_authorized_at: reservationPaymentState.reservationPaymentAuthorizedAt,
           })
           .select('id')
           .single()

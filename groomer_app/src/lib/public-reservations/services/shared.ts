@@ -20,6 +20,8 @@ export type PublicReservationMenuSnapshot = {
   is_instant_bookable?: boolean | null
 }
 
+export type PublicReservationPaymentMethod = 'none' | 'prepayment' | 'card_hold'
+
 export type PublicReservationInput = {
   customerName: string
   phoneNumber: string
