@@ -321,6 +321,7 @@ Completed tasks should be marked:
   - [x] C9実行ログ: `npx playwright test e2e/manual-pages.spec.ts --project=chromium`（13/13 pass）
   - [x] C9実行ログ: `npm run test:traceability`（`299 rows verified`）
   - [x] C9実行ログ: `npm run lint`（pass）
+  - [x] C9: PR作成（#81）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
