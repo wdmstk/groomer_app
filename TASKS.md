@@ -655,6 +655,7 @@ Completed tasks should be marked:
   - [x] [PAY-2-NOTE] 公開経路での決済導線実装（`card_hold` は checkout成功時に `authorized` へ反映）
   - [x] [PAY-7] `prepayment_enabled=false` の店舗でも会員証/公開予約の申請が失敗しないよう、決済方式をフォールバック（`card_hold` または `none`）させる
   - [x] [PAY-8] 予約決済設定（`prepayment_enabled` / `card_hold_enabled` / キャンセル率 / no-show課金モード）を `/settings?tab=public-reserve` から更新できるUIを追加
+  - [x] [PAY-9] 予約決済ルール保存時、チェックONでも `prepayment_enabled` / `card_hold_enabled` が有効化されない不具合を修正（FormData複数値対応）
   - [x] [IDX-1] `followups` テスト索引（TRACE対応）をTASKSへ記録
     E2E: `TRACE-001` `TRACE-002` `TRACE-003` `TRACE-048` `TRACE-049` -> `groomer_app/e2e/customers-followup-alerts.spec.ts`
     Route: `TRACE-050` `TRACE-051` `TRACE-052` `TRACE-053` `TRACE-054` `TRACE-055` `TRACE-056` `TRACE-057` `TRACE-058` `TRACE-059` `TRACE-060` `TRACE-061` `TRACE-062` `TRACE-063` `TRACE-064` `TRACE-065` `TRACE-066` `TRACE-067` `TRACE-068` `TRACE-069` `TRACE-070` `TRACE-071` `TRACE-072` `TRACE-073` `TRACE-074` `TRACE-075` `TRACE-076` `TRACE-077` `TRACE-078` `TRACE-079` `TRACE-080` `TRACE-081` `TRACE-082` `TRACE-083` `TRACE-084` `TRACE-085` `TRACE-086` `TRACE-088` `TRACE-089` `TRACE-090` -> `groomer_app/tests/followups.route.vitest.test.ts`
