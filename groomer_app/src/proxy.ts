@@ -285,6 +285,7 @@ export async function proxy(req: NextRequest) {
   const isPublicPath = publicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))
   const isInvitePath = pathname === '/invite' || pathname.startsWith('/invite/')
   const isLegalPath = pathname === '/legal' || pathname.startsWith('/legal/')
+  const isReservePath = pathname === '/reserve' || pathname.startsWith('/reserve/')
   const isBillingExempt = isBillingExemptPath(pathname)
 
   if (!user && !isPublicPath) {
@@ -306,7 +307,7 @@ export async function proxy(req: NextRequest) {
     }
   }
 
-  if (user && isPublicPath && !isInvitePath && !isLegalPath) {
+  if (user && isPublicPath && !isInvitePath && !isLegalPath && !isReservePath) {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
