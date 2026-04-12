@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-coverage-c12c`
+- 現在の作業ブランチ: `test/TASK-449-coverage-c13`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -348,7 +348,7 @@ Completed tasks should be marked:
   - [x] C11-C実行ログ: `npm run test:traceability`（`341 rows verified`）
   - [x] C11-C実行ログ: `npm run lint`（pass）
   - [x] C11: ページ未掲載36件をE2E/ページ契約テストで補強（`TRACE-307`〜`TRACE-342`）
-  - [ ] C12: API未掲載55件をルート契約テストで補強（`TRACE-343`〜`TRACE-397`）
+  - [x] C12: API未掲載55件をルート契約テストで補強（`TRACE-343`〜`TRACE-397`）
     - 実施順（固定）:
       1. C12-A（`TRACE-343`〜`TRACE-372`）: `admin/*` + `cron/*` + `appointments status/move` + `consents resend/revoke/versions`
       2. C12-B（`TRACE-373`〜`TRACE-385`）: `customers member-portal-link` + `dev support threads` + `hotel/hq/inventory` + `journal notify`
@@ -376,7 +376,20 @@ Completed tasks should be marked:
     - [x] C12-C反映: `docs/test-coverage-audit-2026-04-09.md` へ `TRACE-386`〜`TRACE-397` を追記し、最終網羅判定を更新
     - [x] C12-C: 監査更新後の再検証（`test:traceability`、`lint`）を完了
     - [x] C12-C: commit / push / PR作成（#86）
-  - [ ] C13: C11/C12の一括回帰（対象Vitest/Playwright、`test:traceability`、`lint`）と監査レポート更新
+  - [x] C13: C11/C12の一括回帰（対象Vitest/Playwright、`test:traceability`、`lint`）と監査レポート更新
+    - 実施順（固定）:
+      1. C13-A: C11対象のPlaywright/Vitest一括回帰（`TRACE-307`〜`TRACE-342`）
+      2. C13-B: C12対象のVitest一括回帰（`TRACE-343`〜`TRACE-397`）
+      3. C13-C: `test:traceability` / `lint` / 監査レポート更新 / PR作成
+    - [x] C13着手: 作業ブランチ `test/TASK-449-coverage-c13` を作成し、C13実施順を固定
+    - [x] C13-A実行ログ: `npx playwright test e2e/auth-pages.spec.ts e2e/billing-pages.spec.ts e2e/consents-signing.spec.ts e2e/dashboard-pages.spec.ts e2e/dashboard-log-pages.spec.ts e2e/dev-support.spec.ts e2e/member-portal-reissue.spec.ts e2e/member-portal-waitlist.spec.ts e2e/ops-today.spec.ts e2e/service-menus-list.spec.ts e2e/staffs-list.spec.ts --project=chromium`（20/21 pass, 1件timeout）
+    - [x] C13-A再実行ログ: `npx playwright test e2e/dashboard-log-pages.spec.ts --project=chromium`（2/2 pass）
+    - [x] C13-A実行ログ: `npx vitest run tests/app.remaining-pages-fixture.vitest.test.tsx tests/app.hq-pages.vitest.test.tsx tests/app.route-props-pages.vitest.test.tsx tests/app.remaining-heavy-pages.vitest.test.tsx tests/app.remaining-shared-and-client.vitest.test.tsx`（42/42 pass）
+    - [x] C13-B実行ログ: `npx vitest run tests/admin-cron.routes.vitest.test.ts tests/appointments.detail-routes.vitest.test.ts tests/appointments.reservation-payment-routes.vitest.test.ts tests/consents.routes.vitest.test.ts tests/platform-observability.routes.vitest.test.ts tests/customers-public-contact.routes.vitest.test.ts tests/dev-support.routes.vitest.test.ts tests/hotel.routes.vitest.test.ts tests/hq.menu-template-routes.vitest.test.ts tests/inventory.routes.vitest.test.ts tests/journal.routes.vitest.test.ts tests/medical-records.detail-routes.vitest.test.ts tests/public-reserve.routes.vitest.test.ts tests/reoffers.routes.vitest.test.ts tests/stores.additional-routes.vitest.test.ts tests/notifications-and-checkout.routes.vitest.test.ts`（130/130 pass）
+    - [x] C13-C実行ログ: `npm run test:traceability`（`396 rows verified`）
+    - [x] C13-C実行ログ: `npm run lint`（pass）
+    - [x] C13-C反映: `docs/test-coverage-audit-2026-04-09.md` を一括回帰完了状態へ更新
+    - [x] C13: commit / push / PR作成（#87）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
