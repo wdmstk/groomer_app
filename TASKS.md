@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-coverage-c9-manual-subroutes-batch`
+- 現在の作業ブランチ: `test/TASK-449-coverage-c10-billing-setup-pages-batch`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -322,6 +322,14 @@ Completed tasks should be marked:
   - [x] C9実行ログ: `npm run test:traceability`（`299 rows verified`）
   - [x] C9実行ログ: `npm run lint`（pass）
   - [x] C9: PR作成（#81）
+  - [x] C10: 課金ガードページ + setup-store移行ページのE2Eスモークを一括追加（`TRACE-301`〜`TRACE-306`）
+  - [x] C10-A: `/billing-required` の文言・決済導線表示契約を追加（`TRACE-301`）
+  - [x] C10-B: `/billing/success`（通常/初期設定代行/容量追加）の表示切替契約を追加（`TRACE-302`〜`TRACE-304`）
+  - [x] C10-C: `/dashboard/setup-store` `/settings/setup-store` のクエリ保持リダイレクト契約を追加（`TRACE-305`〜`TRACE-306`）
+  - [x] C10-D: C10全体のトレーサビリティ更新と回帰実行（対象Playwright、`test:traceability`、`lint`）
+  - [x] C10実行ログ: `npx playwright test e2e/billing-setup-pages.spec.ts --project=chromium`（6/6 pass）
+  - [x] C10実行ログ: `npm run test:traceability`（`305 rows verified`）
+  - [x] C10実行ログ: `npm run lint`（pass）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
