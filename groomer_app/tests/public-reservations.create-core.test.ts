@@ -107,6 +107,9 @@ test('createPublicReservationCore creates customer, pet, appointment, and cancel
     createGroupCancelToken({ groupId, storeId }) {
       return `${storeId}:${groupId}`
     },
+    createPaymentToken({ appointmentId, storeId }) {
+      return `pay:${storeId}:${appointmentId}`
+    },
   }
 
   const input: PublicReservationInput = {
@@ -133,6 +136,7 @@ test('createPublicReservationCore creates customer, pet, appointment, and cancel
   assert.equal(result.groupId, 'group-1')
   assert.equal(result.status, '予約申請')
   assert.equal(result.reservationPaymentMethod, 'card_hold')
+  assert.equal(result.paymentToken, 'pay:store-1:appointment-1')
   assert.equal(
     result.cancelUrl,
     'https://example.com/reserve/cancel?token=store-1%3Agroup-1'
@@ -235,6 +239,9 @@ test('createPublicReservationCore confirms instantly for instant-bookable menus'
     createGroupCancelToken() {
       return 'group-token'
     },
+    createPaymentToken() {
+      return 'payment-token'
+    },
   }
 
   const result = await createPublicReservationCore({
@@ -330,6 +337,9 @@ test('createPublicReservationCore rejects when card_hold setting is disabled for
     },
     createGroupCancelToken() {
       return 'group-token'
+    },
+    createPaymentToken() {
+      return 'payment-token'
     },
   }
 
@@ -434,6 +444,9 @@ test('createPublicReservationCore rejects when prepayment setting is disabled fo
     createGroupCancelToken() {
       return 'group-token'
     },
+    createPaymentToken() {
+      return 'payment-token'
+    },
   }
 
   await assert.rejects(
@@ -536,6 +549,9 @@ test('createPublicReservationCore rejects instant confirmation when slot conflic
     },
     createGroupCancelToken() {
       return 'group-token'
+    },
+    createPaymentToken() {
+      return 'payment-token'
     },
   }
 
@@ -640,6 +656,9 @@ test('createPublicReservationCore rejects instant confirmation when start is out
     },
     createGroupCancelToken() {
       return 'group-token'
+    },
+    createPaymentToken() {
+      return 'payment-token'
     },
   }
 

@@ -1,4 +1,5 @@
 import { createReservationCancelToken } from '@/lib/reservation-cancel-token'
+import { createReservationPaymentToken } from '@/lib/reservation-cancel-token'
 import { verifySignedPetQrPayload } from '@/lib/qr/pet-profile-signature'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { estimateDurationMinutes } from '@/lib/appointments/duration'
@@ -344,6 +345,14 @@ export async function createPublicReservation(params: {
         notes,
       }) {
         const reservationPaymentState = getInitialReservationPaymentState(reservationPaymentMethod)
+        const normalizedReservationPaymentState =
+          reservationPaymentMethod === 'card_hold'
+            ? {
+                reservationPaymentStatus: 'unpaid',
+                reservationPaymentPaidAt: null,
+                reservationPaymentAuthorizedAt: null,
+              }
+            : reservationPaymentState
         const { data, error } = await admin
           .from('appointments')
           .insert({
@@ -359,9 +368,9 @@ export async function createPublicReservation(params: {
             status,
             notes,
             reservation_payment_method: reservationPaymentMethod,
-            reservation_payment_status: reservationPaymentState.reservationPaymentStatus,
-            reservation_payment_paid_at: reservationPaymentState.reservationPaymentPaidAt,
-            reservation_payment_authorized_at: reservationPaymentState.reservationPaymentAuthorizedAt,
+            reservation_payment_status: normalizedReservationPaymentState.reservationPaymentStatus,
+            reservation_payment_paid_at: normalizedReservationPaymentState.reservationPaymentPaidAt,
+            reservation_payment_authorized_at: normalizedReservationPaymentState.reservationPaymentAuthorizedAt,
           })
           .select('id')
           .single()
@@ -400,6 +409,9 @@ export async function createPublicReservation(params: {
       },
       createGroupCancelToken({ appointmentId, storeId, groupId }) {
         return createReservationCancelToken({ appointmentId, storeId, groupId })
+      },
+      createPaymentToken({ appointmentId, storeId }) {
+        return createReservationPaymentToken({ appointmentId, storeId })
       },
     },
   })

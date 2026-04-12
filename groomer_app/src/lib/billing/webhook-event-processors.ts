@@ -127,6 +127,35 @@ async function markReservationPrepaymentAsPaid(params: {
     .eq('id', params.appointmentId)
 }
 
+async function markReservationCardHoldAuthorized(params: {
+  storeId: string
+  appointmentId: string
+}) {
+  const admin = createAdminSupabaseClient()
+  const { data: appointment, error: appointmentError } = await admin
+    .from('appointments')
+    .select('id, reservation_payment_method, reservation_payment_status, reservation_payment_authorized_at')
+    .eq('store_id', params.storeId)
+    .eq('id', params.appointmentId)
+    .maybeSingle()
+
+  if (appointmentError || !appointment) return
+  if (normalizeReservationPaymentMethod(appointment.reservation_payment_method) !== 'card_hold') return
+  if (appointment.reservation_payment_status === 'authorized' || appointment.reservation_payment_status === 'captured') {
+    return
+  }
+
+  await admin
+    .from('appointments')
+    .update({
+      reservation_payment_status: 'authorized',
+      reservation_payment_authorized_at:
+        appointment.reservation_payment_authorized_at ?? new Date().toISOString(),
+    })
+    .eq('store_id', params.storeId)
+    .eq('id', params.appointmentId)
+}
+
 export async function processStripeBillingEvent(event: StripeWebhookEvent) {
   const subscriptionId = event.data?.object?.subscription ?? null
 
@@ -184,6 +213,34 @@ export async function processStripeBillingEvent(event: StripeWebhookEvent) {
           storeId: metadata.store_id,
           provider: 'stripe',
           operationType: 'reservation_prepayment_paid',
+          amountJpy: parseAmountFromMetadata(metadata) ?? null,
+          reason: 'stripe_checkout_session_completed',
+          status: 'succeeded',
+          resultMessage: checkoutResult,
+        })
+      }
+    }
+
+    const isReservationCardHold =
+      object?.mode === 'payment' &&
+      object?.payment_status === 'paid' &&
+      metadata.operation_type === 'reservation_card_hold'
+    if (isReservationCardHold && metadata.store_id && metadata.appointment_id) {
+      await markReservationCardHoldAuthorized({
+        storeId: metadata.store_id,
+        appointmentId: metadata.appointment_id,
+      })
+      const alreadyDone = await hasBillingOperation({
+        storeId: metadata.store_id,
+        provider: 'stripe',
+        operationType: 'reservation_card_hold_authorized',
+        resultMessage: checkoutResult,
+      })
+      if (!alreadyDone) {
+        await insertBillingOperation({
+          storeId: metadata.store_id,
+          provider: 'stripe',
+          operationType: 'reservation_card_hold_authorized',
           amountJpy: parseAmountFromMetadata(metadata) ?? null,
           reason: 'stripe_checkout_session_completed',
           status: 'succeeded',
@@ -398,6 +455,31 @@ export async function processKomojuBillingEvent(event: KomojuWebhookEvent) {
           storeId: metadata.store_id,
           provider: 'komoju',
           operationType: 'reservation_prepayment_paid',
+          amountJpy: parseAmountFromMetadata(metadata) ?? event.data?.payment?.amount ?? null,
+          reason: 'komoju_payment_succeeded',
+          status: 'succeeded',
+          resultMessage: paymentResult,
+        })
+      }
+    }
+
+    const isReservationCardHold = metadata.operation_type === 'reservation_card_hold'
+    if (isReservationCardHold && metadata.store_id && metadata.appointment_id) {
+      await markReservationCardHoldAuthorized({
+        storeId: metadata.store_id,
+        appointmentId: metadata.appointment_id,
+      })
+      const alreadyDone = await hasBillingOperation({
+        storeId: metadata.store_id,
+        provider: 'komoju',
+        operationType: 'reservation_card_hold_authorized',
+        resultMessage: paymentResult,
+      })
+      if (!alreadyDone) {
+        await insertBillingOperation({
+          storeId: metadata.store_id,
+          provider: 'komoju',
+          operationType: 'reservation_card_hold_authorized',
           amountJpy: parseAmountFromMetadata(metadata) ?? event.data?.payment?.amount ?? null,
           reason: 'komoju_payment_succeeded',
           status: 'succeeded',

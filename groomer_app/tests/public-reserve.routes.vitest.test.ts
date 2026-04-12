@@ -96,6 +96,7 @@ describe('public reserve routes', () => {
       groupId: 'group-1',
       status: '予約済',
       assignedStaffId: 'staff-1',
+      paymentToken: 'pay-token-1',
     })
 
     const { POST } = await import('../src/app/api/public/reserve/[store_id]/route')
@@ -114,6 +115,8 @@ describe('public reserve routes', () => {
       groupId: 'group-1',
       status: '予約済',
       assignedStaffId: 'staff-1',
+      paymentToken: 'pay-token-1',
+      payment_token: 'pay-token-1',
     })
     expect(insertMock).toHaveBeenCalledTimes(2)
   })

@@ -94,6 +94,7 @@ export type CreatePublicReservationDeps = {
   }): Promise<void>
   createCancelToken(params: { appointmentId: string; storeId: string }): string
   createGroupCancelToken(params: { appointmentId: string; storeId: string; groupId: string }): string
+  createPaymentToken(params: { appointmentId: string; storeId: string }): string
 }
 
 async function resolveCustomerAndPetCore(params: {
@@ -299,6 +300,10 @@ export async function createPublicReservationCore(params: {
     storeId,
     groupId,
   })
+  const paymentToken = deps.createPaymentToken({
+    appointmentId,
+    storeId,
+  })
 
   return {
     message: isInstantReservation
@@ -312,5 +317,6 @@ export async function createPublicReservationCore(params: {
     reservationPaymentMethod,
     assignedStaffId: staffId,
     cancelUrl: `${requestOrigin}/reserve/cancel?token=${encodeURIComponent(groupCancelToken || cancelToken)}`,
+    paymentToken,
   }
 }
