@@ -359,6 +359,7 @@ Completed tasks should be marked:
     - [x] C12-A実行ログ: `npm run test:traceability`（`371 rows verified`）
     - [x] C12-A実行ログ: `npm run lint`（pass）
     - [x] C12-A: PR作成（#84）
+    - [ ] C12-A追補: `main` 取り込み時の競合解消（`TASKS.md` / `docs/test-coverage-audit-2026-04-09.md` / `docs/test-coverage-unmapped-plan-2026-04-12.md`）
     - [ ] C12-B予定: `TRACE-373`〜`TRACE-385` のルート契約テスト補強と監査反映
     - [ ] C12-C予定: `TRACE-386`〜`TRACE-397` のルート契約テスト補強と監査反映
   - [ ] C13: C11/C12の一括回帰（対象Vitest/Playwright、`test:traceability`、`lint`）と監査レポート更新
