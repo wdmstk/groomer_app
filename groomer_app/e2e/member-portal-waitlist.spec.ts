@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('会員ポータル空き枠待ち', () => {
+  // TRACE-335
   test('会員ポータルから空き枠待ちを登録して解除できる', async ({ page }) => {
     let saved = false
 

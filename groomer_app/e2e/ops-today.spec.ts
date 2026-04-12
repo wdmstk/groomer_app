@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('モバイル当日運用', () => {
+  // TRACE-336
   test('KPI、予約カード、固定アクションを表示できる', async ({ page }) => {
     await page.goto('/ops/today')
 

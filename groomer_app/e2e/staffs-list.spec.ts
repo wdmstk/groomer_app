@@ -21,6 +21,7 @@ test.describe('スタッフ一覧', () => {
     })
   })
 
+  // TRACE-342
   test('ライトプラン上限と権限ラベル、招待一覧を表示できる', async ({ page }) => {
     await page.goto('/staffs?tab=list')
 

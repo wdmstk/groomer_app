@@ -115,13 +115,14 @@ describe('remaining fixture-friendly pages', () => {
     expect(screen.getByTestId('consent-management-panel')).toBeTruthy()
   })
 
-  it('renders customers page in e2e mode', async () => {
+  it('redirects customers page to customers manage', async () => {
     vi.resetModules()
     const { default: CustomersPage } = await import('../src/app/customers/page')
-    render(await CustomersPage({ searchParams: Promise.resolve({}) }))
-    expect(screen.getByRole('heading', { level: 1, name: '顧客管理' })).toBeTruthy()
+    CustomersPage()
+    expect(redirectMock).toHaveBeenCalledWith('/customers/manage')
   })
 
+  // TRACE-314
   it('redirects dev appointments-kpi page to dashboard appointments-kpi', async () => {
     process.env.PLAYWRIGHT_E2E = ''
     const { default: DevAppointmentsKpiPage } = await import('../src/app/dev/appointments-kpi/page')
@@ -129,6 +130,7 @@ describe('remaining fixture-friendly pages', () => {
     expect(redirectMock).toHaveBeenCalledWith('/dashboard/appointments-kpi')
   })
 
+  // TRACE-316
   it('renders dev cron page when authorized', async () => {
     process.env.PLAYWRIGHT_E2E = ''
     requireDeveloperAdminMock.mockResolvedValue({ ok: true })
@@ -137,6 +139,7 @@ describe('remaining fixture-friendly pages', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Cron 監視' })).toBeTruthy()
   })
 
+  // TRACE-315
   it('renders billing alerts access denied message when unauthorized', async () => {
     process.env.PLAYWRIGHT_E2E = ''
     requireDeveloperAdminMock.mockResolvedValue({ ok: false })
@@ -145,6 +148,7 @@ describe('remaining fixture-friendly pages', () => {
     expect(screen.getByText('このページはサポート管理者のみアクセスできます。')).toBeTruthy()
   })
 
+  // TRACE-317
   it('renders subscriptions access denied message when unauthorized', async () => {
     process.env.PLAYWRIGHT_E2E = ''
     requireDeveloperAdminMock.mockResolvedValue({ ok: false })
@@ -160,6 +164,7 @@ describe('remaining fixture-friendly pages', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'ペットホテル管理' })).toBeTruthy()
   })
 
+  // TRACE-324 TRACE-325 TRACE-326 TRACE-327 TRACE-328 TRACE-329 TRACE-330 TRACE-331
   it('renders inventory pages in e2e mode', async () => {
     const targets: Array<{ name: string; importer: () => Promise<{ default: (arg?: any) => Promise<JSX.Element> }> }> = [
       { name: '在庫履歴', importer: () => import('../src/app/inventory/history/page') },
@@ -202,13 +207,14 @@ describe('remaining fixture-friendly pages', () => {
     expect(screen.getByRole('heading', { level: 1, name: '会計管理' })).toBeTruthy()
   })
 
-  it('renders pets page in e2e mode', async () => {
+  it('redirects pets page to customers manage pets view', async () => {
     vi.resetModules()
     const { default: PetsPage } = await import('../src/app/pets/page')
-    render(await PetsPage({ searchParams: Promise.resolve({}) }))
-    expect(screen.getByRole('heading', { level: 1, name: 'ペット管理' })).toBeTruthy()
+    PetsPage()
+    expect(redirectMock).toHaveBeenCalledWith('/customers/manage?view=pets')
   })
 
+  // TRACE-337
   it('renders receipt page in e2e mode', async () => {
     vi.resetModules()
     const { default: ReceiptPage } = await import('../src/app/receipts/[payment_id]/page')

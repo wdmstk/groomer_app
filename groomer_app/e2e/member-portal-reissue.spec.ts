@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('会員ポータル再発行リクエスト', () => {
+  // TRACE-334
   test('期限切れ時の再発行リクエストを送信できる', async ({ page }) => {
     let called = false
 
