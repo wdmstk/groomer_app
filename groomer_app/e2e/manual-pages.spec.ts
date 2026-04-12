@@ -78,4 +78,55 @@ test.describe('マニュアル系ページ', () => {
     await expect(page.getByRole('link', { name: '前へ' })).toHaveAttribute('href', '/manual/signup?flow=flow-initial')
     await expect(page.getByRole('link', { name: '次へ' })).toHaveAttribute('href', '/manual/setup-store?flow=flow-initial')
   })
+
+  // TRACE-295
+  test('dev manual glossary は未許可ユーザーにアクセス制限メッセージを表示する', async ({ page }) => {
+    await gotoStable(page, '/dev/manual/glossary')
+
+    await expect(page.getByRole('heading', { level: 1, name: '管理者マニュアル用語集' })).toBeVisible()
+    await expect(page.getByText('このページはサポート管理者のみアクセスできます。')).toBeVisible()
+  })
+
+  // TRACE-296
+  test('dev manual section は未許可ユーザーにアクセス制限メッセージを表示する', async ({ page }) => {
+    await gotoStable(page, '/dev/manual/dev-access')
+
+    await expect(page.getByRole('heading', { level: 1, name: '管理者マニュアル' })).toBeVisible()
+    await expect(page.getByText('このページはサポート管理者のみアクセスできます。')).toBeVisible()
+  })
+
+  // TRACE-297
+  test('hq manual glossary は機能アクセス制限時にダッシュボードへリダイレクトする', async ({ page }) => {
+    await gotoStable(page, '/hq/manual/glossary')
+
+    await expect(page).toHaveURL(/\/dashboard/)
+    await expect(page.getByRole('heading', { level: 1, name: 'ダッシュボード' })).toBeVisible()
+  })
+
+  // TRACE-298
+  test('hq manual section は機能アクセス制限時にダッシュボードへリダイレクトする', async ({ page }) => {
+    await gotoStable(page, '/hq/manual/hq-access')
+
+    await expect(page).toHaveURL(/\/dashboard/)
+    await expect(page.getByRole('heading', { level: 1, name: 'ダッシュボード' })).toBeVisible()
+  })
+
+  // TRACE-299
+  test('manual section の別flow指定時も前後導線に同じ flow が引き継がれる', async ({ page }) => {
+    await gotoStable(page, '/manual/appointments?flow=flow-web-reserve')
+
+    await expect(page.getByText('前へ').first()).toHaveClass(/text-gray-400/)
+    await expect(page.getByRole('link', { name: '次へ' })).toHaveAttribute('href', '/manual/public-reserve?flow=flow-web-reserve')
+  })
+
+  // TRACE-300
+  test('manual section の不正flow指定時は包含flowへフォールバックする', async ({ page }) => {
+    await gotoStable(page, '/manual/appointments?flow=not-existing-flow')
+
+    await expect(page.getByRole('link', { name: '前へ' })).toHaveAttribute(
+      'href',
+      '/manual/dashboard?flow=flow-multi-store-single-user',
+    )
+    await expect(page.getByText('次へ').first()).toHaveClass(/text-gray-400/)
+  })
 })
