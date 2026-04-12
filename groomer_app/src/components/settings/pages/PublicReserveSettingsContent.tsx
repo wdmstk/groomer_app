@@ -1,6 +1,8 @@
 import { Card } from '@/components/ui/Card'
+import Link from 'next/link'
 import { settingsPageFixtures } from '@/lib/e2e/settings-page-fixtures'
 import { getSettingsManageLabel } from '@/lib/settings/presentation'
+import { buildPublicReservePath } from '@/lib/public-reservations/presentation'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
 export const dynamic = 'force-dynamic'
@@ -13,6 +15,7 @@ export default async function PublicReserveSettingsContent() {
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: settingsPageFixtures.storeId }
     : await createStoreScopedClient()
+  const publicReservePath = buildPublicReservePath(storeId)
   const db = supabase as NonNullable<typeof supabase>
   const manageState = isPlaywrightE2E
     ? settingsPageFixtures.manageState
@@ -72,6 +75,27 @@ export default async function PublicReserveSettingsContent() {
           お客様向け予約で使う「予約受付ルール」と「アラート基準」を設定します。
         </p>
       </div>
+
+      <Card className="border-emerald-200 bg-emerald-50">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-emerald-900">店舗共通の新規顧客向けWEB予約URL</p>
+            <p className="mt-1 text-xs text-emerald-900">
+              <Link href={publicReservePath} target="_blank" rel="noreferrer" className="underline">
+                {publicReservePath}
+              </Link>
+            </p>
+          </div>
+          <Link
+            href={publicReservePath}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-9 items-center justify-center rounded bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-800"
+          >
+            公開予約フォームを開く
+          </Link>
+        </div>
+      </Card>
 
       {!canManage ? (
         <Card>

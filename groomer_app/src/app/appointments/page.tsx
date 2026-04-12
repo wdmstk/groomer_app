@@ -17,6 +17,7 @@ import {
   getReservationPaymentBadge,
 } from '@/lib/appointments/reservation-payment'
 import type { DisplayDelayAlert } from '@/lib/appointments/calendar-presentation'
+import { buildPublicReservePath } from '@/lib/public-reservations/presentation'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -215,6 +216,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: appointmentsPageFixtures.storeId }
     : await createStoreScopedClient()
+  const publicReservePath = buildPublicReservePath(storeId)
   const db = supabase as NonNullable<typeof supabase>
 
   const appointments = isPlaywrightE2E
@@ -517,7 +519,22 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold text-gray-900">予約管理</h1>
+          <p className="text-xs text-gray-500">
+            店舗共通の新規顧客向け予約フォーム:
+            {' '}
+            <Link href={publicReservePath} target="_blank" rel="noreferrer" className="text-emerald-700 underline">
+              {publicReservePath}
+            </Link>
+          </p>
         </div>
+        <Link
+          href={publicReservePath}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-9 items-center justify-center rounded border border-emerald-300 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+        >
+          公開予約フォームを開く
+        </Link>
       </div>
 
       <div className="flex items-center gap-4 border-b">
