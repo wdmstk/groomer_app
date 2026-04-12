@@ -116,6 +116,7 @@ describe('customers/pets/staffs/service-menus routes', () => {
   })
 
   // TRACE-220
+  // TRACE-374
   it('POST /api/customers/[customer_id]/member-portal-link returns 401 when user is unauthenticated', async () => {
     createStoreScopedClientMock.mockResolvedValue({
       storeId: 'store-1',
@@ -137,6 +138,7 @@ describe('customers/pets/staffs/service-menus routes', () => {
   })
 
   // TRACE-221
+  // TRACE-373
   it('POST /api/customers/[customer_id]/member-portal-link/revoke returns 404 when customer does not exist', async () => {
     createStoreScopedClientMock.mockResolvedValue({
       storeId: 'store-1',

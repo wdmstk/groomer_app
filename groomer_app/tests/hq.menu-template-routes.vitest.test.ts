@@ -120,4 +120,56 @@ describe('hq menu-template routes', () => {
     expect(response.status).toBe(401)
     await expect(response.json()).resolves.toEqual({ message: 'ログインが必要です。' })
   })
+
+  // TRACE-379
+  it('GET /api/hq/hotel-menu-template-deliveries returns 401 when not authenticated', async () => {
+    createServerSupabaseClientMock.mockResolvedValue(createHqSupabaseMock({ authenticated: false }))
+    const { GET } = await import('../src/app/api/hq/hotel-menu-template-deliveries/route')
+    const response = await GET(new Request('http://localhost/api/hq/hotel-menu-template-deliveries'))
+
+    expect(response.status).toBe(401)
+    await expect(response.json()).resolves.toEqual({ message: 'ログインが必要です。' })
+  })
+
+  // TRACE-380
+  it('GET /api/hq/hotel-menu-templates returns 401 when not authenticated', async () => {
+    createServerSupabaseClientMock.mockResolvedValue(createHqSupabaseMock({ authenticated: false }))
+    const { GET } = await import('../src/app/api/hq/hotel-menu-templates/route')
+    const response = await GET(new Request('http://localhost/api/hq/hotel-menu-templates'))
+
+    expect(response.status).toBe(401)
+    await expect(response.json()).resolves.toEqual({ message: 'ログインが必要です。' })
+  })
+
+  // TRACE-378
+  it('POST /api/hq/hotel-menu-template-deliveries/[delivery_id]/approve returns 400 for invalid JSON body', async () => {
+    const { POST } = await import('../src/app/api/hq/hotel-menu-template-deliveries/[delivery_id]/approve/route')
+    const response = await POST(
+      new Request('http://localhost/api/hq/hotel-menu-template-deliveries/delivery-1/approve', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{',
+      }),
+      { params: Promise.resolve({ delivery_id: 'delivery-1' }) }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ message: 'JSON ボディを指定してください。' })
+  })
+
+  // TRACE-381
+  it('POST /api/hq/menu-template-deliveries/[delivery_id]/approve returns 400 for invalid JSON body', async () => {
+    const { POST } = await import('../src/app/api/hq/menu-template-deliveries/[delivery_id]/approve/route')
+    const response = await POST(
+      new Request('http://localhost/api/hq/menu-template-deliveries/delivery-1/approve', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{',
+      }),
+      { params: Promise.resolve({ delivery_id: 'delivery-1' }) }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ message: 'JSON ボディを指定してください。' })
+  })
 })
