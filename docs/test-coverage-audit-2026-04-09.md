@@ -25,7 +25,7 @@
 
 ## 最終網羅判定（2026-04-12）
 - 判定: `大塊PR（B1〜B4 + C1〜C6-D）で優先領域のルート契約テスト補強を継続中`
-- 追加TRACE: `TRACE-091`〜`TRACE-294`（B1〜B4 + C1 + C2 + C3 + C4 + C5 + C6-A + C6-B + C6-C + C6-D + C7-A + C7-B + C7-C + C8）
+- 追加TRACE: `TRACE-091`〜`TRACE-300`（B1〜B4 + C1 + C2 + C3 + C4 + C5 + C6-A + C6-B + C6-C + C6-D + C7-A + C7-B + C7-C + C8 + C9）
 - 直近検証結果:
   - C6-D追加分の対象Vitest（`medical-records.detail-routes` / `journal.routes` / `dev-support.routes` / `stores.additional-routes`）は通過
   - `npm run test:traceability` => `278 rows verified`
@@ -348,6 +348,12 @@
 | TRACE-292 | dev manual: 未許可アクセス時の表示契約                                                                                               | `e2e/manual-pages.spec.ts`                                            | `/dev/manual` でアクセス制限メッセージを表示する                                                                           |
 | TRACE-293 | hq manual: 機能アクセス制限時のリダイレクト契約                                                                                       | `e2e/manual-pages.spec.ts`                                            | `/hq/manual` へアクセス時、feature gate により `/dashboard` へ遷移する                                                     |
 | TRACE-294 | セクションページ: flowクエリの前後導線引き継ぎ契約                                                                                   | `e2e/manual-pages.spec.ts`                                            | `/manual/login?flow=flow-initial` で `前へ/次へ` リンクに `flow` クエリが保持される                                        |
+| TRACE-295 | dev manual glossary: 未許可アクセス時の表示契約                                                                                      | `e2e/manual-pages.spec.ts`                                            | `/dev/manual/glossary` でアクセス制限メッセージを表示する                                                                   |
+| TRACE-296 | dev manual section: 未許可アクセス時の表示契約                                                                                       | `e2e/manual-pages.spec.ts`                                            | `/dev/manual/[sectionId]` でアクセス制限メッセージを表示する                                                                |
+| TRACE-297 | hq manual glossary: 機能アクセス制限時のリダイレクト契約                                                                             | `e2e/manual-pages.spec.ts`                                            | `/hq/manual/glossary` へアクセス時、feature gate により `/dashboard` へ遷移する                                             |
+| TRACE-298 | hq manual section: 機能アクセス制限時のリダイレクト契約                                                                              | `e2e/manual-pages.spec.ts`                                            | `/hq/manual/[sectionId]` へアクセス時、feature gate により `/dashboard` へ遷移する                                          |
+| TRACE-299 | manual section: 別flow指定時の前後導線引き継ぎ契約                                                                                   | `e2e/manual-pages.spec.ts`                                            | `/manual/appointments?flow=flow-web-reserve` で `前へ/次へ` に同一 flow が保持される                                        |
+| TRACE-300 | manual section: 不正flow指定時のフォールバック契約                                                                                   | `e2e/manual-pages.spec.ts`                                            | `/manual/appointments?flow=not-existing-flow` で包含flow（`flow-reception`）へ自動フォールバックする                       |
 | TRACE-004 | followups status API: 不正statusの拒否                                                                                                | `tests/followups.status-route.vitest.test.ts`                         | `bad_status` で `400` + `有効な status を指定してください。`                                                             |
 | TRACE-005 | followups status API: snoozed必須項目                                                                                                 | `tests/followups.status-route.vitest.test.ts`                         | `status=snoozed` かつ `snoozed_until` 欠落で `400`                                                                       |
 | TRACE-032 | followups status API: 不正snoozed_untilの拒否                                                                                         | `tests/followups.status-route.vitest.test.ts`                         | `status=snoozed` かつ無効日付 `snoozed_until` で `400`                                                                   |

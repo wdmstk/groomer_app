@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-coverage-c8-manual-pages-batch`
+- 現在の作業ブランチ: `test/TASK-449-coverage-c9-manual-subroutes-batch`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -313,6 +313,15 @@ Completed tasks should be marked:
   - [x] C8実行ログ: `npm run test:traceability`（`293 rows verified`）
   - [x] C8実行ログ: `npm run lint`（pass）
   - [x] C8: PR作成（#80）
+  - [x] C9: manualサブルート（dev/hq glossary・section）のE2Eスモークを一括追加（`TRACE-295`〜`TRACE-300`）
+  - [x] C9-A: `/dev/manual/glossary` `/dev/manual/[sectionId]` のアクセス制御時表示契約を追加（`TRACE-295`〜`TRACE-296`）
+  - [x] C9-B: `/hq/manual/glossary` `/hq/manual/[sectionId]` のfeature gate/アクセス制御契約を追加（`TRACE-297`〜`TRACE-298`）
+  - [x] C9-C: manualサブルートのflow導線契約を追加（`TRACE-299`〜`TRACE-300`）
+  - [x] C9-D: C9全体のトレーサビリティ更新と回帰実行（対象Playwright、`test:traceability`、`lint`）
+  - [x] C9実行ログ: `npx playwright test e2e/manual-pages.spec.ts --project=chromium`（13/13 pass）
+  - [x] C9実行ログ: `npm run test:traceability`（`299 rows verified`）
+  - [x] C9実行ログ: `npm run lint`（pass）
+  - [x] C9: PR作成（#81）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
