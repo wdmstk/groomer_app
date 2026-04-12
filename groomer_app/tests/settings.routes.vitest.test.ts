@@ -361,6 +361,41 @@ describe('settings routes', () => {
     )
   })
 
+  it('POST /api/settings/reservation-payment-settings uses latest form value for checkbox fields', async () => {
+    const scoped = createSettingsSupabase({ role: 'owner' })
+    createStoreScopedClientMock.mockResolvedValue({ supabase: scoped.supabase, storeId: 'store-1' })
+
+    const { POST } = await import('../src/app/api/settings/reservation-payment-settings/route')
+    const form = new FormData()
+    form.append('prepayment_enabled', 'false')
+    form.append('prepayment_enabled', 'true')
+    form.append('card_hold_enabled', 'false')
+    form.append('cancellation_day_before_percent', '10')
+    form.append('cancellation_same_day_percent', '20')
+    form.append('cancellation_no_show_percent', '30')
+    form.append('no_show_charge_mode', 'auto')
+
+    const response = await POST(
+      new Request('http://localhost/api/settings/reservation-payment-settings', {
+        method: 'POST',
+        body: form,
+      })
+    )
+
+    expect(response.status).toBe(307)
+    expect(scoped.reservationUpsertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prepayment_enabled: true,
+        card_hold_enabled: false,
+        cancellation_day_before_percent: 10,
+        cancellation_same_day_percent: 20,
+        cancellation_no_show_percent: 30,
+        no_show_charge_mode: 'auto',
+      }),
+      { onConflict: 'store_id' }
+    )
+  })
+
   // TRACE-196
   it('POST /api/settings/storage-policy returns membership guard error', async () => {
     requireOwnerStoreMembershipMock.mockResolvedValueOnce({

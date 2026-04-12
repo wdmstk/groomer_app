@@ -111,7 +111,14 @@ export async function POST(request: Request) {
   const formData = isForm ? await request.formData() : null
   const bodyRaw: unknown = formData ? null : await request.json().catch(() => null)
   const body = asObjectOrNull(bodyRaw)
-  const read = (key: string) => formData?.get(key) ?? body?.[key]
+  const read = (key: string) => {
+    if (formData) {
+      const values = formData.getAll(key)
+      if (values.length === 0) return null
+      return values.at(-1) ?? null
+    }
+    return body?.[key]
+  }
 
   const payload = {
     store_id: guard.storeId,

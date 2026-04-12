@@ -4,6 +4,7 @@ import { settingsPageFixtures } from '@/lib/e2e/settings-page-fixtures'
 import { getSettingsManageLabel } from '@/lib/settings/presentation'
 import { buildPublicReservePath } from '@/lib/public-reservations/presentation'
 import { createStoreScopedClient } from '@/lib/supabase/store'
+import { DEFAULT_RESERVATION_PAYMENT_SETTINGS } from '@/lib/appointments/reservation-payment'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -66,6 +67,38 @@ export default async function PublicReserveSettingsContent() {
     Number(storeSettings?.public_reserve_business_end_hour_jst ?? 19) || 19
   const publicReserveMinLeadMinutes =
     Number(storeSettings?.public_reserve_min_lead_minutes ?? 60) || 60
+  const reservationPaymentSettings = isPlaywrightE2E
+    ? DEFAULT_RESERVATION_PAYMENT_SETTINGS
+    : (
+        await db
+          .from('store_reservation_payment_settings')
+          .select(
+            'prepayment_enabled, card_hold_enabled, cancellation_day_before_percent, cancellation_same_day_percent, cancellation_no_show_percent, no_show_charge_mode'
+          )
+          .eq('store_id', storeId)
+          .maybeSingle()
+      ).data
+  const prepaymentEnabled =
+    reservationPaymentSettings?.prepayment_enabled ?? DEFAULT_RESERVATION_PAYMENT_SETTINGS.prepayment_enabled
+  const cardHoldEnabled =
+    reservationPaymentSettings?.card_hold_enabled ?? DEFAULT_RESERVATION_PAYMENT_SETTINGS.card_hold_enabled
+  const cancellationDayBeforePercent =
+    Number(
+      reservationPaymentSettings?.cancellation_day_before_percent ??
+        DEFAULT_RESERVATION_PAYMENT_SETTINGS.cancellation_day_before_percent
+    ) || DEFAULT_RESERVATION_PAYMENT_SETTINGS.cancellation_day_before_percent
+  const cancellationSameDayPercent =
+    Number(
+      reservationPaymentSettings?.cancellation_same_day_percent ??
+        DEFAULT_RESERVATION_PAYMENT_SETTINGS.cancellation_same_day_percent
+    ) || DEFAULT_RESERVATION_PAYMENT_SETTINGS.cancellation_same_day_percent
+  const cancellationNoShowPercent =
+    Number(
+      reservationPaymentSettings?.cancellation_no_show_percent ??
+        DEFAULT_RESERVATION_PAYMENT_SETTINGS.cancellation_no_show_percent
+    ) || DEFAULT_RESERVATION_PAYMENT_SETTINGS.cancellation_no_show_percent
+  const noShowChargeMode =
+    reservationPaymentSettings?.no_show_charge_mode ?? DEFAULT_RESERVATION_PAYMENT_SETTINGS.no_show_charge_mode
 
   return (
     <section className="space-y-6">
@@ -104,6 +137,106 @@ export default async function PublicReserveSettingsContent() {
           </p>
         </Card>
       ) : null}
+
+      <details className="rounded border border-gray-200 bg-white p-3" open>
+        <summary className="cursor-pointer text-sm font-semibold text-gray-900">予約決済ルール</summary>
+        <div className="mt-3">
+          <p className="mb-3 text-xs text-gray-500">
+            公開予約・会員証予約で利用する事前決済ルールを設定します。
+          </p>
+          <form action="/api/settings/reservation-payment-settings" method="post" className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <label className="flex items-start gap-2 rounded border border-gray-200 p-3 text-sm text-gray-800">
+                <input type="hidden" name="prepayment_enabled" value="false" />
+                <input
+                  type="checkbox"
+                  name="prepayment_enabled"
+                  value="true"
+                  defaultChecked={prepaymentEnabled}
+                  disabled={!canManage}
+                  className="mt-0.5"
+                />
+                <span>即時確定メニューの事前決済を有効化する</span>
+              </label>
+              <label className="flex items-start gap-2 rounded border border-gray-200 p-3 text-sm text-gray-800">
+                <input type="hidden" name="card_hold_enabled" value="false" />
+                <input
+                  type="checkbox"
+                  name="card_hold_enabled"
+                  value="true"
+                  defaultChecked={cardHoldEnabled}
+                  disabled={!canManage}
+                  className="mt-0.5"
+                />
+                <span>予約申請時の承認後決済（仮押さえ）を有効化する</span>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <label className="text-xs text-gray-700">
+                前日キャンセル請求率（%）
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  name="cancellation_day_before_percent"
+                  defaultValue={cancellationDayBeforePercent}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+              <label className="text-xs text-gray-700">
+                当日キャンセル請求率（%）
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  name="cancellation_same_day_percent"
+                  defaultValue={cancellationSameDayPercent}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+              <label className="text-xs text-gray-700">
+                無断キャンセル請求率（%）
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  name="cancellation_no_show_percent"
+                  defaultValue={cancellationNoShowPercent}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+            </div>
+
+            <label className="block text-xs text-gray-700">
+              無断キャンセル課金モード
+              <select
+                name="no_show_charge_mode"
+                defaultValue={noShowChargeMode}
+                className="mt-1 w-full rounded border p-2 text-sm md:w-64"
+                disabled={!canManage}
+              >
+                <option value="manual">手動</option>
+                <option value="auto">自動</option>
+              </select>
+            </label>
+
+            <div>
+              <input type="hidden" name="redirect_to" value="/settings?tab=public-reserve" />
+              <button
+                type="submit"
+                disabled={!canManage}
+                className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                予約決済ルールを保存
+              </button>
+            </div>
+          </form>
+        </div>
+      </details>
 
       <details className="rounded border border-gray-200 bg-white p-3" open>
         <summary className="cursor-pointer text-sm font-semibold text-gray-900">公開枠ルール</summary>
