@@ -91,4 +91,43 @@ describe('appointments detail routes', () => {
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toEqual({ message: '不正なステータス遷移です。' })
   })
+
+  // TRACE-352
+  it('POST /api/appointments/[appointment_id]/move returns 400 for invalid start_time/staff_id', async () => {
+    const { POST } = await import('../src/app/api/appointments/[appointment_id]/move/route')
+    const response = await POST(
+      new Request('http://localhost/api/appointments/appt-1/move', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ start_time: 'bad-date', staff_id: '' }),
+      }),
+      { params: Promise.resolve({ appointment_id: 'appt-1' }) }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      message: '開始日時またはスタッフが不正です。',
+    })
+  })
+
+  // TRACE-355
+  it('POST /api/appointments/[appointment_id]/status/revert redirects when status is already 会計待ち', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createAppointmentDetailSupabaseMock('会計待ち'),
+      storeId: 'store-1',
+    })
+    const { POST } = await import('../src/app/api/appointments/[appointment_id]/status/revert/route')
+    const form = new FormData()
+    form.set('redirect_to', '/appointments/appt-1')
+    const response = await POST(
+      new Request('http://localhost/api/appointments/appt-1/status/revert', {
+        method: 'POST',
+        body: form,
+      }),
+      { params: Promise.resolve({ appointment_id: 'appt-1' }) }
+    )
+
+    expect(response.status).toBe(303)
+    expect(response.headers.get('location')).toBe('http://localhost/appointments/appt-1')
+  })
 })

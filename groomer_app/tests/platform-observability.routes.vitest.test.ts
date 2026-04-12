@@ -96,6 +96,7 @@ describe('platform/observability routes', () => {
   })
 
   // TRACE-209
+  // TRACE-351
   it('GET /api/ai-reports/monthly falls back invalid month query to current YYYY-MM format', async () => {
     const thisMonth = new Date().toISOString().slice(0, 7)
     createStoreScopedClientMock.mockResolvedValueOnce({
