@@ -330,6 +330,7 @@ Completed tasks should be marked:
   - [x] C10実行ログ: `npx playwright test e2e/billing-setup-pages.spec.ts --project=chromium`（6/6 pass）
   - [x] C10実行ログ: `npm run test:traceability`（`305 rows verified`）
   - [x] C10実行ログ: `npm run lint`（pass）
+  - [x] C10: PR作成（#82）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
