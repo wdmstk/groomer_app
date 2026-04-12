@@ -221,6 +221,7 @@ describe('appointments reservation-payment routes', () => {
   })
 
   // TRACE-175
+  // TRACE-353
   it('POST /api/appointments/[appointment_id]/reservation-payment/checkout returns 401 when user is unauthorized', async () => {
     createStoreScopedClientMock.mockResolvedValueOnce({
       supabase: createCheckoutSupabase({ user: null }),
@@ -347,6 +348,7 @@ describe('appointments reservation-payment routes', () => {
   })
 
   // TRACE-181
+  // TRACE-354
   it('POST /api/appointments/[appointment_id]/reservation-payment/claim rejects non no-show appointment', async () => {
     createStoreScopedClientMock.mockResolvedValueOnce({
       supabase: createClaimSupabase({ appointment: { id: 'appt-1', status: '予約済み' } }),

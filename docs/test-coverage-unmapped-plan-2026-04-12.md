@@ -45,36 +45,36 @@
 - [ ] TRACE-342 `groomer_app/src/app/staffs/page.tsx`
 
 ## API未掲載（55件 / TRACE-343〜397）
-- [ ] TRACE-343 `groomer_app/src/app/api/admin/billing/notification-usage/rehearsal/route.ts`
-- [ ] TRACE-344 `groomer_app/src/app/api/admin/billing/webhook-events/retry/route.ts`
-- [ ] TRACE-345 `groomer_app/src/app/api/admin/cron/job-locks/route.ts`
-- [ ] TRACE-346 `groomer_app/src/app/api/admin/cron/job-runs/[job_run_id]/route.ts`
-- [ ] TRACE-347 `groomer_app/src/app/api/admin/cron/job-runs/failed/route.ts`
-- [ ] TRACE-348 `groomer_app/src/app/api/admin/cron/job-runs/route.ts`
-- [ ] TRACE-349 `groomer_app/src/app/api/admin/cron/medical-record-ai-video/dashboard/route.ts`
-- [ ] TRACE-350 `groomer_app/src/app/api/admin/cron/rerun/route.ts`
-- [ ] TRACE-351 `groomer_app/src/app/api/ai-reports/monthly/route.ts`
-- [ ] TRACE-352 `groomer_app/src/app/api/appointments/[appointment_id]/move/route.ts`
-- [ ] TRACE-353 `groomer_app/src/app/api/appointments/[appointment_id]/reservation-payment/checkout/route.ts`
-- [ ] TRACE-354 `groomer_app/src/app/api/appointments/[appointment_id]/reservation-payment/claim/route.ts`
-- [ ] TRACE-355 `groomer_app/src/app/api/appointments/[appointment_id]/status/revert/route.ts`
-- [ ] TRACE-356 `groomer_app/src/app/api/consents/documents/[document_id]/resend/route.ts`
-- [ ] TRACE-357 `groomer_app/src/app/api/consents/documents/[document_id]/revoke/route.ts`
-- [ ] TRACE-358 `groomer_app/src/app/api/consents/templates/[template_id]/versions/route.ts`
-- [ ] TRACE-359 `groomer_app/src/app/api/cron/billing-reminders/route.ts`
-- [ ] TRACE-360 `groomer_app/src/app/api/cron/billing-status-sync/route.ts`
-- [ ] TRACE-361 `groomer_app/src/app/api/cron/billing-trial-rollover/route.ts`
-- [ ] TRACE-362 `groomer_app/src/app/api/cron/consent-reminders/route.ts`
-- [ ] TRACE-363 `groomer_app/src/app/api/cron/hotel-vaccine-alerts/route.ts`
-- [ ] TRACE-364 `groomer_app/src/app/api/cron/journal-line-notifications/route.ts`
-- [ ] TRACE-365 `groomer_app/src/app/api/cron/medical-record-ai-assist/route.ts`
-- [ ] TRACE-366 `groomer_app/src/app/api/cron/medical-record-ai-tags/route.ts`
-- [ ] TRACE-367 `groomer_app/src/app/api/cron/medical-record-ai-video/route.ts`
-- [ ] TRACE-368 `groomer_app/src/app/api/cron/next-visit-suggestions/route.ts`
-- [ ] TRACE-369 `groomer_app/src/app/api/cron/notification-usage-billing/route.ts`
-- [ ] TRACE-370 `groomer_app/src/app/api/cron/purge-member-portal-access-logs/route.ts`
-- [ ] TRACE-371 `groomer_app/src/app/api/cron/remind-appointments/route.ts`
-- [ ] TRACE-372 `groomer_app/src/app/api/cron/scan-storage-orphans/route.ts`
+- [x] TRACE-343 `groomer_app/src/app/api/admin/billing/notification-usage/rehearsal/route.ts`
+- [x] TRACE-344 `groomer_app/src/app/api/admin/billing/webhook-events/retry/route.ts`
+- [x] TRACE-345 `groomer_app/src/app/api/admin/cron/job-locks/route.ts`
+- [x] TRACE-346 `groomer_app/src/app/api/admin/cron/job-runs/[job_run_id]/route.ts`
+- [x] TRACE-347 `groomer_app/src/app/api/admin/cron/job-runs/failed/route.ts`
+- [x] TRACE-348 `groomer_app/src/app/api/admin/cron/job-runs/route.ts`
+- [x] TRACE-349 `groomer_app/src/app/api/admin/cron/medical-record-ai-video/dashboard/route.ts`
+- [x] TRACE-350 `groomer_app/src/app/api/admin/cron/rerun/route.ts`
+- [x] TRACE-351 `groomer_app/src/app/api/ai-reports/monthly/route.ts`
+- [x] TRACE-352 `groomer_app/src/app/api/appointments/[appointment_id]/move/route.ts`
+- [x] TRACE-353 `groomer_app/src/app/api/appointments/[appointment_id]/reservation-payment/checkout/route.ts`
+- [x] TRACE-354 `groomer_app/src/app/api/appointments/[appointment_id]/reservation-payment/claim/route.ts`
+- [x] TRACE-355 `groomer_app/src/app/api/appointments/[appointment_id]/status/revert/route.ts`
+- [x] TRACE-356 `groomer_app/src/app/api/consents/documents/[document_id]/resend/route.ts`
+- [x] TRACE-357 `groomer_app/src/app/api/consents/documents/[document_id]/revoke/route.ts`
+- [x] TRACE-358 `groomer_app/src/app/api/consents/templates/[template_id]/versions/route.ts`
+- [x] TRACE-359 `groomer_app/src/app/api/cron/billing-reminders/route.ts`
+- [x] TRACE-360 `groomer_app/src/app/api/cron/billing-status-sync/route.ts`
+- [x] TRACE-361 `groomer_app/src/app/api/cron/billing-trial-rollover/route.ts`
+- [x] TRACE-362 `groomer_app/src/app/api/cron/consent-reminders/route.ts`
+- [x] TRACE-363 `groomer_app/src/app/api/cron/hotel-vaccine-alerts/route.ts`
+- [x] TRACE-364 `groomer_app/src/app/api/cron/journal-line-notifications/route.ts`
+- [x] TRACE-365 `groomer_app/src/app/api/cron/medical-record-ai-assist/route.ts`
+- [x] TRACE-366 `groomer_app/src/app/api/cron/medical-record-ai-tags/route.ts`
+- [x] TRACE-367 `groomer_app/src/app/api/cron/medical-record-ai-video/route.ts`
+- [x] TRACE-368 `groomer_app/src/app/api/cron/next-visit-suggestions/route.ts`
+- [x] TRACE-369 `groomer_app/src/app/api/cron/notification-usage-billing/route.ts`
+- [x] TRACE-370 `groomer_app/src/app/api/cron/purge-member-portal-access-logs/route.ts`
+- [x] TRACE-371 `groomer_app/src/app/api/cron/remind-appointments/route.ts`
+- [x] TRACE-372 `groomer_app/src/app/api/cron/scan-storage-orphans/route.ts`
 - [ ] TRACE-373 `groomer_app/src/app/api/customers/[customer_id]/member-portal-link/revoke/route.ts`
 - [ ] TRACE-374 `groomer_app/src/app/api/customers/[customer_id]/member-portal-link/route.ts`
 - [ ] TRACE-375 `groomer_app/src/app/api/dev/support-chat/threads/route.ts`

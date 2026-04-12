@@ -73,6 +73,55 @@ function createConsentPdfPendingSupabaseMock() {
   }
 }
 
+function createConsentDocumentNotFoundSupabaseMock() {
+  return {
+    auth: {
+      getUser: async () => ({ data: { user: { id: 'user-1' } } }),
+    },
+    from(table: string) {
+      if (table === 'consent_documents') {
+        return {
+          select() {
+            return {
+              eq() {
+                return this
+              },
+              maybeSingle: async () => ({ data: null, error: null }),
+            }
+          },
+        }
+      }
+      throw new Error(`Unexpected table: ${table}`)
+    },
+  }
+}
+
+function createConsentRevokedSupabaseMock() {
+  return {
+    auth: {
+      getUser: async () => ({ data: { user: { id: 'user-1' } } }),
+    },
+    from(table: string) {
+      if (table === 'consent_documents') {
+        return {
+          select() {
+            return {
+              eq() {
+                return this
+              },
+              maybeSingle: async () => ({
+                data: { id: 'doc-1', status: 'revoked', revoked_at: '2026-04-12T00:00:00.000Z' },
+                error: null,
+              }),
+            }
+          },
+        }
+      }
+      throw new Error(`Unexpected table: ${table}`)
+    },
+  }
+}
+
 describe('consents routes', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -146,5 +195,61 @@ describe('consents routes', () => {
 
     expect(response.status).toBe(409)
     await expect(response.json()).resolves.toEqual({ message: 'pdf not generated yet.' })
+  })
+
+  // TRACE-356
+  it('POST /api/consents/documents/[document_id]/resend returns 404 when document is missing', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createConsentDocumentNotFoundSupabaseMock(),
+      storeId: 'store-1',
+    })
+    const { POST } = await import('../src/app/api/consents/documents/[document_id]/resend/route')
+    const response = await POST(
+      new Request('http://localhost/api/consents/documents/doc-404/resend', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ channel: 'email' }),
+      }),
+      { params: Promise.resolve({ document_id: 'doc-404' }) }
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({ message: 'document not found.' })
+  })
+
+  // TRACE-357
+  it('POST /api/consents/documents/[document_id]/revoke returns reused response for already revoked document', async () => {
+    createStoreScopedClientMock.mockResolvedValue({
+      supabase: createConsentRevokedSupabaseMock(),
+      storeId: 'store-1',
+    })
+    const { POST } = await import('../src/app/api/consents/documents/[document_id]/revoke/route')
+    const response = await POST(
+      new Request('http://localhost/api/consents/documents/doc-1/revoke', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ reason: 'manual' }),
+      }),
+      { params: Promise.resolve({ document_id: 'doc-1' }) }
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ ok: true, reused: true })
+  })
+
+  // TRACE-358
+  it('POST /api/consents/templates/[template_id]/versions returns 400 for invalid JSON body', async () => {
+    const { POST } = await import('../src/app/api/consents/templates/[template_id]/versions/route')
+    const response = await POST(
+      new Request('http://localhost/api/consents/templates/template-1/versions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{',
+      }),
+      { params: Promise.resolve({ template_id: 'template-1' }) }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ message: 'invalid json body.' })
   })
 })

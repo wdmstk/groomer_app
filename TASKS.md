@@ -349,6 +349,19 @@ Completed tasks should be marked:
   - [x] C11-C実行ログ: `npm run lint`（pass）
   - [x] C11: ページ未掲載36件をE2E/ページ契約テストで補強（`TRACE-307`〜`TRACE-342`）
   - [ ] C12: API未掲載55件をルート契約テストで補強（`TRACE-343`〜`TRACE-397`）
+    - 実施順（固定）:
+      1. C12-A（`TRACE-343`〜`TRACE-372`）: `admin/*` + `cron/*` + `appointments status/move` + `consents resend/revoke/versions`
+      2. C12-B（`TRACE-373`〜`TRACE-385`）: `customers member-portal-link` + `dev support threads` + `hotel/hq/inventory` + `journal notify`
+      3. C12-C（`TRACE-386`〜`TRACE-397`）: `medical-records ai*` + `metrics/notifications/public/reoffers/security/stores`
+    - [x] C12-A着手: `TRACE-343`〜`TRACE-372` の未直接参照ルートを既存契約テストへ追加
+    - [x] C12-A: `admin/cron` + `cron` + `appointments move/status-revert` + `consents resend/revoke/versions` のルート契約テスト補強（`TRACE-343`〜`TRACE-372`）
+    - [x] C12-A実行ログ: `npx vitest run tests/admin-cron.routes.vitest.test.ts tests/appointments.detail-routes.vitest.test.ts tests/appointments.reservation-payment-routes.vitest.test.ts tests/consents.routes.vitest.test.ts tests/platform-observability.routes.vitest.test.ts`（47/47 pass）
+    - [x] C12-A実行ログ: `npm run test:traceability`（`371 rows verified`）
+    - [x] C12-A実行ログ: `npm run lint`（pass）
+    - [x] C12-A: PR作成（#84）
+    - [x] C12-A追補: `main` 取り込み時の競合解消（`TASKS.md` / `docs/test-coverage-audit-2026-04-09.md` / `docs/test-coverage-unmapped-plan-2026-04-12.md`）
+    - [ ] C12-B予定: `TRACE-373`〜`TRACE-385` のルート契約テスト補強と監査反映
+    - [ ] C12-C予定: `TRACE-386`〜`TRACE-397` のルート契約テスト補強と監査反映
   - [ ] C13: C11/C12の一括回帰（対象Vitest/Playwright、`test:traceability`、`lint`）と監査レポート更新
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
