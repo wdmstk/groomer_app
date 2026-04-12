@@ -376,7 +376,7 @@ Completed tasks should be marked:
     - [x] C12-C反映: `docs/test-coverage-audit-2026-04-09.md` へ `TRACE-386`〜`TRACE-397` を追記し、最終網羅判定を更新
     - [x] C12-C: 監査更新後の再検証（`test:traceability`、`lint`）を完了
     - [x] C12-C: commit / push / PR作成（#86）
-  - [ ] C13: C11/C12の一括回帰（対象Vitest/Playwright、`test:traceability`、`lint`）と監査レポート更新
+  - [x] C13: C11/C12の一括回帰（対象Vitest/Playwright、`test:traceability`、`lint`）と監査レポート更新
     - 実施順（固定）:
       1. C13-A: C11対象のPlaywright/Vitest一括回帰（`TRACE-307`〜`TRACE-342`）
       2. C13-B: C12対象のVitest一括回帰（`TRACE-343`〜`TRACE-397`）
@@ -389,7 +389,7 @@ Completed tasks should be marked:
     - [x] C13-C実行ログ: `npm run test:traceability`（`396 rows verified`）
     - [x] C13-C実行ログ: `npm run lint`（pass）
     - [x] C13-C反映: `docs/test-coverage-audit-2026-04-09.md` を一括回帰完了状態へ更新
-    - [ ] C13予定: commit / push / PR作成
+    - [x] C13: commit / push / PR作成（#87）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
