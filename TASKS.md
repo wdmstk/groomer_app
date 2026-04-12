@@ -192,8 +192,8 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-coverage-c13`
-- ステータス: `in_progress`
+- 現在の作業ブランチ: `test/TASK-449-closure`
+- ステータス: `done`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
 - リスク:
@@ -390,6 +390,8 @@ Completed tasks should be marked:
     - [x] C13-C実行ログ: `npm run lint`（pass）
     - [x] C13-C反映: `docs/test-coverage-audit-2026-04-09.md` を一括回帰完了状態へ更新
     - [x] C13: commit / push / PR作成（#87）
+  - [x] TASK-449クローズ: C11/C12/C13完了とPR #84/#85/#86/#87 マージを確認し、最終状態を `done` へ更新
+  - [x] TASK-449クローズ: 最終クローズPR作成（#88）
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件
