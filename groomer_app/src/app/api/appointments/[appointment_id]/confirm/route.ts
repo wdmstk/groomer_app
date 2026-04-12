@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
 import { insertAuditLogBestEffort } from '@/lib/audit-logs'
+import {
+  normalizeReservationPaymentMethod,
+  normalizeReservationPaymentStatus,
+} from '@/lib/appointments/reservation-payment'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
 type RouteParams = {
@@ -24,7 +28,9 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   const { data: appointment, error: fetchError } = await supabase
     .from('appointments')
-    .select('id, status, customer_id')
+    .select(
+      'id, status, customer_id, reservation_payment_method, reservation_payment_status, reservation_payment_paid_at, reservation_payment_authorized_at'
+    )
     .eq('id', appointmentId)
     .eq('store_id', storeId)
     .single()
@@ -37,9 +43,29 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json({ message: '予約申請ステータスではありません。' }, { status: 400 })
   }
 
+  const method = normalizeReservationPaymentMethod(appointment.reservation_payment_method)
+  const paymentStatus = normalizeReservationPaymentStatus(appointment.reservation_payment_status)
+  const nowIso = new Date().toISOString()
+  const paymentUpdate =
+    method === 'card_hold' && paymentStatus === 'authorized'
+      ? {
+          reservation_payment_status: 'captured',
+          reservation_payment_paid_at: appointment.reservation_payment_paid_at ?? nowIso,
+          reservation_payment_authorized_at: appointment.reservation_payment_authorized_at ?? nowIso,
+        }
+      : method === 'card_hold'
+        ? {
+            reservation_payment_status: 'charge_pending',
+          }
+        : {}
+  const updatePayload = {
+    status: '予約済',
+    ...paymentUpdate,
+  }
+
   const { error: updateError } = await supabase
     .from('appointments')
-    .update({ status: '予約済' })
+    .update(updatePayload)
     .eq('id', appointmentId)
     .eq('store_id', storeId)
 
@@ -57,11 +83,17 @@ export async function POST(request: Request, { params }: RouteParams) {
     before: appointment,
     after: {
       ...appointment,
-      status: '予約済',
+      ...updatePayload,
     },
     payload: {
       from_status: appointment.status,
       to_status: '予約済',
+      reservation_payment_method: method,
+      reservation_payment_status_from: paymentStatus,
+      reservation_payment_status_to:
+        'reservation_payment_status' in paymentUpdate
+          ? paymentUpdate.reservation_payment_status
+          : paymentStatus,
     },
   })
 

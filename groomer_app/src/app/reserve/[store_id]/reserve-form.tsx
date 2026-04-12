@@ -372,6 +372,9 @@ export function ReserveForm({
         appointmentId?: string
         groupId?: string
         status?: string
+        reservationPaymentMethod?: 'none' | 'prepayment' | 'card_hold'
+        paymentToken?: string
+        payment_token?: string
       }
       if (!response.ok) {
         setError(json.message ?? '予約申請に失敗しました。')
@@ -390,7 +393,13 @@ export function ReserveForm({
         ...prev,
       ])
       setCurrentGroupId(json.groupId ?? currentGroupId)
-      setMessage(json.message ?? '予約申請を受け付けました。')
+      const defaultMessage =
+        json.reservationPaymentMethod === 'prepayment'
+          ? '予約を受け付けました。事前決済対象として処理されます。'
+          : json.reservationPaymentMethod === 'card_hold'
+            ? '予約申請を受け付けました。承認後に決済処理されます。'
+            : '予約申請を受け付けました。'
+      setMessage(json.message ?? defaultMessage)
       setPetName('')
       setPetBreed('')
       setPetGender('')
@@ -400,6 +409,29 @@ export function ReserveForm({
       setSelectedSlotStartIso('')
       setSelectedSlotStaffId('')
       setSlotCandidates([])
+
+      const paymentToken = json.paymentToken ?? json.payment_token ?? ''
+      if (
+        paymentToken &&
+        (json.reservationPaymentMethod === 'prepayment' || json.reservationPaymentMethod === 'card_hold')
+      ) {
+        const checkoutResponse = await fetch('/api/public/reserve/payment/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: paymentToken,
+          }),
+        })
+        const checkoutJson = (await checkoutResponse.json().catch(() => ({}))) as {
+          message?: string
+          checkout_url?: string
+        }
+        if (!checkoutResponse.ok || !checkoutJson.checkout_url) {
+          setError(checkoutJson.message ?? '決済画面の起動に失敗しました。')
+          return
+        }
+        window.location.assign(checkoutJson.checkout_url)
+      }
     } finally {
       setIsSubmitting(false)
     }

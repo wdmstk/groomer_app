@@ -93,7 +93,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       })
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json({
+      ...data,
+      payment_token: data.paymentToken,
+    })
   } catch (error) {
     if (error instanceof PublicReservationServiceError) {
       if (error.status === 409) {

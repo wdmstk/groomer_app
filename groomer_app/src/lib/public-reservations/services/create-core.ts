@@ -1,6 +1,7 @@
 import {
   addMinutes,
   calculateMenuSummary,
+  type PublicReservationPaymentMethod,
   normalizeName,
   type PublicReservationInput,
   type PublicReservationMenuSnapshot,
@@ -30,6 +31,10 @@ export type CreatePublicReservationDeps = {
   fetchActiveStore(storeId: string): Promise<void>
   fetchDefaultStaffId(storeId: string, preferredStaffId?: string): Promise<string>
   fetchSelectedMenus(storeId: string, menuIds: string[]): Promise<PublicReservationMenuSnapshot[]>
+  fetchReservationPaymentSettings(storeId: string): Promise<{
+    prepayment_enabled: boolean
+    card_hold_enabled: boolean
+  }>
   estimateDuration(params: {
     storeId: string
     petId: string
@@ -73,6 +78,7 @@ export type CreatePublicReservationDeps = {
     menuSummaryNames: string
     duration: number
     status: '予約申請' | '予約済'
+    reservationPaymentMethod: PublicReservationPaymentMethod
     notes: string
   }): Promise<string>
   validateAppointmentConflict(params: {
@@ -88,6 +94,7 @@ export type CreatePublicReservationDeps = {
   }): Promise<void>
   createCancelToken(params: { appointmentId: string; storeId: string }): string
   createGroupCancelToken(params: { appointmentId: string; storeId: string; groupId: string }): string
+  createPaymentToken(params: { appointmentId: string; storeId: string }): string
 }
 
 async function resolveCustomerAndPetCore(params: {
@@ -212,6 +219,16 @@ export async function createPublicReservationCore(params: {
   const endTimeIso = addMinutes(startTimeIso, estimatedDuration)
   const isInstantReservation = selectedMenus.every((menu) => Boolean(menu.is_instant_bookable))
   const appointmentStatus: '予約申請' | '予約済' = isInstantReservation ? '予約済' : '予約申請'
+  const reservationPaymentSettings = await deps.fetchReservationPaymentSettings(storeId)
+  const reservationPaymentMethod: PublicReservationPaymentMethod = isInstantReservation
+    ? 'prepayment'
+    : 'card_hold'
+  if (isInstantReservation && !reservationPaymentSettings.prepayment_enabled) {
+    throw new PublicReservationServiceError('店舗の事前決済設定（即時確定）が未設定です。', 400)
+  }
+  if (!isInstantReservation && !reservationPaymentSettings.card_hold_enabled) {
+    throw new PublicReservationServiceError('店舗の事前決済設定（承認後決済）が未設定です。', 400)
+  }
   if (isInstantReservation) {
     const slotCandidates = await deps.fetchInstantSlotCandidates({
       storeId,
@@ -264,6 +281,7 @@ export async function createPublicReservationCore(params: {
     menuSummaryNames: summary.names,
     duration: estimatedDuration,
     status: appointmentStatus,
+    reservationPaymentMethod,
     notes: mergedNotes,
   })
 
@@ -282,6 +300,10 @@ export async function createPublicReservationCore(params: {
     storeId,
     groupId,
   })
+  const paymentToken = deps.createPaymentToken({
+    appointmentId,
+    storeId,
+  })
 
   return {
     message: isInstantReservation
@@ -292,7 +314,9 @@ export async function createPublicReservationCore(params: {
     customerId,
     petId,
     status: appointmentStatus,
+    reservationPaymentMethod,
     assignedStaffId: staffId,
     cancelUrl: `${requestOrigin}/reserve/cancel?token=${encodeURIComponent(groupCancelToken || cancelToken)}`,
+    paymentToken,
   }
 }

@@ -32,6 +32,13 @@ test('createPublicReservationCore creates customer, pet, appointment, and cancel
         },
       ]
     },
+    async fetchReservationPaymentSettings() {
+      calls.push('fetchReservationPaymentSettings')
+      return {
+        prepayment_enabled: true,
+        card_hold_enabled: true,
+      }
+    },
     async estimateDuration() {
       calls.push('estimateDuration')
       return 75
@@ -80,6 +87,7 @@ test('createPublicReservationCore creates customer, pet, appointment, and cancel
       assert.equal(params.menuSummaryNames, 'シャンプー')
       assert.equal(params.duration, 75)
       assert.equal(params.status, '予約申請')
+      assert.equal(params.reservationPaymentMethod, 'card_hold')
       assert.equal(params.notes, '顧客Web申請: 初回です')
       assert.equal(params.startTimeIso, '2026-03-01T01:00:00.000Z')
       assert.equal(params.endTimeIso, '2026-03-01T02:15:00.000Z')
@@ -98,6 +106,9 @@ test('createPublicReservationCore creates customer, pet, appointment, and cancel
     },
     createGroupCancelToken({ groupId, storeId }) {
       return `${storeId}:${groupId}`
+    },
+    createPaymentToken({ appointmentId, storeId }) {
+      return `pay:${storeId}:${appointmentId}`
     },
   }
 
@@ -124,6 +135,8 @@ test('createPublicReservationCore creates customer, pet, appointment, and cancel
   assert.equal(result.appointmentId, 'appointment-1')
   assert.equal(result.groupId, 'group-1')
   assert.equal(result.status, '予約申請')
+  assert.equal(result.reservationPaymentMethod, 'card_hold')
+  assert.equal(result.paymentToken, 'pay:store-1:appointment-1')
   assert.equal(
     result.cancelUrl,
     'https://example.com/reserve/cancel?token=store-1%3Agroup-1'
@@ -139,6 +152,7 @@ test('createPublicReservationCore creates customer, pet, appointment, and cancel
     'fetchExistingPet',
     'createPet',
     'estimateDuration',
+    'fetchReservationPaymentSettings',
     'ensureAppointmentGroup',
     'createAppointment',
     'insertAppointmentMenus',
@@ -163,6 +177,12 @@ test('createPublicReservationCore confirms instantly for instant-bookable menus'
           is_instant_bookable: true,
         },
       ]
+    },
+    async fetchReservationPaymentSettings() {
+      return {
+        prepayment_enabled: true,
+        card_hold_enabled: true,
+      }
     },
     async estimateDuration() {
       return 60
@@ -206,6 +226,7 @@ test('createPublicReservationCore confirms instantly for instant-bookable menus'
     async createAppointment(params) {
       assert.equal(params.groupId, 'group-2')
       assert.equal(params.status, '予約済')
+      assert.equal(params.reservationPaymentMethod, 'prepayment')
       return 'appointment-2'
     },
     async validateAppointmentConflict() {
@@ -217,6 +238,9 @@ test('createPublicReservationCore confirms instantly for instant-bookable menus'
     },
     createGroupCancelToken() {
       return 'group-token'
+    },
+    createPaymentToken() {
+      return 'payment-token'
     },
   }
 
@@ -239,6 +263,214 @@ test('createPublicReservationCore confirms instantly for instant-bookable menus'
   })
 
   assert.equal(result.status, '予約済')
+  assert.equal(result.reservationPaymentMethod, 'prepayment')
+})
+
+test('createPublicReservationCore rejects when card_hold setting is disabled for request reservation', async () => {
+  const deps: CreatePublicReservationDeps = {
+    async fetchActiveStore() {},
+    async fetchDefaultStaffId() {
+      return 'staff-1'
+    },
+    async fetchSelectedMenus() {
+      return [
+        {
+          id: 'menu-1',
+          name: 'シャンプー',
+          price: 5000,
+          duration: 60,
+          tax_rate: 0.1,
+          tax_included: true,
+          is_instant_bookable: false,
+        },
+      ]
+    },
+    async fetchReservationPaymentSettings() {
+      return {
+        prepayment_enabled: true,
+        card_hold_enabled: false,
+      }
+    },
+    async estimateDuration() {
+      return 60
+    },
+    async fetchInstantSlotCandidates() {
+      return []
+    },
+    verifyQrPayload() {
+      return null
+    },
+    async fetchPetByQr() {
+      return false
+    },
+    async fetchCustomerByEmail() {
+      return null
+    },
+    async fetchCustomerByPhone() {
+      return null
+    },
+    async fetchCustomerName() {
+      return null
+    },
+    async ensureAppointmentGroup() {
+      return 'group-2'
+    },
+    async createCustomer() {
+      return 'customer-1'
+    },
+    async updateCustomerContacts() {},
+    async fetchExistingPet() {
+      return null
+    },
+    async createPet() {
+      return 'pet-1'
+    },
+    async createAppointment() {
+      throw new Error('should not create appointment')
+    },
+    async validateAppointmentConflict() {
+      return { ok: true }
+    },
+    async insertAppointmentMenus() {},
+    createCancelToken() {
+      return 'token'
+    },
+    createGroupCancelToken() {
+      return 'group-token'
+    },
+    createPaymentToken() {
+      return 'payment-token'
+    },
+  }
+
+  await assert.rejects(
+    () =>
+      createPublicReservationCore({
+        storeId: 'store-1',
+        input: {
+          customerName: '山田 太郎',
+          phoneNumber: '09000000000',
+          email: 'user@example.com',
+          petName: 'ポチ',
+          petBreed: '柴犬',
+          petGender: 'male',
+          preferredStart: '2026-03-01T10:00',
+          notes: '',
+          qrPayloadText: '',
+          menuIds: ['menu-1'],
+        },
+        requestOrigin: 'https://example.com',
+        deps,
+      }),
+    (error: unknown) =>
+      error instanceof Error && error.message.includes('店舗の事前決済設定（承認後決済）が未設定です。')
+  )
+})
+
+test('createPublicReservationCore rejects when prepayment setting is disabled for instant reservation', async () => {
+  const deps: CreatePublicReservationDeps = {
+    async fetchActiveStore() {},
+    async fetchDefaultStaffId() {
+      return 'staff-1'
+    },
+    async fetchSelectedMenus() {
+      return [
+        {
+          id: 'menu-1',
+          name: 'シャンプー',
+          price: 5000,
+          duration: 60,
+          tax_rate: 0.1,
+          tax_included: true,
+          is_instant_bookable: true,
+        },
+      ]
+    },
+    async fetchReservationPaymentSettings() {
+      return {
+        prepayment_enabled: false,
+        card_hold_enabled: true,
+      }
+    },
+    async estimateDuration() {
+      return 60
+    },
+    async fetchInstantSlotCandidates() {
+      return [
+        {
+          start_time: '2026-03-01T01:00:00.000Z',
+          end_time: '2026-03-01T02:00:00.000Z',
+        },
+      ]
+    },
+    verifyQrPayload() {
+      return null
+    },
+    async fetchPetByQr() {
+      return false
+    },
+    async fetchCustomerByEmail() {
+      return null
+    },
+    async fetchCustomerByPhone() {
+      return null
+    },
+    async fetchCustomerName() {
+      return null
+    },
+    async ensureAppointmentGroup() {
+      return 'group-2'
+    },
+    async createCustomer() {
+      return 'customer-1'
+    },
+    async updateCustomerContacts() {},
+    async fetchExistingPet() {
+      return null
+    },
+    async createPet() {
+      return 'pet-1'
+    },
+    async createAppointment() {
+      throw new Error('should not create appointment')
+    },
+    async validateAppointmentConflict() {
+      return { ok: true }
+    },
+    async insertAppointmentMenus() {},
+    createCancelToken() {
+      return 'token'
+    },
+    createGroupCancelToken() {
+      return 'group-token'
+    },
+    createPaymentToken() {
+      return 'payment-token'
+    },
+  }
+
+  await assert.rejects(
+    () =>
+      createPublicReservationCore({
+        storeId: 'store-1',
+        input: {
+          customerName: '山田 太郎',
+          phoneNumber: '09000000000',
+          email: 'user@example.com',
+          petName: 'ポチ',
+          petBreed: '柴犬',
+          petGender: 'male',
+          preferredStart: '2026-03-01T10:00',
+          notes: '',
+          qrPayloadText: '',
+          menuIds: ['menu-1'],
+        },
+        requestOrigin: 'https://example.com',
+        deps,
+      }),
+    (error: unknown) =>
+      error instanceof Error && error.message.includes('店舗の事前決済設定（即時確定）が未設定です。')
+  )
 })
 
 test('createPublicReservationCore rejects instant confirmation when slot conflicts', async () => {
@@ -259,6 +491,12 @@ test('createPublicReservationCore rejects instant confirmation when slot conflic
           is_instant_bookable: true,
         },
       ]
+    },
+    async fetchReservationPaymentSettings() {
+      return {
+        prepayment_enabled: true,
+        card_hold_enabled: true,
+      }
     },
     async estimateDuration() {
       return 60
@@ -312,6 +550,9 @@ test('createPublicReservationCore rejects instant confirmation when slot conflic
     createGroupCancelToken() {
       return 'group-token'
     },
+    createPaymentToken() {
+      return 'payment-token'
+    },
   }
 
   await assert.rejects(
@@ -357,6 +598,12 @@ test('createPublicReservationCore rejects instant confirmation when start is out
           is_instant_bookable: true,
         },
       ]
+    },
+    async fetchReservationPaymentSettings() {
+      return {
+        prepayment_enabled: true,
+        card_hold_enabled: true,
+      }
     },
     async estimateDuration() {
       return 60
@@ -409,6 +656,9 @@ test('createPublicReservationCore rejects instant confirmation when start is out
     },
     createGroupCancelToken() {
       return 'group-token'
+    },
+    createPaymentToken() {
+      return 'payment-token'
     },
   }
 

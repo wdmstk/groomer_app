@@ -640,6 +640,19 @@ Completed tasks should be marked:
   - [x] 新規顧客向けWEB予約導線を追加（顧客一覧/顧客詳細から `/reserve/{store_id}` を案内）
   - [x] 新規顧客向けWEB予約導線を再配置（顧客ペット管理から撤去し、公開予約設定 + 予約管理ヘッダーへ移設）
   - [x] ログイン中でも公開予約フォーム（`/reserve/{store_id}`）を開けるよう認可ガードを調整
+  - [x] 公開予約/会員証予約の事前決済方針を確定（即時確定=`prepayment`、非即時確定=`card_hold`→承認後capture）
+  - [x] [PAY-1] 予約作成共通ロジックに決済方式初期化分岐を追加（公開予約+会員証予約）
+  - [x] [PAY-2] 公開予約API/フォームに申請時決済情報取得導線を追加（ログイン不要経路）
+    - [x] [PAY-2a] 公開決済トークン発行/検証を追加
+    - [x] [PAY-2b] `POST /api/public/reserve/payment/checkout` を追加（ログイン不要でcheckout URL発行）
+    - [x] [PAY-2c] 公開予約フォーム送信後にcheckoutへ遷移する導線を追加（公開予約+会員証予約）
+    - [x] [PAY-2d] webhook反映を追加（`reservation_card_hold` を `authorized` へ）
+    - [x] [PAY-2e] ルート/サービステストを追加
+  - [x] [PAY-3] 承認遷移（`予約申請 -> 予約済`）にcard_hold capture実行を追加
+  - [x] [PAY-4] 失敗時の `charge_pending` 遷移と監査ログを追加
+  - [x] [PAY-5] ルート/サービステスト追加（公開予約+会員証予約の両導線）
+  - [x] [PAY-6] `npm run test:traceability` / `npm run lint` / 対象Vitest実行
+  - [x] [PAY-2-NOTE] 公開経路での決済導線実装（`card_hold` は checkout成功時に `authorized` へ反映）
   - [x] [IDX-1] `followups` テスト索引（TRACE対応）をTASKSへ記録
     E2E: `TRACE-001` `TRACE-002` `TRACE-003` `TRACE-048` `TRACE-049` -> `groomer_app/e2e/customers-followup-alerts.spec.ts`
     Route: `TRACE-050` `TRACE-051` `TRACE-052` `TRACE-053` `TRACE-054` `TRACE-055` `TRACE-056` `TRACE-057` `TRACE-058` `TRACE-059` `TRACE-060` `TRACE-061` `TRACE-062` `TRACE-063` `TRACE-064` `TRACE-065` `TRACE-066` `TRACE-067` `TRACE-068` `TRACE-069` `TRACE-070` `TRACE-071` `TRACE-072` `TRACE-073` `TRACE-074` `TRACE-075` `TRACE-076` `TRACE-077` `TRACE-078` `TRACE-079` `TRACE-080` `TRACE-081` `TRACE-082` `TRACE-083` `TRACE-084` `TRACE-085` `TRACE-086` `TRACE-088` `TRACE-089` `TRACE-090` -> `groomer_app/tests/followups.route.vitest.test.ts`
