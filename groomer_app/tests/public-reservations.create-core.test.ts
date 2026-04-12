@@ -266,7 +266,9 @@ test('createPublicReservationCore confirms instantly for instant-bookable menus'
   assert.equal(result.reservationPaymentMethod, 'prepayment')
 })
 
-test('createPublicReservationCore rejects when card_hold setting is disabled for request reservation', async () => {
+test('createPublicReservationCore falls back to none when card_hold setting is disabled for request reservation', async () => {
+  let createdStatus: string | null = null
+  let createdPaymentMethod: string | null = null
   const deps: CreatePublicReservationDeps = {
     async fetchActiveStore() {},
     async fetchDefaultStaffId() {
@@ -325,8 +327,10 @@ test('createPublicReservationCore rejects when card_hold setting is disabled for
     async createPet() {
       return 'pet-1'
     },
-    async createAppointment() {
-      throw new Error('should not create appointment')
+    async createAppointment(params) {
+      createdStatus = params.status
+      createdPaymentMethod = params.reservationPaymentMethod
+      return 'appointment-1'
     },
     async validateAppointmentConflict() {
       return { ok: true }
@@ -343,31 +347,32 @@ test('createPublicReservationCore rejects when card_hold setting is disabled for
     },
   }
 
-  await assert.rejects(
-    () =>
-      createPublicReservationCore({
-        storeId: 'store-1',
-        input: {
-          customerName: '山田 太郎',
-          phoneNumber: '09000000000',
-          email: 'user@example.com',
-          petName: 'ポチ',
-          petBreed: '柴犬',
-          petGender: 'male',
-          preferredStart: '2026-03-01T10:00',
-          notes: '',
-          qrPayloadText: '',
-          menuIds: ['menu-1'],
-        },
-        requestOrigin: 'https://example.com',
-        deps,
-      }),
-    (error: unknown) =>
-      error instanceof Error && error.message.includes('店舗の事前決済設定（承認後決済）が未設定です。')
-  )
+  const result = await createPublicReservationCore({
+    storeId: 'store-1',
+    input: {
+      customerName: '山田 太郎',
+      phoneNumber: '09000000000',
+      email: 'user@example.com',
+      petName: 'ポチ',
+      petBreed: '柴犬',
+      petGender: 'male',
+      preferredStart: '2026-03-01T10:00',
+      notes: '',
+      qrPayloadText: '',
+      menuIds: ['menu-1'],
+    },
+    requestOrigin: 'https://example.com',
+    deps,
+  })
+
+  assert.equal(result.status, '予約申請')
+  assert.equal(createdStatus, '予約申請')
+  assert.equal(createdPaymentMethod, 'none')
 })
 
-test('createPublicReservationCore rejects when prepayment setting is disabled for instant reservation', async () => {
+test('createPublicReservationCore falls back to card_hold when prepayment setting is disabled for instant reservation', async () => {
+  let createdStatus: string | null = null
+  let createdPaymentMethod: string | null = null
   const deps: CreatePublicReservationDeps = {
     async fetchActiveStore() {},
     async fetchDefaultStaffId() {
@@ -431,8 +436,10 @@ test('createPublicReservationCore rejects when prepayment setting is disabled fo
     async createPet() {
       return 'pet-1'
     },
-    async createAppointment() {
-      throw new Error('should not create appointment')
+    async createAppointment(params) {
+      createdStatus = params.status
+      createdPaymentMethod = params.reservationPaymentMethod
+      return 'appointment-1'
     },
     async validateAppointmentConflict() {
       return { ok: true }
@@ -449,28 +456,27 @@ test('createPublicReservationCore rejects when prepayment setting is disabled fo
     },
   }
 
-  await assert.rejects(
-    () =>
-      createPublicReservationCore({
-        storeId: 'store-1',
-        input: {
-          customerName: '山田 太郎',
-          phoneNumber: '09000000000',
-          email: 'user@example.com',
-          petName: 'ポチ',
-          petBreed: '柴犬',
-          petGender: 'male',
-          preferredStart: '2026-03-01T10:00',
-          notes: '',
-          qrPayloadText: '',
-          menuIds: ['menu-1'],
-        },
-        requestOrigin: 'https://example.com',
-        deps,
-      }),
-    (error: unknown) =>
-      error instanceof Error && error.message.includes('店舗の事前決済設定（即時確定）が未設定です。')
-  )
+  const result = await createPublicReservationCore({
+    storeId: 'store-1',
+    input: {
+      customerName: '山田 太郎',
+      phoneNumber: '09000000000',
+      email: 'user@example.com',
+      petName: 'ポチ',
+      petBreed: '柴犬',
+      petGender: 'male',
+      preferredStart: '2026-03-01T10:00',
+      notes: '',
+      qrPayloadText: '',
+      menuIds: ['menu-1'],
+    },
+    requestOrigin: 'https://example.com',
+    deps,
+  })
+
+  assert.equal(result.status, '予約申請')
+  assert.equal(createdStatus, '予約申請')
+  assert.equal(createdPaymentMethod, 'card_hold')
 })
 
 test('createPublicReservationCore rejects instant confirmation when slot conflicts', async () => {
