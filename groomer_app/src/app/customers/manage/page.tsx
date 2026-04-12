@@ -36,6 +36,7 @@ import {
   getConsentStatusLabel,
   getConsentStatusTone,
 } from '@/lib/consents/presentation'
+import { buildPublicReservePath } from '@/lib/public-reservations/presentation'
 import { createSignedPhotoUrlMap } from '@/lib/medical-records/photos'
 import { createSignedVideoUrlMap } from '@/lib/medical-records/videos'
 
@@ -294,6 +295,7 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: customersPageFixtures.storeId }
     : await createStoreScopedClient()
+  const publicReservePath = buildPublicReservePath(storeId)
   const db = supabase as NonNullable<typeof supabase>
   const adminSupabase = isPlaywrightE2E ? null : createAdminSupabaseClient()
 
@@ -1017,7 +1019,7 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                           <dd className="font-medium text-gray-900">{getCustomerLineStatus(customer.line_id).badgeLabel}</dd>
                         </div>
                       </dl>
-                      <div className="mt-3">
+                      <div className="mt-3 flex flex-wrap gap-2">
                         <Link
                           href={buildManageHref({
                             view: 'detail',
@@ -1029,6 +1031,14 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                           className="inline-flex rounded border border-blue-200 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                         >
                           詳細
+                        </Link>
+                        <Link
+                          href={publicReservePath}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex rounded border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                        >
+                          WEB予約
                         </Link>
                       </div>
                     </article>
@@ -1087,6 +1097,14 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                                 className="inline-flex rounded border border-blue-200 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                               >
                                 詳細
+                              </Link>
+                              <Link
+                                href={publicReservePath}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="ml-2 inline-flex rounded border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                              >
+                                WEB予約
                               </Link>
                             </td>
                           </tr>
@@ -1275,7 +1293,7 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                   </span>
                 ) : null}
               </div>
-              <div className="grid w-full grid-cols-3 overflow-hidden rounded-lg border border-gray-300 bg-white text-xs sm:inline-flex sm:w-auto sm:text-sm">
+              <div className="grid w-full grid-cols-4 overflow-hidden rounded-lg border border-gray-300 bg-white text-xs sm:inline-flex sm:w-auto sm:text-sm">
                 <Link
                   href={buildManageHref({
                     customerId: selectedCustomer.id,
@@ -1288,6 +1306,15 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                 >
                   <span className="sm:hidden">編集</span>
                   <span className="hidden sm:inline">顧客編集</span>
+                </Link>
+                <Link
+                  href={publicReservePath}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 w-full items-center justify-center whitespace-nowrap border-l border-gray-300 px-2 font-medium text-teal-700 hover:bg-teal-50 sm:w-auto sm:px-3"
+                >
+                  <span className="sm:hidden">WEB</span>
+                  <span className="hidden sm:inline">WEB予約</span>
                 </Link>
                 <Link
                   href={buildManageHref({
@@ -1312,6 +1339,12 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                 />
               </div>
             </div>
+            <p className="text-xs text-gray-500">
+              新規顧客向け予約フォームURL:{' '}
+              <Link href={publicReservePath} target="_blank" rel="noreferrer" className="text-emerald-700 underline">
+                {publicReservePath}
+              </Link>
+            </p>
 
             <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
               <div className="flex flex-wrap items-center gap-2">

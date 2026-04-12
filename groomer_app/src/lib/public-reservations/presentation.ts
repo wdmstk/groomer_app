@@ -11,6 +11,12 @@ export function formatPublicSlotLabel(value: string) {
   }).format(date)
 }
 
+export function buildPublicReservePath(storeId: string) {
+  const normalizedStoreId = storeId.trim()
+  if (!normalizedStoreId) return '/reserve'
+  return `/reserve/${encodeURIComponent(normalizedStoreId)}`
+}
+
 export function formatPublicSlotTime(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '--:--'

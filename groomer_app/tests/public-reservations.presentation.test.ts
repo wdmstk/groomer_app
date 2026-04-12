@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  buildPublicReservePath,
   buildPublicSubmittedReservationSummary,
   formatPublicSlotLabel,
   formatPublicSlotTime,
@@ -39,4 +40,7 @@ test('public reservation presentation helpers build family booking summary and s
     '選択メニューは即時確定枠の対象外です。希望日時を入力して申請してください。'
   )
   assert.equal(getCancelReservationTokenError(''), '無効なURLです。')
+  assert.equal(buildPublicReservePath('store-001'), '/reserve/store-001')
+  assert.equal(buildPublicReservePath(' store 002 '), '/reserve/store%20002')
+  assert.equal(buildPublicReservePath(''), '/reserve')
 })
