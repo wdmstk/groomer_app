@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('施術メニュー一覧', () => {
+  // TRACE-338
   test('実運用に近いメニューデータと推奨所要時間を表示できる', async ({ page }) => {
     await page.goto('/service-menus')
 

@@ -168,6 +168,7 @@ test.describe('ダッシュボード画面', () => {
     await expect(page.getByRole('heading', { name: 'キャンセル枠の即時再販' })).toBeVisible()
   })
 
+  // TRACE-311
   test('KPI レポートで集計カードを表示できる', async ({ page }) => {
     await gotoStable(page, '/dashboard/appointments-kpi')
 

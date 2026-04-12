@@ -117,6 +117,7 @@ describe('remaining shared and client pages', () => {
     expect(screen.getByText('トークンが不正です。')).toBeTruthy()
   })
 
+  // TRACE-339
   it('renders shared journal unavailable message when payload is missing', async () => {
     const { MemberPortalServiceError } = await import('@/lib/member-portal')
     getSharedJournalPayloadMock.mockRejectedValue(new MemberPortalServiceError(410, '有効期限切れです。'))
@@ -128,6 +129,7 @@ describe('remaining shared and client pages', () => {
     expect(screen.getByText('有効期限切れです。')).toBeTruthy()
   })
 
+  // TRACE-339
   it('renders shared journal entries when payload exists', async () => {
     getSharedJournalPayloadMock.mockResolvedValue({
       customerName: '山田 花子',
@@ -151,6 +153,7 @@ describe('remaining shared and client pages', () => {
     expect(screen.getByText('お利口でした')).toBeTruthy()
   })
 
+  // TRACE-341
   it('renders shared member portal unavailable message', async () => {
     const { MemberPortalServiceError } = await import('@/lib/member-portal')
     getMemberPortalPayloadMock.mockRejectedValue(new MemberPortalServiceError(410, '有効期限切れ'))
@@ -162,6 +165,7 @@ describe('remaining shared and client pages', () => {
     expect(screen.getByRole('button', { name: 'reissue:token-1' })).toBeTruthy()
   })
 
+  // TRACE-341
   it('renders shared member portal details when payload exists', async () => {
     getMemberPortalPayloadMock.mockResolvedValue({
       memberCard: { label: '会員証', expiresAt: '2026-04-30T00:00:00.000Z', rank: 'ゴールド' },
@@ -190,6 +194,7 @@ describe('remaining shared and client pages', () => {
     expect(screen.getByText('次回予約')).toBeTruthy()
   })
 
+  // TRACE-340
   it('calls notFound when shared medical record link is missing', async () => {
     const maybeSingle = vi.fn().mockResolvedValue({ data: null })
     const eq = vi.fn(() => ({ is: vi.fn(() => ({ gt: vi.fn(() => ({ maybeSingle })) })) }))
@@ -205,6 +210,7 @@ describe('remaining shared and client pages', () => {
     expect(notFoundMock).toHaveBeenCalledTimes(1)
   })
 
+  // TRACE-340
   it('renders shared medical record photos when link exists', async () => {
     const maybeSingle = vi
       .fn()

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('開発者向けサポート', () => {
+  // TRACE-318
   test('dev/support-chat で店舗スレッドと返信導線を確認できる', async ({ page }) => {
     let chatMode: 'initial' | 'sent' = 'initial'
 
@@ -104,6 +105,7 @@ test.describe('開発者向けサポート', () => {
     await expect(page.getByPlaceholder('返信メッセージを入力')).toHaveValue('')
   })
 
+  // TRACE-319
   test('dev/support-tickets で店舗切替、ステータス更新、返信導線を確認できる', async ({ page }) => {
     let ticketMode: 'initial' | 'updated' = 'initial'
 

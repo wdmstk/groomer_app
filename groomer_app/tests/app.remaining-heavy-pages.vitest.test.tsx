@@ -131,6 +131,7 @@ describe('remaining heavy pages', () => {
     expect(screen.getByRole('heading', { level: 1, name: '顧客ペット管理' })).toBeTruthy()
   })
 
+  // TRACE-333
   it('renders journal pet page in e2e mode', async () => {
     vi.resetModules()
     const { default: JournalPetPage } = await import('../src/app/journal/pets/[pet_id]/page')

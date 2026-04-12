@@ -79,6 +79,7 @@ import ReservePage from '../src/app/reserve/[store_id]/page'
 import CancelReservationPage from '../src/app/reserve/cancel/page'
 
 describe('route props pages', () => {
+  // TRACE-332
   it('passes token to invite accept client', async () => {
     render(await InviteTokenPage({ params: Promise.resolve({ token: 'invite-123' }) }))
 

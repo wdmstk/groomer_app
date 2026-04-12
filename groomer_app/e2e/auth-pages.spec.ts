@@ -18,6 +18,7 @@ async function gotoStable(page: Page, url: string) {
 
 test.describe('認証導線ページ', () => {
   // TRACE-284
+  // TRACE-307
   test('ログインページで基本導線を表示できる', async ({ page }) => {
     await gotoStable(page, '/login')
 
@@ -29,6 +30,7 @@ test.describe('認証導線ページ', () => {
   })
 
   // TRACE-285
+  // TRACE-308
   test('新規登録ページで同意導線を表示できる', async ({ page }) => {
     await gotoStable(page, '/signup')
     const signupForm = page.locator('form')

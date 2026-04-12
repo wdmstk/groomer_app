@@ -192,7 +192,7 @@ Completed tasks should be marked:
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
 - ブランチ: `test/TASK-449-coverage-batch-rollout`
-- 現在の作業ブランチ: `test/TASK-449-coverage-c10-billing-setup-pages-batch`
+- 現在の作業ブランチ: `test/TASK-449-coverage-c11-c12-plan-first`
 - ステータス: `in_progress`
 - 概要: ページ79件/API176件の全対象を先に棚卸しし、細切れではなく大きな塊（4PR）でテスト網羅を進める。進捗は事前洗い出し済み項目に対して管理する。
 - 影響範囲: `TASKS.md`、`docs/test-coverage-master-inventory-2026-04-11.md`、`docs/test-coverage-audit-2026-04-09.md`、`groomer_app/tests/*`、`groomer_app/e2e/*`
@@ -331,6 +331,25 @@ Completed tasks should be marked:
   - [x] C10実行ログ: `npm run test:traceability`（`305 rows verified`）
   - [x] C10実行ログ: `npm run lint`（pass）
   - [x] C10: PR作成（#82）
+  - [x] C11/C12事前チェック: 未掲載ページ/APIを機械抽出し、予定TRACEを全件固定（`docs/test-coverage-unmapped-plan-2026-04-12.md`）
+  - [x] C11-A: ページ未掲載の先行9件（`TRACE-307`〜`TRACE-313`, `TRACE-318`, `TRACE-319`）を既存E2Eへ紐付け
+    - 対象: `auth` `billing/history` `consent/sign` `dashboard/appointments-kpi` `dashboard/audit-logs` `dashboard/notification-logs` `dev/support-chat` `dev/support-tickets`
+  - [x] C11-A実行ログ: `npx playwright test e2e/auth-pages.spec.ts e2e/billing-pages.spec.ts e2e/consents-signing.spec.ts e2e/dashboard-pages.spec.ts e2e/dashboard-log-pages.spec.ts e2e/dev-support.spec.ts --project=chromium`（14/14 pass）
+  - [x] C11-A実行ログ: `npm run test:traceability`（`314 rows verified`）
+  - [x] C11-A実行ログ: `npm run lint`（pass）
+  - [x] C11-B: ページ未掲載の追加5件（`TRACE-334` `TRACE-335` `TRACE-336` `TRACE-338` `TRACE-342`）を既存E2Eへ紐付け
+    - 対象: `member-portal-reissue-e2e` `member-portal-waitlist-e2e` `ops/today` `service-menus` `staffs`
+  - [x] C11-B実行ログ: `npx playwright test e2e/member-portal-reissue.spec.ts e2e/member-portal-waitlist.spec.ts e2e/ops-today.spec.ts e2e/service-menus-list.spec.ts e2e/staffs-list.spec.ts --project=chromium`（7/7 pass）
+  - [x] C11-B実行ログ: `npm run test:traceability`（`319 rows verified`）
+  - [x] C11-B実行ログ: `npm run lint`（pass）
+  - [x] C11-C: ページ未掲載の残り22件（`TRACE-314`〜`TRACE-317` `TRACE-320`〜`TRACE-333` `TRACE-337` `TRACE-339`〜`TRACE-341`）を既存Vitestへ紐付け
+    - 対象: `dev/*` `hq/*` `inventory/*` `invite/[token]` `journal/pets/[pet_id]` `receipts/[payment_id]` `shared/*`
+  - [x] C11-C実行ログ: `npx vitest run tests/app.remaining-pages-fixture.vitest.test.tsx tests/app.hq-pages.vitest.test.tsx tests/app.route-props-pages.vitest.test.tsx tests/app.remaining-heavy-pages.vitest.test.tsx tests/app.remaining-shared-and-client.vitest.test.tsx`（42/42 pass）
+  - [x] C11-C実行ログ: `npm run test:traceability`（`341 rows verified`）
+  - [x] C11-C実行ログ: `npm run lint`（pass）
+  - [x] C11: ページ未掲載36件をE2E/ページ契約テストで補強（`TRACE-307`〜`TRACE-342`）
+  - [ ] C12: API未掲載55件をルート契約テストで補強（`TRACE-343`〜`TRACE-397`）
+  - [ ] C13: C11/C12の一括回帰（対象Vitest/Playwright、`test:traceability`、`lint`）と監査レポート更新
 - 全件洗い出し台帳:
   - `docs/test-coverage-master-inventory-2026-04-11.md`
   - ページ: 79件

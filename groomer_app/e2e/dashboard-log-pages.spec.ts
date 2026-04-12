@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('ダッシュボードログ画面', () => {
+  // TRACE-313
   test('通知ログで内訳、失敗理由、絞り込み結果を表示できる', async ({ page }) => {
     await page.goto('/dashboard/notification-logs')
     const table = page.getByTestId('notification-logs-table')
@@ -29,6 +30,7 @@ test.describe('ダッシュボードログ画面', () => {
     await expect(table.getByText('45日経過したためご連絡しました。', { exact: true })).toBeVisible()
   })
 
+  // TRACE-312
   test('監査ログで要約、フィルタ、JSON詳細を表示できる', async ({ page }) => {
     await page.goto('/dashboard/audit-logs')
     const table = page.getByTestId('audit-logs-table')

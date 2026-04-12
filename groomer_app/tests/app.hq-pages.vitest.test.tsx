@@ -132,6 +132,7 @@ describe('hq pages', () => {
     expect(screen.getByText('owner または admin の所属店舗がありません。')).toBeTruthy()
   })
 
+  // TRACE-323
   it('renders owner-only message on hq menu templates for admin role', async () => {
     createServerSupabaseClientMock.mockResolvedValue(
       createSupabaseStub({
@@ -147,6 +148,7 @@ describe('hq pages', () => {
     expect(screen.getByText('この機能は owner のみ操作できます（admin は閲覧のみ）。')).toBeTruthy()
   })
 
+  // TRACE-323
   it('renders hq template request form for owner role', async () => {
     createServerSupabaseClientMock.mockResolvedValue(
       createSupabaseStub({
@@ -165,6 +167,7 @@ describe('hq pages', () => {
     expect(screen.getByText('店舗A (owner) / store-1')).toBeTruthy()
   })
 
+  // TRACE-322
   it('renders read-only message on hq deliveries for admin role', async () => {
     createServerSupabaseClientMock.mockResolvedValue(
       createSupabaseStub({
@@ -184,6 +187,7 @@ describe('hq pages', () => {
     expect(screen.getByText('admin は閲覧のみです。')).toBeTruthy()
   })
 
+  // TRACE-321
   it('renders eligibility message on hq hotel menu templates when no pro+hotel owner store', async () => {
     createServerSupabaseClientMock.mockResolvedValue(
       createSupabaseStub({
@@ -209,6 +213,7 @@ describe('hq pages', () => {
     expect(screen.getByText('Proプランかつホテルオプション有効な owner 所属店舗がありません。')).toBeTruthy()
   })
 
+  // TRACE-321
   it('renders hq hotel template request form for eligible owner store', async () => {
     createServerSupabaseClientMock.mockResolvedValue(
       createSupabaseStub({
@@ -246,6 +251,7 @@ describe('hq pages', () => {
     expect(screen.getByTestId('hq-hotel-template-request-form')).toBeTruthy()
   })
 
+  // TRACE-320
   it('renders read-only message on hq hotel deliveries for admin role', async () => {
     createServerSupabaseClientMock.mockResolvedValue(
       createSupabaseStub({

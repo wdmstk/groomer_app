@@ -19,6 +19,7 @@ test.describe('課金画面', () => {
     await expect(page.getByTestId('billing-legal-agreement')).toHaveCount(1)
   })
 
+  // TRACE-309
   test('課金履歴で通知従量課金と webhook 失敗を表示できる', async ({ page }) => {
     await page.goto('/billing?tab=history')
 

@@ -78,6 +78,7 @@ test.describe('電子同意書導線', () => {
     await expect(page.getByTestId('consent-message')).toContainText('同意書を作成し、LINE送信しました。')
   })
 
+  // TRACE-310
   test('署名画面で署名送信完了とPDFリンクを表示できる', async ({ page }) => {
     await page.route('**/api/public/consents/e2e-sign-token', async (route) => {
       await route.fulfill({
