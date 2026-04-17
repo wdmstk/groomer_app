@@ -31,12 +31,16 @@ export const journalPageFixtures = {
       id: 'journal-media-photo-001',
       media_type: 'photo' as const,
       storage_key: 'store-e2e-demo/journal/pets/pet-001/photo-001.jpg',
+      thumbnail_key: null,
+      sort_order: 0,
     },
     {
       entry_id: 'journal-entry-001',
       id: 'journal-media-video-001',
       media_type: 'video' as const,
       storage_key: 'store-e2e-demo/journal/pets/pet-001/video-001.mp4',
+      thumbnail_key: 'store-e2e-demo/journal/pets/pet-001/video-001-thumb.jpg',
+      sort_order: 1,
     },
   ],
 } as const

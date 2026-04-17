@@ -72,15 +72,13 @@ test.describe('設定画面', () => {
     await expect(page.getByRole('heading', { name: '店舗運用設定' })).toBeVisible()
     await expect(page.getByLabel('営業開始時刻（JST 時）')).toHaveValue('9')
     await expect(page.getByLabel('営業終了時刻（JST 時）')).toHaveValue('19')
-    await expect(page.getByLabel('定休日・臨時休業日（JST）')).toHaveValue('2026-03-20\n2026-03-21')
+    await expect(page.getByLabel('定休日（日付）')).toHaveValue('2026-03-20\n2026-03-21')
     await expect(page.getByLabel('会員証TTL（日）')).toHaveValue('90')
     await expect(page.getByLabel('カルテ一覧の表示件数（最新N件）')).toHaveValue('12')
     await expect(page.getByLabel('保留の再フォロー日数')).toHaveValue('7')
     await expect(page.getByLabel('不要の再フォロー日数')).toHaveValue('60')
     await expect(page.getByLabel('失注の再フォロー日数')).toHaveValue('90')
-    await expect(
-      page.getByLabel('予約カレンダーで表示範囲外の予約がある場合に自動で表示範囲を広げる')
-    ).not.toBeChecked()
+    await expect(page.getByLabel('予約表示範囲外の予約がある場合は範囲を自動拡張')).not.toBeChecked()
   })
 
   test('電子同意書テンプレ管理を店舗設定タブ内で表示できる', async ({ page }) => {

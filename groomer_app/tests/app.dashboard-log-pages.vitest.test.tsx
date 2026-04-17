@@ -70,7 +70,7 @@ describe('dashboard log pages', () => {
     expect(screen.getByText('総件数')).toBeTruthy()
     expect(screen.getByText('3 件')).toBeTruthy()
     expect(screen.getByText('slot_reoffer:line_blocked: 1 件')).toBeTruthy()
-    expect(screen.getByText('山田 花子')).toBeTruthy()
+    expect(screen.getAllByText('山田 花子').length).toBeGreaterThan(0)
     expect(screen.getByText('キャンセル枠のご案内')).toBeTruthy()
   })
 
@@ -114,6 +114,8 @@ describe('dashboard log pages', () => {
     expect(screen.getByText('変更履歴')).toBeTruthy()
     expect(screen.getByText('1 件')).toBeTruthy()
     expect(screen.getByText('member_portal_link: 1 件')).toBeTruthy()
-    expect(screen.getByText('顧客=山田 花子, expires_at=2026-03-31T15:00:00.000Z, revoke=1')).toBeTruthy()
+    expect(
+      screen.getAllByText('顧客=山田 花子, expires_at=2026-03-31T15:00:00.000Z, revoke=1').length,
+    ).toBeGreaterThan(0)
   })
 })

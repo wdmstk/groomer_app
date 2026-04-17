@@ -216,7 +216,7 @@ export function AppointmentCalendar({
   const router = useRouter()
   const ignoreClickUntilRef = useRef(0)
   const [calendarAppointments, setCalendarAppointments] = useState(appointments)
-  const [mode, setMode] = useState<CalendarMode>('month')
+  const [mode, setMode] = useState<CalendarMode>('week')
   const [cursor, setCursor] = useState<Date>(new Date())
   const [dragError, setDragError] = useState('')
   const [delayAlert, setDelayAlert] = useState<DisplayDelayAlert | null>(() =>

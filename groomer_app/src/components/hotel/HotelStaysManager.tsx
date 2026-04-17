@@ -1285,21 +1285,23 @@ export function HotelStaysManager({
       ) : null}
 
       <Card>
-        <div className="flex flex-wrap gap-2">
+        <div className="overflow-x-auto">
+          <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`rounded px-4 py-2 text-sm font-semibold ${
+              className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
                 activeTab === tab.id
                   ? 'bg-slate-900 text-white'
-                  : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                  : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
               {tab.label}
             </button>
           ))}
+          </div>
         </div>
       </Card>
 
@@ -1308,9 +1310,9 @@ export function HotelStaysManager({
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">ホテル運用設定</h2>
-              <p className="mt-1 text-xs text-gray-500">予約可能頭数の上限とカレンダー表示時間を設定します。</p>
+              <p className="mt-1 text-xs text-gray-500">予約可能頭数の上限を設定します。</p>
             </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-1">
               <label className="text-sm text-gray-700">
                 同時預かり上限
                 <input
@@ -1319,32 +1321,6 @@ export function HotelStaysManager({
                   value={settings.max_concurrent_pets}
                   onChange={(event) =>
                     setSettings((prev) => ({ ...prev, max_concurrent_pets: Number(event.target.value) || 1 }))
-                  }
-                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-                />
-              </label>
-              <label className="text-sm text-gray-700">
-                表示開始時刻
-                <input
-                  type="number"
-                  min={0}
-                  max={23}
-                  value={settings.calendar_open_hour ?? 8}
-                  onChange={(event) =>
-                    setSettings((prev) => ({ ...prev, calendar_open_hour: Number(event.target.value) }))
-                  }
-                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-                />
-              </label>
-              <label className="text-sm text-gray-700">
-                表示終了時刻
-                <input
-                  type="number"
-                  min={0}
-                  max={23}
-                  value={settings.calendar_close_hour ?? 20}
-                  onChange={(event) =>
-                    setSettings((prev) => ({ ...prev, calendar_close_hour: Number(event.target.value) }))
                   }
                   className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
                 />

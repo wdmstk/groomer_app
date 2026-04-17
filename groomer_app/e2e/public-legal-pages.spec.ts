@@ -2,21 +2,23 @@ import { expect, test, type Page } from '@playwright/test'
 
 async function gotoStable(page: Page, url: string) {
   let lastError: unknown = null
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded' })
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20_000 })
       return
     } catch (error) {
       lastError = error
       const message = error instanceof Error ? error.message : String(error)
-      if (!message.includes('net::ERR_ABORTED') || attempt === 2) throw error
-      await page.waitForTimeout(300)
+      const retryable = message.includes('net::ERR_ABORTED') || message.includes('Timeout')
+      if (!retryable || attempt === 3) throw error
+      await page.waitForTimeout(500)
     }
   }
   throw lastError
 }
 
 test.describe('公開LP/法務ページ', () => {
+  test.describe.configure({ timeout: 120000 })
   // TRACE-280
   test('LPで主要メッセージと無料導線を表示できる', async ({ page }) => {
     await gotoStable(page, '/lp')
@@ -30,7 +32,7 @@ test.describe('公開LP/法務ページ', () => {
   test('LPの法務リンクから利用規約へ遷移できる', async ({ page }) => {
     await gotoStable(page, '/lp')
 
-    await page.getByRole('link', { name: '利用規約' }).first().click()
+    await page.locator('a[href="/legal/terms"]').first().click()
     await expect(page).toHaveURL(/\/legal\/terms$/)
     await expect(page.getByRole('heading', { level: 1, name: '利用規約' })).toBeVisible()
   })

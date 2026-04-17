@@ -75,7 +75,11 @@ export default async function StoreOperationsSettingsContent() {
           .maybeSingle()
       ).data
   const closedRules = isPlaywrightE2E
-    ? []
+    ? settingsPageFixtures.blockedDates.map((item) => ({
+        rule_type: 'date',
+        weekday: null,
+        closed_date: item.date_key,
+      }))
     : (
         await db
           .from('store_closed_rules')
@@ -275,6 +279,63 @@ export default async function StoreOperationsSettingsContent() {
       </details>
 
       <details className="rounded border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900" open>
+        <summary className="cursor-pointer text-sm font-semibold text-gray-900 dark:text-slate-100">定休日設定</summary>
+        <div className="mt-3">
+          <p className="mb-3 text-xs text-gray-500 dark:text-slate-400">
+            シフト生成と公開予約の両方で共通利用する定休日（曜日・日付）を設定します。
+          </p>
+          <form action="/api/stores/shift-attendance-settings" method="post" className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="rounded border border-gray-200 p-3 dark:border-slate-700">
+                <p className="text-xs font-semibold text-gray-900 dark:text-slate-200">定休日（曜日）</p>
+                <p className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">選択した曜日を毎週の定休日として扱います。</p>
+                <div className="mt-2 rounded border border-gray-200 bg-white p-2 dark:border-slate-600 dark:bg-slate-800">
+                  <div className="flex flex-col gap-1.5">
+                    {WEEKDAY_OPTIONS.map((weekday) => (
+                      <label
+                        key={`closed-weekday-${weekday.value}`}
+                        className="inline-flex items-center gap-1.5 text-sm text-gray-700 dark:text-slate-300"
+                      >
+                        <input
+                          type="checkbox"
+                          name="closed_weekdays"
+                          value={String(weekday.value)}
+                          defaultChecked={closedWeekdays.has(weekday.value)}
+                          disabled={!canManage}
+                        />
+                        {weekday.value}（{weekday.label}）
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="rounded border border-gray-200 p-3 dark:border-slate-700">
+                <label className="block text-xs text-gray-700 dark:text-slate-300">
+                  <span className="font-semibold text-gray-900 dark:text-slate-200">定休日（日付）</span>
+                  <span className="mt-1 block text-[11px] text-gray-500 dark:text-slate-400">臨時休業日などを `YYYY-MM-DD` で改行入力します。</span>
+                  <textarea
+                    name="closed_dates_text"
+                    defaultValue={closedDatesText}
+                    placeholder={'2026-03-20\n2026-03-21'}
+                    className="mt-2 min-h-[230px] w-full rounded border border-gray-300 bg-white p-2 text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    disabled={!canManage}
+                  />
+                </label>
+              </div>
+            </div>
+            <input type="hidden" name="redirect_to" value="/settings?tab=store-ops" />
+            <button
+              type="submit"
+              disabled={!canManage}
+              className="inline-flex items-center rounded bg-blue-600 px-2.5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              定休日設定を保存
+            </button>
+          </form>
+        </div>
+      </details>
+
+      <details className="rounded border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900" open>
         <summary className="cursor-pointer text-sm font-semibold text-gray-900 dark:text-slate-100">勤怠打刻設定</summary>
         <div className="mt-3">
           <p className="mb-3 text-xs text-gray-500 dark:text-slate-400">
@@ -354,63 +415,6 @@ export default async function StoreOperationsSettingsContent() {
               className="inline-flex items-center rounded bg-blue-600 px-2.5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               勤怠打刻設定を保存
-            </button>
-          </form>
-        </div>
-      </details>
-
-      <details className="rounded border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900" open>
-        <summary className="cursor-pointer text-sm font-semibold text-gray-900 dark:text-slate-100">定休日設定</summary>
-        <div className="mt-3">
-          <p className="mb-3 text-xs text-gray-500 dark:text-slate-400">
-            シフト生成と公開予約の両方で共通利用する定休日（曜日・日付）を設定します。
-          </p>
-          <form action="/api/stores/shift-attendance-settings" method="post" className="space-y-3">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div className="rounded border border-gray-200 p-3 dark:border-slate-700">
-                <p className="text-xs font-semibold text-gray-900 dark:text-slate-200">定休日（曜日）</p>
-                <p className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">選択した曜日を毎週の定休日として扱います。</p>
-                <div className="mt-2 rounded border border-gray-200 bg-white p-2 dark:border-slate-600 dark:bg-slate-800">
-                  <div className="flex flex-col gap-1.5">
-                    {WEEKDAY_OPTIONS.map((weekday) => (
-                      <label
-                        key={`closed-weekday-${weekday.value}`}
-                        className="inline-flex items-center gap-1.5 text-sm text-gray-700 dark:text-slate-300"
-                      >
-                        <input
-                          type="checkbox"
-                          name="closed_weekdays"
-                          value={String(weekday.value)}
-                          defaultChecked={closedWeekdays.has(weekday.value)}
-                          disabled={!canManage}
-                        />
-                        {weekday.value}（{weekday.label}）
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="rounded border border-gray-200 p-3 dark:border-slate-700">
-                <label className="block text-xs text-gray-700 dark:text-slate-300">
-                  <span className="font-semibold text-gray-900 dark:text-slate-200">定休日（日付）</span>
-                  <span className="mt-1 block text-[11px] text-gray-500 dark:text-slate-400">臨時休業日などを `YYYY-MM-DD` で改行入力します。</span>
-                  <textarea
-                    name="closed_dates_text"
-                    defaultValue={closedDatesText}
-                    placeholder={'2026-03-20\n2026-03-21'}
-                    className="mt-2 min-h-[230px] w-full rounded border border-gray-300 bg-white p-2 text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                    disabled={!canManage}
-                  />
-                </label>
-              </div>
-            </div>
-            <input type="hidden" name="redirect_to" value="/settings?tab=store-ops" />
-            <button
-              type="submit"
-              disabled={!canManage}
-              className="inline-flex items-center rounded bg-blue-600 px-2.5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              定休日設定を保存
             </button>
           </form>
         </div>
@@ -582,7 +586,7 @@ export default async function StoreOperationsSettingsContent() {
         </summary>
         <div className="mt-3 space-y-3">
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            顧客ペット管理で表示するカルテ件数、日誌表示対象、予約カレンダーの範囲外予約表示、再来店フォローの再フォロー日数を設定します。
+            顧客ペット管理で表示するカルテ件数と日誌表示対象を設定します。
           </p>
           <form action="/api/stores/customer-management-settings" method="post" className="space-y-4">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -611,6 +615,37 @@ export default async function StoreOperationsSettingsContent() {
                 </select>
               </label>
             </div>
+            <input
+              type="hidden"
+              name="calendar_expand_out_of_range_appointments"
+              value={calendarExpandOutOfRangeAppointments ? 'true' : 'false'}
+            />
+            <input type="hidden" name="followup_snoozed_refollow_days" value={followupSnoozedRefollowDays} />
+            <input type="hidden" name="followup_no_need_refollow_days" value={followupNoNeedRefollowDays} />
+            <input type="hidden" name="followup_lost_refollow_days" value={followupLostRefollowDays} />
+            <div>
+              <input type="hidden" name="redirect_to" value="/settings?tab=store-ops" />
+              <button
+                type="submit"
+                disabled={!canManage}
+                className="inline-flex items-center rounded bg-blue-600 px-2.5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                顧客ペット管理表示設定を保存
+              </button>
+            </div>
+          </form>
+        </div>
+      </details>
+
+      <details className="rounded border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900" open>
+        <summary className="cursor-pointer text-sm font-semibold text-gray-900 dark:text-slate-100">
+          再来店フォロー日数設定
+        </summary>
+        <div className="mt-3 space-y-3">
+          <p className="text-xs text-gray-500 dark:text-slate-400">
+            再来店フォローのステータス別に、次回フォローまでの日数を設定します。
+          </p>
+          <form action="/api/stores/customer-management-settings" method="post" className="space-y-4">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <label className="text-xs text-gray-700 dark:text-slate-300">
                 保留の再フォロー日数
@@ -649,6 +684,8 @@ export default async function StoreOperationsSettingsContent() {
                 />
               </label>
             </div>
+            <input type="hidden" name="medical_record_list_limit" value={medicalRecordListLimit} />
+            <input type="hidden" name="journal_visibility_mode" value={journalVisibilityMode} />
             <input
               type="hidden"
               name="calendar_expand_out_of_range_appointments"
@@ -661,7 +698,7 @@ export default async function StoreOperationsSettingsContent() {
                 disabled={!canManage}
                 className="inline-flex items-center rounded bg-blue-600 px-2.5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                顧客ペット管理表示設定を保存
+                再来店フォロー日数設定を保存
               </button>
             </div>
           </form>

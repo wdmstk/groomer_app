@@ -178,6 +178,28 @@ html[data-theme] .hover\:bg-blue-700:hover {
   background-color: var(--button-primary-hover-bg) !important;
 }
 
+html[data-theme] input,
+html[data-theme] select,
+html[data-theme] textarea {
+  color: var(--text-primary);
+  border-color: var(--border-color);
+  background-color: var(--surface-bg);
+}
+
+html[data-theme] input::placeholder,
+html[data-theme] textarea::placeholder {
+  color: var(--text-secondary);
+}
+
+html[data-theme] select option {
+  color: var(--text-primary);
+  background-color: var(--surface-bg);
+}
+
+html[data-theme] button:not([class*="bg-"]) {
+  color: var(--text-primary);
+}
+
 @media (max-width: 767px) {
   .overflow-x-auto {
     -webkit-overflow-scrolling: touch;

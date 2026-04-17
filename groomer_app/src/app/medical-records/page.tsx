@@ -844,9 +844,9 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
             <p className="text-sm text-gray-500">カルテがまだ登録されていません。</p>
           ) : (
             <>
-              <div className="mb-4 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-4 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-gray-900">AI解析ステータス</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">AI解析ステータス</p>
                   <div className="flex flex-wrap gap-2">
                     {aiStatusOptions.map((option) => {
                       const active = option.value === selectedAiStatus
@@ -859,7 +859,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                             aiStatus: option.value,
                           })}
                           className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                            active ? 'bg-slate-900 text-white' : 'bg-white text-slate-700'
+                            active ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 dark:bg-slate-800 dark:text-slate-100'
                           }`}
                         >
                           {option.label} {option.count}
@@ -870,14 +870,14 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-gray-900">AIタグで絞り込み</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">AIタグで絞り込み</p>
                     {selectedAiTag ? (
                       <Link
                         href={buildMedicalRecordsHref({
                           tab: 'list',
                           aiStatus: selectedAiStatus,
                         })}
-                        className="text-xs font-semibold text-blue-600"
+                        className="text-xs font-semibold text-blue-600 dark:text-sky-300"
                       >
                         タグ絞り込みを解除
                       </Link>
@@ -896,7 +896,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                               aiStatus: selectedAiStatus,
                             })}
                             className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                              active ? 'bg-violet-700 text-white' : 'bg-white text-violet-900'
+                              active ? 'bg-violet-700 text-white' : 'bg-white text-violet-900 dark:bg-slate-800 dark:text-violet-200'
                             }`}
                           >
                             {option.tag} {option.count}
@@ -904,23 +904,23 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                         )
                       })
                     ) : (
-                      <p className="text-sm text-gray-500">AIタグ付きカルテはまだありません。</p>
+                      <p className="text-sm text-gray-500 dark:text-slate-400">AIタグ付きカルテはまだありません。</p>
                     )}
                   </div>
                   {selectedAiTag || selectedAiStatus !== 'all' ? (
-                    <p className="text-xs text-slate-600">
+                    <p className="text-xs text-slate-600 dark:text-slate-300">
                       現在の条件:
                       {selectedAiStatus !== 'all' ? ` 解析=${aiStatusOptions.find((option) => option.value === selectedAiStatus)?.label}` : ' 解析=すべて'}
                       {selectedAiTag ? ` / タグ=${selectedAiTag}` : ''}
                     </p>
                   ) : (
-                    <p className="text-xs text-slate-600">一覧から気になるタグを押すと、対象カルテだけに絞り込めます。</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-300">一覧から気になるタグを押すと、対象カルテだけに絞り込めます。</p>
                   )}
                 </div>
               </div>
 
               {filteredRecordList.length === 0 ? (
-                <div className="rounded border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-600">
+                <div className="rounded border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-600 dark:border-slate-600 dark:text-slate-300">
                   条件に一致するカルテはありません。
                 </div>
               ) : null}

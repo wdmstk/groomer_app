@@ -26,15 +26,14 @@ export function InventoryNav() {
   }
 
   return (
-    <div className="rounded-lg border bg-white p-3">
-      <p className="mb-2 text-xs font-semibold tracking-wide text-gray-500">在庫管理メニュー</p>
-      <div className="flex flex-wrap gap-2">
+    <div className="overflow-x-auto">
+      <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2">
         {inventoryLinks.map((link) => (
           <Link
             key={link.href}
             href={link.href}
-            className={`rounded px-3 py-1.5 text-sm transition-colors ${
-              isActive(link.href) ? 'bg-blue-100 font-semibold text-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+              isActive(link.href) ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             {link.label}

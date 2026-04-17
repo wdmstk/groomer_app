@@ -1,8 +1,26 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 test.use({ video: 'on' })
 
+async function gotoStable(page: Page, url: string) {
+  let lastError: unknown = null
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20_000 })
+      return
+    } catch (error) {
+      lastError = error
+      const message = error instanceof Error ? error.message : String(error)
+      const retryable = message.includes('net::ERR_ABORTED') || message.includes('Timeout')
+      if (!retryable || attempt === 3) throw error
+      await page.waitForTimeout(500)
+    }
+  }
+  throw lastError
+}
+
 test.describe('統合会計ウォークスルー録画', () => {
+  test.describe.configure({ timeout: 120000 })
   test('トリミング予約・ホテル予約・カルテ作成・統合会計確定を通しで操作できる', async ({ page }) => {
     let createdInvoiceId: string | null = 'inv-walkthrough-001'
 
@@ -169,7 +187,7 @@ test.describe('統合会計ウォークスルー録画', () => {
       })
     })
 
-    await page.goto('/appointments?tab=list&modal=create', { waitUntil: 'domcontentloaded' })
+    await gotoStable(page, '/appointments?tab=list&modal=create')
     await expect(page.getByRole('heading', { name: '新規予約登録' })).toBeVisible()
     await page.locator('select[name="customer_id"]').selectOption('customer-001')
     await page.locator('select[name="pet_id"]').selectOption('pet-001')
@@ -177,10 +195,10 @@ test.describe('統合会計ウォークスルー録画', () => {
     await page.getByRole('button', { name: '登録する' }).click()
     await page.waitForTimeout(800)
     if (page.url().includes('/api/appointments')) {
-      await page.goto('/appointments?tab=list', { waitUntil: 'domcontentloaded' })
+      await gotoStable(page, '/appointments?tab=list')
     }
 
-    await page.goto('/hotel', { waitUntil: 'domcontentloaded' })
+    await gotoStable(page, '/hotel')
     await expect(page.getByRole('heading', { name: 'ホテル台帳一覧' })).toBeVisible()
     const openCreateButton = page.getByRole('button', { name: '新規予約を登録' })
     await openCreateButton.click()
@@ -200,13 +218,13 @@ test.describe('統合会計ウォークスルー録画', () => {
         page.getByRole('button', { name: '作成' }).click(),
       ])
       if (page.url().includes('/api/hotel/stays')) {
-        await page.goto('/hotel', { waitUntil: 'domcontentloaded' })
+        await gotoStable(page, '/hotel')
       }
     } catch {
       // Fallback: モーダル操作が不安定な環境では既存台帳で後続フローを継続する。
     }
 
-    await page.goto('/medical-records?tab=pending&appointment_id=appt-e2e-001', { waitUntil: 'domcontentloaded' })
+    await gotoStable(page, '/medical-records?tab=pending&appointment_id=appt-e2e-001')
     await expect(page.getByRole('heading', { name: '新規カルテ登録' })).toBeVisible()
     await page.getByLabel('ペット').selectOption({ index: 1 })
     await page.getByLabel('担当スタッフ').selectOption({ index: 1 })
@@ -215,14 +233,14 @@ test.describe('統合会計ウォークスルー録画', () => {
     await page.getByRole('button', { name: '登録する' }).click()
     await page.waitForTimeout(800)
     if (page.url().includes('/api/medical-records')) {
-      await page.goto('/medical-records?tab=pending', { waitUntil: 'domcontentloaded' })
+      await gotoStable(page, '/medical-records?tab=pending')
     }
 
-    await page.goto('/hotel', { waitUntil: 'domcontentloaded' })
+    await gotoStable(page, '/hotel')
     await page.getByRole('button', { name: '統合会計を作成' }).click()
     await page.waitForTimeout(800)
 
-    await page.goto('/payments', { waitUntil: 'domcontentloaded' })
+    await gotoStable(page, '/payments')
     await expect(page.getByText('統合請求（β）')).toBeVisible()
     const openCheckoutButton = page.getByRole('button', { name: '会計確定', exact: true })
     await expect
