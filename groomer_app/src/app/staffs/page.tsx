@@ -983,63 +983,65 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
         ) : null}
       </div>
 
-      <div className="flex items-center gap-4 border-b border-gray-200 dark:border-slate-700">
-        <Link
-          href="/staffs?tab=list"
-          className={`pb-2 text-sm font-semibold ${
-            activeTab === 'list' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 dark:text-slate-300'
-          }`}
-        >
-          スタッフ一覧
-        </Link>
-        {canManageShifts ? (
+      <div className="overflow-x-auto">
+        <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2">
           <Link
-            href="/staffs?tab=shift-settings"
-            className={`pb-2 text-sm font-semibold ${
-              activeTab === 'shift-settings' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 dark:text-slate-300'
+            href="/staffs?tab=list"
+            className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+              activeTab === 'list' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            シフト設定
+            スタッフ一覧
           </Link>
-        ) : null}
-        {canManageShifts ? (
+          {canManageShifts ? (
+            <Link
+              href="/staffs?tab=shift-settings"
+              className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+                activeTab === 'shift-settings' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              シフト設定
+            </Link>
+          ) : null}
+          {canManageShifts ? (
+            <Link
+              href="/staffs?tab=shift"
+              className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+                activeTab === 'shift' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              シフト管理
+            </Link>
+          ) : null}
+          {canUseShiftFeatures ? (
+            <Link
+              href={`/staffs?tab=shift-list&shift_month=${shiftMonth}`}
+              className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+                activeTab === 'shift-list' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              シフト一覧
+            </Link>
+          ) : null}
+          {canManageShifts ? (
+            <Link
+              href="/staffs?tab=shift-history"
+              className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+                activeTab === 'shift-history' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              シフト変更履歴
+            </Link>
+          ) : null}
           <Link
-            href="/staffs?tab=shift"
-            className={`pb-2 text-sm font-semibold ${
-              activeTab === 'shift' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 dark:text-slate-300'
+            href={`/staffs?tab=attendance-records&attendance_month=${attendanceMonth}&attendance_staff_id=${attendanceStaffId}`}
+            className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+              activeTab === 'attendance-records' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            シフト管理
+            勤怠管理
           </Link>
-        ) : null}
-        {canUseShiftFeatures ? (
-          <Link
-            href={`/staffs?tab=shift-list&shift_month=${shiftMonth}`}
-            className={`pb-2 text-sm font-semibold ${
-              activeTab === 'shift-list' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 dark:text-slate-300'
-            }`}
-          >
-            シフト一覧
-          </Link>
-        ) : null}
-        {canManageShifts ? (
-          <Link
-            href="/staffs?tab=shift-history"
-            className={`pb-2 text-sm font-semibold ${
-              activeTab === 'shift-history' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 dark:text-slate-300'
-            }`}
-          >
-            シフト変更履歴
-          </Link>
-        ) : null}
-        <Link
-          href={`/staffs?tab=attendance-records&attendance_month=${attendanceMonth}&attendance_staff_id=${attendanceStaffId}`}
-          className={`pb-2 text-sm font-semibold ${
-            activeTab === 'attendance-records' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 dark:text-slate-300'
-          }`}
-        >
-          勤怠管理
-        </Link>
+        </div>
       </div>
 
       {activeTab === 'list' ? <InviteManager /> : null}

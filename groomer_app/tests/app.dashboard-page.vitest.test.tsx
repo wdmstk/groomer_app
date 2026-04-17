@@ -126,7 +126,7 @@ describe('dashboard page', () => {
     render(await DashboardPage({ searchParams: Promise.resolve({ tab: 'followups', followup_window: '30' }) }))
 
     expect(screen.getByText('離脱予兆の優先対応リスト')).toBeTruthy()
-    expect(screen.getByText('再来店フォロー隊列')).toBeTruthy()
+    expect(screen.getByText('再来店フォロー一覧')).toBeTruthy()
     expect(screen.getByText('担当者別フォローKPI')).toBeTruthy()
     expect(screen.getByRole('link', { name: '直近30日' }).getAttribute('href')).toContain(
       'tab=followups&followup_window=30',
