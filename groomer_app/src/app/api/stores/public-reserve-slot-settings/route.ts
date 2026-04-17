@@ -133,6 +133,48 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: updateError.message }, { status: 500 })
   }
 
+  if (formData.has('calendar_expand_out_of_range_appointments')) {
+    const calendarExpandOutOfRangeAppointments = formData
+      .getAll('calendar_expand_out_of_range_appointments')
+      .some((value) => value?.toString() === 'true')
+    const { data } = await storeWriter
+      .from('store_customer_management_settings' as never)
+      .select(
+        'medical_record_list_limit, journal_visibility_mode, followup_snoozed_refollow_days, followup_no_need_refollow_days, followup_lost_refollow_days'
+      )
+      .eq('store_id', storeId)
+      .maybeSingle()
+    const currentCustomerSettings = data as
+      | {
+          medical_record_list_limit?: number | null
+          journal_visibility_mode?: string | null
+          followup_snoozed_refollow_days?: number | null
+          followup_no_need_refollow_days?: number | null
+          followup_lost_refollow_days?: number | null
+        }
+      | null
+    const { error: customerUpdateError } = await storeWriter
+      .from('store_customer_management_settings' as never)
+      .upsert(
+        {
+          store_id: storeId,
+          medical_record_list_limit: Number(currentCustomerSettings?.medical_record_list_limit ?? 10),
+          journal_visibility_mode:
+            currentCustomerSettings?.journal_visibility_mode === 'include_drafts'
+              ? 'include_drafts'
+              : 'published_only',
+          followup_snoozed_refollow_days: Number(currentCustomerSettings?.followup_snoozed_refollow_days ?? 7),
+          followup_no_need_refollow_days: Number(currentCustomerSettings?.followup_no_need_refollow_days ?? 60),
+          followup_lost_refollow_days: Number(currentCustomerSettings?.followup_lost_refollow_days ?? 90),
+          calendar_expand_out_of_range_appointments: calendarExpandOutOfRangeAppointments,
+        } as never,
+        { onConflict: 'store_id' }
+      )
+    if (customerUpdateError) {
+      return NextResponse.json({ message: customerUpdateError.message }, { status: 500 })
+    }
+  }
+
   return NextResponse.redirect(new URL(redirectTo ?? '/settings/public-reserve', request.url))
 }
 

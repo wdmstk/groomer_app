@@ -21,6 +21,11 @@ type StaffThemeRow = {
   ui_theme: string | null
 }
 
+type StoreShiftSettingRow = {
+  store_id: string
+  attendance_punch_enabled: boolean | null
+}
+
 function pickStoreName(
   relation: StoreMembershipRow['stores']
 ) {
@@ -62,6 +67,7 @@ export async function GET() {
 
   let planCodeByStoreId = new Map<string, string>()
   let uiThemeByStoreId = new Map<string, string>()
+  let attendancePunchEnabledByStoreId = new Map<string, boolean>()
   if (storeIds.length > 0) {
     const { data: subscriptionRows } = await supabase
       .from('store_subscriptions')
@@ -87,6 +93,20 @@ export async function GET() {
         isUiTheme(row.ui_theme) ? row.ui_theme : DEFAULT_UI_THEME,
       ])
     )
+
+    const { data: shiftSettingRows, error: shiftSettingError } = await supabase
+      .from('store_shift_settings')
+      .select('store_id, attendance_punch_enabled')
+      .in('store_id', storeIds)
+
+    if (!shiftSettingError || `${shiftSettingError.message}`.includes('store_shift_settings')) {
+      attendancePunchEnabledByStoreId = new Map(
+        ((shiftSettingRows ?? []) as StoreShiftSettingRow[]).map((row) => [
+          row.store_id,
+          row.attendance_punch_enabled !== false,
+        ])
+      )
+    }
   }
 
   const storesWithPlan = await Promise.all(
@@ -102,6 +122,7 @@ export async function GET() {
         uiTheme: uiThemeByStoreId.get(store.id) ?? DEFAULT_UI_THEME,
         hotelOptionEnabled: optionState.hotelOptionEnabled,
         notificationOptionEnabled: optionState.notificationOptionEnabled,
+        attendancePunchEnabled: attendancePunchEnabledByStoreId.get(store.id) ?? true,
       }
     })
   )

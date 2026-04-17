@@ -34,6 +34,8 @@ const ROUTE_MINIMUM_PLAN: Record<string, AppPlan> = {
   '/settings/setup-store': 'light',
   '/dashboard/setup-store': 'light',
   '/staffs': 'light',
+  '/attendance-punch': 'light',
+  '/attendance-records': 'light',
   '/support-tickets': 'light',
   '/billing': 'light',
   '/billing/history': 'light',

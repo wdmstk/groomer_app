@@ -52,6 +52,8 @@ export function billingOperationTypeLabel(value: string) {
   if (value === 'setup_assistance_paid') return '初期設定代行 決済完了'
   if (value === 'storage_addon_request') return '容量追加申込'
   if (value === 'storage_addon_paid') return '容量追加 決済完了'
+  if (value === 'reservation_prepayment_paid') return '予約前払い 決済完了'
+  if (value === 'reservation_card_hold_authorized') return '予約カード与信 確保'
   if (value === 'notification_usage_billing_calculated') return '通知従量課金 月次計算'
   return value
 }
