@@ -139,6 +139,15 @@ Next.js の開発元が提供する [Vercel Platform](https://vercel.com/new?utm
 22. 利用者ごとのUIテーマ切替を使う場合は `../supabase_staffs_ui_theme.sql` を適用する。
 23. LINE webhook 連携（`/api/webhooks/line`）または顧客削除時のLINEイベント参照を使う場合は `../supabase_line_webhook_events.sql` を適用する。
 24. LINE自動マーケ機能を使う場合は `../supabase_line_auto_marketing.sql` を適用する。
+25. スタッフ管理（シフト管理/勤務管理）を使う場合は `../supabase_staff_shift_management.sql` を適用する。
+
+### スタッフ管理（シフト/勤務）運用
+
+`TASK-450` の運用手順と制約は以下を参照してください。
+
+- `../docs/staff-shift-attendance-requirements.md`
+- `../docs/staff-shift-attendance-data-api-contract.md`
+- `../docs/staff-shift-attendance-operations-manual.md`
 
 ### Cron登録とは
 

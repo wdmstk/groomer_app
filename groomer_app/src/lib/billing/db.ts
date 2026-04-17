@@ -504,6 +504,7 @@ export async function insertBillingOperation(params: {
     | 'storage_addon_request'
     | 'storage_addon_paid'
     | 'reservation_prepayment_paid'
+    | 'reservation_card_hold_authorized'
     | 'notification_usage_billing_calculated'
   amountJpy?: number | null
   reason?: string | null

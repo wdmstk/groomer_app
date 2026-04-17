@@ -77,4 +77,12 @@ describe('Sidebar component', () => {
     expect(pushMock).toHaveBeenCalledTimes(1)
     expect(pushMock).toHaveBeenCalledWith('/hq')
   })
+
+  it('hides attendance punch link when attendance feature is disabled', () => {
+    window.sessionStorage.setItem('active_store_attendance_punch_enabled', '0')
+    render(<Sidebar />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'メイン' }))
+    expect(screen.queryByRole('link', { name: '勤怠打刻' })).toBeNull()
+  })
 })

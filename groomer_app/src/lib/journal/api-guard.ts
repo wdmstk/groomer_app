@@ -57,8 +57,13 @@ export async function requireJournalStoreContext(): Promise<JournalStoreContext>
     .maybeSingle()
 
   const role = String(membership.role ?? '')
+  const permissionSupabase = {
+    from: (table: string) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase as any).from(table),
+  }
   const permissions = await resolveJournalPermissions({
-    supabase,
+    supabase: permissionSupabase,
     storeId,
     role,
   })

@@ -63,6 +63,12 @@ type OnboardingStep = {
   detail: string
 }
 
+const PLAN_STAFF_SHIFT_ITEMS: Record<PlanKey, string[]> = {
+  light: ['勤怠打刻', '勤務実績確認'],
+  standard: ['勤怠管理', 'シフト管理（手動作成）', 'シフト自動生成（ルールベース、予約考慮）'],
+  pro: ['シフト最適化', 'シフト定期自動生成'],
+}
+
 const PLAN_CARDS: PlanCard[] = [
   {
     id: 'light',
@@ -126,6 +132,12 @@ const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
   { feature: '通知ログ', light: '-', standard: '○', pro: '○' },
   { feature: '空き枠再販（半自動）', light: '-', standard: '○', pro: '○' },
   { feature: 'LINE通知', light: '-', standard: '○', pro: '○' },
+  { feature: '勤怠打刻（出勤/退勤/休憩）', light: '○', standard: '○', pro: '○' },
+  { feature: '勤怠管理（確認・申請）', light: '○', standard: '○', pro: '○' },
+  { feature: 'シフト管理', light: '-', standard: '○', pro: '○' },
+  { feature: 'シフト自動生成（ルールベース、予約考慮）', light: '-', standard: '○', pro: '○' },
+  { feature: 'シフト最適化', light: '-', standard: '-', pro: '○' },
+  { feature: 'シフト定期自動生成', light: '-', standard: '-', pro: '○' },
   { feature: '監査ログ', light: '-', standard: '-', pro: '○' },
   { feature: '本部KPI', light: '-', standard: '-', pro: '○' },
   { feature: 'テンプレ配信・承認フロー', light: '-', standard: '-', pro: '○' },
@@ -448,6 +460,9 @@ export default function LandingPage() {
             <p className="mt-3 text-sm opacity-90">{plan.summary}</p>
             <ul className="mt-4 list-disc space-y-1 pl-5 text-sm">
               {plan.highlights.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+              {PLAN_STAFF_SHIFT_ITEMS[plan.id].map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>

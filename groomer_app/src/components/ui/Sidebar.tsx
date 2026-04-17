@@ -24,6 +24,7 @@ type NavLink = {
   ownerOnly?: boolean
   ownerOrAdminOnly?: boolean
   matchStartsWith?: boolean
+  attendanceFeatureOnly?: boolean
 }
 
 type NavSection = {
@@ -69,6 +70,7 @@ const storeNavSections: NavSection[] = [
     links: [
       { href: '/dashboard', label: 'ダッシュボード' },
       { href: '/ops/today', label: 'モバイル当日運用' },
+      { href: '/attendance-punch', label: '勤怠打刻', attendanceFeatureOnly: true },
     ],
   },
   {
@@ -179,11 +181,21 @@ export function Sidebar() {
         : window.sessionStorage.getItem('active_store_option_state') ?? '',
     () => ''
   )
+  const persistedAttendancePunchEnabled = useSyncExternalStore(
+    () => () => {},
+    () =>
+      (typeof window === 'undefined'
+        ? '1'
+        : window.sessionStorage.getItem('active_store_attendance_punch_enabled') ?? '1'),
+    () => '1'
+  )
   const persistedOptionState = parseOptionState(persistedOptionStateRaw)
   const displayTitle = title || persistedTitle || '\u00A0'
   const activeRole = role || persistedRole || ''
   const activePlanCode = normalizePlanCode(planCode || persistedPlanCode || 'light')
   const activeOptionState = hasOptionState ? optionState : persistedOptionState
+  const [attendancePunchEnabled, setAttendancePunchEnabled] = useState(true)
+  const activeAttendancePunchEnabled = attendancePunchEnabled && persistedAttendancePunchEnabled !== '0'
   const displayUserEmail = userEmail || persistedUserEmail || 'メール未設定'
   const activeUiTheme: UiTheme = uiTheme
   const avatarLabel = (displayUserEmail[0] ?? '?').toUpperCase()
@@ -249,6 +261,11 @@ export function Sidebar() {
         : nextOptionState
     )
     window.sessionStorage.setItem('active_store_option_state', JSON.stringify(nextOptionState))
+  }, [])
+
+  const handleActiveAttendancePunchEnabledChange = useCallback((enabled: boolean) => {
+    setAttendancePunchEnabled((prev) => (prev === enabled ? prev : enabled))
+    window.sessionStorage.setItem('active_store_attendance_punch_enabled', enabled ? '1' : '0')
   }, [])
 
   const handleActiveUiThemeChange = useCallback((nextTheme: UiTheme) => {
@@ -402,6 +419,9 @@ export function Sidebar() {
             {isExpanded ? (
               <div className="mt-2 space-y-1.5 pl-4">
                 {section.links.map((link) => {
+                  if (link.attendanceFeatureOnly && !activeAttendancePunchEnabled) {
+                    return null
+                  }
                   if (link.ownerOnly && activeRole !== 'owner') {
                     return null
                   }
@@ -505,6 +525,7 @@ export function Sidebar() {
               onActiveStoreRoleChange={handleActiveStoreRoleChange}
               onActiveStorePlanCodeChange={handleActiveStorePlanCodeChange}
               onActiveStoreOptionStateChange={handleActiveStoreOptionStateChange}
+              onActiveAttendancePunchEnabledChange={handleActiveAttendancePunchEnabledChange}
               onActiveUiThemeChange={handleActiveUiThemeChange}
               onUserEmailChange={handleUserEmailChange}
             />
@@ -610,6 +631,7 @@ export function Sidebar() {
                 onActiveStoreRoleChange={handleActiveStoreRoleChange}
                 onActiveStorePlanCodeChange={handleActiveStorePlanCodeChange}
                 onActiveStoreOptionStateChange={handleActiveStoreOptionStateChange}
+                onActiveAttendancePunchEnabledChange={handleActiveAttendancePunchEnabledChange}
                 onActiveUiThemeChange={handleActiveUiThemeChange}
                 onUserEmailChange={handleUserEmailChange}
               />

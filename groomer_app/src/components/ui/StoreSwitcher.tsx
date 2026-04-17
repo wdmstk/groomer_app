@@ -13,6 +13,7 @@ type StoreOption = {
   uiTheme?: UiTheme
   hotelOptionEnabled?: boolean
   notificationOptionEnabled?: boolean
+  attendancePunchEnabled?: boolean
 }
 
 type StoreResponse = {
@@ -76,6 +77,7 @@ type StoreSwitcherProps = {
     hotelOptionEnabled: boolean
     notificationOptionEnabled: boolean
   }) => void
+  onActiveAttendancePunchEnabledChange?: (enabled: boolean) => void
   onActiveUiThemeChange?: (theme: UiTheme) => void
   onUserEmailChange?: (email: string) => void
   compact?: boolean
@@ -88,6 +90,7 @@ export function StoreSwitcher({
   onActiveStoreRoleChange,
   onActiveStorePlanCodeChange,
   onActiveStoreOptionStateChange,
+  onActiveAttendancePunchEnabledChange,
   onActiveUiThemeChange,
   onUserEmailChange,
   compact = false,
@@ -115,7 +118,6 @@ export function StoreSwitcher({
           setIsLoading(false)
         }
         persistActiveStoreId(resolvedActiveStoreId)
-        return
       }
 
       const response = await fetch('/api/stores', { cache: 'no-store' })
@@ -196,6 +198,18 @@ export function StoreSwitcher({
       )
     }
   }, [data.activeStoreId, data.stores, isLoading, onActiveStoreOptionStateChange])
+
+  useEffect(() => {
+    if (isLoading || data.stores.length === 0) return
+    const activeStore = data.stores.find((store) => store.id === data.activeStoreId) ?? data.stores[0]
+    const enabled = activeStore?.attendancePunchEnabled !== false
+    if (onActiveAttendancePunchEnabledChange) {
+      onActiveAttendancePunchEnabledChange(enabled)
+    }
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem('active_store_attendance_punch_enabled', enabled ? '1' : '0')
+    }
+  }, [data.activeStoreId, data.stores, isLoading, onActiveAttendancePunchEnabledChange])
 
   useEffect(() => {
     if (isLoading || data.stores.length === 0) return

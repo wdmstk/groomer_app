@@ -123,10 +123,11 @@ Completed tasks should be marked:
 ## TASK INDEX（正式タスクの正規順序）
 
 ### in_progress
-1. `TASK-449` ページ/APIルート網羅テストの一括強化（大塊PR運用）
-2. `TASK-448` 顧客管理βページ改善（会員証URLカード配色統一）
-3. `TASK-408` POS機能導入計画（要件定義〜実装）
-4. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
+1. `TASK-450` スタッフ管理機能拡張（シフト管理・勤務管理）
+2. `TASK-449` ページ/APIルート網羅テストの一括強化（大塊PR運用）
+3. `TASK-448` 顧客管理βページ改善（会員証URLカード配色統一）
+4. `TASK-408` POS機能導入計画（要件定義〜実装）
+5. `TASK-POS-006` 受入試験・移行・運用ドキュメント整備（`TASK-408`配下）
 
 ### todo
 （なし）
@@ -188,6 +189,83 @@ Completed tasks should be marked:
 51. `TASK-POS-001` 要件定義・業務フロー確定（`TASK-408`配下）（2026-04-06）
 
 ## 正式タスク詳細（Task ID採番済み）
+
+## スタッフ管理機能拡張（シフト管理・勤務管理）
+- Task ID: `TASK-450`
+- ブランチ: `feat/TASK-450-staff-shift-attendance`
+- 現在の作業ブランチ: `feat/TASK-450-staff-shift-attendance`
+- ステータス: `in_progress`
+- 概要: 既存のスタッフ管理に、シフト管理（予定）と勤務管理（実績）を追加する。要件定義から順に仕様確定し、段階的に実装・検証する。
+- 影響範囲: `TASKS.md`、`docs/*`（要件/設計ドキュメント）、`groomer_app/src/app/staffs*`、`groomer_app/src/app/api/staff*`、`groomer_app/tests/*`、`groomer_app/e2e/*`
+- リスク:
+  - シフト（予定）と勤務実績の定義差異が曖昧だと運用混乱が起きる
+  - 既存予約/POS/勤怠集計との境界が不明確だとデータ不整合の原因になる
+  - 店舗ごとの運用差分（休憩、日跨ぎ、打刻漏れ対応）で仕様が肥大化しやすい
+- 完了条件:
+  - 要件定義書で業務フロー・権限・例外系（遅刻/早退/打刻漏れ/日跨ぎ）を合意
+  - シフト管理と勤務管理それぞれの画面/API/DB仕様が確定
+  - 実装後に Vitest/E2E/lint が通過し、運用手順がドキュメント化されている
+- 参照ドキュメント:
+  - `docs/staff-shift-attendance-requirements.md`
+  - `docs/staff-shift-attendance-data-api-contract.md`
+- 進捗:
+  - [x] Step 1: 要件定義（業務フロー、用語定義、権限、例外ケース、非機能要件）
+  - [x] Step 2: 仕様設計（データモデル、API契約、画面遷移、バリデーション）
+  - [x] Step 3: シフト管理実装（作成/編集/公開、スタッフ別・日別ビュー）
+    - [x] DB土台追加（`store_shift_settings`/`store_closed_rules`/`staff_work_rules`/`staff_shift_plans`/`shift_alerts`）
+    - [x] API追加（settings、shift CRUD、publish、alerts、sync-nominations、auto-generate）
+    - [x] `/staffs` タブ拡張（`list`/`shift`/`shift-settings`）
+    - [x] 指名予約連動の不足警告と候補シフト下書き生成
+    - [x] v1.1 自動生成拡張（最大90日、manual保護、差分履歴run_id、希望休日単位、制約違反警告）
+  - [x] Step 4: 勤務管理実装（出退勤記録、休憩、修正申請、承認フロー）
+    - [x] DB土台追加（`attendance_events`/`attendance_daily_summaries`/`attendance_adjustment_requests`）
+    - [x] API追加（打刻登録、日次実績取得、自分の実績取得、修正申請、承認/却下）
+    - [x] `/staffs` タブ拡張（`attendance`）と打刻/申請/承認/実績一覧UI
+  - [x] Step 5: テスト整備（単体/統合/E2E）と受入確認
+    - [x] 勤務集計ヘルパーの単体テスト追加（`tests/attendance.summary.test.ts`）
+    - [x] 勤務APIルートのテスト追加
+      - [x] `attendance/events` ルートテスト追加（権限/入力エラー/form redirect）
+      - [x] `stores/shift-attendance-settings` ルートテスト追加（位置必須バリデーション/保存/定休日反映）
+      - [x] `attendance/adjustment-requests` ルートテスト追加（一覧/申請/権限制御/form redirect）
+      - [x] `attendance/adjustment-requests/[request_id]/review` ルートテスト追加（承認/却下/競合/入力エラー）
+      - [x] `attendance/daily`・`attendance/me` ルートテスト追加（閲覧権限/本人未連携/取得成功）
+    - [x] 打刻UI/ページのVitest追加
+      - [x] `AttendancePunchActionPanel`（位置情報必須時のボタン制御/hidden値反映）
+      - [x] `/attendance-punch` ページ（スタッフ選択/対象スタッフ表示）
+    - [x] サイドバーの機能表示制御テスト追加
+      - [x] 勤怠打刻メニューの feature flag 連動（`active_store_attendance_punch_enabled`）
+    - [x] E2Eシナリオ（打刻→修正申請→承認→実績反映）追加
+      - [x] `e2e/staffs-attendance.spec.ts` を追加し、勤務管理タブの導線を検証
+      - [x] `e2e/staffs-shift-layout.spec.ts` を更新し、現行シフト管理UI（PC/モバイル）の表示を検証
+  - [x] Step 6: ドキュメント更新（README/運用手順/制約事項）
+    - [x] 要件書/契約書のステータスを `implemented v1` に更新
+    - [x] 運用手順書 `docs/staff-shift-attendance-operations-manual.md` を追加
+    - [x] `groomer_app/README.md` に適用SQLと関連ドキュメント参照を追加
+  - [x] Step 7-A: プラン別機能制御の実装（ライト/スタンダード/プロの提供範囲を仕様どおりに反映）
+    - [x] シフト管理系UIタブをスタンダード以上に限定（ライトでは非表示）
+    - [x] シフト管理系APIをスタンダード以上に限定（`403` ガード）
+  - [ ] Step 7-B（後続タスク）: プロ向けシフト最適化ロジックの高度化（説明可能性・不足時代替案・重み最適化）
+    - [x] Step 7-B-1: 要件定義（最適化評価軸、重み、説明表示、代替案、定期自動運転、受け入れ基準）
+    - [x] Step 7-B-2: データ/API契約の詳細設計
+      - [x] データモデル（最適化重み・定期自動運転・実行履歴拡張）を定義
+      - [x] API契約（最適化設定・optimized実行・定期自動運転）を定義
+      - [x] UI/権限/バリデーション/テスト観点を定義
+    - [x] Step 7-B-3: DB/サーバ実装（最適化実行、定期自動運転、履歴保存）
+      - [x] SQL拡張: `shift_optimization_enabled` 列、`shift_optimization_profiles`、`shift_scheduled_jobs`、`shift_scheduled_job_runs`、RLS/Policy追加
+      - [x] API追加: `GET/PUT /api/staff-shifts/settings/optimization`
+      - [x] API追加: `GET/POST /api/staff-shifts/scheduled-jobs`、`PATCH/DELETE /api/staff-shifts/scheduled-jobs/:job_id`、`GET /api/staff-shifts/scheduled-jobs/runs`
+      - [x] API拡張: `POST /api/staff-shifts/auto-generate` に `strategy=rule_based|optimized`、`pro` ガード、スコア/代替案レスポンス、履歴拡張を追加
+      - [x] Vitest追加: `staff-shifts.optimization-settings-route`、`staff-shifts.scheduled-jobs-route`、`staff-shifts.auto-generate-route` 拡張
+    - [x] Step 7-B-4: UI実装（設定UI、結果表示UI、代替案表示）
+      - [x] シフト設定タブに「最適化ON/OFF・重み設定・定期自動運転ジョブ」UIを追加（スタンダードは表示のみ、プロで編集可）
+      - [x] シフト管理タブの自動生成に戦略セレクタ（ルールベース/最適化）を追加
+      - [x] 自動生成結果に戦略・総合スコア・代替案件数を表示
+      - [x] シフト変更履歴に戦略・総合スコア列を追加
+    - [x] Step 7-B-5: テスト・運用手順更新
+      - [x] Vitest拡張: 最適化設定APIのform-data保存/redirectとcheckbox解釈を追加
+      - [x] Vitest拡張: 定期自動運転APIのform-data作成、`[job_id]` POST互換（patch/delete）とredirectを追加
+      - [x] E2E拡張: シフト管理画面に生成戦略UI（ルールベース）表示確認を追加
+      - [x] 運用手順書更新: `docs/staff-shift-attendance-operations-manual.md` を `v1.4` 化し、最適化/定期自動運転の運用を追記
 
 ## ページ/APIルート網羅テストの一括強化（大塊PR運用）
 - Task ID: `TASK-449`
