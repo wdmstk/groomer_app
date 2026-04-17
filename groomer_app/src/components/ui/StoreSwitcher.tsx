@@ -118,27 +118,34 @@ export function StoreSwitcher({
           setIsLoading(false)
         }
         persistActiveStoreId(resolvedActiveStoreId)
-      }
-
-      const response = await fetch('/api/stores', { cache: 'no-store' })
-      if (!response.ok) {
-        if (isMounted) {
-          setIsLoading(false)
-        }
         return
       }
 
-      const json = (await response.json()) as StoreResponse
-      const resolvedActiveStoreId = json.activeStoreId ?? json.stores[0]?.id ?? null
-      const nextData = { ...json, activeStoreId: resolvedActiveStoreId }
-      writeStoresCache(nextData)
-      persistActiveStoreId(resolvedActiveStoreId)
-      if (isMounted) {
-        setData(nextData)
-        if (onUserEmailChange) {
-          onUserEmailChange(nextData.user?.email ?? '')
+      try {
+        const response = await fetch('/api/stores', { cache: 'no-store' })
+        if (!response.ok) {
+          if (isMounted) {
+            setIsLoading(false)
+          }
+          return
         }
-        setIsLoading(false)
+
+        const json = (await response.json()) as StoreResponse
+        const resolvedActiveStoreId = json.activeStoreId ?? json.stores[0]?.id ?? null
+        const nextData = { ...json, activeStoreId: resolvedActiveStoreId }
+        writeStoresCache(nextData)
+        persistActiveStoreId(resolvedActiveStoreId)
+        if (isMounted) {
+          setData(nextData)
+          if (onUserEmailChange) {
+            onUserEmailChange(nextData.user?.email ?? '')
+          }
+          setIsLoading(false)
+        }
+      } catch {
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
 

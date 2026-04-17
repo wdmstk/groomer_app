@@ -97,21 +97,23 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-white p-2">
-        {SETTINGS_TABS.map((item) => {
-          const isActive = tab === item.id
-          return (
-            <Link
-              key={item.id}
-              href={`/settings?tab=${item.id}`}
-              className={`rounded px-3 py-2 text-sm font-semibold transition-colors ${
-                isActive ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              {item.label}
-            </Link>
-          )
-        })}
+      <div className="overflow-x-auto">
+        <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2">
+          {SETTINGS_TABS.map((item) => {
+            const isActive = tab === item.id
+            return (
+              <Link
+                key={item.id}
+                href={`/settings?tab=${item.id}`}
+                className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${
+                  isActive ? 'bg-slate-900 text-white' : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {item.label}
+              </Link>
+            )
+          })}
+        </div>
       </div>
 
       {tab === 'store-ops' ? <StoreOperationsSettingsContent /> : null}

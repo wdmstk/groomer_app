@@ -281,7 +281,7 @@ function renderLineStatus(lineId: string | null) {
 export default async function CustomersManagePage({ searchParams }: CustomersManagePageProps) {
   const params = (await searchParams) ?? {}
   const q = (firstParam(params.q) ?? '').trim()
-  const rawView = firstParam(params.view) ?? 'detail'
+  const rawView = firstParam(params.view) ?? 'customers'
   const activeView =
     rawView === 'customers' || rawView === 'pets' || rawView === 'alerts' ? rawView : 'detail'
   const rawCustomerId = firstParam(params.customer_id) ?? ''

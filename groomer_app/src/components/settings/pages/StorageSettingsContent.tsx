@@ -98,41 +98,44 @@ export default async function StorageSettingsPage({ searchParams }: PageProps) {
           追加容量は「追加課金済み容量」として扱います（課金処理そのものは billing 画面での運用に連動）。
         </p>
         <form action="/api/settings/storage-policy" method="post" className="mt-4 space-y-4">
-          <label className="block text-sm text-gray-700">
-            方針
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[12rem_1fr] md:items-center">
+            <label className="text-sm text-gray-700" htmlFor="storage-policy-select">方針</label>
             <select
+              id="storage-policy-select"
               name="policy"
               defaultValue={quota.policy}
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 md:max-w-sm"
+              className="w-full rounded border border-gray-300 px-3 py-2 md:max-w-sm"
             >
               <option value="block">追加登録を停止する</option>
               <option value="cleanup_orphans">孤立した古いファイルを先に整理する</option>
             </select>
-          </label>
+          </div>
 
-          <label className="block text-sm text-gray-700">
-            追加容量（GB）
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[12rem_1fr] md:items-center">
+            <label className="text-sm text-gray-700" htmlFor="storage-extra-capacity-gb">追加容量（GB）</label>
             <input
+              id="storage-extra-capacity-gb"
               type="number"
               min={0}
               step={1}
               name="extra_capacity_gb"
               defaultValue={Math.floor(quota.extraCapacityBytes / (1024 * 1024 * 1024))}
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 md:max-w-sm"
+              className="w-full rounded border border-gray-300 px-3 py-2 md:max-w-sm"
             />
-          </label>
+          </div>
 
-          <label className="block text-sm text-gray-700">
-            カスタム上限（MB, 任意）
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[12rem_1fr] md:items-center">
+            <label className="text-sm text-gray-700" htmlFor="storage-custom-limit-mb">カスタム上限（MB, 任意）</label>
             <input
+              id="storage-custom-limit-mb"
               type="number"
               min={0}
               step={1}
               name="custom_limit_mb"
               defaultValue={quota.customLimitBytes !== null ? Math.floor(quota.customLimitBytes / (1024 * 1024)) : ''}
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 md:max-w-sm"
+              className="w-full rounded border border-gray-300 px-3 py-2 md:max-w-sm"
             />
-          </label>
+          </div>
 
           <input type="hidden" name="redirect_to" value="/settings/storage" />
           <button

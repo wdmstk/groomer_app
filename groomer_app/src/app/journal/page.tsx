@@ -1,6 +1,10 @@
+import Image from 'next/image'
+import Link from 'next/link'
 import JournalComposer from '@/components/journal/JournalComposer'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 import { journalPageFixtures } from '@/lib/e2e/journal-page-fixtures'
+import { createSignedPhotoUrlMap } from '@/lib/medical-records/photos'
+import { createSignedVideoUrlMap } from '@/lib/medical-records/videos'
 
 type CustomerRow = {
   id: string
@@ -28,6 +32,25 @@ type EntryPetRow = {
   pet_id: string
 }
 
+type JournalMediaRow = {
+  entry_id: string
+  media_type: 'photo' | 'video'
+  storage_key: string
+  thumbnail_key: string | null
+  sort_order: number
+}
+
+type RawSearchParams = Record<string, string | string[] | undefined>
+
+type JournalPageProps = {
+  searchParams?: Promise<RawSearchParams>
+}
+
+function firstParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0]
+  return value
+}
+
 function formatDateTime(value: string | null) {
   if (!value) return '未公開'
   const date = new Date(value)
@@ -44,7 +67,9 @@ function formatDateTime(value: string | null) {
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-export default async function JournalPage() {
+export default async function JournalPage({ searchParams }: JournalPageProps) {
+  const params = (await searchParams) ?? {}
+  const activeTab = firstParam(params.tab) === 'latest' ? 'latest' : 'compose'
   const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: journalPageFixtures.storeId }
@@ -76,6 +101,17 @@ export default async function JournalPage() {
           .eq('store_id', storeId)
           .in('entry_id', entryIds)
       : { data: [] as EntryPetRow[] }
+  const { data: journalMediaRows } =
+    isPlaywrightE2E
+      ? { data: journalPageFixtures.media as unknown as JournalMediaRow[] }
+      : entryIds.length > 0
+        ? await db
+            .from('journal_media')
+            .select('entry_id, media_type, storage_key, thumbnail_key, sort_order')
+            .eq('store_id', storeId)
+            .in('entry_id', entryIds)
+            .order('sort_order', { ascending: true })
+        : { data: [] as JournalMediaRow[] }
 
   const customerNameMap = new Map((customers as CustomerRow[]).map((row) => [row.id, row.full_name ?? '名称未設定']))
   const petNameMap = new Map((pets as PetRow[]).map((row) => [row.id, row.name ?? '名称未設定']))
@@ -85,6 +121,24 @@ export default async function JournalPage() {
     current.push(row.pet_id)
     petIdsByEntryId.set(row.entry_id, current)
   }
+  const firstJournalMediaByEntryId = new Map<string, JournalMediaRow>()
+  ;((journalMediaRows ?? []) as JournalMediaRow[]).forEach((row) => {
+    if (!firstJournalMediaByEntryId.has(row.entry_id)) {
+      firstJournalMediaByEntryId.set(row.entry_id, row)
+    }
+  })
+  const firstJournalPhotoPaths = Array.from(firstJournalMediaByEntryId.values())
+    .filter((row) => row.media_type === 'photo')
+    .map((row) => row.storage_key)
+  const firstJournalVideoPaths = Array.from(firstJournalMediaByEntryId.values())
+    .filter((row) => row.media_type === 'video')
+    .map((row) => row.thumbnail_key || row.storage_key)
+  const [journalPhotoSignedUrlMap, journalVideoSignedUrlMap] = isPlaywrightE2E
+    ? [new Map<string, string>(), new Map<string, string>()]
+    : await Promise.all([
+        createSignedPhotoUrlMap(db, firstJournalPhotoPaths, 60 * 30),
+        createSignedVideoUrlMap(db, firstJournalVideoPaths, 60 * 30),
+      ])
 
   return (
     <main className="mx-auto max-w-3xl space-y-4 px-4 py-4">
@@ -93,33 +147,79 @@ export default async function JournalPage() {
         <p className="text-sm text-gray-500">写真・動画カルテとは独立した日誌モジュールです。</p>
       </header>
 
-      <JournalComposer customers={customers as CustomerRow[]} pets={pets as PetRow[]} />
+      <div className="overflow-x-auto">
+        <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2">
+          <Link
+            href="/journal?tab=compose"
+            className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+              activeTab === 'compose' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            クイック投稿
+          </Link>
+          <Link
+            href="/journal?tab=latest"
+            className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+              activeTab === 'latest' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            最新投稿
+          </Link>
+        </div>
+      </div>
 
-      <section className="space-y-2">
-        <h2 className="text-base font-semibold text-gray-900">最新投稿</h2>
-        {entries.length === 0 ? (
-          <p className="rounded-md border border-dashed border-gray-300 p-4 text-sm text-gray-500">投稿はまだありません。</p>
-        ) : (
-          (entries as JournalEntryRow[]).map((entry) => {
-            const petNames = (petIdsByEntryId.get(entry.id) ?? [])
-              .map((petId) => petNameMap.get(petId) ?? '名称未設定')
-              .join(' / ')
-            const customerName = entry.customer_id ? customerNameMap.get(entry.customer_id) ?? '名称未設定' : '未設定'
+      {activeTab === 'compose' ? (
+        <JournalComposer customers={customers as CustomerRow[]} pets={pets as PetRow[]} />
+      ) : (
+        <section className="space-y-2">
+          <h2 className="text-base font-semibold text-gray-900">最新投稿</h2>
+          {entries.length === 0 ? (
+            <p className="rounded-md border border-dashed border-gray-300 p-4 text-sm text-gray-500">投稿はまだありません。</p>
+          ) : (
+            (entries as JournalEntryRow[]).map((entry) => {
+              const petNames = (petIdsByEntryId.get(entry.id) ?? [])
+                .map((petId) => petNameMap.get(petId) ?? '名称未設定')
+                .join(' / ')
+              const customerName = entry.customer_id ? customerNameMap.get(entry.customer_id) ?? '名称未設定' : '未設定'
+              const media = firstJournalMediaByEntryId.get(entry.id)
+              const mediaSignedUrl = media
+                ? media.media_type === 'photo'
+                  ? (journalPhotoSignedUrlMap.get(media.storage_key) ?? null)
+                  : (journalVideoSignedUrlMap.get(media.thumbnail_key || media.storage_key) ?? null)
+                : null
 
-            return (
-              <article key={entry.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-                <div className="flex items-center justify-between gap-2 text-xs text-gray-500">
-                  <span>{formatDateTime(entry.posted_at ?? entry.created_at)}</span>
-                  <span className="rounded bg-gray-100 px-2 py-1 text-[11px]">{entry.status}</span>
-                </div>
-                <p className="mt-1 text-sm text-gray-900">顧客: {customerName}</p>
-                <p className="text-sm text-gray-700">対象: {petNames || '未設定'}</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm text-gray-800">{entry.body_text || '（コメントなし）'}</p>
-              </article>
-            )
-          })
-        )}
-      </section>
+              return (
+                <article key={entry.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                  <div className="flex items-center justify-between gap-2 text-xs text-gray-500">
+                    <span>{formatDateTime(entry.posted_at ?? entry.created_at)}</span>
+                    <span className="rounded bg-gray-100 px-2 py-1 text-[11px]">{entry.status}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-gray-900">顧客: {customerName}</p>
+                  <p className="text-sm text-gray-700">対象: {petNames || '未設定'}</p>
+                  <div className="mt-2 relative h-28 overflow-hidden rounded border border-gray-200 bg-gray-100">
+                    {mediaSignedUrl ? (
+                      media?.media_type === 'photo' ? (
+                        <Image
+                          src={mediaSignedUrl}
+                          alt="日誌メディア"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <video src={mediaSignedUrl} className="h-full w-full object-cover" muted playsInline />
+                      )
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-gray-500">メディアなし</div>
+                    )}
+                  </div>
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-gray-800">{entry.body_text || '（コメントなし）'}</p>
+                </article>
+              )
+            })
+          )}
+        </section>
+      )}
     </main>
   )
 }

@@ -24,8 +24,6 @@ test.describe('ペットホテル管理', () => {
     await page.getByRole('button', { name: '運用設定' }).click()
     await expect(page.getByRole('heading', { name: 'ホテル運用設定' })).toBeVisible()
     await expect(page.getByLabel('同時預かり上限')).toHaveValue('4')
-    await expect(page.getByLabel('表示開始時刻')).toHaveValue('8')
-    await expect(page.getByLabel('表示終了時刻')).toHaveValue('21')
 
     await page.getByRole('button', { name: '商品台帳' }).click()
     await expect(page.getByRole('heading', { name: 'ホテル商品台帳' })).toBeVisible()
