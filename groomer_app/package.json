@@ -15,7 +15,7 @@
     "lint": "eslint --cache --cache-location .eslintcache src",
     "lint:changed": "node ./scripts/lint-changed.mjs",
     "lint:files": "eslint --cache --cache-location .eslintcache --quiet",
-    "test": "node --import ./tests/register-alias.mjs --test",
+    "test": "node ./scripts/test-dispatch.mjs",
     "test:vitest": "vitest run",
     "test:traceability": "node ./scripts/verify-traceability.mjs",
     "test:e2e": "playwright test",
