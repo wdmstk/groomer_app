@@ -334,21 +334,23 @@ export function Sidebar() {
         return null
       }
       return (
-        <div className={compact ? '' : 'rounded border bg-gray-50 p-2'}>
-          <p className="mb-1 text-xs font-semibold tracking-wide text-gray-500">運用モード</p>
-          <p className="rounded border bg-gray-50 px-2 py-1.5 text-xs text-gray-600">店舗運用（固定）</p>
+        <div className={compact ? '' : 'rounded border bg-gray-50 p-2 dark:border-slate-700 dark:bg-slate-900'}>
+          <p className="mb-1 text-xs font-semibold tracking-wide text-gray-500 dark:text-slate-400">運用モード</p>
+          <p className="rounded border bg-gray-50 px-2 py-1.5 text-xs text-gray-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">店舗運用（固定）</p>
         </div>
       )
     }
     return (
-      <div className={compact ? '' : 'rounded border bg-gray-50 p-2'}>
-        <p className="mb-2 text-xs font-semibold tracking-wide text-gray-500">運用モード</p>
+      <div className={compact ? '' : 'rounded border bg-gray-50 p-2 dark:border-slate-700 dark:bg-slate-900'}>
+        <p className="mb-2 text-xs font-semibold tracking-wide text-gray-500 dark:text-slate-400">運用モード</p>
         <div className="grid grid-cols-2 gap-1">
           <button
             type="button"
             onClick={() => switchMode('store')}
             className={`rounded px-2 py-1.5 text-xs font-semibold ${
-              activeNavMode === 'store' ? 'bg-blue-100 text-blue-700' : 'bg-white text-gray-600 hover:bg-gray-100'
+              activeNavMode === 'store'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'bg-white text-gray-600 hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
             }`}
           >
             店舗運用
@@ -357,7 +359,9 @@ export function Sidebar() {
             type="button"
             onClick={() => switchMode('hq')}
             className={`rounded px-2 py-1.5 text-xs font-semibold ${
-              activeNavMode === 'hq' ? 'bg-blue-100 text-blue-700' : 'bg-white text-gray-600 hover:bg-gray-100'
+              activeNavMode === 'hq'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'bg-white text-gray-600 hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
             }`}
           >
             本部運用

@@ -22,9 +22,12 @@ test.describe('スタッフ管理の勤怠周辺', () => {
 
     await page.goto('/staffs?tab=list')
 
-    const tabBar = page.locator('div.flex.items-center.gap-4.border-b').first()
-    const tabTexts = await tabBar.getByRole('link').allTextContents()
-    expect(tabTexts.slice(0, 6)).toEqual([
+    const tabBar = page.locator('div.inline-flex.min-w-full.gap-2.rounded-2xl').first()
+    await expect(tabBar).toBeVisible()
+    const tabLinks = tabBar.getByRole('link')
+    await expect(tabLinks).toHaveCount(6)
+    const tabTexts = (await tabLinks.allTextContents()).map((text) => text.trim())
+    expect(tabTexts).toEqual([
       'スタッフ一覧',
       'シフト設定',
       'シフト管理',

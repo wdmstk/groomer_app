@@ -194,7 +194,7 @@ Completed tasks should be marked:
 ## 主要画面UI/導線の統一改善（改善メモ反映）
 - Task ID: `TASK-451`
 - ブランチ: `feat/TASK-451-ui-consistency-improvements`
-- 現在の作業ブランチ: `fix/TASK-451-dashboard-calendar-tabs-polish`
+- 現在の作業ブランチ: `feat/TASK-451-ui-consistency-improvements`
 - ステータス: `done`
 - 概要: `メモ/改善メモ.md` の指摘事項をもとに、ダークテーマ可読性、タブ/レイアウト統一、画面別導線改善を段階的に実装する。
 - 参照ドキュメント:

@@ -73,7 +73,14 @@ export async function POST(request: Request) {
   if (!auth.ok) return NextResponse.json({ message: auth.message }, { status: auth.status })
 
   const contentType = request.headers.get('content-type') ?? ''
-  let body = {}
+  let body: {
+    frequency?: unknown
+    run_at_local_time?: unknown
+    run_weekday?: unknown
+    target_horizon_days?: unknown
+    mode?: unknown
+    is_active?: unknown
+  } = {}
   let redirectTo: string | null = null
   if (contentType.includes('application/json')) {
     body = asObject(await request.json())

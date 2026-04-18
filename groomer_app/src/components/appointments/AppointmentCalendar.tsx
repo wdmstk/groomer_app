@@ -145,11 +145,11 @@ function getTimelinePlacement(
   if (endMin <= timelineStartMin || startMin >= timelineEndMin) {
     return null
   }
-  const timelineSpan = Math.max(1, timelineEndMin - timelineStartMin)
   const clampedStart = Math.max(timelineStartMin, Math.min(startMin, timelineEndMin))
   const clampedEnd = Math.max(timelineStartMin, Math.min(endMin, timelineEndMin))
-  const leftPercent = ((clampedStart - timelineStartMin) / timelineSpan) * 100
-  const widthPercent = ((clampedEnd - clampedStart) / timelineSpan) * 100
+  const totalSpan = Math.max(1, timelineEndMin - timelineStartMin)
+  const leftPercent = ((clampedStart - timelineStartMin) / totalSpan) * 100
+  const widthPercent = ((clampedEnd - clampedStart) / totalSpan) * 100
   return { startMin: clampedStart, endMin: clampedEnd, leftPercent, widthPercent }
 }
 
@@ -377,7 +377,6 @@ export function AppointmentCalendar({
     { length: timelineEndHour - timelineStartHour + 1 },
     (_, index) => timelineStartHour + index
   )
-  const timelineSpanMinutes = Math.max(1, timelineEndMin - timelineStartMin)
 
   const handleDragStart = (event: DragEvent<HTMLElement>, item: NormalizedAppointment) => {
     const durationMin = Math.max(
@@ -624,20 +623,15 @@ export function AppointmentCalendar({
 
       {mode === 'week' && (
         <div className="overflow-x-auto">
-          <div
-            className="min-w-[980px] rounded border bg-white md:min-w-0"
-          >
-            <div className="grid grid-cols-[88px_minmax(0,1fr)] border-b bg-gray-50 text-xs font-semibold text-gray-600">
+          <div className="w-full min-w-[980px] rounded border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+            <div className="grid grid-cols-[88px_minmax(0,1fr)] border-b bg-gray-50 text-xs font-semibold text-gray-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
               <div className="border-r px-2 py-2">日付</div>
               <div className="relative h-9">
                 {timelineHours.map((hour) => (
                   <div
                     key={`week-header-hour-${hour}`}
                     className="absolute top-0 text-[11px] text-gray-500"
-                    style={{
-                      left: `${((hour * 60 - timelineStartMin) / timelineSpanMinutes) * 100}%`,
-                      transform: 'translateX(-50%)',
-                    }}
+                    style={{ left: `${((hour - timelineStartHour) / Math.max(1, timelineHours.length - 1)) * 100}%` }}
                   >
                     {`${String(hour % 24).padStart(2, '0')}:00`}
                   </div>
@@ -654,7 +648,7 @@ export function AppointmentCalendar({
 
               return (
                 <div key={key} className="grid grid-cols-[88px_minmax(0,1fr)] border-b last:border-b-0">
-                  <div className="border-r bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600">
+                  <div className="border-r bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                     {getJstParts(date).day}日（{weekLabels[idx]}）
                   </div>
                   <div
@@ -675,7 +669,7 @@ export function AppointmentCalendar({
                       <div
                         key={`${key}-hour-line-${index}`}
                         className="absolute bottom-0 top-0 border-l border-gray-200"
-                        style={{ left: `${(index / (timelineHours.length - 1 || 1)) * 100}%` }}
+                        style={{ left: `${(index / Math.max(1, timelineHours.length - 1)) * 100}%` }}
                       />
                     ))}
                     {laneData.placed.map(({ item, lane }) => {
@@ -693,7 +687,7 @@ export function AppointmentCalendar({
                           style={{
                             top: `${top}px`,
                             left: `${leftPercent}%`,
-                            width: `${Math.max(widthPercent, 3)}%`,
+                            width: `${widthPercent}%`,
                             minWidth: '56px',
                             height: `${height}px`,
                             opacity: draggingAppointmentId === item.id ? 0.5 : 1,
@@ -706,7 +700,7 @@ export function AppointmentCalendar({
                         >
                           <p className="whitespace-nowrap font-semibold leading-tight">
                             {formatCalendarTimeJst(item.startTime)}-{formatCalendarTimeJst(item.endTime)} /{' '}
-                            {item.petName} / <span className="text-blue-700">{item.staffName}</span>
+                            {item.petName} / <span className="text-blue-700 dark:text-sky-300">{item.staffName}</span>
                           </p>
                           <p className="whitespace-nowrap leading-tight">{item.menu || '施術内容未設定'}</p>
                         </Link>
@@ -729,20 +723,15 @@ export function AppointmentCalendar({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <div
-                className="min-w-[980px] rounded border bg-white md:min-w-0"
-              >
-                <div className="grid grid-cols-[88px_minmax(0,1fr)] border-b bg-gray-50 text-xs font-semibold text-gray-600">
+              <div className="w-full min-w-[980px] rounded border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+                <div className="grid grid-cols-[88px_minmax(0,1fr)] border-b bg-gray-50 text-xs font-semibold text-gray-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   <div className="border-r px-2 py-2">日付</div>
                   <div className="relative h-9">
                     {timelineHours.map((hour) => (
                       <div
                         key={`day-header-hour-${hour}`}
                         className="absolute top-0 text-[11px] text-gray-500"
-                        style={{
-                          left: `${((hour * 60 - timelineStartMin) / timelineSpanMinutes) * 100}%`,
-                          transform: 'translateX(-50%)',
-                        }}
+                        style={{ left: `${((hour - timelineStartHour) / Math.max(1, timelineHours.length - 1)) * 100}%` }}
                       >
                         {`${String(hour % 24).padStart(2, '0')}:00`}
                       </div>
@@ -755,7 +744,7 @@ export function AppointmentCalendar({
                   const totalHeight = Math.max(laneData.totalLanes * laneSectionHeight, STAFF_ROW_HEIGHT)
                   return (
                     <div className="grid grid-cols-[88px_minmax(0,1fr)]">
-                      <div className="border-r bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600">
+                      <div className="border-r bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                         {formatJstDate(cursor)}
                       </div>
                       <div
@@ -776,7 +765,7 @@ export function AppointmentCalendar({
                           <div
                             key={`day-line-${index}`}
                             className="absolute bottom-0 top-0 border-l border-gray-200"
-                            style={{ left: `${(index / (timelineHours.length - 1 || 1)) * 100}%` }}
+                            style={{ left: `${(index / Math.max(1, timelineHours.length - 1)) * 100}%` }}
                           />
                         ))}
                         {laneData.placed.map(({ item, lane }) => {
@@ -793,7 +782,7 @@ export function AppointmentCalendar({
                               style={{
                                 top: `${top}px`,
                                 left: `${leftPercent}%`,
-                                width: `${Math.max(widthPercent, 3)}%`,
+                                width: `${widthPercent}%`,
                                 minWidth: '56px',
                                 height: `${height}px`,
                                 opacity: draggingAppointmentId === item.id ? 0.5 : 1,
@@ -806,7 +795,7 @@ export function AppointmentCalendar({
                             >
                               <p className="whitespace-nowrap font-semibold leading-tight">
                                 {formatJstTime(item.startTime)}-{formatJstTime(item.endTime)} / {item.petName} /{' '}
-                                <span className="text-blue-700">{item.staffName}</span>
+                                <span className="text-blue-700 dark:text-sky-300">{item.staffName}</span>
                               </p>
                               <p className="whitespace-nowrap leading-tight">{item.menu || '施術内容未設定'}</p>
                             </Link>

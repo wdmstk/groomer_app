@@ -96,8 +96,8 @@ export function BillingOperationsPanel({ preferredProvider }: BillingOperationsP
 
   return (
     <div className="space-y-4">
-      <div className="rounded border bg-gray-50 p-3">
-        <p className="mb-2 text-sm font-semibold text-gray-900">決済手段の切替</p>
+      <div className="rounded border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+        <p className="mb-2 text-sm font-semibold text-gray-900 dark:text-slate-100">決済手段の切替</p>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -106,7 +106,7 @@ export function BillingOperationsPanel({ preferredProvider }: BillingOperationsP
             className={`rounded px-3 py-1.5 text-sm font-semibold ${
               provider === 'stripe'
                 ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-700'
             }`}
           >
             Stripeへ切替
@@ -118,7 +118,7 @@ export function BillingOperationsPanel({ preferredProvider }: BillingOperationsP
             className={`rounded px-3 py-1.5 text-sm font-semibold ${
               provider === 'komoju'
                 ? 'bg-emerald-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-700'
             }`}
           >
             KOMOJUへ切替
@@ -126,29 +126,29 @@ export function BillingOperationsPanel({ preferredProvider }: BillingOperationsP
         </div>
       </div>
 
-      <div className="rounded border bg-gray-50 p-3">
-        <p className="mb-2 text-sm font-semibold text-gray-900">返金 / 解約オペレーション補助</p>
-        <p className="mb-2 text-xs text-gray-600">
+      <div className="rounded border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+        <p className="mb-2 text-sm font-semibold text-gray-900 dark:text-slate-100">返金 / 解約オペレーション補助</p>
+        <p className="mb-2 text-xs text-gray-600 dark:text-slate-300">
           解約実行前に、請求停止タイミング（即時/期間終了時）と返金有無を必ず確認してください。
         </p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <label className="space-y-1 text-sm text-gray-700">
+          <label className="space-y-1 text-sm text-gray-700 dark:text-slate-200">
             決済手段
             <select
               value={provider}
               onChange={(event) => setProvider(event.target.value as Provider)}
-              className="w-full rounded border p-2"
+              className="w-full rounded border border-gray-300 bg-white p-2 text-gray-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             >
               <option value="stripe">クレジットカード（Stripe）</option>
               <option value="komoju">キャリア決済（KOMOJU）</option>
             </select>
           </label>
-          <label className="space-y-1 text-sm text-gray-700">
+          <label className="space-y-1 text-sm text-gray-700 dark:text-slate-200">
             操作
             <select
               value={action}
               onChange={(event) => setAction(event.target.value as ActionType)}
-              className="w-full rounded border p-2"
+              className="w-full rounded border border-gray-300 bg-white p-2 text-gray-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             >
               <option value="cancel_at_period_end">{actionLabel.cancel_at_period_end}</option>
               <option value="cancel_immediately">{actionLabel.cancel_immediately}</option>
@@ -156,24 +156,24 @@ export function BillingOperationsPanel({ preferredProvider }: BillingOperationsP
             </select>
           </label>
           {action === 'refund_request' ? (
-            <label className="space-y-1 text-sm text-gray-700 md:col-span-2">
+            <label className="space-y-1 text-sm text-gray-700 dark:text-slate-200 md:col-span-2">
               返金金額（円）
               <input
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
                 type="number"
                 min={0}
-                className="w-full rounded border p-2"
+                className="w-full rounded border border-gray-300 bg-white p-2 text-gray-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
               />
             </label>
           ) : null}
-          <label className="space-y-1 text-sm text-gray-700 md:col-span-2">
+          <label className="space-y-1 text-sm text-gray-700 dark:text-slate-200 md:col-span-2">
             理由（任意）
             <textarea
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               rows={2}
-              className="w-full rounded border p-2"
+              className="w-full rounded border border-gray-300 bg-white p-2 text-gray-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
           </label>
         </div>
@@ -191,8 +191,8 @@ export function BillingOperationsPanel({ preferredProvider }: BillingOperationsP
         </div>
       </div>
 
-      {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {message ? <p className="text-sm text-emerald-700 dark:text-emerald-300">{message}</p> : null}
+      {error ? <p className="text-sm text-red-700 dark:text-red-300">{error}</p> : null}
     </div>
   )
 }

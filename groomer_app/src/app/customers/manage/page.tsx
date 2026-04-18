@@ -900,16 +900,18 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold text-gray-900">顧客ペット管理</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">顧客ペット管理</h1>
       </header>
 
       <section className="space-y-4">
-        <div className="grid grid-cols-4 gap-1 rounded-lg border border-gray-300 bg-white p-1">
+        <div className="grid grid-cols-4 gap-1 rounded-lg border border-gray-300 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
           <Link
             href={buildManageHref({ view: 'customers', q: q || undefined })}
             scroll={false}
             className={`min-w-0 rounded px-2 py-1.5 text-center text-xs font-semibold leading-tight sm:px-3 sm:text-sm ${
-              activeView === 'customers' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+              activeView === 'customers'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
             }`}
           >
             <span className="sm:hidden">顧客</span>
@@ -919,7 +921,9 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
             href={buildManageHref({ view: 'pets', q: q || undefined })}
             scroll={false}
             className={`min-w-0 rounded px-2 py-1.5 text-center text-xs font-semibold leading-tight sm:px-3 sm:text-sm ${
-              activeView === 'pets' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+              activeView === 'pets'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
             }`}
           >
             <span className="sm:hidden">ペット</span>
@@ -934,7 +938,9 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
             })}
             scroll={false}
             className={`min-w-0 rounded px-2 py-1.5 text-center text-xs font-semibold leading-tight sm:px-3 sm:text-sm ${
-              activeView === 'detail' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+              activeView === 'detail'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
             }`}
           >
             <span className="sm:hidden">詳細</span>
@@ -944,7 +950,9 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
             href={buildManageHref({ view: 'alerts' })}
             scroll={false}
             className={`min-w-0 rounded px-2 py-1.5 text-center text-xs font-semibold leading-tight sm:px-3 sm:text-sm ${
-              activeView === 'alerts' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+              activeView === 'alerts'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
             }`}
           >
             <span className="sm:hidden">アラート</span>
@@ -1278,6 +1286,7 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
               <div className="grid w-full grid-cols-3 overflow-hidden rounded-lg border border-gray-300 bg-white text-xs sm:inline-flex sm:w-auto sm:text-sm">
                 <Link
                   href={buildManageHref({
+                    view: 'detail',
                     customerId: selectedCustomer.id,
                     tab: activeTab,
                     q: q || undefined,
@@ -1291,6 +1300,7 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                 </Link>
                 <Link
                   href={buildManageHref({
+                    view: 'detail',
                     customerId: selectedCustomer.id,
                     tab: activeTab,
                     q: q || undefined,
@@ -1317,13 +1327,16 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
               <div className="flex flex-wrap items-center gap-2">
                 <Link
                   href={buildManageHref({
+                    view: 'detail',
                     customerId: selectedCustomer.id,
                     tab: 'basic',
                     q: q || undefined,
                   })}
                   scroll={false}
                   className={`rounded px-3 py-1.5 text-sm font-semibold ${
-                    activeTab === 'basic' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+                    activeTab === 'basic'
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                      : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
                   }`}
                 >
                   基本情報
@@ -1332,6 +1345,7 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                   <Link
                     key={pet.id}
                     href={buildManageHref({
+                      view: 'detail',
                       customerId: selectedCustomer.id,
                       tab: `pet:${pet.id}`,
                       q: q || undefined,
@@ -1339,8 +1353,8 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                     scroll={false}
                     className={`rounded px-3 py-1.5 text-sm font-semibold ${
                       activeTab === `pet:${pet.id}`
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                        : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
                     }`}
                   >
                     {pet.name}
@@ -1351,6 +1365,7 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
                 <div className="grid w-full grid-cols-3 overflow-hidden rounded-lg border border-gray-300 bg-white text-xs sm:inline-flex sm:w-auto sm:text-sm">
                   <Link
                     href={buildManageHref({
+                      view: 'detail',
                       customerId: selectedCustomer.id,
                       tab: activeTab,
                       q: q || undefined,

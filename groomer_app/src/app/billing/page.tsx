@@ -36,25 +36,29 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   return (
     <section className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-gray-900">決済管理</h1>
-        <p className="text-sm text-gray-600">決済管理と決済履歴をタブで管理します。</p>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">決済管理</h1>
+        <p className="text-sm text-gray-600 dark:text-slate-300">決済管理と決済履歴をタブで管理します。</p>
       </div>
 
-      <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-white p-2">
+      <div className="overflow-x-auto">
+        <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
         {BILLING_TABS.map((item) => {
           const isActive = tab === item.id
           return (
             <Link
               key={item.id}
               href={`/billing?tab=${item.id}`}
-              className={`rounded px-3 py-2 text-sm font-semibold transition-colors ${
-                isActive ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
+              className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${
+                isActive
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               {item.label}
             </Link>
           )
         })}
+        </div>
       </div>
 
       {tab === 'management' ? <BillingManagementContent searchParams={Promise.resolve({ message, error })} /> : null}

@@ -383,6 +383,34 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
   const autoGenerateStrategy = resolvedSearchParams?.auto_generate_strategy ?? 'rule_based'
   const autoGenerateTotalScore = Number(resolvedSearchParams?.auto_generate_total_score ?? '')
   const autoGenerateAlternativesCount = Number(resolvedSearchParams?.auto_generate_alternatives_count ?? '0')
+  let autoGenerateRunSummary: { [key: string]: unknown } | null = null
+  if (activeTab === 'shift' && autoGenerateRunId && !isPlaywrightE2E) {
+    const runSummaryResult = await anyDb
+      .from('shift_auto_generate_runs')
+      .select('summary')
+      .eq('store_id', storeId)
+      .eq('id', autoGenerateRunId)
+      .maybeSingle()
+    if (!runSummaryResult.error) {
+      autoGenerateRunSummary = (runSummaryResult.data?.summary as { [key: string]: unknown } | null) ?? null
+    }
+  }
+  const autoGenerateTopReasons = Array.isArray(autoGenerateRunSummary?.top_reasons)
+    ? (autoGenerateRunSummary?.top_reasons as unknown[]).filter((reason): reason is string => typeof reason === 'string')
+    : []
+  const autoGenerateAlternatives = Array.isArray(autoGenerateRunSummary?.alternatives)
+    ? (autoGenerateRunSummary?.alternatives as Array<{ [key: string]: unknown }>)
+        .filter((item) => item && typeof item === 'object')
+        .map((item) => ({
+          summary: typeof item.summary === 'string' ? item.summary : '',
+          impact: typeof item.impact === 'string' ? item.impact : '',
+          expectedScoreDelta:
+            typeof item.expected_score_delta === 'number'
+              ? item.expected_score_delta
+              : Number(item.expected_score_delta ?? 0),
+        }))
+        .filter((item) => item.summary)
+    : []
   const parsedAttendanceFrom = parseDateKey(resolvedSearchParams?.attendance_from) ?? todayJst
   const parsedAttendanceTo = parseDateKey(resolvedSearchParams?.attendance_to) ?? shiftTo
   const attendanceFrom = parsedAttendanceFrom <= parsedAttendanceTo ? parsedAttendanceFrom : parsedAttendanceTo
@@ -984,11 +1012,13 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
       </div>
 
       <div className="overflow-x-auto">
-        <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2">
+        <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
           <Link
             href="/staffs?tab=list"
             className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
-              activeTab === 'list' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+              activeTab === 'list'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
             }`}
           >
             スタッフ一覧
@@ -997,7 +1027,9 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
             <Link
               href="/staffs?tab=shift-settings"
               className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
-                activeTab === 'shift-settings' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+                activeTab === 'shift-settings'
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                  : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               シフト設定
@@ -1007,7 +1039,9 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
             <Link
               href="/staffs?tab=shift"
               className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
-                activeTab === 'shift' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+                activeTab === 'shift'
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                  : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               シフト管理
@@ -1017,7 +1051,9 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
             <Link
               href={`/staffs?tab=shift-list&shift_month=${shiftMonth}`}
               className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
-                activeTab === 'shift-list' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+                activeTab === 'shift-list'
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                  : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               シフト一覧
@@ -1027,7 +1063,9 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
             <Link
               href="/staffs?tab=shift-history"
               className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
-                activeTab === 'shift-history' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+                activeTab === 'shift-history'
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                  : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               シフト変更履歴
@@ -1036,7 +1074,9 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
           <Link
             href={`/staffs?tab=attendance-records&attendance_month=${attendanceMonth}&attendance_staff_id=${attendanceStaffId}`}
             className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
-              activeTab === 'attendance-records' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+              activeTab === 'attendance-records'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
             }`}
           >
             勤怠管理
@@ -1287,6 +1327,35 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
               {autoGenerateMode === 'apply_draft'
                 ? `自動生成（${formatShiftStrategyLabel(autoGenerateStrategy)}）を実行しました。候補 ${Number.isFinite(autoGenerateCount) ? autoGenerateCount : 0} 件 / 反映 ${Number.isFinite(autoGenerateApplied) ? autoGenerateApplied : 0} 件（作成 ${Number.isFinite(autoGenerateCreated) ? autoGenerateCreated : 0} / 更新 ${Number.isFinite(autoGenerateUpdated) ? autoGenerateUpdated : 0} / 削除 ${Number.isFinite(autoGenerateDeleted) ? autoGenerateDeleted : 0} / 手動保護 ${Number.isFinite(autoGenerateSkippedManual) ? autoGenerateSkippedManual : 0} / 制約警告 ${Number.isFinite(autoGeneratePolicyViolations) ? autoGeneratePolicyViolations : 0}）${Number.isFinite(autoGenerateTotalScore) ? ` / 総合スコア ${autoGenerateTotalScore}` : ''}${Number.isFinite(autoGenerateAlternativesCount) && autoGenerateAlternativesCount > 0 ? ` / 代替案 ${autoGenerateAlternativesCount} 件` : ''}${autoGenerateRunId ? ` / 実行ID: ${autoGenerateRunId}` : ''}`
                 : `自動生成プレビュー結果: ${Number.isFinite(autoGenerateCount) ? autoGenerateCount : 0} 件`}
+            </div>
+          ) : null}
+          {autoGenerateMode && (autoGenerateTopReasons.length > 0 || autoGenerateAlternatives.length > 0) ? (
+            <div className="mb-4 rounded border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-900">
+              {autoGenerateTopReasons.length > 0 ? (
+                <div className="mb-2">
+                  <p className="font-semibold">生成理由</p>
+                  <ul className="mt-1 space-y-1">
+                    {autoGenerateTopReasons.map((reason) => (
+                      <li key={reason}>・{reason}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {autoGenerateAlternatives.length > 0 ? (
+                <div>
+                  <p className="font-semibold">代替案</p>
+                  <ul className="mt-1 space-y-1">
+                    {autoGenerateAlternatives.map((item) => (
+                      <li key={`${item.summary}-${item.impact}`}>
+                        ・{item.summary}
+                        {item.impact ? `（期待効果: ${item.impact}` : '（期待効果: -'}
+                        {Number.isFinite(item.expectedScoreDelta) ? ` / スコア差分 +${item.expectedScoreDelta}` : ''}
+                        ）
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -1760,7 +1829,6 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
                       }>).map((job) => (
                         <div key={job.id} className="rounded border border-gray-200 p-2 dark:border-slate-700">
                           <form action={`/api/staff-shifts/scheduled-jobs/${job.id}`} method="post" className="grid grid-cols-1 gap-2 md:grid-cols-7">
-                            <input type="hidden" name="_method" value="patch" />
                             <input type="hidden" name="redirect_to" value="/staffs?tab=shift-settings" />
                             <label className="space-y-1 text-xs text-gray-600 dark:text-slate-300">
                               頻度
@@ -1795,7 +1863,7 @@ export default async function StaffsPage({ searchParams }: StaffsPageProps) {
                               有効
                             </label>
                             <div className="flex items-end">
-                              <Button type="submit" className="inline-flex h-9 w-full items-center justify-center whitespace-nowrap border border-blue-700 bg-blue-600 text-white hover:bg-blue-700">
+                              <Button type="submit" name="_method" value="patch" className="inline-flex h-9 w-full items-center justify-center whitespace-nowrap border border-blue-700 bg-blue-600 text-white hover:bg-blue-700">
                                 更新
                               </Button>
                             </div>
