@@ -194,7 +194,7 @@ Completed tasks should be marked:
 ## 主要画面UI/導線の統一改善（改善メモ反映）
 - Task ID: `TASK-451`
 - ブランチ: `feat/TASK-451-ui-consistency-improvements`
-- 現在の作業ブランチ: `feat/TASK-451-ui-consistency-improvements`
+- 現在の作業ブランチ: `fix/TASK-451-dashboard-calendar-tabs-polish`
 - ステータス: `done`
 - 概要: `メモ/改善メモ.md` の指摘事項をもとに、ダークテーマ可読性、タブ/レイアウト統一、画面別導線改善を段階的に実装する。
 - 参照ドキュメント:
@@ -218,7 +218,7 @@ Completed tasks should be marked:
   - [x] Step 2: ダッシュボード/当日運用改善（7日/30日導線、再販カード視認性、同意書未了導線）
   - [x] Step 3: 顧客・予約・カルテ・日誌の改善（初期表示、週表示、サムネ表示、タブ分離）
   - [x] Step 4: ホテル/在庫/店舗設定の統一（タブ統一、カード再配置、フォーム整列）
-  - [ ] Step 5: テスト・ドキュメント更新（Vitest/E2E/運用手順）
+  - [x] Step 5: テスト・ドキュメント更新（Vitest/E2E/運用手順）
 
 ## スタッフ管理機能拡張（シフト管理・勤務管理）
 - Task ID: `TASK-450`
