@@ -129,6 +129,7 @@ function createCandidateSupabaseMock(params: {
   visits: Array<Record<string, unknown>>
   appointments?: Array<Record<string, unknown>>
   pets?: Array<Record<string, unknown>>
+  settingsError?: { message: string; code?: string } | null
   settings: {
     followup_snoozed_refollow_days: number
     followup_no_need_refollow_days: number
@@ -170,6 +171,12 @@ function createCandidateSupabaseMock(params: {
         return createChainQuery(params.pets ?? [])
       }
       if (table === 'store_customer_management_settings') {
+        if (params.settingsError) {
+          return {
+            ...createChainQuery(null),
+            error: params.settingsError,
+          }
+        }
         return createChainQuery(params.settings)
       }
       return createChainQuery([])
@@ -359,6 +366,40 @@ describe('followups route GET query filters', () => {
     }
     expect(payload.candidates.map((row) => row.customer_id)).toContain('customer-released')
     expect(payload.candidates.map((row) => row.customer_id)).not.toContain('customer-blocked')
+  })
+
+  // TRACE-055
+  it('falls back to default refollow policy when customer management settings table is missing', async () => {
+    const supabase = createCandidateSupabaseMock({
+      activeTaskRows: [],
+      customers: [{ id: 'customer-default-policy', full_name: '既定値候補 顧客', phone_number: null, line_id: null }],
+      visits: [{ customer_id: 'customer-default-policy', visit_date: '2026-01-01T00:00:00.000Z', appointment_id: null }],
+      settings: {
+        followup_snoozed_refollow_days: 7,
+        followup_no_need_refollow_days: 60,
+        followup_lost_refollow_days: 90,
+      },
+      settingsError: {
+        code: 'PGRST205',
+        message: "Could not find the table 'public.store_customer_management_settings' in the schema cache",
+      },
+    })
+
+    getFollowupRouteContextMock.mockResolvedValue({
+      supabase,
+      storeId: 'store-1',
+      user: { id: 'user-1' },
+      role: 'owner',
+    })
+
+    const { GET } = await import('../src/app/api/followups/route')
+    const response = await GET(
+      new Request('http://localhost/api/followups?include_candidates=true&window_days=all')
+    )
+
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as { candidates: Array<{ customer_id: string }> }
+    expect(payload.candidates.map((row) => row.customer_id)).toContain('customer-default-policy')
   })
 
   // TRACE-055

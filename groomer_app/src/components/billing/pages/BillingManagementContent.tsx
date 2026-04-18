@@ -23,7 +23,7 @@ import {
 const BillingOperationsPanel = nextDynamic(
   () => import('@/components/billing/BillingOperationsPanel').then((mod) => mod.BillingOperationsPanel),
   {
-    loading: () => <p className="text-sm text-gray-500">課金操作を読み込み中...</p>,
+    loading: () => <p className="text-sm text-gray-500 dark:text-slate-400">課金操作を読み込み中...</p>,
   }
 )
 
@@ -33,7 +33,7 @@ const BillingCheckoutAgreementSection = nextDynamic(
       (mod) => mod.BillingCheckoutAgreementSection
     ),
   {
-    loading: () => <p className="text-sm text-gray-500">決済パネルを読み込み中...</p>,
+    loading: () => <p className="text-sm text-gray-500 dark:text-slate-400">決済パネルを読み込み中...</p>,
   }
 )
 
@@ -93,9 +93,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   if (!guard.ok) {
     return (
       <section className="space-y-4">
-        <h1 className="text-2xl font-semibold text-gray-900">決済管理</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">決済管理</h1>
         <Card>
-          <p className="text-sm text-red-700">{guard.message}</p>
+          <p className="text-sm text-red-700 dark:text-red-300">{guard.message}</p>
         </Card>
       </section>
     )
@@ -206,21 +206,21 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold text-gray-900">決済管理</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">決済管理</h1>
       </div>
       {params?.message ? (
-        <Card className="border border-emerald-200 bg-emerald-50">
+        <Card className="border border-emerald-300 bg-gray-50">
           <p className="text-sm text-emerald-700">{params.message}</p>
         </Card>
       ) : null}
       {params?.error ? (
-        <Card className="border border-red-200 bg-red-50">
+        <Card className="border border-red-300 bg-gray-50">
           <p className="text-sm text-red-700">{params.error}</p>
         </Card>
       ) : null}
 
       {showUrgentAlert ? (
-        <Card className="border border-red-200 bg-red-50">
+        <Card className="border border-red-300 bg-gray-50">
           <h2 className="text-lg font-semibold text-red-800">要対応</h2>
           <p className="mt-1.5 text-sm text-red-700">
             {isPastDue
@@ -234,32 +234,32 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Card className="p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Overview</p>
-          <h2 className="text-lg font-semibold text-gray-900">契約サマリー</h2>
-          <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm text-gray-700 md:grid-cols-2">
-            <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
-              <span className="text-gray-500">プラン</span>
-              <span className="font-medium text-gray-900">{planLabel(normalizedPlanCode)}</span>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 dark:text-slate-400">Overview</p>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">契約サマリー</h2>
+          <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm text-gray-700 dark:text-slate-300 md:grid-cols-2">
+            <p className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-700 pb-1.5">
+              <span className="text-gray-500 dark:text-slate-400">プラン</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">{planLabel(normalizedPlanCode)}</span>
             </p>
-            <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
-              <span className="text-gray-500">請求周期</span>
-              <span className="font-medium text-gray-900">{billingCycleLabel}</span>
+            <p className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-700 pb-1.5">
+              <span className="text-gray-500 dark:text-slate-400">請求周期</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">{billingCycleLabel}</span>
             </p>
-            <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
-              <span className="text-gray-500">AIプラン</span>
-              <span className="font-medium text-gray-900">
+            <p className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-700 pb-1.5">
+              <span className="text-gray-500 dark:text-slate-400">AIプラン</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">
                 {aiPlanLabel(aiPlanEffective)}
                 {aiPlanPending ? `（申込中: ${aiPlanLabel(aiPlanRequested)}）` : ''}
               </span>
             </p>
-            <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
-              <span className="text-gray-500">基本+オプション請求額</span>
-              <span className="font-medium text-gray-900">
+            <p className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-700 pb-1.5">
+              <span className="text-gray-500 dark:text-slate-400">基本+オプション請求額</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">
                 {typeof storeSubscription?.amount_jpy === 'number' ? `${storeSubscription.amount_jpy} 円` : `${coreBilledAmountJpy} 円`}
               </span>
             </p>
-            <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
-              <span className="text-gray-500">ステータス</span>
+            <p className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-700 pb-1.5">
+              <span className="text-gray-500 dark:text-slate-400">ステータス</span>
               <span
                 className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold ${
                   getBillingStatusBadgeClass(storeSubscription?.billing_status ?? 'inactive')
@@ -268,25 +268,25 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                 {storeSubscription?.billing_status ?? 'inactive'}
               </span>
             </p>
-            <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
-              <span className="text-gray-500">優先決済手段</span>
-              <span className="font-medium text-gray-900">{storeSubscription?.preferred_provider ?? '-'}</span>
+            <p className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-700 pb-1.5">
+              <span className="text-gray-500 dark:text-slate-400">優先決済手段</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">{storeSubscription?.preferred_provider ?? '-'}</span>
             </p>
-            <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
-              <span className="text-gray-500">次回請求予定日</span>
-              <span className="font-medium text-gray-900">{storeSubscription?.next_billing_date ?? '-'}</span>
+            <p className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-700 pb-1.5">
+              <span className="text-gray-500 dark:text-slate-400">次回請求予定日</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">{storeSubscription?.next_billing_date ?? '-'}</span>
             </p>
-            <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
-              <span className="text-gray-500">基本+オプション契約終了日</span>
-              <span className="font-medium text-gray-900">
+            <p className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-700 pb-1.5">
+              <span className="text-gray-500 dark:text-slate-400">基本+オプション契約終了日</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">
                 {formatBillingDateTimeJst(
                   storeSubscription?.current_period_end ?? coreSubscription?.current_period_end ?? null
                 )}
               </span>
             </p>
-            <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
-              <span className="text-gray-500">利用停止まで</span>
-              <span className="font-medium text-gray-900">
+            <p className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-700 pb-1.5">
+              <span className="text-gray-500 dark:text-slate-400">利用停止まで</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">
                 {typeof daysUntilTrialEnd === 'number'
                   ? isTrialExpired
                     ? '期限超過'
@@ -294,35 +294,35 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                   : '-'}
               </span>
             </p>
-            <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
-              <span className="text-gray-500">試用開始日</span>
-              <span className="font-medium text-gray-900">
+            <p className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-700 pb-1.5">
+              <span className="text-gray-500 dark:text-slate-400">試用開始日</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">
                 {formatBillingDateOnlyJst(storeSubscription?.trial_started_at ?? null)}
               </span>
             </p>
-            <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
-              <span className="text-gray-500">試用日数</span>
-              <span className="font-medium text-gray-900">{storeSubscription?.trial_days ?? 30} 日</span>
+            <p className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-700 pb-1.5">
+              <span className="text-gray-500 dark:text-slate-400">試用日数</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">{storeSubscription?.trial_days ?? 30} 日</span>
             </p>
-            <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
-              <span className="text-gray-500">試用終了予定日</span>
-              <span className={isTrialExpired ? 'font-medium text-red-700' : 'font-medium text-gray-900'}>
+            <p className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-700 pb-1.5">
+              <span className="text-gray-500 dark:text-slate-400">試用終了予定日</span>
+              <span className={isTrialExpired ? 'font-medium text-red-700 dark:text-red-300' : 'font-medium text-gray-900 dark:text-slate-100'}>
                 {trialEnd ? formatBillingDateTimeJst(trialEnd.toISOString()) : '-'}
               </span>
             </p>
-            <p className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1.5">
-              <span className="text-gray-500">past_due猶予日数</span>
-              <span className="font-medium text-gray-900">{storeSubscription?.grace_days ?? 3} 日</span>
+            <p className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-700 pb-1.5">
+              <span className="text-gray-500 dark:text-slate-400">past_due猶予日数</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">{storeSubscription?.grace_days ?? 3} 日</span>
             </p>
             <p className="flex items-center justify-between gap-4 md:col-span-2">
-              <span className="text-gray-500">past_due開始日時</span>
-              <span className="font-medium text-gray-900">
+              <span className="text-gray-500 dark:text-slate-400">past_due開始日時</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">
                 {formatBillingDateTimeJst(storeSubscription?.past_due_since ?? null)}
               </span>
             </p>
             <p className="flex items-center justify-between gap-4 md:col-span-2">
-              <span className="text-gray-500">容量追加 次回請求予定日</span>
-              <span className="font-medium text-gray-900">
+              <span className="text-gray-500 dark:text-slate-400">容量追加 次回請求予定日</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">
                 {formatBillingDateTimeJst(storageSubscription?.current_period_end ?? null)}
               </span>
             </p>
@@ -330,82 +330,82 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         </Card>
 
         <Card className="p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Breakdown</p>
-          <h2 className="text-lg font-semibold text-gray-900">料金内訳</h2>
-          <div className="mt-3 space-y-2.5 text-sm text-gray-700">
-            <div className="flex items-center justify-between gap-4 rounded-lg bg-gray-50 px-3 py-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 dark:text-slate-400">Breakdown</p>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">料金内訳</h2>
+          <div className="mt-3 space-y-2.5 text-sm text-gray-700 dark:text-slate-300">
+            <div className="flex items-center justify-between gap-4 rounded-lg bg-gray-50 dark:bg-slate-800 px-3 py-2">
               <span>基本料金 定価</span>
               <span className="font-medium">{baseAmountJpy.toLocaleString('ja-JP')} 円</span>
             </div>
-            <div className="flex items-center justify-between gap-4 rounded-lg bg-gray-50 px-3 py-2">
+            <div className="flex items-center justify-between gap-4 rounded-lg bg-gray-50 dark:bg-slate-800 px-3 py-2">
               <span>複数店舗割引</span>
               <span className="font-medium">-{baseDiscountJpy.toLocaleString('ja-JP')} 円</span>
             </div>
-            <div className="flex items-center justify-between gap-4 rounded-lg bg-gray-50 px-3 py-2">
+            <div className="flex items-center justify-between gap-4 rounded-lg bg-gray-50 dark:bg-slate-800 px-3 py-2">
               <span>オプション料金</span>
               <span className="font-medium">{optionAmountJpy.toLocaleString('ja-JP')} 円</span>
             </div>
-            <div className="flex items-center justify-between gap-4 rounded-lg bg-gray-50 px-3 py-2">
+            <div className="flex items-center justify-between gap-4 rounded-lg bg-gray-50 dark:bg-slate-800 px-3 py-2">
               <span>追加容量料金（{storageCycleLabel}）</span>
               <span className="font-medium">{storageAddonAmountJpy.toLocaleString('ja-JP')} 円</span>
             </div>
-            <div className="flex items-center justify-between gap-4 px-1 text-xs text-gray-500">
+            <div className="flex items-center justify-between gap-4 px-1 text-xs text-gray-500 dark:text-slate-400">
               <span>現在の追加容量</span>
               <span>{extraCapacityGb} GB</span>
             </div>
-            <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 px-3 py-2 text-base font-semibold text-gray-900">
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-2 text-base font-semibold text-gray-900 dark:text-slate-100">
               <span>基本+オプション請求額</span>
               <span>{coreBilledAmountJpy.toLocaleString('ja-JP')} 円</span>
             </div>
           </div>
-          <p className="mt-3 text-xs text-gray-500">
+          <p className="mt-3 text-xs text-gray-500 dark:text-slate-400">
             容量追加は基本契約とは別の月額継続契約として扱います。
           </p>
         </Card>
       </div>
 
       <Card className="p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Add-ons</p>
-        <h2 className="text-lg font-semibold text-gray-900">オプション契約</h2>
-        <div className="mt-3 grid grid-cols-1 gap-3 text-sm text-gray-700 xl:grid-cols-2">
-          <div className="rounded-lg border p-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 dark:text-slate-400">Add-ons</p>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">オプション契約</h2>
+        <div className="mt-3 grid grid-cols-1 gap-3 text-sm text-gray-700 dark:text-slate-300 xl:grid-cols-2">
+          <div className="rounded-lg border border-gray-200 dark:border-slate-700 p-3">
             <div className="flex items-center justify-between gap-4">
-              <p className="font-semibold text-gray-900">{optionLabel('hotel')}</p>
-              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${hotelOptionEffective ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+              <p className="font-semibold text-gray-900 dark:text-slate-100">{optionLabel('hotel')}</p>
+              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${hotelOptionEffective ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-200'}`}>
                 {hotelOptionEffective ? '有効' : '未契約'}
               </span>
             </div>
             {hotelOptionPending ? (
-              <p className="mt-1 text-xs text-amber-700">
+              <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
                 申込中: {hotelOptionRequested ? '有効化' : '無効化'}（支払い確定後に反映）
               </p>
             ) : null}
-            <p className="mt-1 text-xs text-gray-500">対象: スタンダード / プロ</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">対象: スタンダード / プロ</p>
             <form action="/api/billing/options" method="post" className="mt-2">
               <input type="hidden" name="option" value="hotel" />
               <input type="hidden" name="hotel_option_enabled" value={hotelOptionRequested ? 'false' : 'true'} />
               <button
                 type="submit"
                 disabled={!canPurchaseOptions}
-                className="rounded border px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {hotelOptionRequested ? '無効化を申込む' : '有効化を申込む'}
               </button>
             </form>
           </div>
-          <div className="rounded-lg border p-3">
+          <div className="rounded-lg border border-gray-200 dark:border-slate-700 p-3">
             <div className="flex items-center justify-between gap-4">
-              <p className="font-semibold text-gray-900">{optionLabel('notification')}</p>
-              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${notificationOptionEffective ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+              <p className="font-semibold text-gray-900 dark:text-slate-100">{optionLabel('notification')}</p>
+              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${notificationOptionEffective ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-200'}`}>
                 {notificationOptionEffective ? '有効' : '未契約'}
               </span>
             </div>
             {notificationOptionPending ? (
-              <p className="mt-1 text-xs text-amber-700">
+              <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
                 申込中: {notificationOptionRequested ? '有効化' : '無効化'}（支払い確定後に反映）
               </p>
             ) : null}
-            <p className="mt-1 text-xs text-gray-500">対象: スタンダード / プロ</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">対象: スタンダード / プロ</p>
             <form action="/api/billing/options" method="post" className="mt-2">
               <input type="hidden" name="option" value="notification" />
               <input
@@ -416,32 +416,32 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
               <button
                 type="submit"
                 disabled={!canPurchaseOptions}
-                className="rounded border px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {notificationOptionRequested ? '無効化を申込む' : '有効化を申込む'}
               </button>
             </form>
           </div>
-          <div className="rounded-lg border p-3 xl:col-span-2">
+          <div className="rounded-lg border border-gray-200 dark:border-slate-700 p-3 xl:col-span-2">
             <div className="flex items-center justify-between gap-4">
-              <p className="font-semibold text-gray-900">AIプラン</p>
-              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${aiPlanEffective === 'none' ? 'bg-gray-100 text-gray-600' : 'bg-emerald-100 text-emerald-700'}`}>
+              <p className="font-semibold text-gray-900 dark:text-slate-100">AIプラン</p>
+              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${aiPlanEffective === 'none' ? 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-200' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
                 {aiPlanLabel(aiPlanEffective)}
               </span>
             </div>
             {aiPlanPending ? (
-              <p className="mt-1 text-xs text-amber-700">
+              <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
                 申込中: {aiPlanLabel(aiPlanRequested)}（支払い確定後に反映）
               </p>
             ) : null}
-            <p className="mt-1 text-xs text-gray-500">プラン変更は申込後、支払い確定時に有効化されます。</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">プラン変更は申込後、支払い確定時に有効化されます。</p>
             <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
               <form action="/api/billing/options" method="post">
                 <input type="hidden" name="option" value="ai_plan" />
                 <input type="hidden" name="ai_plan_code" value="none" />
                 <button
                   type="submit"
-                  className="w-full rounded border px-3 py-1.5 text-xs font-semibold text-gray-700"
+                  className="w-full rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                 >
                   無効化
                 </button>
@@ -451,7 +451,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                 <input type="hidden" name="ai_plan_code" value="assist" />
                 <button
                   type="submit"
-                  className="w-full rounded border px-3 py-1.5 text-xs font-semibold text-gray-700"
+                  className="w-full rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                 >
                   Assist (1,280円)
                 </button>
@@ -461,7 +461,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                 <input type="hidden" name="ai_plan_code" value="pro" />
                 <button
                   type="submit"
-                  className="w-full rounded border px-3 py-1.5 text-xs font-semibold text-gray-700"
+                  className="w-full rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                 >
                   Pro (1,980円)
                 </button>
@@ -471,7 +471,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                 <input type="hidden" name="ai_plan_code" value="pro_plus" />
                 <button
                   type="submit"
-                  className="w-full rounded border px-3 py-1.5 text-xs font-semibold text-gray-700"
+                  className="w-full rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                 >
                   Pro+ (2,480円)
                 </button>
@@ -479,7 +479,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             </div>
           </div>
           {!canPurchaseOptions ? (
-            <p className="text-xs text-amber-700">
+            <p className="text-xs text-amber-700 dark:text-amber-300">
               ライトプランではオプション契約はできません。スタンダード以上へ変更してください。
             </p>
           ) : null}
@@ -497,8 +497,8 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
       />
 
       <Card className="p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Operations</p>
-        <h2 className="text-lg font-semibold text-gray-900">運用操作</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 dark:text-slate-400">Operations</p>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">運用操作</h2>
         <div className="mt-4">
           <BillingOperationsPanel preferredProvider={storeSubscription?.preferred_provider ?? null} />
         </div>

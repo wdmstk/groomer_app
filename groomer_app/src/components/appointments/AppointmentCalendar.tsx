@@ -38,7 +38,6 @@ type CalendarMode = 'month' | 'week' | 'day'
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000
 const weekLabels = ['月', '火', '水', '木', '金', '土', '日']
-const HOUR_WIDTH = 72
 const STAFF_ROW_HEIGHT = 40
 const APPOINTMENT_CHIP_HEIGHT = 36
 const staffColorPalette = [
@@ -148,9 +147,10 @@ function getTimelinePlacement(
   }
   const clampedStart = Math.max(timelineStartMin, Math.min(startMin, timelineEndMin))
   const clampedEnd = Math.max(timelineStartMin, Math.min(endMin, timelineEndMin))
-  const left = ((clampedStart - timelineStartMin) / 60) * HOUR_WIDTH
-  const width = Math.max(((clampedEnd - clampedStart) / 60) * HOUR_WIDTH, 56)
-  return { startMin: clampedStart, endMin: clampedEnd, left, width }
+  const totalSpan = Math.max(1, timelineEndMin - timelineStartMin)
+  const leftPercent = ((clampedStart - timelineStartMin) / totalSpan) * 100
+  const widthPercent = ((clampedEnd - clampedStart) / totalSpan) * 100
+  return { startMin: clampedStart, endMin: clampedEnd, leftPercent, widthPercent }
 }
 
 function assignLanes(dayAppointments: NormalizedAppointment[]) {
@@ -377,7 +377,6 @@ export function AppointmentCalendar({
     { length: timelineEndHour - timelineStartHour + 1 },
     (_, index) => timelineStartHour + index
   )
-  const timelineWidth = (timelineEndHour - timelineStartHour) * HOUR_WIDTH
 
   const handleDragStart = (event: DragEvent<HTMLElement>, item: NormalizedAppointment) => {
     const durationMin = Math.max(
@@ -624,18 +623,15 @@ export function AppointmentCalendar({
 
       {mode === 'week' && (
         <div className="overflow-x-auto">
-          <div
-            className="rounded border bg-white"
-            style={{ width: `${timelineWidth + 88}px` }}
-          >
-            <div className="grid grid-cols-[88px_minmax(0,1fr)] border-b bg-gray-50 text-xs font-semibold text-gray-600">
+          <div className="w-full min-w-[980px] rounded border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+            <div className="grid grid-cols-[88px_minmax(0,1fr)] border-b bg-gray-50 text-xs font-semibold text-gray-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
               <div className="border-r px-2 py-2">日付</div>
-              <div className="relative" style={{ width: `${timelineWidth}px`, height: '36px' }}>
+              <div className="relative h-9">
                 {timelineHours.map((hour) => (
                   <div
                     key={`week-header-hour-${hour}`}
                     className="absolute top-0 text-[11px] text-gray-500"
-                    style={{ left: `${(hour - timelineStartHour) * HOUR_WIDTH + 4}px` }}
+                    style={{ left: `${((hour - timelineStartHour) / Math.max(1, timelineHours.length - 1)) * 100}%` }}
                   >
                     {`${String(hour % 24).padStart(2, '0')}:00`}
                   </div>
@@ -652,12 +648,12 @@ export function AppointmentCalendar({
 
               return (
                 <div key={key} className="grid grid-cols-[88px_minmax(0,1fr)] border-b last:border-b-0">
-                  <div className="border-r bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600">
+                  <div className="border-r bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                     {getJstParts(date).day}日（{weekLabels[idx]}）
                   </div>
                   <div
                     className="relative"
-                    style={{ width: `${timelineWidth}px`, height: `${totalHeight}px` }}
+                    style={{ height: `${totalHeight}px` }}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={(event) => {
                       void handleDropOnTimeline(
@@ -673,13 +669,13 @@ export function AppointmentCalendar({
                       <div
                         key={`${key}-hour-line-${index}`}
                         className="absolute bottom-0 top-0 border-l border-gray-200"
-                        style={{ left: `${index * HOUR_WIDTH}px` }}
+                        style={{ left: `${(index / Math.max(1, timelineHours.length - 1)) * 100}%` }}
                       />
                     ))}
                     {laneData.placed.map(({ item, lane }) => {
                       const placement = getTimelinePlacement(item, timelineStartMin, timelineEndMin)
                       if (!placement) return null
-                      const { left, width } = placement
+                      const { leftPercent, widthPercent } = placement
                       const top = laneSectionHeight * lane + 2
                       const height = APPOINTMENT_CHIP_HEIGHT
 
@@ -690,8 +686,9 @@ export function AppointmentCalendar({
                           className={`absolute z-10 overflow-visible rounded border px-2 py-1 text-[11px] shadow-sm hover:z-20 ${getItemColorClass(item, 'block')}`}
                           style={{
                             top: `${top}px`,
-                            left: `${left}px`,
-                            width: `${width}px`,
+                            left: `${leftPercent}%`,
+                            width: `${widthPercent}%`,
+                            minWidth: '56px',
                             height: `${height}px`,
                             opacity: draggingAppointmentId === item.id ? 0.5 : 1,
                           }}
@@ -703,7 +700,7 @@ export function AppointmentCalendar({
                         >
                           <p className="whitespace-nowrap font-semibold leading-tight">
                             {formatCalendarTimeJst(item.startTime)}-{formatCalendarTimeJst(item.endTime)} /{' '}
-                            {item.petName} / <span className="text-blue-700">{item.staffName}</span>
+                            {item.petName} / <span className="text-blue-700 dark:text-sky-300">{item.staffName}</span>
                           </p>
                           <p className="whitespace-nowrap leading-tight">{item.menu || '施術内容未設定'}</p>
                         </Link>
@@ -726,18 +723,15 @@ export function AppointmentCalendar({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <div
-                className="rounded border bg-white"
-                style={{ width: `${timelineWidth + 88}px` }}
-              >
-                <div className="grid grid-cols-[88px_minmax(0,1fr)] border-b bg-gray-50 text-xs font-semibold text-gray-600">
+              <div className="w-full min-w-[980px] rounded border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+                <div className="grid grid-cols-[88px_minmax(0,1fr)] border-b bg-gray-50 text-xs font-semibold text-gray-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   <div className="border-r px-2 py-2">日付</div>
-                  <div className="relative" style={{ width: `${timelineWidth}px`, height: '36px' }}>
+                  <div className="relative h-9">
                     {timelineHours.map((hour) => (
                       <div
                         key={`day-header-hour-${hour}`}
                         className="absolute top-0 text-[11px] text-gray-500"
-                        style={{ left: `${(hour - timelineStartHour) * HOUR_WIDTH + 4}px` }}
+                        style={{ left: `${((hour - timelineStartHour) / Math.max(1, timelineHours.length - 1)) * 100}%` }}
                       >
                         {`${String(hour % 24).padStart(2, '0')}:00`}
                       </div>
@@ -750,12 +744,12 @@ export function AppointmentCalendar({
                   const totalHeight = Math.max(laneData.totalLanes * laneSectionHeight, STAFF_ROW_HEIGHT)
                   return (
                     <div className="grid grid-cols-[88px_minmax(0,1fr)]">
-                      <div className="border-r bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600">
+                      <div className="border-r bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                         {formatJstDate(cursor)}
                       </div>
                       <div
                         className="relative"
-                        style={{ width: `${timelineWidth}px`, height: `${totalHeight}px` }}
+                        style={{ height: `${totalHeight}px` }}
                         onDragOver={(event) => event.preventDefault()}
                         onDrop={(event) => {
                           void handleDropOnTimeline(
@@ -771,13 +765,13 @@ export function AppointmentCalendar({
                           <div
                             key={`day-line-${index}`}
                             className="absolute bottom-0 top-0 border-l border-gray-200"
-                            style={{ left: `${index * HOUR_WIDTH}px` }}
+                            style={{ left: `${(index / Math.max(1, timelineHours.length - 1)) * 100}%` }}
                           />
                         ))}
                         {laneData.placed.map(({ item, lane }) => {
                           const placement = getTimelinePlacement(item, timelineStartMin, timelineEndMin)
                           if (!placement) return null
-                          const { left, width } = placement
+                          const { leftPercent, widthPercent } = placement
                           const top = laneSectionHeight * lane + 2
                           const height = APPOINTMENT_CHIP_HEIGHT
                           return (
@@ -787,8 +781,9 @@ export function AppointmentCalendar({
                               className={`absolute z-10 overflow-visible rounded border px-2 py-1 text-[11px] shadow-sm hover:z-20 ${getItemColorClass(item, 'block')}`}
                               style={{
                                 top: `${top}px`,
-                                left: `${left}px`,
-                                width: `${width}px`,
+                                left: `${leftPercent}%`,
+                                width: `${widthPercent}%`,
+                                minWidth: '56px',
                                 height: `${height}px`,
                                 opacity: draggingAppointmentId === item.id ? 0.5 : 1,
                               }}
@@ -800,7 +795,7 @@ export function AppointmentCalendar({
                             >
                               <p className="whitespace-nowrap font-semibold leading-tight">
                                 {formatJstTime(item.startTime)}-{formatJstTime(item.endTime)} / {item.petName} /{' '}
-                                <span className="text-blue-700">{item.staffName}</span>
+                                <span className="text-blue-700 dark:text-sky-300">{item.staffName}</span>
                               </p>
                               <p className="whitespace-nowrap leading-tight">{item.menu || '施術内容未設定'}</p>
                             </Link>

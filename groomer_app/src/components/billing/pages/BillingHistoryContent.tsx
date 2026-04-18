@@ -113,12 +113,12 @@ export default async function BillingHistoryPage() {
   return (
     <section className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">決済履歴</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">決済履歴</h1>
       </div>
 
-      <Card className="border border-sky-300 bg-white shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">Webhook 障害時の確認順</h2>
-        <ol className="mt-3 list-decimal space-y-2.5 pl-5 text-sm text-gray-900">
+      <Card className="border border-sky-300 shadow-sm dark:border-sky-700/60 dark:bg-slate-900">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Webhook 障害時の確認順</h2>
+        <ol className="mt-3 list-decimal space-y-2.5 pl-5 text-sm text-gray-900 dark:text-slate-200">
           <li
             className="rounded border border-sky-100 px-3 py-2 leading-relaxed"
             style={{ backgroundColor: 'var(--surface-muted)', color: 'var(--text-primary)' }}
@@ -141,11 +141,11 @@ export default async function BillingHistoryPage() {
       </Card>
 
       <Card>
-        <h2 className="text-lg font-semibold text-gray-900">プロバイダ状態</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">プロバイダ状態</h2>
         {billingSubscriptions && billingSubscriptions.length > 0 ? (
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full table-fixed text-sm text-left">
-              <thead className="border-b bg-gray-50 text-gray-500">
+              <thead className="border-b bg-gray-50 text-gray-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                 <tr>
                   <th className="px-2.5 py-2">provider</th>
                   <th className="px-2.5 py-2">status</th>
@@ -155,9 +155,9 @@ export default async function BillingHistoryPage() {
                   <th className="px-2.5 py-2">updated_at</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y dark:divide-slate-700">
                 {(billingSubscriptions ?? []).map((row, index) => (
-                  <tr key={`${row.provider}-${row.provider_subscription_id ?? 'none'}-${index}`} className="text-gray-700">
+                  <tr key={`${row.provider}-${row.provider_subscription_id ?? 'none'}-${index}`} className="text-gray-700 dark:text-slate-300">
                     <td className="px-2.5 py-2">{row.provider}</td>
                     <td className="px-2.5 py-2">{row.status}</td>
                     <td className="px-2.5 py-2">{row.subscription_scope}</td>
@@ -170,16 +170,16 @@ export default async function BillingHistoryPage() {
             </table>
           </div>
         ) : (
-          <p className="mt-3 text-sm text-gray-500">まだ決済履歴がありません。</p>
+          <p className="mt-3 text-sm text-gray-500 dark:text-slate-400">まだ決済履歴がありません。</p>
         )}
       </Card>
 
       <Card>
-        <h2 className="text-lg font-semibold text-gray-900">最近の操作履歴</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">最近の操作履歴</h2>
         {recentOperations && recentOperations.length > 0 ? (
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full table-fixed text-sm text-left">
-              <thead className="border-b bg-gray-50 text-gray-500">
+              <thead className="border-b bg-gray-50 text-gray-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                 <tr>
                   <th className="px-2.5 py-2">日時</th>
                   <th className="px-2.5 py-2">provider</th>
@@ -189,9 +189,9 @@ export default async function BillingHistoryPage() {
                   <th className="px-2.5 py-2">reason/result</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y dark:divide-slate-700">
                 {(recentOperations ?? []).map((row, index) => (
-                  <tr key={`${row.created_at}-${index}`} className="text-gray-700">
+                  <tr key={`${row.created_at}-${index}`} className="text-gray-700 dark:text-slate-300">
                     <td className="px-2.5 py-2">{formatBillingDateTimeJst(row.created_at)}</td>
                     <td className="px-2.5 py-2">{row.provider}</td>
                     <td className="px-2.5 py-2">{billingOperationTypeLabel(row.operation_type)}</td>
@@ -204,7 +204,7 @@ export default async function BillingHistoryPage() {
             </table>
           </div>
         ) : (
-          <p className="mt-3 text-sm text-gray-500">まだ操作履歴がありません。</p>
+          <p className="mt-3 text-sm text-gray-500 dark:text-slate-400">まだ操作履歴がありません。</p>
         )}
       </Card>
 

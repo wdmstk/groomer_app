@@ -119,7 +119,6 @@ type MenuItemDraft = {
   notes: string
 }
 
-const HOUR_HEIGHT = 42
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000
 
 function statusLabel(status: StayPayload['status'] | string) {
@@ -1108,120 +1107,125 @@ export function HotelStaysManager({
     const openHour = settings.calendar_open_hour ?? 8
     const closeHour = settings.calendar_close_hour ?? 20
     const totalHours = Math.max(1, closeHour - openHour + 1)
-    const totalHeight = totalHours * HOUR_HEIGHT
+    const totalMinutes = totalHours * 60
+    const laneRowHeight = 34
+    const timelineMinWidth = 980
+
+    function assignStayLanes(day: Date, dayStays: StayRow[]) {
+      const dayParts = getJstParts(day)
+      const dayStartIso = createDateFromJst(dayParts.year, dayParts.month, dayParts.day, openHour).toISOString()
+      const dayEndIso = createDateFromJst(dayParts.year, dayParts.month, dayParts.day, closeHour + 1).toISOString()
+      const sorted = dayStays
+        .filter((stay) => intersects(dayStartIso, dayEndIso, stay.planned_check_in_at, stay.planned_check_out_at))
+        .map((stay) => {
+          const { visibleStart, visibleEnd } = getVisibleStayWindow(stay, day, openHour, closeHour)
+          const startOffsetMin = Math.max(0, getMinutesFromDayStart(visibleStart) - openHour * 60)
+          const endOffsetMin = Math.max(startOffsetMin + 30, getMinutesFromDayStart(visibleEnd) - openHour * 60)
+          return { stay, visibleStart, visibleEnd, startOffsetMin, durationMin: Math.max(30, endOffsetMin - startOffsetMin) }
+        })
+        .sort((a, b) => a.startOffsetMin - b.startOffsetMin)
+
+      const laneEnds: number[] = []
+      const rows = sorted.map((row) => {
+        let lane = laneEnds.findIndex((end) => end <= row.startOffsetMin)
+        if (lane < 0) {
+          lane = laneEnds.length
+          laneEnds.push(row.startOffsetMin + row.durationMin)
+        } else {
+          laneEnds[lane] = row.startOffsetMin + row.durationMin
+        }
+        return { ...row, lane }
+      })
+      return { rows, totalLanes: Math.max(1, laneEnds.length) }
+    }
 
     return (
       <div className="overflow-x-auto">
-        <div className="min-w-[820px] rounded border border-gray-200">
-          <div className="grid grid-cols-[64px_repeat(auto-fit,minmax(120px,1fr))]">
-            <div className="border-b border-r bg-gray-50 px-2 py-3 text-xs text-gray-500">時刻</div>
-            {days.map((day) => {
-              const key = toJstDateKey(day)
-              const dayStays = staysByDay.get(key) ?? []
-              const peak = dayHours.reduce((max, hour) => {
-                const parts = getJstParts(day)
-                const slotStart = createDateFromJst(parts.year, parts.month, parts.day, hour).toISOString()
-                const slotEnd = createDateFromJst(parts.year, parts.month, parts.day, hour + 1).toISOString()
-                const count = dayStays.filter((stay) =>
-                  intersects(slotStart, slotEnd, stay.planned_check_in_at, stay.planned_check_out_at)
-                ).length
-                return Math.max(max, count)
-              }, 0)
-              return (
-                <div key={key} className="border-b border-r bg-gray-50 px-2 py-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-900">{formatDate(day)}</p>
+        <div className="rounded border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900" style={{ minWidth: `${timelineMinWidth}px` }}>
+          <div className="grid grid-cols-[160px_minmax(0,1fr)] border-b bg-gray-50 text-xs font-semibold text-gray-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            <div className="border-r px-3 py-2 dark:border-slate-700">日付</div>
+            <div className="relative h-9">
+              {dayHours.map((hour) => (
+                <div
+                  key={`hotel-hour-${hour}`}
+                  className="absolute top-0 text-[11px] text-gray-500 dark:text-slate-400"
+                  style={{
+                    left: `${((hour - openHour) / totalHours) * 100}%`,
+                    transform: 'translateX(-50%)',
+                  }}
+                >
+                  {String(hour).padStart(2, '0')}:00
+                </div>
+              ))}
+            </div>
+          </div>
+          {days.map((day) => {
+            const key = toJstDateKey(day)
+            const dayStays = staysByDay.get(key) ?? []
+            const laneData = assignStayLanes(day, dayStays)
+            const rowHeight = Math.max(36, laneData.totalLanes * laneRowHeight)
+            const peak = dayHours.reduce((max, hour) => {
+              const dayParts = getJstParts(day)
+              const slotStart = createDateFromJst(dayParts.year, dayParts.month, dayParts.day, hour).toISOString()
+              const slotEnd = createDateFromJst(dayParts.year, dayParts.month, dayParts.day, hour + 1).toISOString()
+              const count = dayStays.filter((stay) =>
+                intersects(slotStart, slotEnd, stay.planned_check_in_at, stay.planned_check_out_at)
+              ).length
+              return Math.max(max, count)
+            }, 0)
+            const isOverCapacity = peak > settings.max_concurrent_pets
+
+            return (
+              <div key={key} className="grid grid-cols-[160px_minmax(0,1fr)] border-b last:border-b-0 dark:border-slate-700">
+                <div className="border-r bg-gray-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">{formatDate(day)}</p>
                     <span
                       className={`rounded px-2 py-0.5 text-xs font-semibold ${
-                        peak > settings.max_concurrent_pets ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
+                        isOverCapacity ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
                       }`}
                     >
                       最大 {peak}/{settings.max_concurrent_pets}
                     </span>
                   </div>
                 </div>
-              )
-            })}
-          </div>
-          <div className="grid grid-cols-[64px_repeat(auto-fit,minmax(120px,1fr))]">
-            <div className="relative border-r bg-gray-50" style={{ height: totalHeight }}>
-              {dayHours.map((hour, index) => (
-                <div
-                  key={hour}
-                  className="absolute left-0 right-0 border-t border-gray-200 px-2 text-xs text-gray-500"
-                  style={{ top: index * HOUR_HEIGHT }}
-                >
-                  {String(hour).padStart(2, '0')}:00
-                </div>
-              ))}
-            </div>
-            {days.map((day) => {
-              const key = toJstDateKey(day)
-              const dayStays = staysByDay.get(key) ?? []
-              const dayParts = getJstParts(day)
-              const dayStartIso = createDateFromJst(dayParts.year, dayParts.month, dayParts.day, openHour).toISOString()
-              const dayEndIso = createDateFromJst(dayParts.year, dayParts.month, dayParts.day, closeHour + 1).toISOString()
-              const isOverCapacity = dayHours.some((hour) => {
-                const slotStart = createDateFromJst(dayParts.year, dayParts.month, dayParts.day, hour).toISOString()
-                const slotEnd = createDateFromJst(dayParts.year, dayParts.month, dayParts.day, hour + 1).toISOString()
-                return (
-                  dayStays.filter((stay) =>
-                    intersects(slotStart, slotEnd, stay.planned_check_in_at, stay.planned_check_out_at)
-                  ).length > settings.max_concurrent_pets
-                )
-              })
-
-              return (
-                <div
-                  key={key}
-                  className={`relative border-r ${isOverCapacity ? 'bg-red-50/60' : 'bg-white'}`}
-                  style={{ height: totalHeight }}
-                >
-                  {dayHours.map((hour, index) => (
+                <div className={`relative ${isOverCapacity ? 'bg-red-50/60 dark:bg-red-900/20' : 'bg-white dark:bg-slate-900'}`} style={{ height: `${rowHeight}px` }}>
+                  {Array.from({ length: totalHours + 1 }, (_, index) => (
                     <div
-                      key={hour}
-                      className="absolute left-0 right-0 border-t border-gray-100"
-                      style={{ top: index * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                      key={`line-${key}-${index}`}
+                      className="absolute bottom-0 top-0 border-l border-gray-200 dark:border-slate-700"
+                      style={{ left: `${(index / totalHours) * 100}%` }}
                     />
                   ))}
-                  {dayStays
-                    .filter((stay) =>
-                      intersects(dayStartIso, dayEndIso, stay.planned_check_in_at, stay.planned_check_out_at)
+                  {laneData.rows.map(({ stay, lane, startOffsetMin, durationMin, visibleStart, visibleEnd }) => {
+                    const leftPercent = (startOffsetMin / totalMinutes) * 100
+                    const widthPercent = (durationMin / totalMinutes) * 100
+                    const petLabel = pets.find((pet) => pet.id === stay.pet_id)?.label ?? stay.pet_id
+                    return (
+                      <button
+                        key={stay.id}
+                        type="button"
+                        onClick={() => openEdit(stay.id)}
+                        className="absolute rounded border border-sky-300 bg-sky-100 px-2 py-1 text-left text-xs text-sky-900 dark:border-sky-400/60 dark:bg-sky-900/40 dark:text-sky-100"
+                        style={{
+                          top: `${lane * laneRowHeight + 2}px`,
+                          left: `${leftPercent}%`,
+                          width: `${Math.max(widthPercent, 3)}%`,
+                          minWidth: '76px',
+                          height: `${laneRowHeight - 4}px`,
+                        }}
+                      >
+                        <p className="truncate font-semibold">{petLabel}</p>
+                        <p className="truncate">
+                          {formatTime(visibleStart)} - {formatTime(visibleEnd)}
+                        </p>
+                      </button>
                     )
-                    .map((stay, index) => {
-                      const { visibleStart, visibleEnd } = getVisibleStayWindow(stay, day, openHour, closeHour)
-                      const startMinutes = Math.max(0, getMinutesFromDayStart(visibleStart) - openHour * 60)
-                      const endMinutes = Math.max(
-                        startMinutes + 30,
-                        getMinutesFromDayStart(visibleEnd) - openHour * 60
-                      )
-                      const top = (startMinutes / 60) * HOUR_HEIGHT
-                      const height = Math.max(((endMinutes - startMinutes) / 60) * HOUR_HEIGHT, 28)
-                      const petLabel = pets.find((pet) => pet.id === stay.pet_id)?.label ?? stay.pet_id
-                      return (
-                        <button
-                          key={stay.id}
-                          type="button"
-                          onClick={() => openEdit(stay.id)}
-                          className="absolute left-1 right-1 rounded border border-sky-300 bg-sky-100 px-2 py-1 text-left text-xs text-sky-900"
-                          style={{
-                            top,
-                            height,
-                            left: `${4 + (index % 2) * 4}px`,
-                            right: `${4 + (index % 2 === 0 ? 4 : 0)}px`,
-                          }}
-                        >
-                          <p className="font-semibold">{petLabel}</p>
-                          <p>
-                            {formatTime(visibleStart)} - {formatTime(visibleEnd)}
-                          </p>
-                        </button>
-                      )
-                    })}
+                  })}
                 </div>
-              )
-            })}
-          </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     )
@@ -1280,13 +1284,13 @@ export function HotelStaysManager({
     <div className="space-y-4">
       {message ? (
         <Card>
-          <p className="text-sm text-gray-700">{message}</p>
+          <p className="text-sm text-gray-700 dark:text-slate-200">{message}</p>
         </Card>
       ) : null}
 
       <Card>
         <div className="overflow-x-auto">
-          <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2">
+          <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -1294,8 +1298,8 @@ export function HotelStaysManager({
               onClick={() => setActiveTab(tab.id)}
               className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
                 activeTab === tab.id
-                  ? 'bg-slate-900 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                  : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               {tab.label}

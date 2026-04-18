@@ -799,34 +799,36 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
   return (
     <section className="space-y-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold text-gray-900">ペットカルテ管理</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">ペットカルテ管理</h1>
       </div>
 
-      <div className="flex items-center gap-4 border-b">
-        <Link
-          href="/medical-records?tab=list"
-          className={`pb-2 text-sm font-semibold ${
-            activeTab === 'list' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'
-          }`}
-        >
-          カルテ一覧
-        </Link>
-        <Link
-          href="/medical-records?tab=pending"
-          className={`pb-2 text-sm font-semibold ${
-            activeTab === 'pending' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'
-          }`}
-        >
-          未作成一覧
-        </Link>
+      <div className="overflow-x-auto">
+        <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
+          <Link
+            href="/medical-records?tab=list"
+            className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+              activeTab === 'list' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
+            }`}
+          >
+            カルテ一覧
+          </Link>
+          <Link
+            href="/medical-records?tab=pending"
+            className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+              activeTab === 'pending' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
+            }`}
+          >
+            未作成一覧
+          </Link>
+        </div>
       </div>
 
       {activeTab === 'list' ? (
         <Card>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">カルテ一覧</h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">カルテ一覧</h2>
             <div className="flex items-center gap-3">
-              <p className="text-sm text-gray-500">全 {filteredRecordList.length} 件 / 総数 {recordList.length} 件</p>
+              <p className="text-sm text-gray-500 dark:text-slate-400">全 {filteredRecordList.length} 件 / 総数 {recordList.length} 件</p>
               <Link
                 href={buildMedicalRecordsHref({
                   tab: 'list',
@@ -844,7 +846,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
             <p className="text-sm text-gray-500">カルテがまだ登録されていません。</p>
           ) : (
             <>
-              <div className="mb-4 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
+              <div className="mb-4 space-y-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
                 <div className="space-y-2">
                   <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">AI解析ステータス</p>
                   <div className="flex flex-wrap gap-2">
@@ -859,7 +861,9 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                             aiStatus: option.value,
                           })}
                           className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                            active ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 dark:bg-slate-800 dark:text-slate-100'
+                            active
+                              ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                              : 'bg-white text-slate-700 dark:bg-slate-700 dark:text-slate-100'
                           }`}
                         >
                           {option.label} {option.count}
@@ -896,7 +900,9 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                               aiStatus: selectedAiStatus,
                             })}
                             className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                              active ? 'bg-violet-700 text-white' : 'bg-white text-violet-900 dark:bg-slate-800 dark:text-violet-200'
+                              active
+                                ? 'bg-violet-700 text-white dark:bg-violet-500 dark:text-white'
+                                : 'bg-white text-violet-900 dark:bg-slate-700 dark:text-violet-100'
                             }`}
                           >
                             {option.tag} {option.count}
@@ -935,15 +941,15 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                     ? getRelatedValue(linkedAppointment.customers, 'full_name')
                     : '未登録'
                   return (
-                    <article key={record.id} className="rounded border border-gray-200 bg-white p-3 text-sm text-gray-700">
-                      <div className="flex items-center gap-1 whitespace-nowrap font-semibold text-gray-900">
+                    <article key={record.id} className="rounded border border-gray-200 bg-white p-3 text-sm text-gray-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                      <div className="flex items-center gap-1 whitespace-nowrap font-semibold text-gray-900 dark:text-slate-100">
                         <span>{customerName}</span>
-                        <span className="text-gray-400">/</span>
+                        <span className="text-gray-400 dark:text-slate-500">/</span>
                         <span>{getRelatedValue(record.pets, 'name')}</span>
-                        <span className="text-gray-400">/</span>
+                        <span className="text-gray-400 dark:text-slate-500">/</span>
                         <span>{getRelatedValue(record.staffs, 'full_name')}</span>
                       </div>
-                      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
+                      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-slate-400">
                         <p className="whitespace-nowrap">記録日: {formatDateTimeJst(record.record_date)}</p>
                         <p className="whitespace-nowrap">所要: {record.duration ? `${record.duration}分` : '未登録'}</p>
                         <p className="truncate">メニュー: {record.menu ?? '未登録'}</p>
@@ -977,16 +983,16 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                                 aiTag: tag,
                                 aiStatus: selectedAiStatus,
                               })}
-                              className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-900"
+                              className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-900 dark:bg-violet-500/20 dark:text-violet-100"
                             >
                               {tag}
                             </Link>
                           ))
                         ) : (
-                          <span className="text-xs text-gray-500">AIタグなし</span>
+                          <span className="text-xs text-gray-500 dark:text-slate-400">AIタグなし</span>
                         )}
                       </div>
-                      <p className="mt-1 text-xs text-gray-500">
+                      <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                         最終解析: {record.ai_tag_last_analyzed_at ? formatDateTimeJst(record.ai_tag_last_analyzed_at) : '未実行'}
                       </p>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -997,7 +1003,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                             aiTag: selectedAiTag,
                             aiStatus: selectedAiStatus,
                           })}
-                          className="inline-flex h-7 items-center rounded border border-blue-300 px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                          className="inline-flex h-7 items-center rounded border border-blue-300 px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-500/60 dark:text-blue-200 dark:hover:bg-blue-500/20"
                         >
                           編集
                         </Link>
@@ -1016,7 +1022,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
 
               <div className="hidden overflow-x-auto md:block">
                 <table className="min-w-[1080px] w-full table-fixed text-left text-sm">
-                  <thead className="border-b text-xs text-gray-500">
+                  <thead className="border-b text-xs text-gray-500 dark:border-slate-700 dark:text-slate-400">
                     <tr>
                       <th className="w-[30%] px-2 py-1.5">対象</th>
                       <th className="w-[15%] px-2 py-1.5">記録日</th>
@@ -1035,27 +1041,27 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                         ? getRelatedValue(linkedAppointment.customers, 'full_name')
                         : '未登録'
                       return (
-                        <tr key={record.id} className="align-top text-gray-700">
+                        <tr key={record.id} className="align-top text-gray-700 dark:text-slate-300">
                           <td className="px-2 py-2">
-                            <div className="flex items-center gap-1 whitespace-nowrap font-semibold text-gray-900">
+                            <div className="flex items-center gap-1 whitespace-nowrap font-semibold text-gray-900 dark:text-slate-100">
                               <span>{customerName}</span>
-                              <span className="text-gray-400">/</span>
+                              <span className="text-gray-400 dark:text-slate-500">/</span>
                               <span>{getRelatedValue(record.pets, 'name')}</span>
-                              <span className="text-gray-400">/</span>
+                              <span className="text-gray-400 dark:text-slate-500">/</span>
                               <span>{getRelatedValue(record.staffs, 'full_name')}</span>
                             </div>
-                            <p className="mt-0.5 max-w-[260px] truncate text-xs text-gray-500">
+                            <p className="mt-0.5 max-w-[260px] truncate text-xs text-gray-500 dark:text-slate-400">
                               備考: {record.caution_notes ?? '未登録'}
                             </p>
                           </td>
-                          <td className="px-2 py-2 text-xs text-gray-600">
+                          <td className="px-2 py-2 text-xs text-gray-600 dark:text-slate-400">
                             <p className="whitespace-nowrap">{formatDateTimeJst(record.record_date)}</p>
                             <p className="mt-0.5 whitespace-nowrap">
                               {(photoCountByRecordId.get(record.id) ?? 0) + (videoCountByRecordId.get(record.id) ?? 0)}件
                               （写{photoCountByRecordId.get(record.id) ?? 0}/動{videoCountByRecordId.get(record.id) ?? 0}）
                             </p>
                           </td>
-                          <td className="px-2 py-2 text-xs text-gray-600">
+                          <td className="px-2 py-2 text-xs text-gray-600 dark:text-slate-400">
                             <p className="truncate">メニュー: {record.menu ?? '未登録'}</p>
                             <p className="mt-0.5 whitespace-nowrap">所要: {record.duration ? `${record.duration}分` : '未登録'}</p>
                             <div className="mt-1 flex flex-wrap gap-1">
@@ -1068,13 +1074,13 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                                       aiTag: tag,
                                       aiStatus: selectedAiStatus,
                                     })}
-                                    className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-medium text-violet-900"
+                                    className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-medium text-violet-900 dark:bg-violet-500/20 dark:text-violet-100"
                                   >
                                     {tag}
                                   </Link>
                                 ))
                               ) : (
-                                <span className="text-gray-500">AIタグなし</span>
+                                <span className="text-gray-500 dark:text-slate-400">AIタグなし</span>
                               )}
                             </div>
                           </td>
@@ -1096,7 +1102,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                                   {getMedicalRecordAiTagStatusLabel(aiStatus)}
                                 </span>
                               </div>
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs text-gray-500 dark:text-slate-400">
                                 最終: {record.ai_tag_last_analyzed_at ? formatDateTimeJst(record.ai_tag_last_analyzed_at) : '未実行'}
                               </p>
                             </div>
@@ -1110,7 +1116,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                                   aiTag: selectedAiTag,
                                   aiStatus: selectedAiStatus,
                                 })}
-                                className="inline-flex h-7 items-center rounded border border-blue-300 px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                                className="inline-flex h-7 items-center rounded border border-blue-300 px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-500/60 dark:text-blue-200 dark:hover:bg-blue-500/20"
                               >
                                 編集
                               </Link>
@@ -1130,20 +1136,20 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                 </table>
               </div>
 
-              <section className="mt-6 space-y-3 rounded-xl border border-slate-200 p-4">
+              <section className="mt-6 space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-gray-900">最新メディア（写真・動画）</h3>
-                  <p className="text-xs text-gray-500">同一一覧で時系列表示</p>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">最新メディア（写真・動画）</h3>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">同一一覧で時系列表示</p>
                 </div>
                 {mixedMediaEntries.length === 0 ? (
-                  <p className="text-sm text-gray-500">表示できるメディアはまだありません。</p>
+                  <p className="text-sm text-gray-500 dark:text-slate-400">表示できるメディアはまだありません。</p>
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {mixedMediaEntries.map((entry) => {
                       const petName = petNameByRecordId.get(entry.medicalRecordId) ?? '未登録'
                       return (
-                        <article key={`${entry.mediaType}-${entry.id}`} className="overflow-hidden rounded border">
-                          <div className="relative aspect-[4/3] bg-slate-50">
+                        <article key={`${entry.mediaType}-${entry.id}`} className="overflow-hidden rounded border border-gray-200 bg-white">
+                          <div className="relative aspect-[4/3] bg-gray-50">
                             {entry.signedUrl ? (
                               entry.mediaType === 'photo' ? (
                                 <Image
@@ -1162,7 +1168,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                                 />
                               )
                             ) : (
-                              <div className="flex h-full items-center justify-center text-xs text-gray-500">
+                              <div className="flex h-full items-center justify-center text-xs text-gray-500 dark:text-slate-400">
                                 プレビューなし
                               </div>
                             )}
@@ -1181,12 +1187,12 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                               </span>
                             ) : null}
                           </div>
-                          <div className="space-y-1 p-3 text-xs text-gray-700">
-                            <p className="font-semibold text-gray-900">{entry.label}</p>
+                          <div className="space-y-1 p-3 text-xs text-gray-700 dark:text-slate-300">
+                            <p className="font-semibold text-gray-900 dark:text-slate-100">{entry.label}</p>
                             <p>ペット: {petName}</p>
                             <p>日時: {formatDateTimeJst(entry.takenAt ?? entry.createdAt)}</p>
                             {entry.mediaType === 'video' && entry.sourceType === 'ai_generated' ? (
-                              <p className="text-violet-700">AI生成動画</p>
+                              <p className="text-violet-700 dark:text-violet-300">AI生成動画</p>
                             ) : null}
                             {entry.mediaType === 'video' ? (
                               <MedicalRecordVideoLineShareButton videoId={entry.id} />
@@ -1198,7 +1204,7 @@ export default async function MedicalRecordsPage({ searchParams }: MedicalRecord
                                 aiTag: selectedAiTag,
                                 aiStatus: selectedAiStatus,
                               })}
-                              className="inline-flex text-xs font-semibold text-blue-600"
+                              className="inline-flex text-xs font-semibold text-blue-600 dark:text-blue-300"
                             >
                               このカルテを開く
                             </Link>

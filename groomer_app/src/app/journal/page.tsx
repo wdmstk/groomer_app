@@ -141,18 +141,20 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
       ])
 
   return (
-    <main className="mx-auto max-w-3xl space-y-4 px-4 py-4">
+    <section className="space-y-6">
       <header>
-        <h1 className="text-xl font-bold text-gray-900">日誌</h1>
-        <p className="text-sm text-gray-500">写真・動画カルテとは独立した日誌モジュールです。</p>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">日誌</h1>
+        <p className="text-sm text-gray-500 dark:text-slate-300">写真・動画カルテとは独立した日誌モジュールです。</p>
       </header>
 
       <div className="overflow-x-auto">
-        <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2">
+        <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
           <Link
             href="/journal?tab=compose"
             className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
-              activeTab === 'compose' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+              activeTab === 'compose'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
             }`}
           >
             クイック投稿
@@ -160,7 +162,9 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
           <Link
             href="/journal?tab=latest"
             className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
-              activeTab === 'latest' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+              activeTab === 'latest'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
             }`}
           >
             最新投稿
@@ -172,9 +176,9 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
         <JournalComposer customers={customers as CustomerRow[]} pets={pets as PetRow[]} />
       ) : (
         <section className="space-y-2">
-          <h2 className="text-base font-semibold text-gray-900">最新投稿</h2>
+          <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">最新投稿</h2>
           {entries.length === 0 ? (
-            <p className="rounded-md border border-dashed border-gray-300 p-4 text-sm text-gray-500">投稿はまだありません。</p>
+            <p className="rounded-md border border-dashed border-gray-300 p-4 text-sm text-gray-500 dark:border-slate-600 dark:text-slate-400">投稿はまだありません。</p>
           ) : (
             (entries as JournalEntryRow[]).map((entry) => {
               const petNames = (petIdsByEntryId.get(entry.id) ?? [])
@@ -189,14 +193,14 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
                 : null
 
               return (
-                <article key={entry.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-                  <div className="flex items-center justify-between gap-2 text-xs text-gray-500">
+                <article key={entry.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-slate-400">
                     <span>{formatDateTime(entry.posted_at ?? entry.created_at)}</span>
-                    <span className="rounded bg-gray-100 px-2 py-1 text-[11px]">{entry.status}</span>
+                    <span className="rounded bg-gray-100 px-2 py-1 text-[11px] dark:bg-slate-800 dark:text-slate-200">{entry.status}</span>
                   </div>
-                  <p className="mt-1 text-sm text-gray-900">顧客: {customerName}</p>
-                  <p className="text-sm text-gray-700">対象: {petNames || '未設定'}</p>
-                  <div className="mt-2 relative h-28 overflow-hidden rounded border border-gray-200 bg-gray-100">
+                  <p className="mt-1 text-sm text-gray-900 dark:text-slate-100">顧客: {customerName}</p>
+                  <p className="text-sm text-gray-700 dark:text-slate-300">対象: {petNames || '未設定'}</p>
+                  <div className="relative mt-2 h-28 overflow-hidden rounded border border-gray-200 bg-gray-100 dark:border-slate-700 dark:bg-slate-800">
                     {mediaSignedUrl ? (
                       media?.media_type === 'photo' ? (
                         <Image
@@ -210,16 +214,16 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
                         <video src={mediaSignedUrl} className="h-full w-full object-cover" muted playsInline />
                       )
                     ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-gray-500">メディアなし</div>
+                      <div className="flex h-full items-center justify-center text-xs text-gray-500 dark:text-slate-400">メディアなし</div>
                     )}
                   </div>
-                  <p className="mt-2 whitespace-pre-wrap text-sm text-gray-800">{entry.body_text || '（コメントなし）'}</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-gray-800 dark:text-slate-200">{entry.body_text || '（コメントなし）'}</p>
                 </article>
               )
             })
           )}
         </section>
       )}
-    </main>
+    </section>
   )
 }

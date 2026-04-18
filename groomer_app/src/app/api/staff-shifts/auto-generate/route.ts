@@ -699,6 +699,8 @@ export async function POST(request: Request) {
     ].slice(0, 3)
     summary.total_score = totalScore
     summary.score_breakdown = scoreBreakdown
+    summary.top_reasons = topReasons
+    summary.alternatives = alternatives
     summary.alternatives_count = alternatives.length
   }
 

@@ -32,6 +32,17 @@ function resolveBooleanFlag(value: string | null) {
   return value === 'true' || value === '1'
 }
 
+function isIgnorableSchemaError(error: { code?: string; message?: string } | null | undefined) {
+  if (!error) return false
+  const message = error.message ?? ''
+  if (error.code === 'PGRST205') return true
+  return (
+    message.includes('Could not find the table') ||
+    message.includes('Could not find a relationship') ||
+    message.includes('schema cache')
+  )
+}
+
 function getJstDateOnly(now = new Date()) {
   const jstText = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' })
   return /^\d{4}-\d{2}-\d{2}$/.test(jstText) ? jstText : now.toISOString().slice(0, 10)
@@ -124,7 +135,7 @@ export async function GET(request: Request) {
             .eq('template_key', 'followup_line'),
         ])
 
-  if (taskEventsError || staffRowsError || (templateError && !templateError.message.includes('notification_templates'))) {
+  if (taskEventsError || staffRowsError || (templateError && !isIgnorableSchemaError(templateError))) {
     return jsonError(
       taskEventsError?.message ??
         staffRowsError?.message ??
@@ -226,8 +237,10 @@ export async function GET(request: Request) {
     activeTasksError ??
     staffsError ??
     petsError ??
-    customerManagementSettingsError ??
-    (nextVisitTemplateError && !nextVisitTemplateError.message.includes('notification_templates')
+    (customerManagementSettingsError && !isIgnorableSchemaError(customerManagementSettingsError)
+      ? customerManagementSettingsError
+      : null) ??
+    (nextVisitTemplateError && !isIgnorableSchemaError(nextVisitTemplateError)
       ? nextVisitTemplateError
       : null)
   if (firstError) {

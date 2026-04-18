@@ -91,14 +91,14 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   return (
     <section className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-gray-900">店舗管理</h1>
-        <p className="text-sm text-gray-600">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">店舗管理</h1>
+        <p className="text-sm text-gray-600 dark:text-slate-300">
           店舗の運用ルール、公開予約、電子同意書テンプレート、通知、容量管理、新規店舗追加をこの画面で管理します。
         </p>
       </div>
 
       <div className="overflow-x-auto">
-        <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2">
+        <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
           {SETTINGS_TABS.map((item) => {
             const isActive = tab === item.id
             return (
@@ -106,7 +106,9 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                 key={item.id}
                 href={`/settings?tab=${item.id}`}
                 className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${
-                  isActive ? 'bg-slate-900 text-white' : 'text-gray-700 hover:bg-gray-100'
+                  isActive
+                    ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                    : 'text-gray-700 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
                 }`}
               >
                 {item.label}

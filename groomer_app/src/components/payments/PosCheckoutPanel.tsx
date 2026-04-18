@@ -385,19 +385,19 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
   }
 
   return (
-    <div className="rounded border border-amber-200 bg-amber-50 p-4" data-testid="pos-checkout-panel">
+    <div className="rounded border border-gray-200 bg-gray-50 p-4" data-testid="pos-checkout-panel">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-amber-900">POS会計（β）</p>
-          <p className="text-xs text-amber-800">施術・ホテル・店販を1つの会計として予約に紐づけて確定できます。</p>
+          <p className="text-sm font-semibold text-gray-900">POS会計（β）</p>
+          <p className="text-xs text-gray-700">施術・ホテル・店販を1つの会計として予約に紐づけて確定できます。</p>
         </div>
       </div>
 
-      <div className="mb-3 rounded border border-slate-200 bg-white p-3">
+      <div className="mb-3 rounded border border-gray-200 bg-white p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold text-slate-900">レジセッション</p>
-            <p className="text-xs text-slate-600">
+            <p className="text-sm font-semibold text-gray-900">レジセッション</p>
+            <p className="text-xs text-gray-600">
               {sessionLoading
                 ? '確認中...'
                 : sessionId
@@ -411,19 +411,19 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[1fr_120px_120px_auto] md:items-end">
-          <label className="text-xs text-slate-700">
+          <label className="text-xs text-gray-700">
             入出金種別
             <select
               value={eventType}
               onChange={(event) => setEventType(event.target.value as 'cash_in' | 'cash_out' | 'adjustment')}
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+              className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
             >
               <option value="cash_in">入金</option>
               <option value="cash_out">出金</option>
               <option value="adjustment">調整</option>
             </select>
           </label>
-          <label className="text-xs text-slate-700">
+          <label className="text-xs text-gray-700">
             金額
             <input
               type="number"
@@ -431,15 +431,15 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
               step="1"
               value={eventAmount}
               onChange={(event) => setEventAmount(event.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+              className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
             />
           </label>
-          <label className="text-xs text-slate-700">
+          <label className="text-xs text-gray-700">
             理由
             <input
               value={eventReason}
               onChange={(event) => setEventReason(event.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+              className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
             />
           </label>
           <Button type="button" onClick={() => void submitCashDrawerEvent()} disabled={sessionSubmitting || !sessionId}>
@@ -448,7 +448,7 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[1fr_1fr_auto] md:items-end">
-          <label className="text-xs text-slate-700">
+          <label className="text-xs text-gray-700">
             実残高
             <input
               type="number"
@@ -456,15 +456,15 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
               step="1"
               value={closeCountedAmount}
               onChange={(event) => setCloseCountedAmount(event.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+              className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
             />
           </label>
-          <label className="text-xs text-slate-700">
+          <label className="text-xs text-gray-700">
             締めメモ
             <input
               value={closeNote}
               onChange={(event) => setCloseNote(event.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+              className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
             />
           </label>
           <Button type="button" onClick={() => void closeSession()} disabled={sessionSubmitting || !sessionId}>
@@ -473,7 +473,7 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
         </div>
 
         {sessionSummary ? (
-          <div className="mt-3 rounded border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-900">
+          <div className="mt-3 rounded border border-gray-200 bg-gray-50 p-2 text-xs text-gray-700">
             <p>売上合計: {formatYen(sessionSummary.sales_total)}</p>
             <p>現金期待額: {formatYen(sessionSummary.cash_expected)}</p>
             <p>実残高: {formatYen(sessionSummary.cash_counted)}</p>
@@ -481,13 +481,13 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
           </div>
         ) : null}
 
-        {sessionMessage ? <p className="mt-2 text-xs text-slate-700">{sessionMessage}</p> : null}
+        {sessionMessage ? <p className="mt-2 text-xs text-gray-700">{sessionMessage}</p> : null}
       </div>
 
       {error ? <p className="mb-2 text-sm text-red-700">{error}</p> : null}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <label className="text-xs text-slate-700">
+        <label className="text-xs text-gray-700">
           予約
           <select
             value={appointmentId}
@@ -499,7 +499,7 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
                 setCustomerId(matched.customerId)
               }
             }}
-            className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+            className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
           >
             <option value="">予約を選択</option>
             {appointments.map((appointment) => (
@@ -509,12 +509,12 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
             ))}
           </select>
         </label>
-        <label className="text-xs text-slate-700">
+        <label className="text-xs text-gray-700">
           顧客
           <select
             value={customerId}
             onChange={(event) => setCustomerId(event.target.value)}
-            className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+            className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
           >
             <option value="">顧客を選択</option>
             {customers.map((customer) => (
@@ -524,12 +524,12 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
             ))}
           </select>
         </label>
-        <label className="text-xs text-slate-700">
+        <label className="text-xs text-gray-700">
           支払方法
           <select
             value={method}
             onChange={(event) => setMethod(event.target.value)}
-            className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+            className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
           >
             {['現金', 'カード', '電子マネー', 'QR決済', 'その他'].map((option) => (
               <option key={option} value={option}>
@@ -541,7 +541,7 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
       </div>
 
       {selectedAppointment ? (
-        <p className="mt-2 text-xs text-slate-600">対象予約: {selectedAppointment.label}</p>
+        <p className="mt-2 text-xs text-gray-600">対象予約: {selectedAppointment.label}</p>
       ) : null}
 
       <div className="mt-2 flex flex-wrap gap-2">
@@ -553,13 +553,13 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
         </Button>
       </div>
 
-      <div className="mt-3 grid grid-cols-1 gap-2 rounded border border-slate-200 bg-white p-3 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
-        <label className="text-xs text-slate-700">
+      <div className="mt-3 grid grid-cols-1 gap-2 rounded border border-gray-200 bg-white p-3 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
+        <label className="text-xs text-gray-700">
           商品
           <select
             value={selectedProductId}
             onChange={(event) => setSelectedProductId(event.target.value)}
-            className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+            className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
           >
             <option value="">商品を選択</option>
             {products.map((product) => (
@@ -569,7 +569,7 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
             ))}
           </select>
         </label>
-        <label className="text-xs text-slate-700">
+        <label className="text-xs text-gray-700">
           数量
           <input
             type="number"
@@ -577,10 +577,10 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
             step="1"
             value={quantity}
             onChange={(event) => setQuantity(event.target.value)}
-            className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+            className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
           />
         </label>
-        <label className="text-xs text-slate-700">
+        <label className="text-xs text-gray-700">
           単価(税込)
           <input
             type="number"
@@ -588,7 +588,7 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
             step="1"
             value={unitAmount}
             onChange={(event) => setUnitAmount(event.target.value)}
-            className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+            className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
           />
         </label>
         <Button type="button" onClick={addProductLine} disabled={!selectedProductId}>
@@ -598,7 +598,7 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
 
       <div className="mt-3 overflow-x-auto rounded border bg-white">
         <table className="min-w-full table-fixed text-left text-sm">
-          <thead className="border-b bg-gray-50 text-slate-500">
+          <thead className="border-b bg-gray-50 text-gray-500">
             <tr>
               <th className="px-2.5 py-2">区分</th>
               <th className="px-2.5 py-2">明細</th>
@@ -610,7 +610,7 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
           </thead>
           <tbody className="divide-y">
             {cart.map((line) => (
-              <tr key={line.id} className="text-slate-700">
+              <tr key={line.id} className="text-gray-700">
                 <td className="px-2.5 py-2">
                   {line.lineType === 'product' ? '店販' : 'サービス'}
                 </td>
@@ -633,7 +633,7 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
             ))}
             {cart.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-2.5 py-2 text-center text-slate-500">
+                <td colSpan={6} className="px-2.5 py-2 text-center text-gray-500">
                   明細がありません。
                 </td>
               </tr>
@@ -643,7 +643,7 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
       </div>
 
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-end">
-        <label className="text-xs text-slate-700">
+        <label className="text-xs text-gray-700">
           値引き
           <input
             type="number"
@@ -651,15 +651,15 @@ export function PosCheckoutPanel({ customers, products, appointments, serviceLin
             step="1"
             value={discount}
             onChange={(event) => setDiscount(event.target.value)}
-            className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm md:w-40"
+            className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm md:w-40"
           />
         </label>
-        <div className="text-right text-sm text-slate-700">
+        <div className="text-right text-sm text-gray-700">
           <p>顧客: {customerName}</p>
           <p>小計: {formatYen(totals.subtotal)}</p>
           <p>税額: {formatYen(totals.tax)}</p>
           <p>値引き: {formatYen(totals.discount)}</p>
-          <p className="text-lg font-semibold text-slate-900">合計: {formatYen(totals.total)}</p>
+          <p className="text-lg font-semibold text-gray-900">合計: {formatYen(totals.total)}</p>
           <Button
             type="button"
             className="mt-2"

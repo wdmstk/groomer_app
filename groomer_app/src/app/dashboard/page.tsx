@@ -670,7 +670,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     return (
       <section className="space-y-4">
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold text-gray-900">ダッシュボード</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">ダッシュボード</h1>
           <p className="text-gray-600">
             現在のユーザーには有効な店舗が設定されていません。`store_memberships` に所属店舗を追加してください。
           </p>
@@ -1487,19 +1487,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <h1 className="text-2xl font-semibold text-gray-900">ダッシュボード</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded border bg-white p-1 text-sm">
+          <div className="inline-flex gap-2 rounded-2xl border border-gray-200 bg-white p-2 text-sm dark:border-slate-700 dark:bg-slate-900">
             <Link
               href={buildDashboardHref(activeTab, 7)}
-              className={`rounded px-3 py-1.5 font-semibold ${
-                followupWindowDays === 7 ? 'bg-sky-600 text-white' : 'text-gray-600'
+              className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+                followupWindowDays === 7 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               直近7日
             </Link>
             <Link
               href={buildDashboardHref(activeTab, 30)}
-              className={`rounded px-3 py-1.5 font-semibold ${
-                followupWindowDays === 30 ? 'bg-sky-600 text-white' : 'text-gray-600'
+              className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+                followupWindowDays === 30 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               直近30日
@@ -1509,7 +1509,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       </div>
 
       <div className="overflow-x-auto">
-        <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2">
+        <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
           {dashboardTabs.map((tab) => {
             const isActive = activeTab === tab.id
             return (
@@ -1517,7 +1517,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 key={tab.id}
                 href={buildDashboardHref(tab.id, followupWindowDays)}
                 className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
-                  isActive ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+                  isActive
+                    ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                    : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
                 }`}
               >
                 {tab.label}

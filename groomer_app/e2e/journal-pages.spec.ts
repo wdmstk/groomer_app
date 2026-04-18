@@ -37,9 +37,12 @@ test.describe('日誌画面', () => {
 
   test('ペット別アルバムへ遷移して投稿一覧を確認できる', async ({ page }) => {
     await gotoStable(page, '/customers/manage?view=detail&customer_id=customer-001&tab=pet:pet-001')
-    await page.getByRole('link', { name: '日誌アルバム' }).first().click()
+    const albumLink = page.getByRole('link', { name: '日誌アルバム' }).first()
+    await expect(albumLink).toBeVisible()
+    await albumLink.click()
+    await expect(page).toHaveURL(/\/journal\/(?:album|pets)\/pet-001(?:\?|$)/)
 
-    await expect(page.getByRole('heading', { name: 'こむぎの日誌アルバム' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /日誌アルバム/ })).toBeVisible()
     await expect(page.getByText('シャンプー中も落ち着いて過ごせました。')).toBeVisible()
     await expect(page.getByText('写真 1 件 / 動画 1 件')).toBeVisible()
   })

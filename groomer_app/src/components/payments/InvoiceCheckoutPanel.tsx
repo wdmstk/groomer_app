@@ -106,11 +106,11 @@ export function InvoiceCheckoutPanel({ customerNameById }: Props) {
   }
 
   return (
-    <div className="rounded border border-emerald-200 bg-emerald-50 p-4">
+    <div className="rounded border border-gray-200 bg-gray-50 p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-emerald-900">統合請求（β）</p>
-          <p className="text-xs text-emerald-800">トリミングとホテルの請求をまとめて会計確定できます。</p>
+          <p className="text-sm font-semibold text-gray-900">統合請求（β）</p>
+          <p className="text-xs text-gray-700">トリミングとホテルの請求をまとめて会計確定できます。</p>
         </div>
         <Button type="button" onClick={() => void loadInvoices()} disabled={loading || submitting}>
           {loading ? '再取得中...' : '再取得'}
@@ -120,20 +120,20 @@ export function InvoiceCheckoutPanel({ customerNameById }: Props) {
       {error ? <p className="mb-2 text-sm text-red-700">{error}</p> : null}
 
       {openInvoices.length === 0 ? (
-        <p className="text-sm text-emerald-900">会計待ちの統合請求はありません。</p>
+        <p className="text-sm text-gray-700">会計待ちの統合請求はありません。</p>
       ) : (
         <div className="space-y-2">
           {openInvoices.map((invoice) => {
             const isSelected = selectedInvoiceId === invoice.id
             return (
-              <div key={invoice.id} className="rounded border border-emerald-200 bg-white p-3 text-sm text-slate-800">
+              <div key={invoice.id} className="rounded border border-emerald-200 bg-white p-3 text-sm text-gray-700">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="font-semibold text-slate-900">請求ID: {invoice.id}</p>
+                    <p className="font-semibold text-gray-900">請求ID: {invoice.id}</p>
                     <p>
                       顧客: {customerNameById[invoice.customer_id] ?? invoice.customer_id} / 合計: {formatYen(Number(invoice.total_amount ?? 0))}
                     </p>
-                    <p className="text-xs text-slate-500">作成: {formatDateTime(invoice.created_at)}</p>
+                    <p className="text-xs text-gray-500">作成: {formatDateTime(invoice.created_at)}</p>
                   </div>
                   <Button
                     type="button"
@@ -146,12 +146,12 @@ export function InvoiceCheckoutPanel({ customerNameById }: Props) {
 
                 {isSelected ? (
                   <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[1fr_1fr_auto] md:items-end">
-                    <label className="text-xs text-slate-700">
+                    <label className="text-xs text-gray-700">
                       支払方法
                       <select
                         value={method}
                         onChange={(event) => setMethod(event.target.value)}
-                        className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                        className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
                       >
                         {paymentMethodOptions.map((option) => (
                           <option key={option} value={option}>
@@ -160,13 +160,13 @@ export function InvoiceCheckoutPanel({ customerNameById }: Props) {
                         ))}
                       </select>
                     </label>
-                    <label className="text-xs text-slate-700">
+                    <label className="text-xs text-gray-700">
                       備考
                       <input
                         type="text"
                         value={notes}
                         onChange={(event) => setNotes(event.target.value)}
-                        className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                        className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
                         placeholder="任意"
                       />
                     </label>

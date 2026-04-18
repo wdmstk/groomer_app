@@ -25,6 +25,12 @@ function hasOwnKey(object: UnknownObject, key: string) {
   return Object.prototype.hasOwnProperty.call(object, key)
 }
 
+function toWeightInput(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === '') return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
 export async function GET() {
   const auth = await requireStoreMembershipWithPlan({
     allowedRoles: ['owner', 'admin'],
@@ -127,10 +133,10 @@ export async function PUT(request: Request) {
     payload.scheduled_auto_run_enabled === 'on'
 
   const weights = normalizeWeights({
-    fairness_weight: payload.fairness_weight,
-    preferred_shift_weight: payload.preferred_shift_weight,
-    reservation_coverage_weight: payload.reservation_coverage_weight,
-    workload_health_weight: payload.workload_health_weight,
+    fairness_weight: toWeightInput(payload.fairness_weight),
+    preferred_shift_weight: toWeightInput(payload.preferred_shift_weight),
+    reservation_coverage_weight: toWeightInput(payload.reservation_coverage_weight),
+    workload_health_weight: toWeightInput(payload.workload_health_weight),
   })
 
   if (shouldUpdateWeights && !hasValidWeightSum(weights)) {
