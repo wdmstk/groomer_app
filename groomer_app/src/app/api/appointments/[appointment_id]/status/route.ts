@@ -29,8 +29,8 @@ function normalizeStatus(status: string | null | undefined) {
 }
 
 function resolveRedirectPath(tab: string | null) {
-  if (tab === 'calendar') return '/appointments?tab=calendar'
-  return '/appointments?tab=list'
+  if (tab === 'calendar') return '/reservation-management?tab=calendar'
+  return '/reservation-management?tab=trimmer'
 }
 
 function resolveSafeRedirectTo(value: string | null) {

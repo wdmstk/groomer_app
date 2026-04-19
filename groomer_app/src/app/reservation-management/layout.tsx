@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 import { Sidebar } from '@/components/ui/Sidebar'
 
-type HotelLayoutProps = {
+type ReservationManagementLayoutProps = {
   children: ReactNode
 }
 
-export default function HotelLayout({ children }: HotelLayoutProps) {
+export default function ReservationManagementLayout({ children }: ReservationManagementLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50 lg:flex">
       <Sidebar />

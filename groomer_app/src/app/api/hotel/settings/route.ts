@@ -48,6 +48,28 @@ async function requireStoreContext() {
   return { ok: true as const, supabase, storeId, user, role: membership.role as string }
 }
 
+async function upsertHotelSettings(params: {
+  supabase: Awaited<ReturnType<typeof createStoreScopedClient>>['supabase']
+  storeId: string
+  maxConcurrentPets: number
+  calendarOpenHour: number
+  calendarCloseHour: number
+}) {
+  const payload = {
+    store_id: params.storeId,
+    max_concurrent_pets: params.maxConcurrentPets,
+    calendar_open_hour: params.calendarOpenHour,
+    calendar_close_hour: params.calendarCloseHour,
+    updated_at: new Date().toISOString(),
+  }
+
+  return params.supabase
+    .from('hotel_settings')
+    .upsert(payload, { onConflict: 'store_id' })
+    .select('id, store_id, max_concurrent_pets, calendar_open_hour, calendar_close_hour')
+    .single()
+}
+
 export async function GET() {
   const guard = await requireStoreContext()
   if (!guard.ok) {
@@ -88,26 +110,53 @@ export async function PATCH(request: Request) {
   }
 
   const maxConcurrentPets = Math.max(1, parseOptionalInteger(body.max_concurrent_pets, 1) ?? 1)
-  const calendarOpenHour = parseOptionalInteger(body.calendar_open_hour, 8)
-  const calendarCloseHour = parseOptionalInteger(body.calendar_close_hour, 20)
+  const calendarOpenHour = parseOptionalInteger(body.calendar_open_hour, 8) ?? 8
+  const calendarCloseHour = parseOptionalInteger(body.calendar_close_hour, 20) ?? 20
 
-  const payload = {
-    store_id: guard.storeId,
-    max_concurrent_pets: maxConcurrentPets,
-    calendar_open_hour: calendarOpenHour,
-    calendar_close_hour: calendarCloseHour,
-    updated_at: new Date().toISOString(),
-  }
-
-  const { data, error } = await guard.supabase
-    .from('hotel_settings')
-    .upsert(payload, { onConflict: 'store_id' })
-    .select('id, store_id, max_concurrent_pets, calendar_open_hour, calendar_close_hour')
-    .single()
+  const { data, error } = await upsertHotelSettings({
+    supabase: guard.supabase,
+    storeId: guard.storeId,
+    maxConcurrentPets,
+    calendarOpenHour,
+    calendarCloseHour,
+  })
 
   if (error) {
     return NextResponse.json({ message: error.message }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true, settings: data })
+}
+
+export async function POST(request: Request) {
+  const guard = await requireStoreContext()
+  if (!guard.ok) {
+    return NextResponse.json({ message: guard.message }, { status: guard.status })
+  }
+
+  const formData = await request.formData().catch(() => null)
+  if (!formData) {
+    return NextResponse.json({ message: 'Invalid form data.' }, { status: 400 })
+  }
+
+  const maxConcurrentPets = Math.max(1, parseOptionalInteger(formData.get('max_concurrent_pets'), 1) ?? 1)
+  const calendarOpenHour = parseOptionalInteger(formData.get('calendar_open_hour'), 8) ?? 8
+  const calendarCloseHour = parseOptionalInteger(formData.get('calendar_close_hour'), 20) ?? 20
+  const redirectTo = String(formData.get('redirect_to') ?? '/settings?tab=store-ops')
+
+  const { error } = await upsertHotelSettings({
+    supabase: guard.supabase,
+    storeId: guard.storeId,
+    maxConcurrentPets,
+    calendarOpenHour,
+    calendarCloseHour,
+  })
+
+  const redirectUrl = new URL(redirectTo, request.url)
+  if (error) {
+    redirectUrl.searchParams.set('error', error.message)
+    return NextResponse.redirect(redirectUrl)
+  }
+  redirectUrl.searchParams.set('saved', 'hotel-settings')
+  return NextResponse.redirect(redirectUrl)
 }

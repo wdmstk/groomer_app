@@ -131,7 +131,7 @@ export function AppointmentForm({
   initialPrefill,
   recommendationMessage,
   customerNoShowCounts = {},
-  cancelHref = '/appointments?tab=list',
+  cancelHref = '/reservation-management?tab=trimmer',
   followupTaskId,
   reofferId,
   reservationPaymentSettings = DEFAULT_RESERVATION_PAYMENT_SETTINGS,
@@ -280,7 +280,7 @@ export function AppointmentForm({
       }
 
       if (editAppointment) {
-        window.location.href = '/appointments'
+        window.location.href = '/reservation-management?tab=trimmer'
         return
       }
 

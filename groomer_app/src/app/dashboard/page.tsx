@@ -1559,7 +1559,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 <Link href={buildDashboardHref('reoffers', followupWindowDays)} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-600 dark:bg-slate-800"><div><p className="text-sm font-semibold text-slate-900 dark:text-slate-100">空き枠再販</p><p className="text-xs text-slate-700 dark:text-slate-300">受付 {reofferAcceptedCount} 件 / 予約化 {reofferAppointmentCreatedCount} 件</p></div><span className="text-sm font-semibold text-slate-800 dark:text-slate-200">開く</span></Link>
                 <Link href={buildDashboardHref('operations', followupWindowDays)} className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-700 dark:bg-amber-950/30"><div><p className="text-sm font-semibold text-amber-900 dark:text-amber-100">当日運用</p><p className="text-xs text-amber-700 dark:text-amber-300">近接予約 {within30MinAppointments.length} 件 / 遅延注意時間帯 {delayHotspotRows.length} 件</p></div><span className="text-sm font-semibold text-amber-800 dark:text-amber-200">開く</span></Link>
                 <Link href="/inventory/reorder-suggestions" className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-4 py-3"><div><p className="text-sm font-semibold text-rose-900">欠品予兆</p><p className="text-xs text-rose-700">発注提案と優先順位を確認</p></div><span className="text-sm font-semibold text-rose-800">開く</span></Link>
-                <Link href="/service-menus" className="flex items-center justify-between rounded-xl border border-violet-200 bg-violet-50 px-4 py-3"><div><p className="text-sm font-semibold text-violet-900">所要時間補正</p><p className="text-xs text-violet-700">メニュー推奨時間を確認</p></div><span className="text-sm font-semibold text-violet-800">開く</span></Link>
+                <Link href="/menu-management?tab=trimming" className="flex items-center justify-between rounded-xl border border-violet-200 bg-violet-50 px-4 py-3"><div><p className="text-sm font-semibold text-violet-900">所要時間補正</p><p className="text-xs text-violet-700">メニュー推奨時間を確認</p></div><span className="text-sm font-semibold text-violet-800">開く</span></Link>
               </div>
             </Card>
           </div>
@@ -1670,7 +1670,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       <Link href={`/customers/manage?view=customers&customer_edit=${row.customerId}`} className="rounded border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700">
                         顧客編集
                       </Link>
-                      <Link href={`/appointments?tab=list&modal=create&followup_customer_id=${row.customerId}`} className="rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white">
+                      <Link href={`/reservation-management?tab=trimmer&modal=create&followup_customer_id=${row.customerId}`} className="rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white">
                         予約作成
                       </Link>
                     </div>
@@ -1699,7 +1699,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <Card className={hasInstantBookableMenu ? '' : 'border border-amber-300 bg-amber-50'}>
             <div className="mb-2 flex items-center justify-between">
               <p className="text-sm font-semibold text-gray-900">即時確定対象メニュー</p>
-              <Link href="/service-menus" className="text-xs font-semibold text-blue-700">
+              <Link href="/menu-management?tab=trimming" className="text-xs font-semibold text-blue-700">
                 メニュー設定を開く
               </Link>
             </div>

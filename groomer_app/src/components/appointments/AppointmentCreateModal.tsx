@@ -145,7 +145,7 @@ export function AppointmentCreateModal(props: AppointmentCreateModalProps) {
             <AppointmentForm
               {...props}
               singleColumn
-              cancelHref={props.closeRedirectTo ?? '/appointments?tab=list'}
+              cancelHref={props.closeRedirectTo ?? '/reservation-management?tab=trimmer'}
             />
           </div>
         </div>

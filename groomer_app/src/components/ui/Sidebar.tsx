@@ -12,6 +12,7 @@ import {
   requiredOptionForRoute,
   requiredPlanForRoute,
 } from '@/lib/subscription-plan'
+import { hasRequiredOption } from '@/lib/plan-option-access'
 import { DEFAULT_UI_THEME, getUiThemeLabel, isUiTheme, UI_THEMES, type UiTheme } from '@/lib/ui/themes'
 import { UI_THEME_STORAGE_KEY } from '@/lib/ui/theme-preference'
 
@@ -77,12 +78,11 @@ const storeNavSections: NavSection[] = [
     title: '顧客業務',
     links: [
       { href: '/customers/manage', label: '顧客ペット管理' },
-      { href: '/service-menus', label: '施術メニュー管理' },
-      { href: '/appointments', label: '予約管理' },
+      { href: '/menu-management', label: 'メニュー管理' },
+      { href: '/reservation-management', label: '予約管理' },
       { href: '/medical-records', label: 'ペットカルテ管理' },
       { href: '/journal', label: '日誌' },
       { href: '/consents?mode=customer-ops&tab=create-document', label: '電子同意書管理' },
-      { href: '/hotel', label: 'ペットホテル管理' },
       { href: '/visits', label: '来店履歴' },
     ],
   },
@@ -434,13 +434,7 @@ export function Sidebar() {
                   }
                   const canAccess = canAccessRouteByPlan(link.href, activePlanCode)
                   const requiredOption = requiredOptionForRoute(link.href)
-                  const hasRequiredOption =
-                    requiredOption === null
-                      ? true
-                      : requiredOption === 'hotel'
-                        ? activeOptionState.hotelOptionEnabled
-                        : activeOptionState.notificationOptionEnabled
-                  const canOpen = canAccess && hasRequiredOption
+                  const canOpen = canAccess && hasRequiredOption(activeOptionState, requiredOption)
                   if (!canOpen && !showLockedMenu) {
                     return null
                   }

@@ -93,15 +93,40 @@ type RawSearchParams = Record<string, string | string[] | undefined>
 type HotelPageProps = {
   searchParams?: Promise<RawSearchParams>
 }
+type HotelTabId = 'list' | 'calendar' | 'settings' | 'menus'
 
 function firstParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0]
   return value
 }
 
+function parseHotelTab(value: string | null): HotelTabId | null {
+  if (value === 'list' || value === 'calendar' || value === 'settings' || value === 'menus') {
+    return value
+  }
+  return null
+}
+
+function parseVisibleTabs(value: string | null): HotelTabId[] | undefined {
+  if (!value) return undefined
+  const tabs = value
+    .split(',')
+    .map((tab) => parseHotelTab(tab.trim()))
+    .filter((tab): tab is HotelTabId => Boolean(tab))
+  return tabs.length > 0 ? tabs : undefined
+}
+
 export default async function HotelPage({ searchParams }: HotelPageProps) {
   const resolvedSearchParams = (await searchParams) ?? {}
   const initialStayId = firstParam(resolvedSearchParams.stay_id) ?? null
+  const initialTab = parseHotelTab(firstParam(resolvedSearchParams.tab) ?? null) ?? undefined
+  const visibleTabs = parseVisibleTabs(firstParam(resolvedSearchParams.visible_tabs) ?? null)
+  const menusTabLabel = firstParam(resolvedSearchParams.menus_label) ?? undefined
+  const hideHeader = firstParam(resolvedSearchParams.hide_header) === '1'
+  const hideTabs = firstParam(resolvedSearchParams.hide_tabs) === '1'
+  const hideListHeader = firstParam(resolvedSearchParams.hide_list_header) === '1'
+  const hideMenusHeader = firstParam(resolvedSearchParams.hide_menus_header) === '1'
+  const listVisualStyle = firstParam(resolvedSearchParams.list_visual_style) === 'appointments' ? 'appointments' : 'default'
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: hotelPageFixtures.storeId }
     : await createStoreScopedClient()
@@ -123,7 +148,7 @@ export default async function HotelPage({ searchParams }: HotelPageProps) {
   if (!user) {
     return (
       <section className="space-y-4">
-        <h1 className="text-2xl font-semibold text-gray-900">ペットホテル管理</h1>
+        {hideHeader ? null : <h1 className="text-2xl font-semibold text-gray-900">ペットホテル管理</h1>}
         <Card>
           <p className="text-sm text-red-700">ログインが必要です。</p>
         </Card>
@@ -215,7 +240,7 @@ export default async function HotelPage({ searchParams }: HotelPageProps) {
   if (!role) {
     return (
       <section className="space-y-4">
-        <h1 className="text-2xl font-semibold text-gray-900">ペットホテル管理</h1>
+        {hideHeader ? null : <h1 className="text-2xl font-semibold text-gray-900">ペットホテル管理</h1>}
         <Card>
           <p className="text-sm text-red-700">店舗への所属が確認できません。</p>
         </Card>
@@ -226,7 +251,7 @@ export default async function HotelPage({ searchParams }: HotelPageProps) {
   if (!access.ok) {
     return (
       <section className="space-y-4">
-        <h1 className="text-2xl font-semibold text-gray-900">ペットホテル管理</h1>
+        {hideHeader ? null : <h1 className="text-2xl font-semibold text-gray-900">ペットホテル管理</h1>}
         <Card>
           <p className="text-sm text-amber-700">{access.message}</p>
         </Card>
@@ -237,7 +262,7 @@ export default async function HotelPage({ searchParams }: HotelPageProps) {
   if (!hotelEnabled) {
     return (
       <section className="space-y-4">
-        <h1 className="text-2xl font-semibold text-gray-900">ペットホテル管理</h1>
+        {hideHeader ? null : <h1 className="text-2xl font-semibold text-gray-900">ペットホテル管理</h1>}
         <Card>
           <p className="text-sm text-amber-700">
             この店舗は限定リリース対象外です。運用チームに有効化を依頼してください。
@@ -300,18 +325,27 @@ export default async function HotelPage({ searchParams }: HotelPageProps) {
 
   return (
     <section className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">ペットホテル管理</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          時間預かりと宿泊を同じ台帳で管理し、週カレンダーで重複と定員を確認できます。
-        </p>
-      </div>
+      {hideHeader ? null : (
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">ペットホテル管理</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            時間預かりと宿泊を同じ台帳で管理し、週カレンダーで重複と定員を確認できます。
+          </p>
+        </div>
+      )}
       <HotelStaysManager
         initialStays={stayRows}
         customers={customerOptions}
         pets={petOptions}
         menuItems={(menuItems ?? []) as HotelMenuItemRow[]}
         initialStayId={initialStayId ?? undefined}
+        initialTab={initialTab}
+        visibleTabs={visibleTabs}
+        tabLabelOverrides={menusTabLabel ? { menus: menusTabLabel } : undefined}
+        showTabs={!hideTabs}
+        hideListHeader={hideListHeader}
+        hideMenusHeader={hideMenusHeader}
+        listVisualStyle={listVisualStyle}
         initialSettings={
           (hotelSettings as HotelSettingsRow | null) ?? {
             id: null,

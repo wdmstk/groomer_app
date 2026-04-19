@@ -20,9 +20,8 @@ const ROUTE_MINIMUM_PLAN: Record<string, AppPlan> = {
   '/hq/manual': 'pro',
   '/manual': 'light',
   '/customers/manage': 'light',
-  '/appointments': 'light',
-  '/hotel': 'standard',
-  '/service-menus': 'light',
+  '/menu-management': 'light',
+  '/reservation-management': 'light',
   '/medical-records': 'standard',
   '/visits': 'light',
   '/inventory': 'standard',
@@ -42,7 +41,6 @@ const ROUTE_MINIMUM_PLAN: Record<string, AppPlan> = {
 }
 
 const ROUTE_REQUIRED_OPTION: Partial<Record<string, AppOption>> = {
-  '/hotel': 'hotel',
   '/hq/hotel-menu-templates': 'hotel',
   '/hq/hotel-menu-template-deliveries': 'hotel',
 }

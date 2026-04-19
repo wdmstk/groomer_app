@@ -141,8 +141,8 @@ export async function POST(request: Request, { params }: RouteParams) {
   })
 
   const origin = new URL(request.url).origin
-  const successUrl = `${origin}/appointments?tab=list&reservation_payment=success&appointment_id=${appointmentId}`
-  const cancelUrl = `${origin}/appointments?tab=list&reservation_payment=cancel&appointment_id=${appointmentId}`
+  const successUrl = `${origin}/reservation-management?tab=trimmer&reservation_payment=success&appointment_id=${appointmentId}`
+  const cancelUrl = `${origin}/reservation-management?tab=trimmer&reservation_payment=cancel&appointment_id=${appointmentId}`
   const itemName = '予約事前決済'
   const metadata = {
     operation_type: 'reservation_prepayment',

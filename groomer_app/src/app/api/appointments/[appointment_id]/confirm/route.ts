@@ -98,5 +98,5 @@ export async function POST(request: Request, { params }: RouteParams) {
   })
 
   // TODO: Integrate notification delivery (email/SMS/LINE) on confirmation.
-  return NextResponse.redirect(new URL(redirectTo ?? '/appointments?tab=list', request.url), { status: 303 })
+  return NextResponse.redirect(new URL(redirectTo ?? '/reservation-management?tab=trimmer', request.url), { status: 303 })
 }

@@ -110,7 +110,7 @@ export default async function PublicReserveSettingsContent() {
       </div>
 
       <Card className="border-emerald-200 bg-emerald-50">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-3">
           <div>
             <p className="text-sm font-semibold text-emerald-900">店舗共通の新規顧客向けWEB予約URL</p>
             <p className="mt-1 text-xs text-emerald-900">
@@ -310,7 +310,7 @@ export default async function PublicReserveSettingsContent() {
               name="public_reserve_business_end_hour_jst"
               value={publicReserveBusinessEndHourJst}
             />
-            <div className="md:col-span-3 flex items-end">
+            <div className="md:col-span-3">
               <input type="hidden" name="redirect_to" value="/settings?tab=public-reserve" />
               <button
                 type="submit"
@@ -322,36 +322,40 @@ export default async function PublicReserveSettingsContent() {
             </div>
           </form>
         </div>
+      </details>
 
-        <div className="mt-6 border-t pt-4">
-          <h2 className="text-sm font-semibold text-gray-900">アラート閾値</h2>
-          <p className="mb-3 mt-2 text-xs text-gray-500">0〜100 の範囲で指定してください。</p>
-          <form action="/api/stores/kpi-thresholds" method="post" className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <label className="text-xs text-gray-700">
-              競合失敗率 警告閾値（%）
-              <input
-                type="number"
-                min={0}
-                max={100}
-                name="public_reserve_conflict_warn_threshold_percent"
-                defaultValue={publicConflictWarnThreshold}
-                className="mt-1 w-full rounded border p-2 text-sm"
-                disabled={!canManage}
-              />
-            </label>
-            <label className="text-xs text-gray-700">
-              スタッフ偏り率 警告閾値（%）
-              <input
-                type="number"
-                min={0}
-                max={100}
-                name="public_reserve_staff_bias_warn_threshold_percent"
-                defaultValue={publicStaffBiasWarnThreshold}
-                className="mt-1 w-full rounded border p-2 text-sm"
-                disabled={!canManage}
-              />
-            </label>
-            <div className="flex items-end">
+      <details className="rounded border border-gray-200 bg-white p-3" open>
+        <summary className="cursor-pointer text-sm font-semibold text-gray-900">アラート閾値</summary>
+        <div className="mt-3">
+          <p className="mb-3 text-xs text-gray-500">0〜100 の範囲で指定してください。</p>
+          <form action="/api/stores/kpi-thresholds" method="post" className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <label className="text-xs text-gray-700">
+                競合失敗率 警告閾値（%）
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  name="public_reserve_conflict_warn_threshold_percent"
+                  defaultValue={publicConflictWarnThreshold}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+              <label className="text-xs text-gray-700">
+                スタッフ偏り率 警告閾値（%）
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  name="public_reserve_staff_bias_warn_threshold_percent"
+                  defaultValue={publicStaffBiasWarnThreshold}
+                  className="mt-1 w-full rounded border p-2 text-sm"
+                  disabled={!canManage}
+                />
+              </label>
+            </div>
+            <div>
               <input type="hidden" name="redirect_to" value="/settings?tab=public-reserve" />
               <button
                 type="submit"

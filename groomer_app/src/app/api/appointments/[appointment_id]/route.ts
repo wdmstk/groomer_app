@@ -161,7 +161,7 @@ export async function POST(request: Request, context: RouteParams) {
       const message = error instanceof Error ? error.message : 'Failed to delete appointment.'
       return NextResponse.json({ message }, { status: 500 })
     }
-    return NextResponse.redirect(new URL('/appointments?tab=list', request.url), { status: 303 })
+    return NextResponse.redirect(new URL('/reservation-management?tab=trimmer', request.url), { status: 303 })
   }
 
   if (method === 'put' || method === 'patch') {
@@ -194,7 +194,7 @@ export async function POST(request: Request, context: RouteParams) {
         before,
         after: updated,
       })
-      return NextResponse.redirect(new URL('/appointments', request.url), { status: 303 })
+      return NextResponse.redirect(new URL('/reservation-management?tab=trimmer', request.url), { status: 303 })
     } catch (error) {
       if (error instanceof AppointmentServiceError) {
         const body =

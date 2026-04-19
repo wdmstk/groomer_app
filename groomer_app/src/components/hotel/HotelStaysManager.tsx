@@ -77,6 +77,13 @@ type Props = {
   menuItems: HotelMenuItemRow[]
   initialSettings: HotelSettingsRow
   initialStayId?: string
+  initialTab?: TabId
+  visibleTabs?: TabId[]
+  tabLabelOverrides?: Partial<Record<TabId, string>>
+  showTabs?: boolean
+  hideListHeader?: boolean
+  hideMenusHeader?: boolean
+  listVisualStyle?: 'default' | 'appointments'
 }
 
 type ViewMode = 'week' | 'day' | 'month'
@@ -157,6 +164,37 @@ function formatDate(value: string | Date) {
 
 function formatMoney(value: number) {
   return `${value.toLocaleString()} 円`
+}
+
+function formatHotelMenuItemType(value: string) {
+  if (value === 'overnight') return '宿泊'
+  if (value === 'time_pack') return '時間預かり'
+  if (value === 'option') return 'オプション'
+  if (value === 'transport') return '送迎'
+  if (value === 'other') return 'その他'
+  return value
+}
+
+function formatHotelMenuBillingUnit(value: string) {
+  if (value === 'per_stay') return '回数'
+  if (value === 'per_night') return '泊数'
+  if (value === 'per_hour') return '時間'
+  if (value === 'fixed') return '固定'
+  return value
+}
+
+function formatHotelMenuTaxRate(value: number) {
+  const percent = value * 100
+  const label = Number.isInteger(percent) ? `${percent}` : percent.toFixed(1)
+  return `税率 ${label}%`
+}
+
+function formatHotelMenuTaxIncluded(value: boolean) {
+  return value ? '税込' : '税抜'
+}
+
+function formatHotelMenuActive(value: boolean) {
+  return value ? '有効' : '無効'
 }
 
 function toDateTimeLocalValue(value: string | null) {
@@ -376,6 +414,13 @@ export function HotelStaysManager({
   menuItems: initialMenuItems,
   initialSettings,
   initialStayId,
+  initialTab,
+  visibleTabs,
+  tabLabelOverrides,
+  showTabs = true,
+  hideListHeader = false,
+  hideMenusHeader = false,
+  listVisualStyle = 'default',
 }: Props) {
   const initialSelectedStayId =
     (initialStayId && initialStays.some((stay) => stay.id === initialStayId) ? initialStayId : null) ??
@@ -384,7 +429,7 @@ export function HotelStaysManager({
   const [stays, setStays] = useState<StayRow[]>(initialStays)
   const [menuItems, setMenuItems] = useState<HotelMenuItemRow[]>(initialMenuItems)
   const [settings, setSettings] = useState<HotelSettingsRow>(initialSettings)
-  const [activeTab, setActiveTab] = useState<TabId>('list')
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab ?? 'list')
   const [selectedStayId, setSelectedStayId] = useState<string | null>(initialSelectedStayId)
   const [reservationMode, setReservationMode] = useState<ReservationMode>(null)
   const [message, setMessage] = useState('')
@@ -400,6 +445,13 @@ export function HotelStaysManager({
   const [showMenuItemForm, setShowMenuItemForm] = useState(false)
   const [menuItemDraft, setMenuItemDraft] = useState<MenuItemDraft>(() => buildMenuItemDraft())
   const [form, setForm] = useState<StayPayload>(buildEmptyPayload(pets[0]?.id ?? ''))
+  const useServiceMenuButtonStyle = listVisualStyle === 'appointments'
+  const compactSecondaryActionButtonClass = useServiceMenuButtonStyle
+    ? 'h-9 border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50'
+    : ''
+  const compactDangerActionButtonClass = useServiceMenuButtonStyle
+    ? 'h-9 border border-red-300 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100'
+    : ''
 
   const selectedStay = useMemo(
     () => stays.find((stay) => stay.id === selectedStayId) ?? null,
@@ -1090,10 +1142,20 @@ export function HotelStaysManager({
             </Button>
           ) : (
             <>
-              <Button type="button" onClick={() => void submitUpdate()} disabled={saving || !selectedStayId}>
+              <Button
+                type="button"
+                onClick={() => void submitUpdate()}
+                disabled={saving || !selectedStayId}
+                className={compactSecondaryActionButtonClass}
+              >
                 {saving ? '更新中...' : '更新'}
               </Button>
-              <Button type="button" onClick={() => void submitDelete()} disabled={saving || !selectedStayId}>
+              <Button
+                type="button"
+                onClick={() => void submitDelete()}
+                disabled={saving || !selectedStayId}
+                className={compactDangerActionButtonClass}
+              >
                 削除
               </Button>
             </>
@@ -1273,12 +1335,25 @@ export function HotelStaysManager({
     )
   }
 
-  const tabs: Array<{ id: TabId; label: string }> = [
+  const allTabs: Array<{ id: TabId; label: string }> = [
     { id: 'list', label: '一覧' },
     { id: 'calendar', label: 'カレンダー' },
     { id: 'settings', label: '運用設定' },
-    { id: 'menus', label: '商品台帳' },
+    { id: 'menus', label: 'ホテルメニュー' },
   ]
+  const tabs = allTabs
+    .filter((tab) => !visibleTabs || visibleTabs.includes(tab.id))
+    .map((tab) => ({
+      ...tab,
+      label: tabLabelOverrides?.[tab.id] ?? tab.label,
+    }))
+
+  useEffect(() => {
+    if (tabs.some((tab) => tab.id === activeTab)) {
+      return
+    }
+    setActiveTab(tabs[0]?.id ?? 'list')
+  }, [activeTab, tabs])
 
   return (
     <div className="space-y-4">
@@ -1288,26 +1363,28 @@ export function HotelStaysManager({
         </Card>
       ) : null}
 
-      <Card>
-        <div className="overflow-x-auto">
-          <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
-                activeTab === tab.id
-                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                  : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+      {showTabs ? (
+        <Card>
+          <div className="overflow-x-auto">
+            <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+                    activeTab === tab.id
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                      : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      ) : null}
 
       {activeTab === 'settings' ? (
         <Card>
@@ -1343,17 +1420,31 @@ export function HotelStaysManager({
         <>
           <Card>
             <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">ホテル台帳一覧</h2>
-                <p className="mt-1 text-xs text-gray-500">一覧確認と既存予約の編集導線をここに集約しています。</p>
-              </div>
+              {hideListHeader ? <span /> : (
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">ホテル台帳一覧</h2>
+                  <p className="mt-1 text-xs text-gray-500">一覧確認と既存予約の編集導線をここに集約しています。</p>
+                </div>
+              )}
               <Button type="button" onClick={openCreate}>
                 新規予約を登録
               </Button>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full table-fixed text-left text-sm text-slate-900">
-                <thead className="border-b bg-slate-100 text-slate-600">
+              <table
+                className={
+                  listVisualStyle === 'appointments'
+                    ? 'min-w-[1160px] w-full table-fixed text-left text-sm'
+                    : 'min-w-full table-fixed text-left text-sm text-slate-900'
+                }
+              >
+                <thead
+                  className={
+                    listVisualStyle === 'appointments'
+                      ? 'border-b text-xs text-gray-500'
+                      : 'border-b bg-slate-100 text-slate-600'
+                  }
+                >
                   <tr>
                     <th className="px-2.5 py-2">コード</th>
                     <th className="px-2.5 py-2">ペット</th>
@@ -1368,7 +1459,11 @@ export function HotelStaysManager({
                       key={stay.id}
                       onClick={() => setSelectedStayId(stay.id)}
                       className={`cursor-pointer transition-colors ${
-                        selectedStayId === stay.id ? 'bg-sky-100 hover:bg-sky-100' : 'bg-slate-50 hover:bg-slate-100'
+                        selectedStayId === stay.id
+                          ? 'bg-sky-100 hover:bg-sky-100'
+                          : listVisualStyle === 'appointments'
+                            ? 'hover:bg-gray-50'
+                            : 'bg-slate-50 hover:bg-slate-100'
                       }`}
                     >
                       <td className="px-2.5 py-2 font-medium text-slate-950">{stay.stay_code}</td>
@@ -1399,10 +1494,15 @@ export function HotelStaysManager({
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button type="button" onClick={() => void createUnifiedInvoiceFromSelectedStay()} disabled={creatingInvoice}>
+                  <Button
+                    type="button"
+                    onClick={() => void createUnifiedInvoiceFromSelectedStay()}
+                    disabled={creatingInvoice}
+                    className={compactSecondaryActionButtonClass}
+                  >
                     {creatingInvoice ? '統合会計を作成中...' : '統合会計を作成'}
                   </Button>
-                  <Button type="button" onClick={() => openEdit(selectedStay.id)}>
+                  <Button type="button" onClick={() => openEdit(selectedStay.id)} className={compactSecondaryActionButtonClass}>
                     この予約を編集
                   </Button>
                 </div>
@@ -1483,17 +1583,25 @@ export function HotelStaysManager({
       {activeTab === 'menus' ? (
         <Card>
           <div className="mb-3 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">ホテル商品台帳</h2>
-              <p className="mt-1 text-xs text-gray-500">
-                表示順の推奨は通常期 `10-199`、ハイシーズン `300-499` です。
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
+            {hideMenusHeader ? <span /> : (
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">ホテルメニュー</h2>
+                <p className="mt-1 text-xs text-gray-500">
+                  表示順の推奨は通常期 `10-199`、ハイシーズン `300-499` です。
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">メニュー一覧</h3>
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <p className="text-sm text-gray-500">全 {menuItems.length} 件</p>
               <Button
                 type="button"
                 onClick={() => void switchSeasonMode('normal')}
                 disabled={seasonSwitchingMode !== null}
+                className="inline-flex h-9 items-center rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 {seasonSwitchingMode === 'normal' ? '切替中...' : '通常メニューON'}
               </Button>
@@ -1501,6 +1609,7 @@ export function HotelStaysManager({
                 type="button"
                 onClick={() => void switchSeasonMode('high_season')}
                 disabled={seasonSwitchingMode !== null}
+                className="inline-flex h-9 items-center rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 {seasonSwitchingMode === 'high_season' ? '切替中...' : 'ハイシーズンON'}
               </Button>
@@ -1508,10 +1617,11 @@ export function HotelStaysManager({
                 type="button"
                 onClick={() => {
                   setMenuItemDraft(buildMenuItemDraft())
-                  setShowMenuItemForm((prev) => !prev)
+                  setShowMenuItemForm(true)
                 }}
+                className="inline-flex h-9 items-center rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
               >
-                {showMenuItemForm ? '入力を閉じる' : '商品を追加'}
+                新規登録
               </Button>
             </div>
           </div>
@@ -1649,55 +1759,133 @@ export function HotelStaysManager({
             </div>
           ) : null}
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full table-fixed text-left text-sm">
-              <thead className="border-b bg-gray-50 text-gray-500">
-                <tr>
-                  <th className="px-2.5 py-2">商品名</th>
-                  <th className="px-2.5 py-2">種別</th>
-                  <th className="px-2.5 py-2">単価</th>
-                  <th className="px-2.5 py-2">数量</th>
-                  <th className="px-2.5 py-2">定員</th>
-                  <th className="px-2.5 py-2">状態</th>
-                  <th className="px-2.5 py-2">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
+          {menuItems.length === 0 ? (
+            <p className="text-sm text-gray-500">ホテルメニューがまだ登録されていません。</p>
+          ) : (
+            <>
+              <div className="space-y-2.5 md:hidden" data-testid="hotel-menus-list-mobile">
                 {menuItems.map((item) => (
-                  <tr key={item.id} className="text-gray-700">
-                    <td className="px-2.5 py-2 font-medium text-gray-900">{item.name}</td>
-                    <td className="px-2.5 py-2">{item.item_type}</td>
-                    <td className="px-2.5 py-2">{formatMoney(item.price)}</td>
-                    <td className="px-2.5 py-2">{item.default_quantity}</td>
-                    <td className="px-2.5 py-2">{item.counts_toward_capacity ? '対象' : '対象外'}</td>
-                    <td className="px-2.5 py-2">{item.is_active ? '有効' : '無効'}</td>
-                    <td className="px-2.5 py-2">
-                      <div className="flex flex-wrap gap-1.5">
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            setMenuItemDraft(buildMenuItemDraft(item))
-                            setShowMenuItemForm(true)
-                          }}
-                          className="h-7 px-2 py-0 text-xs"
-                        >
-                          編集
-                        </Button>
-                        <Button
-                          type="button"
-                          onClick={() => void deleteMenuItem(item.id)}
-                          disabled={deletingMenuItemId === item.id}
-                          className="h-7 px-2 py-0 text-xs"
-                        >
-                          {deletingMenuItemId === item.id ? '削除中...' : '削除'}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
+                  <article
+                    key={item.id}
+                    className="rounded border border-gray-200 p-3 text-sm text-gray-700"
+                    data-testid={`hotel-menu-row-${item.id}`}
+                  >
+                    <p className="truncate font-semibold text-gray-900">{item.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatHotelMenuItemType(item.item_type)} / {formatHotelMenuBillingUnit(item.billing_unit)} / {formatMoney(item.price)}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                        {formatHotelMenuTaxRate(item.tax_rate)}
+                      </span>
+                      <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                        {formatHotelMenuTaxIncluded(item.tax_included)}
+                      </span>
+                      <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                        {formatHotelMenuActive(item.is_active)}
+                      </span>
+                      <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                        {item.counts_toward_capacity ? '定員対象' : '定員対象外'}
+                      </span>
+                    </div>
+                    <p className="line-clamp-2 text-xs text-gray-600">備考: {item.notes || 'なし'}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuItemDraft(buildMenuItemDraft(item))
+                          setShowMenuItemForm(true)
+                        }}
+                        className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                      >
+                        編集
+                      </button>
+                      <Button
+                        type="button"
+                        onClick={() => void deleteMenuItem(item.id)}
+                        disabled={deletingMenuItemId === item.id}
+                        className="h-7 border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 hover:bg-red-100 whitespace-nowrap"
+                      >
+                        {deletingMenuItemId === item.id ? '削除中...' : '削除'}
+                      </Button>
+                    </div>
+                  </article>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
+                <table className="min-w-full table-fixed text-sm text-left" data-testid="hotel-menus-list">
+                  <thead className="border-b bg-gray-50 text-gray-500">
+                    <tr>
+                      <th className="px-2.5 py-2">メニュー</th>
+                      <th className="px-2.5 py-2 whitespace-nowrap">価格 / 時間</th>
+                      <th className="px-2.5 py-2">状態</th>
+                      <th className="px-2.5 py-2 whitespace-nowrap">税</th>
+                      <th className="px-2.5 py-2">備考</th>
+                      <th className="px-2.5 py-2 whitespace-nowrap">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {menuItems.map((item) => (
+                      <tr key={item.id} className="text-gray-700" data-testid={`hotel-menu-row-${item.id}`}>
+                        <td className="px-2.5 py-2 align-top">
+                          <p className="truncate font-medium text-gray-900">{item.name}</p>
+                          <p className="truncate text-xs text-gray-500">
+                            {formatHotelMenuItemType(item.item_type)} / {formatHotelMenuBillingUnit(item.billing_unit)}
+                          </p>
+                        </td>
+                        <td className="px-2.5 py-2 whitespace-nowrap align-top">
+                          <p>{formatMoney(item.price)}</p>
+                          <p className="text-xs text-gray-500">
+                            {item.duration_minutes ? `${item.duration_minutes} 分` : '-'}
+                          </p>
+                        </td>
+                        <td className="px-2.5 py-2 align-top">
+                          <div className="flex flex-wrap gap-1">
+                            <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                              {formatHotelMenuActive(item.is_active)}
+                            </span>
+                            <span className="inline-flex rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                              {item.counts_toward_capacity ? '定員対象' : '定員対象外'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-2.5 py-2 whitespace-nowrap align-top">
+                          <p>{formatHotelMenuTaxRate(item.tax_rate)}</p>
+                          <p className="text-xs text-gray-500">{formatHotelMenuTaxIncluded(item.tax_included)}</p>
+                        </td>
+                        <td className="px-2.5 py-2 align-top">
+                          <p className="line-clamp-2">{item.notes || 'なし'}</p>
+                        </td>
+                        <td className="px-2.5 py-2 align-top">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMenuItemDraft(buildMenuItemDraft(item))
+                                setShowMenuItemForm(true)
+                              }}
+                              className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                            >
+                              編集
+                            </button>
+                            <Button
+                              type="button"
+                              onClick={() => void deleteMenuItem(item.id)}
+                              disabled={deletingMenuItemId === item.id}
+                              className="h-7 border border-red-300 bg-red-50 px-2 py-0 text-xs font-semibold text-red-700 hover:bg-red-100 whitespace-nowrap"
+                            >
+                              {deletingMenuItemId === item.id ? '削除中...' : '削除'}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </Card>
       ) : null}
 
