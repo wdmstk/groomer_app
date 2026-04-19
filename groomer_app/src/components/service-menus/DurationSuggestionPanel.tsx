@@ -82,7 +82,7 @@ export function DurationSuggestionPanel() {
             推奨更新候補 {loading ? '読込中...' : `${rows.length} 件`}
           </p>
         </div>
-        <Link href="/appointments?tab=list&modal=create" className="rounded bg-violet-700 px-3 py-2 text-xs font-semibold text-white">
+        <Link href="/reservation-management?tab=trimmer&modal=create" className="rounded bg-violet-700 px-3 py-2 text-xs font-semibold text-white">
           予約作成へ
         </Link>
       </div>
@@ -102,7 +102,7 @@ export function DurationSuggestionPanel() {
                   （差分 {row.delta > 0 ? '+' : ''}{row.delta} 分 / 実績 {row.sampleCount} 件）
                 </p>
               </div>
-              <Link href={`/service-menus?edit=${row.id}`} className="rounded border border-violet-300 px-3 py-1.5 text-xs font-semibold text-violet-700">
+              <Link href={`/menu-management?tab=trimming&edit=${row.id}`} className="rounded border border-violet-300 px-3 py-1.5 text-xs font-semibold text-violet-700">
                 このメニューを編集
               </Link>
             </div>

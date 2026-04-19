@@ -5,6 +5,7 @@ import { createStoreScopedClient } from '@/lib/supabase/store'
 import { AppointmentCalendar } from '@/components/appointments/AppointmentCalendar'
 import { AppointmentCreateModal } from '@/components/appointments/AppointmentCreateModal'
 import { appointmentsPageFixtures } from '@/lib/e2e/appointments-page-fixtures'
+import { asStorePlanOptionsClient, fetchStorePlanOptionState } from '@/lib/store-plan-options'
 import {
   formatAppointmentDateTimeJst,
   getAppointmentNextStatusAction,
@@ -56,9 +57,21 @@ type AppointmentConsentRow = {
   created_at: string
 }
 
+type HotelStayCalendarRow = {
+  id: string
+  stay_code: string | null
+  status: string | null
+  planned_check_in_at: string
+  planned_check_out_at: string
+  pets: { name?: string | null } | Array<{ name?: string | null }> | null
+  customers: { full_name?: string | null } | Array<{ full_name?: string | null }> | null
+}
+
 type AppointmentsPageProps = {
   searchParams?: Promise<{
     tab?: string
+    hide_header?: string
+    hide_tabs?: string
     list_q?: string
     show_all?: string
     modal?: string
@@ -186,10 +199,23 @@ function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
 }
 
+function getRelatedLabel<T extends Record<string, string | null | undefined>>(
+  value: T | T[] | null | undefined,
+  key: keyof T
+) {
+  if (Array.isArray(value)) {
+    return String(value[0]?.[key] ?? '')
+  }
+  return String(value?.[key] ?? '')
+}
+
 const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === '1'
 
 export default async function AppointmentsPage({ searchParams }: AppointmentsPageProps) {
   const resolvedSearchParams = await searchParams
+  const hideHeader = resolvedSearchParams?.hide_header === '1'
+  const hideTabs = resolvedSearchParams?.hide_tabs === '1'
+  const useServiceMenuButtonStyle = hideHeader && hideTabs
   const activeTab =
     resolvedSearchParams?.tab === 'calendar'
       ? 'calendar'
@@ -211,13 +237,20 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
   const reofferNote = resolvedSearchParams?.reoffer_note
   const reofferId = resolvedSearchParams?.reoffer_id
   const delayAlertFixture = resolvedSearchParams?.delay_alert_fixture
-  const modalCloseRedirect = `/appointments?tab=${activeTab}`
+  const modalCloseRedirect = `/reservation-management?tab=${activeTab === 'calendar' ? 'calendar' : 'trimmer'}`
   const defaultDateTimeRange = getDefaultDateTimeRangeJst()
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: appointmentsPageFixtures.storeId }
     : await createStoreScopedClient()
   const publicReservePath = buildPublicReservePath(storeId)
   const db = supabase as NonNullable<typeof supabase>
+  const planState = isPlaywrightE2E
+    ? { planCode: 'standard' as const, hotelOptionEnabled: true, notificationOptionEnabled: false, aiPlanCode: 'none' as const }
+    : await fetchStorePlanOptionState({
+        supabase: asStorePlanOptionsClient(db),
+        storeId,
+      })
+  const hotelOptionEnabled = planState.hotelOptionEnabled
 
   const appointments = isPlaywrightE2E
     ? appointmentsPageFixtures.appointments
@@ -260,6 +293,22 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
           .eq('store_id', storeId)
           .order('created_at', { ascending: false })
       ).data
+
+  const hotelStaysForCalendar = !hotelOptionEnabled
+    ? []
+    : isPlaywrightE2E
+      ? []
+      : (
+          await db
+            .from('hotel_stays')
+            .select(
+              'id, stay_code, status, planned_check_in_at, planned_check_out_at, pets(name), customers(full_name)'
+            )
+            .eq('store_id', storeId)
+            .in('status', ['reserved', 'checked_in'])
+            .order('planned_check_in_at', { ascending: false })
+            .limit(300)
+        ).data
 
   const calendarDisplaySettings = isPlaywrightE2E
     ? appointmentsPageFixtures.storeSettings
@@ -455,7 +504,22 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
     endTime: appointment.end_time,
     menu: appointment.menu,
     status: appointment.status ?? '予約済',
+    reservationType: 'trimmer' as const,
   }))
+  const hotelCalendarAppointments = ((hotelStaysForCalendar ?? []) as HotelStayCalendarRow[]).map((stay) => ({
+    id: `hotel-${stay.id}`,
+    customerName: getRelatedLabel(stay.customers, 'full_name') || '顧客未設定',
+    petName: getRelatedLabel(stay.pets, 'name') || 'ペット未設定',
+    staffId: 'hotel',
+    staffName: 'ホテル',
+    startTime: stay.planned_check_in_at,
+    endTime: stay.planned_check_out_at,
+    menu: stay.stay_code ?? 'ホテル予約',
+    status: stay.status ?? 'reserved',
+    reservationType: 'hotel' as const,
+  }))
+  const mergedCalendarAppointments = [...calendarAppointments, ...hotelCalendarAppointments]
+  const calendarTotalCount = mergedCalendarAppointments.length
 
   const followupSource =
     !editId && followupFromId
@@ -513,50 +577,75 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
           lines: ['+15分: 2件影響 (11:15 モカ (山田 花子))'],
         }
       : null
+  const compactPrimaryActionClass = useServiceMenuButtonStyle
+    ? 'h-7 whitespace-nowrap bg-blue-600 px-2 text-xs hover:bg-blue-700'
+    : 'h-7 whitespace-nowrap bg-indigo-600 px-2 text-xs hover:bg-indigo-700'
+  const compactConfirmActionClass = useServiceMenuButtonStyle
+    ? 'h-7 whitespace-nowrap bg-blue-600 px-2 text-xs hover:bg-blue-700'
+    : 'h-7 whitespace-nowrap bg-emerald-600 px-2 text-xs hover:bg-emerald-700'
+  const compactSecondaryActionClass = useServiceMenuButtonStyle
+    ? 'inline-flex h-7 w-fit justify-self-start items-center rounded border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 hover:bg-slate-50'
+    : 'inline-flex h-7 w-fit justify-self-start items-center rounded border border-blue-300 px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50'
+  const compactTertiaryActionClass = useServiceMenuButtonStyle
+    ? 'inline-flex h-7 w-fit justify-self-start items-center rounded border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 hover:bg-slate-50'
+    : 'inline-flex h-7 w-fit justify-self-start items-center rounded border border-indigo-300 px-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50'
+  const compactFollowupActionClass = useServiceMenuButtonStyle
+    ? 'inline-flex h-7 w-fit justify-self-start items-center rounded border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 hover:bg-slate-50'
+    : 'inline-flex h-7 w-fit justify-self-start items-center rounded border border-emerald-300 px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50'
+  const compactDangerActionClass = useServiceMenuButtonStyle
+    ? 'h-7 whitespace-nowrap border border-red-300 bg-red-50 px-2 text-xs font-semibold text-red-700 hover:bg-red-100'
+    : 'h-7 whitespace-nowrap bg-red-500 px-2 text-xs hover:bg-red-600'
+  const compactClaimActionClass = useServiceMenuButtonStyle
+    ? 'h-7 whitespace-nowrap border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 hover:bg-slate-50'
+    : 'h-7 whitespace-nowrap bg-sky-600 px-2 text-xs hover:bg-sky-700'
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold text-gray-900">予約管理</h1>
-          <p className="text-xs text-gray-500">
-            店舗共通の新規顧客向け予約フォーム:
-            {' '}
-            <Link href={publicReservePath} target="_blank" rel="noreferrer" className="text-emerald-700 underline">
-              {publicReservePath}
-            </Link>
-          </p>
+      {hideHeader ? null : (
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-semibold text-gray-900">予約管理</h1>
+            <p className="text-xs text-gray-500">
+              店舗共通の新規顧客向け予約フォーム:
+              {' '}
+              <Link href={publicReservePath} target="_blank" rel="noreferrer" className="text-emerald-700 underline">
+                {publicReservePath}
+              </Link>
+            </p>
+          </div>
+          <Link
+            href={publicReservePath}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-9 items-center justify-center rounded border border-emerald-300 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+          >
+            公開予約フォームを開く
+          </Link>
         </div>
-        <Link
-          href={publicReservePath}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex h-9 items-center justify-center rounded border border-emerald-300 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
-        >
-          公開予約フォームを開く
-        </Link>
-      </div>
+      )}
 
-      <div className="overflow-x-auto">
-        <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
-          <Link
-            href="/appointments?tab=list"
-            className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
-              activeTab === 'list' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
-            }`}
-          >
-            予約一覧
-          </Link>
-          <Link
-            href="/appointments?tab=calendar"
-            className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
-              activeTab === 'calendar' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
-            }`}
-          >
-            カレンダー
-          </Link>
+      {hideTabs ? null : (
+        <div className="overflow-x-auto">
+          <div className="inline-flex min-w-full gap-2 rounded-2xl border border-gray-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
+            <Link
+              href="/reservation-management?tab=trimmer"
+              className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+                activeTab === 'list' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
+              }`}
+            >
+              予約一覧
+            </Link>
+            <Link
+              href="/reservation-management?tab=calendar"
+              className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+                activeTab === 'calendar' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
+              }`}
+            >
+              カレンダー
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
 
       {activeTab === 'list' ? (
         <Card>
@@ -567,7 +656,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                 表示 {filteredAppointmentList.length} / 全 {appointmentList.length} 件
               </p>
               <Link
-                href="/appointments?tab=list&modal=create"
+                href="/reservation-management?tab=trimmer&modal=create"
                 className="inline-flex items-center rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
               >
                 新規登録
@@ -575,7 +664,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
             </div>
           </div>
           <form
-            action="/appointments"
+            action="/reservation-management"
             method="get"
             className="mb-4 grid grid-cols-1 gap-2 rounded border border-gray-200 bg-gray-50 p-3 md:grid-cols-[1fr_auto_auto]"
           >
@@ -668,7 +757,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                           <form action={`/api/appointments/${appointment.id}/confirm`} method="post" className="justify-self-start">
                             <Button
                               type="submit"
-                              className="h-7 whitespace-nowrap bg-emerald-600 px-2 text-xs hover:bg-emerald-700"
+                              className={compactConfirmActionClass}
                               data-testid={`appointment-confirm-${appointment.id}`}
                             >
                               申請確定
@@ -680,7 +769,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                             <input type="hidden" name="redirect_tab" value="list" />
                             <Button
                               type="submit"
-                              className="h-7 whitespace-nowrap bg-indigo-600 px-2 text-xs hover:bg-indigo-700"
+                              className={compactPrimaryActionClass}
                               data-testid={`appointment-status-action-${appointment.id}`}
                             >
                               {toCompactStatusActionLabel(nextStatusAction.label)}
@@ -688,22 +777,22 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                           </form>
                         ) : isAppointmentCompletedStatus(appointment.status) ? (
                           <Link
-                            href={`/appointments?tab=list&modal=create&followup_from=${appointment.id}`}
-                            className="inline-flex h-7 w-fit justify-self-start items-center rounded border border-emerald-300 px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                            href={`/reservation-management?tab=trimmer&modal=create&followup_from=${appointment.id}`}
+                            className={compactFollowupActionClass}
                             data-testid={`appointment-followup-${appointment.id}`}
                           >
                             次回予約
                           </Link>
                         ) : null}
                       <Link
-                        href={`/appointments?tab=list&edit=${appointment.id}`}
-                        className="inline-flex h-7 w-fit justify-self-start items-center rounded border border-blue-300 px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                        href={`/reservation-management?tab=trimmer&edit=${appointment.id}`}
+                        className={compactSecondaryActionClass}
                       >
                         編集
                       </Link>
                       <Link
                         href={consentSummary.actionHref}
-                        className="inline-flex h-7 w-fit justify-self-start items-center rounded border border-indigo-300 px-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
+                        className={compactTertiaryActionClass}
                         target={consentSummary.openInNewTab ? '_blank' : undefined}
                         rel={consentSummary.openInNewTab ? 'noopener noreferrer' : undefined}
                       >
@@ -711,7 +800,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                       </Link>
                       <form action={`/api/appointments/${appointment.id}`} method="post" className="justify-self-start">
                           <input type="hidden" name="_method" value="delete" />
-                          <Button type="submit" className="h-7 whitespace-nowrap bg-red-500 px-2 text-xs hover:bg-red-600">
+                          <Button type="submit" className={compactDangerActionClass}>
                             削除
                           </Button>
                         </form>
@@ -722,8 +811,8 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                             action={`/api/appointments/${appointment.id}/reservation-payment/claim`}
                             method="post"
                           >
-                            <input type="hidden" name="redirect_to" value="/appointments?tab=list" />
-                            <Button type="submit" className="h-7 whitespace-nowrap bg-sky-600 px-2 text-xs hover:bg-sky-700">
+                            <input type="hidden" name="redirect_to" value="/reservation-management?tab=trimmer" />
+                            <Button type="submit" className={compactClaimActionClass}>
                               無断CXL請求
                             </Button>
                           </form>
@@ -816,7 +905,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                                   <form action={`/api/appointments/${appointment.id}/confirm`} method="post" className="justify-self-start">
                                     <Button
                                       type="submit"
-                                      className="h-7 whitespace-nowrap bg-emerald-600 px-2 text-xs hover:bg-emerald-700"
+                                      className={compactConfirmActionClass}
                                       data-testid={`appointment-confirm-${appointment.id}`}
                                     >
                                       申請確定
@@ -828,7 +917,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                                     <input type="hidden" name="redirect_tab" value="list" />
                                     <Button
                                       type="submit"
-                                      className="h-7 whitespace-nowrap bg-indigo-600 px-2 text-xs hover:bg-indigo-700"
+                                      className={compactPrimaryActionClass}
                                       data-testid={`appointment-status-action-${appointment.id}`}
                                     >
                                       {toCompactStatusActionLabel(nextStatusAction.label)}
@@ -836,22 +925,22 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                                   </form>
                                 ) : isAppointmentCompletedStatus(appointment.status) ? (
                                   <Link
-                                    href={`/appointments?tab=list&modal=create&followup_from=${appointment.id}`}
-                                    className="inline-flex h-7 w-fit justify-self-start items-center rounded border border-emerald-300 px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                                    href={`/reservation-management?tab=trimmer&modal=create&followup_from=${appointment.id}`}
+                                    className={compactFollowupActionClass}
                                     data-testid={`appointment-followup-${appointment.id}`}
                                   >
                                     次回予約
                                   </Link>
                                 ) : <span />}
                                 <Link
-                                  href={`/appointments?tab=list&edit=${appointment.id}`}
-                                  className="inline-flex h-7 w-fit justify-self-start items-center rounded border border-blue-300 px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                                  href={`/reservation-management?tab=trimmer&edit=${appointment.id}`}
+                                  className={compactSecondaryActionClass}
                                 >
                                   編集
                                 </Link>
                                 <Link
                                   href={consentSummary.actionHref}
-                                  className="inline-flex h-7 w-fit justify-self-start items-center rounded border border-indigo-300 px-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
+                                  className={compactTertiaryActionClass}
                                   target={consentSummary.openInNewTab ? '_blank' : undefined}
                                   rel={consentSummary.openInNewTab ? 'noopener noreferrer' : undefined}
                                 >
@@ -859,7 +948,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                                 </Link>
                                 <form action={`/api/appointments/${appointment.id}`} method="post" className="justify-self-start">
                                   <input type="hidden" name="_method" value="delete" />
-                                  <Button type="submit" className="h-7 whitespace-nowrap bg-red-500 px-2 text-xs hover:bg-red-600">
+                                  <Button type="submit" className={compactDangerActionClass}>
                                     削除
                                   </Button>
                                 </form>
@@ -870,8 +959,8 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
                                     action={`/api/appointments/${appointment.id}/reservation-payment/claim`}
                                     method="post"
                                   >
-                                    <input type="hidden" name="redirect_to" value="/appointments?tab=list" />
-                                    <Button type="submit" className="h-7 whitespace-nowrap bg-sky-600 px-2 text-xs hover:bg-sky-700">
+                                    <input type="hidden" name="redirect_to" value="/reservation-management?tab=trimmer" />
+                                    <Button type="submit" className={compactClaimActionClass}>
                                       無断CXL請求
                                     </Button>
                                   </form>
@@ -892,19 +981,21 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
         <Card>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">予約カレンダー</h2>
-            <p className="text-sm text-gray-500">全 {appointmentList.length} 件</p>
+            <p className="text-sm text-gray-500">全 {calendarTotalCount} 件</p>
           </div>
-          {appointmentList.length === 0 ? (
+          {calendarTotalCount === 0 ? (
             <p className="text-sm text-gray-500">予約がまだ登録されていません。</p>
           ) : (
             <AppointmentCalendar
-              appointments={calendarAppointments}
+              appointments={mergedCalendarAppointments}
               initialDelayAlert={initialDelayAlert}
               businessStartHourJst={resolvedCalendarDisplaySettings.public_reserve_business_start_hour_jst}
               businessEndHourJst={resolvedCalendarDisplaySettings.public_reserve_business_end_hour_jst}
               expandTimelineForOutOfRangeAppointments={
                 resolvedCalendarDisplaySettings.calendar_expand_out_of_range_appointments
               }
+              showTypeFilter={hotelOptionEnabled}
+              defaultTypeFilter={hotelOptionEnabled ? 'all' : 'trimmer'}
             />
           )}
         </Card>

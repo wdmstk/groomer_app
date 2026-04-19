@@ -109,7 +109,7 @@ export async function POST(request: Request, context: RouteParams) {
     if (error) {
       return NextResponse.json({ message: error.message }, { status: 500 })
     }
-    return NextResponse.redirect(new URL('/service-menus', request.url))
+    return NextResponse.redirect(new URL('/menu-management?tab=trimming', request.url))
   }
 
   if (method === 'put' || method === 'patch') {
@@ -149,7 +149,7 @@ export async function POST(request: Request, context: RouteParams) {
       return NextResponse.json({ message: error.message }, { status: 500 })
     }
 
-    return NextResponse.redirect(new URL('/service-menus', request.url))
+    return NextResponse.redirect(new URL('/menu-management?tab=trimming', request.url))
   }
 
   return NextResponse.json({ message: 'Unsupported method' }, { status: 405 })

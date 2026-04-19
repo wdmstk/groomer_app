@@ -148,9 +148,6 @@ export default async function NotificationSettingsPage({ searchParams }: PagePro
             予約リマインドや再来店フォローの送信ルールと文面を設定します。
           </p>
         </div>
-        <Link href="/dashboard?tab=reoffers" className="text-sm font-semibold text-blue-700">
-          ダッシュボードへ戻る
-        </Link>
       </div>
       <Card className="border border-slate-200 bg-slate-50">
         <p className="text-sm font-semibold text-gray-900">通知強化オプション契約</p>
@@ -338,14 +335,16 @@ export default async function NotificationSettingsPage({ searchParams }: PagePro
             </select>
           </label>
 
-          <input type="hidden" name="redirect_to" value="/settings/notifications" />
-          <button
-            type="submit"
-            disabled={!canManage}
-            className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            通知設定を保存
-          </button>
+          <div>
+            <input type="hidden" name="redirect_to" value="/settings/notifications" />
+            <button
+              type="submit"
+              disabled={!canManage}
+              className="inline-flex items-center rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              通知設定を保存
+            </button>
+          </div>
         </form>
       </Card>
 

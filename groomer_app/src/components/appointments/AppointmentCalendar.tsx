@@ -24,6 +24,7 @@ type CalendarAppointment = {
   endTime: string
   menu: string
   status: string
+  reservationType?: 'trimmer' | 'hotel'
 }
 
 type AppointmentCalendarProps = {
@@ -32,6 +33,8 @@ type AppointmentCalendarProps = {
   businessStartHourJst?: number
   businessEndHourJst?: number
   expandTimelineForOutOfRangeAppointments?: boolean
+  showTypeFilter?: boolean
+  defaultTypeFilter?: 'all' | 'trimmer' | 'hotel'
 }
 
 type CalendarMode = 'month' | 'week' | 'day'
@@ -63,7 +66,10 @@ type DraggedPayload = {
   appointmentId: string
   durationMin: number
   fallbackStaffId: string
+  reservationType: 'trimmer' | 'hotel'
 }
+
+type ReservationTypeFilter = 'all' | 'trimmer' | 'hotel'
 
 function getJstParts(date: Date) {
   const shifted = new Date(date.getTime() + JST_OFFSET_MS)
@@ -212,6 +218,8 @@ export function AppointmentCalendar({
   businessStartHourJst = 9,
   businessEndHourJst = 19,
   expandTimelineForOutOfRangeAppointments = false,
+  showTypeFilter = false,
+  defaultTypeFilter = 'all',
 }: AppointmentCalendarProps) {
   const router = useRouter()
   const ignoreClickUntilRef = useRef(0)
@@ -223,6 +231,7 @@ export function AppointmentCalendar({
     initialDelayAlert ?? readDelayAlertFromSessionStorage()
   )
   const [draggingAppointmentId, setDraggingAppointmentId] = useState<string | null>(null)
+  const [typeFilter, setTypeFilter] = useState<ReservationTypeFilter>(defaultTypeFilter)
 
   const normalized = useMemo<NormalizedAppointment[]>(() => {
     return calendarAppointments
@@ -235,38 +244,48 @@ export function AppointmentCalendar({
       .sort((a, b) => a.start.getTime() - b.start.getTime())
   }, [calendarAppointments])
 
+  const filteredNormalized = useMemo(() => {
+    if (typeFilter === 'all') return normalized
+    return normalized.filter((item) => (item.reservationType ?? 'trimmer') === typeFilter)
+  }, [normalized, typeFilter])
+
   const appointmentsByDay = useMemo(() => {
     const map = new Map<string, (typeof normalized)[number][]>()
-    normalized.forEach((item) => {
+    filteredNormalized.forEach((item) => {
       const key = toJstDateKey(item.start)
       const list = map.get(key) ?? []
       list.push(item)
       map.set(key, list)
     })
     return map
-  }, [normalized])
+  }, [filteredNormalized])
 
   const staffColorMap = useMemo(() => {
     const map = new Map<string, number>()
-    normalized.forEach((item) => {
+    filteredNormalized.forEach((item) => {
       if (!map.has(item.staffName)) {
         map.set(item.staffName, map.size % staffColorPalette.length)
       }
     })
     return map
-  }, [normalized])
+  }, [filteredNormalized])
   const staffEntries = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>()
-    normalized.forEach((item) => {
+    filteredNormalized.forEach((item) => {
       if (!map.has(item.staffName)) {
         map.set(item.staffName, { id: item.staffId, name: item.staffName })
       }
     })
     const entries = Array.from(map.values())
     return entries.length > 0 ? entries : [{ id: '', name: 'スタッフ未設定' }]
-  }, [normalized])
+  }, [filteredNormalized])
 
   const getItemColorClass = (item: NormalizedAppointment, modeType: 'light' | 'block') => {
+    if ((item.reservationType ?? 'trimmer') === 'hotel') {
+      return modeType === 'light'
+        ? 'bg-orange-100 text-orange-900'
+        : 'border-orange-300 bg-orange-100 text-orange-900'
+    }
     if (isRequestedAppointmentStatus(item.status)) {
       return modeType === 'light'
         ? 'bg-amber-100 text-amber-900'
@@ -331,8 +350,8 @@ export function AppointmentCalendar({
     if (mode === 'week') {
       return weekDays.flatMap((date) => appointmentsByDay.get(toJstDateKey(date)) ?? [])
     }
-    return normalized
-  }, [appointmentsByDay, dayKey, mode, normalized, weekDays])
+    return filteredNormalized
+  }, [appointmentsByDay, dayKey, filteredNormalized, mode, weekDays])
 
   const timelineRange = useMemo(() => {
     const startHour = Math.max(0, Math.min(23, Math.floor(businessStartHourJst) - 1))
@@ -379,6 +398,10 @@ export function AppointmentCalendar({
   )
 
   const handleDragStart = (event: DragEvent<HTMLElement>, item: NormalizedAppointment) => {
+    if ((item.reservationType ?? 'trimmer') !== 'trimmer') {
+      event.preventDefault()
+      return
+    }
     const durationMin = Math.max(
       15,
       Math.round((item.end.getTime() - item.start.getTime()) / (60 * 1000))
@@ -387,6 +410,7 @@ export function AppointmentCalendar({
       appointmentId: item.id,
       durationMin,
       fallbackStaffId: item.staffId,
+      reservationType: item.reservationType ?? 'trimmer',
     }
     event.dataTransfer.setData('application/json', JSON.stringify(payload))
     event.dataTransfer.effectAllowed = 'move'
@@ -399,22 +423,33 @@ export function AppointmentCalendar({
     setDraggingAppointmentId(null)
   }
 
-  const openAppointmentEditor = (appointmentId: string) => {
-    router.push(`/appointments?tab=calendar&edit=${appointmentId}`)
+  const openAppointmentEditor = (item: NormalizedAppointment) => {
+    if ((item.reservationType ?? 'trimmer') === 'hotel') {
+      router.push('/reservation-management?tab=hotel')
+      return
+    }
+    router.push(`/reservation-management?tab=calendar&edit=${item.id}`)
   }
 
-  const handleChipClick = (event: MouseEvent<HTMLElement>, appointmentId: string) => {
+  const getAppointmentHref = (item: NormalizedAppointment) => {
+    if ((item.reservationType ?? 'trimmer') === 'hotel') {
+      return '/reservation-management?tab=hotel'
+    }
+    return `/reservation-management?tab=calendar&edit=${item.id}`
+  }
+
+  const handleChipClick = (event: MouseEvent<HTMLElement>, item: NormalizedAppointment) => {
     if (event.timeStamp < ignoreClickUntilRef.current) {
       event.preventDefault()
       return
     }
     event.preventDefault()
-    openAppointmentEditor(appointmentId)
+    openAppointmentEditor(item)
   }
 
-  const handleChipDoubleClick = (event: MouseEvent<HTMLElement>, appointmentId: string) => {
+  const handleChipDoubleClick = (event: MouseEvent<HTMLElement>, item: NormalizedAppointment) => {
     event.preventDefault()
-    openAppointmentEditor(appointmentId)
+    openAppointmentEditor(item)
   }
 
   const handleDropOnTimeline = async (
@@ -429,6 +464,10 @@ export function AppointmentCalendar({
     const raw = event.dataTransfer.getData('application/json')
     if (!raw) return
     const payload = JSON.parse(raw) as DraggedPayload
+    if (payload.reservationType !== 'trimmer') {
+      setDragError('ホテル予約はこのカレンダーから移動できません。')
+      return
+    }
     const container = event.currentTarget
     const rect = container.getBoundingClientRect()
     const relativeX = event.clientX - rect.left
@@ -555,6 +594,37 @@ export function AppointmentCalendar({
               {value === 'month' ? '月' : value === 'week' ? '週' : '日'}
             </button>
           ))}
+          {showTypeFilter ? (
+            <div className="ml-1 flex items-center gap-1 rounded border border-gray-200 bg-white p-1">
+              <button
+                type="button"
+                onClick={() => setTypeFilter('all')}
+                className={`rounded px-2 py-1 text-xs font-semibold ${
+                  typeFilter === 'all' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                全件
+              </button>
+              <button
+                type="button"
+                onClick={() => setTypeFilter('trimmer')}
+                className={`rounded px-2 py-1 text-xs font-semibold ${
+                  typeFilter === 'trimmer' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                トリマー
+              </button>
+              <button
+                type="button"
+                onClick={() => setTypeFilter('hotel')}
+                className={`rounded px-2 py-1 text-xs font-semibold ${
+                  typeFilter === 'hotel' ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                ホテル
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -602,10 +672,10 @@ export function AppointmentCalendar({
                     {dayAppointments.slice(0, 3).map((item) => (
                       <Link
                         key={item.id}
-                        href={`/appointments?tab=calendar&edit=${item.id}`}
+                        href={getAppointmentHref(item)}
                         className={`rounded px-1.5 py-1 text-[11px] ${getItemColorClass(item, 'light')}`}
-                        onClick={(event) => handleChipClick(event, item.id)}
-                        onDoubleClick={(event) => handleChipDoubleClick(event, item.id)}
+                        onClick={(event) => handleChipClick(event, item)}
+                        onDoubleClick={(event) => handleChipDoubleClick(event, item)}
                       >
                         {formatJstTime(item.startTime)} {item.petName}
                       </Link>
@@ -682,7 +752,7 @@ export function AppointmentCalendar({
                       return (
                         <Link
                           key={item.id}
-                          href={`/appointments?tab=calendar&edit=${item.id}`}
+                          href={getAppointmentHref(item)}
                           className={`absolute z-10 overflow-visible rounded border px-2 py-1 text-[11px] shadow-sm hover:z-20 ${getItemColorClass(item, 'block')}`}
                           style={{
                             top: `${top}px`,
@@ -692,9 +762,9 @@ export function AppointmentCalendar({
                             height: `${height}px`,
                             opacity: draggingAppointmentId === item.id ? 0.5 : 1,
                           }}
-                          draggable
-                          onClick={(event) => handleChipClick(event, item.id)}
-                          onDoubleClick={(event) => handleChipDoubleClick(event, item.id)}
+                          draggable={(item.reservationType ?? 'trimmer') === 'trimmer'}
+                          onClick={(event) => handleChipClick(event, item)}
+                          onDoubleClick={(event) => handleChipDoubleClick(event, item)}
                           onDragStart={(event) => handleDragStart(event, item)}
                           onDragEnd={handleDragEnd}
                         >
@@ -777,7 +847,7 @@ export function AppointmentCalendar({
                           return (
                             <Link
                               key={item.id}
-                              href={`/appointments?tab=calendar&edit=${item.id}`}
+                              href={getAppointmentHref(item)}
                               className={`absolute z-10 overflow-visible rounded border px-2 py-1 text-[11px] shadow-sm hover:z-20 ${getItemColorClass(item, 'block')}`}
                               style={{
                                 top: `${top}px`,
@@ -787,9 +857,9 @@ export function AppointmentCalendar({
                                 height: `${height}px`,
                                 opacity: draggingAppointmentId === item.id ? 0.5 : 1,
                               }}
-                              draggable
-                              onClick={(event) => handleChipClick(event, item.id)}
-                              onDoubleClick={(event) => handleChipDoubleClick(event, item.id)}
+                              draggable={(item.reservationType ?? 'trimmer') === 'trimmer'}
+                              onClick={(event) => handleChipClick(event, item)}
+                              onDoubleClick={(event) => handleChipDoubleClick(event, item)}
                               onDragStart={(event) => handleDragStart(event, item)}
                               onDragEnd={handleDragEnd}
                             >

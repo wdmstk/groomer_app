@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/Card'
 import { settingsPageFixtures } from '@/lib/e2e/settings-page-fixtures'
+import { asStorePlanOptionsClient, fetchStorePlanOptionState } from '@/lib/store-plan-options'
 import { getSettingsManageLabel } from '@/lib/settings/presentation'
 import { createStoreScopedClient } from '@/lib/supabase/store'
 
@@ -108,6 +109,28 @@ export default async function StoreOperationsSettingsContent() {
             followup_lost_refollow_days?: number | null
           }
         | null
+  const planState = isPlaywrightE2E
+    ? { planCode: 'standard' as const, hotelOptionEnabled: true, notificationOptionEnabled: false, aiPlanCode: 'none' as const }
+    : await fetchStorePlanOptionState({
+        supabase: asStorePlanOptionsClient(db),
+        storeId,
+      })
+  const hotelOptionEnabled = planState.hotelOptionEnabled
+  const hotelSettings = !hotelOptionEnabled
+    ? null
+    : isPlaywrightE2E
+      ? {
+          max_concurrent_pets: 3,
+          calendar_open_hour: 8,
+          calendar_close_hour: 20,
+        }
+      : (
+          await db
+            .from('hotel_settings')
+            .select('max_concurrent_pets, calendar_open_hour, calendar_close_hour')
+            .eq('store_id', storeId)
+            .maybeSingle()
+        ).data
 
   const publicReserveSlotDays = Number(storeSettings?.public_reserve_slot_days ?? 7) || 7
   const publicReserveSlotIntervalMinutes =
@@ -173,6 +196,9 @@ export default async function StoreOperationsSettingsContent() {
     1,
     Math.min(5000, Number(shiftSettings?.attendance_location_radius_meters ?? 200))
   )
+  const hotelMaxConcurrentPets = Math.max(1, Number(hotelSettings?.max_concurrent_pets ?? 1))
+  const hotelCalendarOpenHour = publicReserveBusinessStartHourJst
+  const hotelCalendarCloseHour = publicReserveBusinessEndHourJst
   const closedWeekdays = new Set(
     ((closedRules ?? []) as Array<{ rule_type: string | null; weekday: number | null }>)
       .filter((rule) => rule.rule_type === 'weekday' && Number.isInteger(rule.weekday))
@@ -210,33 +236,35 @@ export default async function StoreOperationsSettingsContent() {
           <form
             action="/api/stores/public-reserve-slot-settings"
             method="post"
-            className="grid grid-cols-1 gap-3 md:grid-cols-3"
+            className="space-y-3"
           >
-            <label className="text-xs text-gray-700 dark:text-slate-300">
-              営業開始時刻（JST 時）
-              <input
-                type="number"
-                min={0}
-                max={23}
-                name="public_reserve_business_start_hour_jst"
-                defaultValue={publicReserveBusinessStartHourJst}
-                className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                disabled={!canManage}
-              />
-            </label>
-            <label className="text-xs text-gray-700 dark:text-slate-300">
-              営業終了時刻（JST 時）
-              <input
-                type="number"
-                min={1}
-                max={24}
-                name="public_reserve_business_end_hour_jst"
-                defaultValue={publicReserveBusinessEndHourJst}
-                className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                disabled={!canManage}
-              />
-            </label>
-            <div className="flex flex-col justify-end gap-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <label className="text-xs text-gray-700 dark:text-slate-300">
+                営業開始時刻（JST 時）
+                <input
+                  type="number"
+                  min={0}
+                  max={23}
+                  name="public_reserve_business_start_hour_jst"
+                  defaultValue={publicReserveBusinessStartHourJst}
+                  className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  disabled={!canManage}
+                />
+              </label>
+              <label className="text-xs text-gray-700 dark:text-slate-300">
+                営業終了時刻（JST 時）
+                <input
+                  type="number"
+                  min={1}
+                  max={24}
+                  name="public_reserve_business_end_hour_jst"
+                  defaultValue={publicReserveBusinessEndHourJst}
+                  className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  disabled={!canManage}
+                />
+              </label>
+            </div>
+            <div className="space-y-3">
               <input type="hidden" name="public_reserve_slot_days" value={publicReserveSlotDays} />
               <input
                 type="hidden"
@@ -265,6 +293,8 @@ export default async function StoreOperationsSettingsContent() {
                 />
                 予約表示範囲外の予約がある場合は範囲を自動拡張
               </label>
+            </div>
+            <div>
               <input type="hidden" name="redirect_to" value="/settings?tab=store-ops" />
               <button
                 type="submit"
@@ -704,6 +734,53 @@ export default async function StoreOperationsSettingsContent() {
           </form>
         </div>
       </details>
+
+      {hotelOptionEnabled ? (
+        <details className="rounded border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900" open>
+          <summary className="cursor-pointer text-sm font-semibold text-gray-900 dark:text-slate-100">
+            ペットホテル運用設定
+          </summary>
+          <div className="mt-3 space-y-3">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
+              ペットホテル管理の運用設定を店舗運用設定側で管理します（ホテルオプション有効店舗のみ表示）。
+            </p>
+            <p className="text-xs text-gray-500 dark:text-slate-400">
+              ホテル営業時間は店舗営業時間（{publicReserveBusinessStartHourJst}:00 - {publicReserveBusinessEndHourJst}
+              :00）に連動します。
+            </p>
+            <form action="/api/hotel/settings" method="post" className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <label className="text-xs text-gray-700 dark:text-slate-300">
+                  同時預かり上限
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    name="max_concurrent_pets"
+                    defaultValue={hotelMaxConcurrentPets}
+                    className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    disabled={!canManage}
+                  />
+                </label>
+                <div className="rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  <p>ホテル営業開始（JST時）: {hotelCalendarOpenHour}</p>
+                  <p className="mt-1">ホテル営業終了（JST時）: {hotelCalendarCloseHour}</p>
+                </div>
+              </div>
+              <input type="hidden" name="calendar_open_hour" value={hotelCalendarOpenHour} />
+              <input type="hidden" name="calendar_close_hour" value={hotelCalendarCloseHour} />
+              <input type="hidden" name="redirect_to" value="/settings?tab=store-ops" />
+              <button
+                type="submit"
+                disabled={!canManage}
+                className="inline-flex items-center rounded bg-blue-600 px-2.5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ペットホテル運用設定を保存
+              </button>
+            </form>
+          </div>
+        </details>
+      ) : null}
     </section>
   )
 }

@@ -21,6 +21,7 @@ type ServiceMenusPageProps = {
   searchParams?: Promise<{
     modal?: string
     edit?: string
+    hide_title?: string
   }>
 }
 
@@ -48,9 +49,10 @@ type AppointmentDurationLearningRow = {
 
 export default async function ServiceMenusPage({ searchParams }: ServiceMenusPageProps) {
   const resolvedSearchParams = await searchParams
+  const hideTitle = resolvedSearchParams?.hide_title === '1'
   const isCreateModalOpen = resolvedSearchParams?.modal === 'create'
   const editId = resolvedSearchParams?.edit
-  const modalCloseRedirect = '/service-menus'
+  const modalCloseRedirect = '/menu-management?tab=trimming'
   const { supabase, storeId } = isPlaywrightE2E
     ? { supabase: null, storeId: serviceMenusPageFixtures.storeId }
     : await createStoreScopedClient()
@@ -138,9 +140,11 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold text-gray-900">施術メニュー管理</h1>
-      </div>
+      {hideTitle ? null : (
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-semibold text-gray-900">施術メニュー管理</h1>
+        </div>
+      )}
 
       <Card>
         <div className="mb-4 flex items-center justify-between rounded border border-violet-200 bg-violet-50 p-3">
@@ -150,7 +154,7 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
               推奨更新候補 {durationSuggestionRows.length} 件
             </p>
           </div>
-          <Link href="/appointments?tab=list&modal=create" className="rounded bg-violet-700 px-3 py-2 text-xs font-semibold text-white">
+          <Link href="/reservation-management?tab=trimmer&modal=create" className="rounded bg-violet-700 px-3 py-2 text-xs font-semibold text-white">
             予約作成へ
           </Link>
         </div>
@@ -165,7 +169,7 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
                     （差分 {suggestion.delta > 0 ? '+' : ''}{suggestion.delta} 分 / 実績 {suggestion.sampleCount} 件）
                   </p>
                 </div>
-                <Link href={`/service-menus?edit=${menu.id}`} className="rounded border border-violet-300 px-3 py-1.5 text-xs font-semibold text-violet-700">
+                <Link href={`/menu-management?tab=trimming&edit=${menu.id}`} className="rounded border border-violet-300 px-3 py-1.5 text-xs font-semibold text-violet-700">
                   このメニューを編集
                 </Link>
               </div>
@@ -179,7 +183,7 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
           <div className="flex items-center gap-3">
             <p className="text-sm text-gray-500">全 {menuList.length} 件</p>
             <Link
-              href="/service-menus?modal=create"
+              href="/menu-management?tab=trimming&modal=create"
               className="inline-flex items-center rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
             >
               新規登録
@@ -224,7 +228,7 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
                   ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <Link
-                      href={`/service-menus?edit=${menu.id}`}
+                      href={`/menu-management?tab=trimming&edit=${menu.id}`}
                       className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
                     >
                       編集
@@ -295,7 +299,7 @@ export default async function ServiceMenusPage({ searchParams }: ServiceMenusPag
                       <td className="px-2.5 py-2 align-top">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <Link
-                            href={`/service-menus?edit=${menu.id}`}
+                            href={`/menu-management?tab=trimming&edit=${menu.id}`}
                             className="inline-flex h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 py-0 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
                           >
                             編集

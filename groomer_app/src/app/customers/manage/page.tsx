@@ -724,7 +724,7 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
       date: visit.start_time,
       petName: getPetName(visit.pets),
       description: visit.menu?.trim() || '施術内容未登録',
-      actionHref: `/appointments?tab=list&edit=${visit.id}`,
+      actionHref: `/reservation-management?tab=trimmer&edit=${visit.id}`,
       actionLabel: '予約詳細',
     })),
     ...hotelVisits.map((visit) => ({
@@ -733,7 +733,7 @@ export default async function CustomersManagePage({ searchParams }: CustomersMan
       date: visit.planned_check_in_at,
       petName: getPetName(visit.pets),
       description: formatHotelPeriod(visit.planned_check_in_at, visit.planned_check_out_at),
-      actionHref: `/hotel?stay_id=${visit.id}`,
+      actionHref: `/reservation-management?tab=hotel&stay_id=${visit.id}`,
       actionLabel: 'ホテル台帳',
     })),
   ]

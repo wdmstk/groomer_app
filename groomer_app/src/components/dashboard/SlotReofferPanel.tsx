@@ -305,7 +305,7 @@ export function SlotReofferPanel() {
       }
       if (status === 'accepted' && log.target_customer_id) {
         const query = new URLSearchParams({
-          tab: 'list',
+          tab: 'trimmer',
           modal: 'create',
           reoffer_id: log.id,
           reoffer_customer_id: log.target_customer_id,
@@ -315,7 +315,7 @@ export function SlotReofferPanel() {
         if (log.target_pet_id) query.set('reoffer_pet_id', log.target_pet_id)
         if (log.target_staff_id) query.set('reoffer_staff_id', log.target_staff_id)
         if (log.notes) query.set('reoffer_note', log.notes)
-        window.location.assign(`/appointments?${query.toString()}`)
+        window.location.assign(`/reservation-management?${query.toString()}`)
         return
       }
       setMessage(`再販記録を ${label} に更新しました。`)

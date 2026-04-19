@@ -686,7 +686,7 @@ export function RevisitAlertList() {
                               </Button>
                             )}
                             <Link
-                              href={`/appointments?tab=list&modal=create${task.sourceAppointmentId ? `&followup_from=${task.sourceAppointmentId}` : ''}&followup_task_id=${task.id}&followup_customer_id=${task.customerId}${task.petId ? `&followup_pet_id=${task.petId}` : ''}`}
+                              href={`/reservation-management?tab=trimmer&modal=create${task.sourceAppointmentId ? `&followup_from=${task.sourceAppointmentId}` : ''}&followup_task_id=${task.id}&followup_customer_id=${task.customerId}${task.petId ? `&followup_pet_id=${task.petId}` : ''}`}
                               className="inline-flex h-7 items-center justify-center rounded bg-slate-900 px-2 py-0 text-xs font-semibold text-white whitespace-nowrap hover:bg-slate-800"
                             >
                               予約作成

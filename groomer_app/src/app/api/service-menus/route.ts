@@ -63,5 +63,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: error.message }, { status: 500 })
   }
 
-  return NextResponse.redirect(new URL('/service-menus', request.url))
+  return NextResponse.redirect(new URL('/menu-management?tab=trimming', request.url))
 }

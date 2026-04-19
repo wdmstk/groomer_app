@@ -42,7 +42,7 @@ export default function SetupStorePage() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-xl space-y-6">
+    <section className="w-full max-w-xl space-y-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold text-gray-900">新しい店舗を追加</h1>
       </div>
